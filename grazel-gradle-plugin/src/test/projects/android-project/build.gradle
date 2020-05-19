@@ -1,0 +1,74 @@
+// Top-level build file where you can add configuration options common to all sub-projects/modules.
+buildscript {
+    ext.kotlin_version = "1.3.72"
+    repositories {
+        google()
+        jcenter()
+    }
+    dependencies {
+        classpath "com.android.tools.build:gradle:4.0.0"
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
+    }
+}
+plugins {
+    id "idea"
+    id "com.grab.grazel"
+}
+
+
+grazel {
+    android {
+        variantFilter { variant ->
+            if (variant.name == "flavor1Debug" || variant.name == "flavor1Release" || variant.name == "flavor2Release") {
+                variant.setIgnore(true)
+            }
+        }
+        features {
+            dataBinding = findProperty("grazel.migrateDataBinding") != null
+        }
+    }
+    rules {
+        bazelCommon {
+            gitRepository {
+                commit = "f151db659bea183013be99c7c4f3a2cd02bb47b0"
+                remote = "https://bazel-common-android:5gLtjecPni6EfFNUU2Ua@gitlab.myteksi.net/mobile/pax-app-core/bazel-common-android.git"
+            }
+        }
+        kotlin {
+            gitRepository {
+                commit = "eae21653baad4b403fee9e8a706c9d4fbd0c27c6"
+                remote = "https://github.com/bazelbuild/rules_kotlin.git"
+            }
+            compiler {
+                version = "1.4.20"
+                sha = "46720991a716e90bfc0cf3f2c81b2bd735c14f4ea6a5064c488e04fd76e6b6c7"
+            }
+            toolchain {
+                enabled = true
+            }
+        }
+    }
+}
+
+idea {
+    module {
+        excludeDirs += [
+                file("bazel-bin"),
+                file("bazel-android-project"),
+                file("bazel-out"),
+                file("bazel-cache"),
+                file("bazel-testlogs"),
+        ]
+    }
+}
+
+allprojects {
+    repositories {
+        google()
+        jcenter()
+    }
+}
+
+task clean(type: Delete) {
+    delete rootProject.buildDir
+}

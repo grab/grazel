@@ -1,0 +1,32 @@
+/*
+ * Copyright 2021 Grabtaxi Holdings Pte Ltd (GRAB), All rights reserved.
+ *
+ * Use of this source code is governed by an MIT-style license that can be found in the LICENSE file
+ */
+
+sourceSets {
+    functionalTest {
+        java.srcDir file("src/functionalTest/kotlin")
+        resources.srcDir file("src/functionalTest/resources")
+        compileClasspath += sourceSets.main.output + configurations.testRuntime
+        runtimeClasspath += output + compileClasspath
+    }
+}
+
+configurations {
+    functionalTestImplementation.extendsFrom testImplementation
+    functionalTestRuntimeOnly.extendsFrom testRuntimeOnly
+}
+
+task functionalTest(type: Test) {
+    description = "Runs the functional tests."
+    testClassesDirs = project.sourceSets.functionalTest.output.classesDirs
+    classpath = project.sourceSets.functionalTest.runtimeClasspath
+    mustRunAfter test
+}
+
+check.dependsOn functionalTest
+
+gradlePlugin {
+    testSourceSets sourceSets.functionalTest
+}

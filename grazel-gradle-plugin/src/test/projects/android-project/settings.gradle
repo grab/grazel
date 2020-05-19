@@ -1,0 +1,9 @@
+include ':kotlin-library3'
+include ':kotlin-library2'
+include ':kotlin-library1'
+include ':android-library'
+include ':kotlin-library-flavor1'
+include ':kotlin-library-flavor2'
+include ':android-library-flavor'
+include ':app'
+rootProject.name = "android-project"

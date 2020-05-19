@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  ~ Copyright 2021 Grabtaxi Holdings Pte Ltd (GRAB), All rights reserved.
+  ~
+  ~ Use of this source code is governed by an MIT-style license that can be found in the LICENSE file
+  -->
+
+<resources>
+    <string name="hello_flavor_1">Hello flavor1</string>
+</resources>

@@ -1,0 +1,49 @@
+# Disk cache
+build --disk_cache=bazel-cache
+
+# Console output - Disabled for now
+# common --color=no
+# common --curses=yes
+
+# Env config
+build --incompatible_strict_action_env
+build --incompatible_disable_depset_items
+
+# Error config
+build --verbose_failures
+
+# D8 and Dexing flags
+build --define=android_incremental_dexing_tool=d8_dexbuilder
+build --define=android_standalone_dexing_tool=d8_compat_dx
+build --nouse_workers_with_dexbuilder
+build --strategy=Desugar=sandboxed
+
+# Databinding flags
+build --experimental_android_databinding_v2
+build --android_databinding_use_v3_4_args
+build --android_databinding_use_androidx
+
+# Flags to enable latest android providers in rules
+build --experimental_google_legacy_api
+query --experimental_google_legacy_api
+
+build --strict_java_deps=off # Turn off strict java deps
+
+# Sandboxing
+# build --spawn_strategy=standalone # Disable sandboxing
+# build --genrule_strategy=standalone # Disable sandboxing for genrules (Needs work on DB macro)
+
+# Resource Workers
+# build --persistent_android_resource_processor # Disabled due to resource merging error
+# build --strategy=AARGenerator=standalone # https://github.com/bazelbuild/bazel/issues/9207#issuecomment-522727482
+
+# Java Workers
+build --strategy=KotlinCompile=worker
+build --strategy=Javac=worker
+
+# Misc perf
+# build --experimental_multi_threaded_digest # SSD Optimization
+# build --nojava_header_compilation # Turn off Java header compilation (might affect incremental build performance)
+# build --output_library_linked_resources=false # Turn off unnecessary library artifacts
+
+try-import local.bazelrc

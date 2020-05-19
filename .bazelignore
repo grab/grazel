@@ -1,0 +1,2 @@
+# Ignore functional tests from root build
+grazel-gradle-plugin/src/test/projects

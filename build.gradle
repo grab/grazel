@@ -1,0 +1,143 @@
+/*
+ * Copyright 2021 Grabtaxi Holdings Pte Ltd (GRAB), All rights reserved.
+ *
+ * Use of this source code is governed by an MIT-style license that can be found in the LICENSE file
+ */
+
+import com.android.build.gradle.BaseExtension
+import org.jetbrains.kotlin.gradle.dsl.KotlinJvmCompile
+
+buildscript {
+    apply from: "constants.gradle"
+    repositories {
+        google()
+        jcenter()
+    }
+    dependencies {
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlinVersion"
+        classpath "com.android.tools.build:gradle:$agpVersion"
+        classpath "com.grab:grazel:$versionName"
+        classpath "com.google.firebase:firebase-crashlytics-gradle:$fabricPluginVersion"
+        classpath "com.google.gms:google-services:$googleServicesPluginVersion"
+    }
+}
+
+plugins {
+    id "idea"
+}
+
+apply plugin: "java-library"
+apply plugin: "com.grab.grazel"
+
+allprojects {
+    repositories {
+        google()
+        jcenter()
+    }
+    group groupId
+    version versionName
+
+    configurations.configureEach {
+        resolutionStrategy {
+            // Force a dependency to test if Grazel picks it up correctly.
+            force "com.google.dagger:dagger:2.29"
+            force "com.google.dagger:dagger-compiler:2.29"
+        }
+    }
+
+    plugins.withType(com.android.build.gradle.BasePlugin).configureEach { plugin ->
+        (project.extensions.getByName("android") as BaseExtension).compileOptions {
+            sourceCompatibility = JavaVersion.VERSION_1_8
+            targetCompatibility = JavaVersion.VERSION_1_8
+        }
+    }
+
+    tasks.withType(JavaCompile).configureEach { task ->
+        task.sourceCompatibility = JavaVersion.VERSION_1_8
+        task.targetCompatibility = JavaVersion.VERSION_1_8
+    }
+
+    tasks.withType(KotlinJvmCompile).configureEach {
+        kotlinOptions {
+            jvmTarget = "1.8"
+        }
+    }
+}
+
+tasks.named("wrapper") {
+    gradleVersion = "6.5.1"
+    distributionType = Wrapper.DistributionType.ALL
+}
+
+grazel {
+    android {
+        dexShards = 5
+        multiDexEnabled = true
+        variantFilter { variant ->
+            if (variant.name != "flavor1Debug") {
+                variant.setIgnore(true)
+            }
+        }
+        features {
+            dataBinding = true
+        }
+    }
+    dependencies {
+        overrideArtifactVersions.add("androidx.constraintlayout:constraintlayout:1.1.2")
+    }
+    rules {
+        bazelCommon {
+            gitRepository {
+                commit = "f151db659bea183013be99c7c4f3a2cd02bb47b0"
+                // TODO update/replace the GitLab URL after we publish the bazel-common-android to GitHub
+                remote = "https://url/to/bazel-common-android.git"
+            }
+        }
+        googleServices {
+            crashlytics {
+                buildId = "042cb4d8-56f8-41a0-916a-9da28e94d1ba"
+            }
+        }
+        mavenInstall {
+            resolveTimeout = 1000
+            excludeArtifacts.add("androidx.test.espresso:espresso-contrib")
+            jetifyIncludeList.add("com.android.support:cardview-v7")
+            jetifyExcludeList.add("androidx.appcompat:appcompat")
+        }
+        kotlin {
+            gitRepository {
+                commit = "eae21653baad4b403fee9e8a706c9d4fbd0c27c6"
+                remote = "https://github.com/bazelbuild/rules_kotlin.git"
+            }
+            compiler {
+                version = "1.4.20"
+                sha = "46720991a716e90bfc0cf3f2c81b2bd735c14f4ea6a5064c488e04fd76e6b6c7"
+            }
+            kotlinC {
+                useIr = false
+            }
+            toolchain {
+                enabled = true
+                apiVersion = "1.4"
+                reportUnusedDeps = "off"
+                strictKotlinDeps = "off"
+                abiJars = true
+                multiplexWorkers = true
+                languageVersion = "1.4"
+                jvmTarget = "1.8"
+            }
+        }
+    }
+}
+
+idea {
+    module {
+        excludeDirs += [
+                file("bazel-bin"),
+                file("bazel-grazel"),
+                file("bazel-cache"),
+                file("bazel-out"),
+                file("bazel-testlogs"),
+        ]
+    }
+}

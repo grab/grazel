@@ -1,0 +1,6 @@
+/build
+.idea
+gradle
+gradlew
+gradlew.bat
+bazel-hybrid-dependency-substitution

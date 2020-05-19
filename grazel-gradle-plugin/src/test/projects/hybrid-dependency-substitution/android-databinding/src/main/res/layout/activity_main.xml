@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <data>
+
+        <variable
+            name="vm"
+            type="com.grab.databinding.ViewModel" />
+    </data>
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        tools:context=".DatabindingActivity">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:id="@+id/counter"
+            android:text="@{vm.counter}"
+            tools:text="Counter: 50"
+            android:layout_margin="16dp"
+            android:gravity="center"
+            android:textAppearance="@style/TextAppearance.AppCompat.Title"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <Button
+            android:layout_width="match_parent"
+            android:text="Up"
+            android:id="@+id/up"
+            android:onClick="@{() -> vm.increment()}"
+            app:layout_constraintTop_toBottomOf="@id/counter"
+            android:layout_height="56dp" />
+
+        <Button
+            android:layout_width="match_parent"
+            android:text="Down"
+            android:onClick="@{() -> vm.decrement()}"
+            app:layout_constraintTop_toBottomOf="@id/up"
+            android:layout_height="56dp" />
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+</layout>

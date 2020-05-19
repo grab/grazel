@@ -1,0 +1,24 @@
+/*
+ * Copyright 2021 Grabtaxi Holdings Pte Ltd (GRAB), All rights reserved.
+ *
+ * Use of this source code is governed by an MIT-style license that can be found in the LICENSE file
+ */
+
+ext {
+    groupId = "com.grab"
+    versionName = "1.0-SNAPSHOT"
+
+    kotlinVersion = "1.4.20"
+    agpVersion = "4.0.1"
+
+    jUnitVersion = "4.13"
+    truthVersion = "1.0"
+
+    daggerVersion = "2.33"
+
+    guavaVersion = "29.0-jre"
+    picnicVersion = "0.4.0"
+
+    fabricPluginVersion = "2.2.0"
+    googleServicesPluginVersion = "4.3.3"
+}

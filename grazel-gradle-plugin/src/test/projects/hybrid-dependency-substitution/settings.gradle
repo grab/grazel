@@ -1,0 +1,5 @@
+include ':kotlin-lib'
+include ":android-library"
+include ":app"
+include ':android-databinding'
+rootProject.name = "Hybrid Dependency Substitution"
