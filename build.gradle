@@ -99,7 +99,6 @@ grazel {
         bazelCommon {
             gitRepository {
                 commit = "f151db659bea183013be99c7c4f3a2cd02bb47b0"
-                // TODO update/replace the GitLab URL after we publish the bazel-common-android to GitHub
                 remote = "https://url/to/bazel-common-android.git"
             }
         }
