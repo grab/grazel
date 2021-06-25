@@ -38,27 +38,6 @@ repositories {
     jcenter()
 }
 
-publishing {
-    publications {
-        pluginMaven(MavenPublication) {
-            artifactId "grazel"
-        }
-    }
-
-    repositories {
-        maven {
-            // TODO update/replace the GitLab URL when we publish the library to GitHub
-            url "https://gitlab.myteksi.net/api/v4/projects/5062/packages/maven"
-            credentials(HttpHeaderCredentials) {
-                name = "Private-Token"
-                value = findProperty("grazelDeployToken") ?: System.getenv("DEPLOY_TOKEN")
-            }
-            authentication {
-                header(HttpHeaderAuthentication)
-            }
-        }
-    }
-}
 
 dependencies {
     implementation platform("org.jetbrains.kotlin:kotlin-bom")

@@ -84,7 +84,7 @@ class AndroidExtensionsTest : BaseGrazelPluginTest() {
     private fun verifyWorkspaceFile() {
         val workspaceContent = workspace.readText()
         Truth.assertThat(workspaceContent).apply {
-            contains("https://bazel-common-android")
+            contains("https://github.com/grab/grab-bazel-common.git")
             contains("grab_bazel_common")
         }
     }

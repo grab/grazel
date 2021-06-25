@@ -98,8 +98,8 @@ grazel {
     rules {
         bazelCommon {
             gitRepository {
-                commit = "f151db659bea183013be99c7c4f3a2cd02bb47b0"
-                remote = "https://url/to/bazel-common-android.git"
+                commit = "f74ef90479383a38cef1af33d28a3253031e00c1"
+                remote = "https://github.com/grab/grab-bazel-common.git"
             }
         }
         googleServices {
