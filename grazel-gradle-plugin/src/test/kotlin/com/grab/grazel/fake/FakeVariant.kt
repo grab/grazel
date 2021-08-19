@@ -259,48 +259,89 @@ class FakeVariant(
 }
 
 class FakeBuildType : BuildType {
-    override val applicationIdSuffix: String?
-        get() = TODO("Not yet implemented")
-    override val buildConfigFields: Map<String, ClassField>
-        get() = TODO("Not yet implemented")
-    override val consumerProguardFiles: Collection<File>
-        get() = TODO("Not yet implemented")
-    override val isDebuggable: Boolean
-        get() = TODO("Not yet implemented")
-    override val isEmbedMicroApp: Boolean
-        get() = TODO("Not yet implemented")
-    override val isJniDebuggable: Boolean
-        get() = TODO("Not yet implemented")
-    override val isMinifyEnabled: Boolean
-        get() = TODO("Not yet implemented")
-    override val isPseudoLocalesEnabled: Boolean
-        get() = TODO("Not yet implemented")
-    override val isRenderscriptDebuggable: Boolean
-        get() = TODO("Not yet implemented")
-    override val isTestCoverageEnabled: Boolean
-        get() = TODO("Not yet implemented")
-    override val isZipAlignEnabled: Boolean
-        get() = TODO("Not yet implemented")
-    override val manifestPlaceholders: Map<String, Any>
-        get() = TODO("Not yet implemented")
-    override val multiDexEnabled: Boolean?
-        get() = TODO("Not yet implemented")
-    override val multiDexKeepFile: File?
-        get() = TODO("Not yet implemented")
-    override val multiDexKeepProguard: File?
-        get() = TODO("Not yet implemented")
-    override val proguardFiles: Collection<File>
-        get() = TODO("Not yet implemented")
-    override val renderscriptOptimLevel: Int
-        get() = TODO("Not yet implemented")
-    override val resValues: Map<String, ClassField>
-        get() = TODO("Not yet implemented")
-    override val signingConfig: SigningConfig?
-        get() = TODO("Not yet implemented")
-    override val testProguardFiles: Collection<File>
-        get() = TODO("Not yet implemented")
-    override val versionNameSuffix: String?
-        get() = TODO("Not yet implemented")
+    override fun getApplicationIdSuffix(): String {
+        TODO("Not yet implemented")
+    }
+
+    override fun getVersionNameSuffix(): String {
+        TODO("Not yet implemented")
+    }
+
+    override fun getBuildConfigFields(): MutableMap<String, ClassField> {
+        TODO("Not yet implemented")
+    }
+
+    override fun getResValues(): MutableMap<String, ClassField> {
+        TODO("Not yet implemented")
+    }
+
+    override fun getProguardFiles(): MutableCollection<File> {
+        TODO("Not yet implemented")
+    }
+
+    override fun getConsumerProguardFiles(): MutableCollection<File> {
+        TODO("Not yet implemented")
+    }
+
+    override fun getTestProguardFiles(): MutableCollection<File> {
+        TODO("Not yet implemented")
+    }
+
+    override fun getManifestPlaceholders(): MutableMap<String, Any> {
+        TODO("Not yet implemented")
+    }
+
+    override fun getMultiDexEnabled(): Boolean {
+        TODO("Not yet implemented")
+    }
+
+    override fun getMultiDexKeepFile(): File {
+        TODO("Not yet implemented")
+    }
+
+    override fun getMultiDexKeepProguard(): File {
+        TODO("Not yet implemented")
+    }
+
+    override fun isDebuggable(): Boolean {
+        TODO("Not yet implemented")
+    }
+
+    override fun isTestCoverageEnabled(): Boolean {
+        TODO("Not yet implemented")
+    }
+
+    override fun isPseudoLocalesEnabled(): Boolean {
+        TODO("Not yet implemented")
+    }
+
+    override fun isJniDebuggable(): Boolean {
+        TODO("Not yet implemented")
+    }
+
+    override fun isRenderscriptDebuggable(): Boolean {
+        TODO("Not yet implemented")
+    }
+
+    override fun getRenderscriptOptimLevel(): Int {
+        TODO("Not yet implemented")
+    }
+
+    override fun isMinifyEnabled(): Boolean {
+        TODO("Not yet implemented")
+    }
+
+    override fun isZipAlignEnabled(): Boolean {
+        TODO("Not yet implemented")
+    }
+
+    override fun isEmbedMicroApp(): Boolean {
+        TODO("Not yet implemented")
+    }
+
+    override fun getSigningConfig(): SigningConfig {
+        TODO("Not yet implemented")
+    }
 
     override fun getName(): String {
         TODO("Not yet implemented")

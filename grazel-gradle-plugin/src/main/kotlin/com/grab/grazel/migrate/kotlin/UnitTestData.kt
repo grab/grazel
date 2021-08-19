@@ -1,6 +1,5 @@
 package com.grab.grazel.migrate.kotlin
 
-import com.grab.grazel.bazel.rules.TestSize
 import com.grab.grazel.bazel.starlark.BazelDependency
 import com.grab.grazel.extension.TestExtension
 
@@ -16,7 +15,6 @@ internal fun UnitTestData.toUnitTestTarget(config: TestExtension): UnitTestTarge
         name = name,
         srcs = srcs,
         deps = deps,
-        size = TestSize.SMALL,
         associates = associates
     )
 }

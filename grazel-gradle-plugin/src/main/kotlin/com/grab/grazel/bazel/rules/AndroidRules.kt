@@ -246,7 +246,6 @@ fun customRes(
 
 fun StatementsBuilder.grabAndroidLocalTest(
     name: String,
-    size: TestSize,
     customPackage: String,
     srcs: List<String> = emptyList(),
     srcsGlob: List<String> = emptyList(),
@@ -260,7 +259,6 @@ fun StatementsBuilder.grabAndroidLocalTest(
 
     rule("grab_android_local_test") {
         "name" eq name.quote()
-        "size" eq size.value.quote()
         "custom_package" eq customPackage.quote()
         srcs.notEmpty {
             "srcs" eq srcs.map(String::quote)

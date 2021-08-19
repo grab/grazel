@@ -14,7 +14,6 @@ load("@grab_bazel_common//tools/test:test.bzl", "grab_kt_jvm_test")
 
 grab_kt_jvm_test(
     name = "sample-lib-flavor2-test",
-    size = "small",
     srcs = glob([
         "src/test/java/com/grab/grazel/flavor2/ModuleNameTest.kt",
     ]),

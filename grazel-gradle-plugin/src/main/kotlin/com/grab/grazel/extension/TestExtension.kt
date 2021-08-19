@@ -3,14 +3,18 @@ package com.grab.grazel.extension
 import groovy.lang.Closure
 
 
-private const val DEFAULT_TEST_SIZE = "medium"
 private const val DEFAULT_ROBOLECTRIC_VERSION = "4.4"
+private const val DEFAULT_ROBOLECTRIC_STRIP_PREFIX = "robolectric-bazel-4.4"
+private const val DEFAULT_ROBOLECTRIC_URL = "https://github.com/roscrazy/robolectric-bazel/releases/tag/4.4.2.tar.gz"
 
 data class RobolectricExtension(
+    var stripPrefix: String = DEFAULT_ROBOLECTRIC_STRIP_PREFIX,
+    var archiveUrl: String = DEFAULT_ROBOLECTRIC_URL,
     var version: String = DEFAULT_ROBOLECTRIC_VERSION
 )
 
-data class AndroidTestExtension (
+
+data class AndroidTestExtension(
     var robolectric: RobolectricExtension = RobolectricExtension()
 ) {
 
@@ -25,7 +29,6 @@ data class AndroidTestExtension (
 }
 
 data class TestExtension(
-    var defaultTestSize: String = DEFAULT_TEST_SIZE,
     var enableTestMigration: Boolean = false,
     var androidTest: AndroidTestExtension = AndroidTestExtension()
 ) {

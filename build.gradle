@@ -101,12 +101,14 @@ grazel {
             androidTest {
                 robolectric {
                     version = "4.4"
+                    stripPrefix = "robolectric-bazel-4.4"
+                    archiveUrl = "https://github.com/robolectric/robolectric-bazel/archive/4.4.tar.gz"
                 }
             }
         }
         bazelCommon {
             gitRepository {
-                commit = "4904bd9f41e12813ff68f5e4a1c7592f76869a62"
+                commit = "2dc3a57d24132ea542efb881d13f3beb707b27f5"
                 remote = "https://github.com/grab/grab-bazel-common.git"
             }
         }

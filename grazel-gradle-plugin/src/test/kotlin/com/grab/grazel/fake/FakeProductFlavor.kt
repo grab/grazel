@@ -45,68 +45,129 @@ class FakeAndroidVariantDataSource(
 }
 
 class FakeProductFlavor(private val name: String) : ProductFlavor {
-    override val applicationId: String?
-        get() = TODO("Not yet implemented")
-    override val applicationIdSuffix: String?
-        get() = TODO("Not yet implemented")
-    override val buildConfigFields: Map<String, ClassField>
-        get() = TODO("Not yet implemented")
-    override val consumerProguardFiles: Collection<File>
-        get() = TODO("Not yet implemented")
-    override val dimension: String?
-        get() = TODO("Not yet implemented")
-    override val manifestPlaceholders: Map<String, Any>
-        get() = TODO("Not yet implemented")
-    override val maxSdkVersion: Int?
-        get() = TODO("Not yet implemented")
-    override val minSdkVersion: ApiVersion?
-        get() = TODO("Not yet implemented")
-    override val multiDexEnabled: Boolean?
-        get() = TODO("Not yet implemented")
-    override val multiDexKeepFile: File?
-        get() = TODO("Not yet implemented")
-    override val multiDexKeepProguard: File?
-        get() = TODO("Not yet implemented")
-    override val proguardFiles: Collection<File>
-        get() = TODO("Not yet implemented")
-    override val renderscriptNdkModeEnabled: Boolean?
-        get() = TODO("Not yet implemented")
-    override val renderscriptSupportModeBlasEnabled: Boolean?
-        get() = TODO("Not yet implemented")
-    override val renderscriptSupportModeEnabled: Boolean?
-        get() = TODO("Not yet implemented")
-    override val renderscriptTargetApi: Int?
-        get() = TODO("Not yet implemented")
-    override val resValues: Map<String, ClassField>
-        get() = TODO("Not yet implemented")
-    override val resourceConfigurations: Collection<String>
-        get() = TODO("Not yet implemented")
-    override val signingConfig: SigningConfig?
-        get() = TODO("Not yet implemented")
-    override val targetSdkVersion: ApiVersion?
-        get() = TODO("Not yet implemented")
-    override val testApplicationId: String?
-        get() = TODO("Not yet implemented")
-    override val testFunctionalTest: Boolean?
-        get() = TODO("Not yet implemented")
-    override val testHandleProfiling: Boolean?
-        get() = TODO("Not yet implemented")
-    override val testInstrumentationRunner: String?
-        get() = TODO("Not yet implemented")
-    override val testInstrumentationRunnerArguments: Map<String, String>
-        get() = TODO("Not yet implemented")
-    override val testProguardFiles: Collection<File>
-        get() = TODO("Not yet implemented")
-    override val vectorDrawables: VectorDrawablesOptions
-        get() = TODO("Not yet implemented")
-    override val versionCode: Int?
-        get() = TODO("Not yet implemented")
-    override val versionName: String?
-        get() = TODO("Not yet implemented")
-    override val versionNameSuffix: String?
-        get() = TODO("Not yet implemented")
-    override val wearAppUnbundled: Boolean?
-        get() = TODO("Not yet implemented")
+    override fun getApplicationIdSuffix(): String {
+        TODO("Not yet implemented")
+    }
+
+    override fun getVersionNameSuffix(): String {
+        TODO("Not yet implemented")
+    }
+
+    override fun getBuildConfigFields(): MutableMap<String, ClassField> {
+        TODO("Not yet implemented")
+    }
+
+    override fun getResValues(): MutableMap<String, ClassField> {
+        TODO("Not yet implemented")
+    }
+
+    override fun getProguardFiles(): MutableCollection<File> {
+        TODO("Not yet implemented")
+    }
+
+    override fun getConsumerProguardFiles(): MutableCollection<File> {
+        TODO("Not yet implemented")
+    }
+
+    override fun getTestProguardFiles(): MutableCollection<File> {
+        TODO("Not yet implemented")
+    }
+
+    override fun getManifestPlaceholders(): MutableMap<String, Any> {
+        TODO("Not yet implemented")
+    }
+
+    override fun getMultiDexEnabled(): Boolean {
+        TODO("Not yet implemented")
+    }
+
+    override fun getMultiDexKeepFile(): File {
+        TODO("Not yet implemented")
+    }
+
+    override fun getMultiDexKeepProguard(): File {
+        TODO("Not yet implemented")
+    }
+
+    override fun getDimension(): String {
+        TODO("Not yet implemented")
+    }
+
+    override fun getApplicationId(): String {
+        TODO("Not yet implemented")
+    }
+
+    override fun getVersionCode(): Int {
+        TODO("Not yet implemented")
+    }
+
+    override fun getVersionName(): String {
+        TODO("Not yet implemented")
+    }
+
+    override fun getMinSdkVersion(): ApiVersion {
+        TODO("Not yet implemented")
+    }
+
+    override fun getTargetSdkVersion(): ApiVersion {
+        TODO("Not yet implemented")
+    }
+
+    override fun getMaxSdkVersion(): Int {
+        TODO("Not yet implemented")
+    }
+
+    override fun getRenderscriptTargetApi(): Int {
+        TODO("Not yet implemented")
+    }
+
+    override fun getRenderscriptSupportModeEnabled(): Boolean {
+        TODO("Not yet implemented")
+    }
+
+    override fun getRenderscriptSupportModeBlasEnabled(): Boolean {
+        TODO("Not yet implemented")
+    }
+
+    override fun getRenderscriptNdkModeEnabled(): Boolean {
+        TODO("Not yet implemented")
+    }
+
+    override fun getTestApplicationId(): String {
+        TODO("Not yet implemented")
+    }
+
+    override fun getTestInstrumentationRunner(): String {
+        TODO("Not yet implemented")
+    }
+
+    override fun getTestInstrumentationRunnerArguments(): MutableMap<String, String> {
+        TODO("Not yet implemented")
+    }
+
+    override fun getTestHandleProfiling(): Boolean {
+        TODO("Not yet implemented")
+    }
+
+    override fun getTestFunctionalTest(): Boolean {
+        TODO("Not yet implemented")
+    }
+
+    override fun getResourceConfigurations(): MutableCollection<String> {
+        TODO("Not yet implemented")
+    }
+
+    override fun getSigningConfig(): SigningConfig {
+        TODO("Not yet implemented")
+    }
+
+    override fun getVectorDrawables(): VectorDrawablesOptions {
+        TODO("Not yet implemented")
+    }
+
+    override fun getWearAppUnbundled(): Boolean {
+        TODO("Not yet implemented")
+    }
 
     override fun getName() = name
 }

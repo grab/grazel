@@ -16,7 +16,6 @@
 
 package com.grab.grazel.migrate.kotlin
 
-import com.grab.grazel.bazel.rules.TestSize
 import com.grab.grazel.bazel.rules.Visibility
 import com.grab.grazel.bazel.rules.grabKtJvmTest
 import com.grab.grazel.bazel.starlark.BazelDependency
@@ -29,7 +28,6 @@ internal data class UnitTestTarget(
     override val srcs: List<String> = emptyList(),
     override val visibility: Visibility = Visibility.Public,
     val associates: List<BazelDependency> = emptyList(),
-    val size: TestSize,
     val tags: List<String> = emptyList()
 ) : BazelBuildTarget {
     override fun statements() = statements {
@@ -40,8 +38,7 @@ internal data class UnitTestTarget(
             deps = deps,
             visibility = visibility,
             associates = associates,
-            tags = tags,
-            size = size
+            tags = tags
         )
     }
 }

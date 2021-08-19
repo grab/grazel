@@ -52,7 +52,7 @@ internal class AndroidLibTargetBuilder @Inject constructor(
         return if (testExtension.enableTestMigration) {
             listOf(
                 projectDataExtractor.extract(project).toAndroidLibTarget(),
-                unitTestDataExtractor.extract(project).toUnitTestTarget(testExtension)
+                unitTestDataExtractor.extract(project).toUnitTestTarget()
             )
         } else {
             listOf(projectDataExtractor.extract(project).toAndroidLibTarget())

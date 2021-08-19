@@ -97,7 +97,7 @@ internal class KtAndroidLibTargetBuilder @Inject constructor(
                 ?.also { add(it) }
 
             if (testExtension.enableTestMigration)
-                add(unitTestDataExtractor.extract(project).toUnitTestTarget(testExtension))
+                add(unitTestDataExtractor.extract(project).toUnitTestTarget())
         }
     }
 

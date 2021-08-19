@@ -4,14 +4,14 @@ load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository")
 
 git_repository(
     name = "grab_bazel_common",
-    commit = "4904bd9f41e12813ff68f5e4a1c7592f76869a62",
+    commit = "2dc3a57d24132ea542efb881d13f3beb707b27f5",
     remote = "https://github.com/grab/grab-bazel-common.git",
 )
 
 load("@grab_bazel_common//:workspace_defs.bzl", "android_tools")
 
 android_tools(
-    commit = "4904bd9f41e12813ff68f5e4a1c7592f76869a62",
+    commit = "2dc3a57d24132ea542efb881d13f3beb707b27f5",
     remote = "https://github.com/grab/grab-bazel-common.git",
 )
 

@@ -211,16 +211,9 @@ fun StatementsBuilder.ktLibrary(
     }
 }
 
-enum class TestSize(val value: String) {
-    ENORMOUS("enormous"),
-    LARGE("large"),
-    MEDIUM("medium"),
-    SMALL("small")
-}
 
 fun StatementsBuilder.grabKtJvmTest(
     name: String,
-    size: TestSize,
     srcs: List<String> = emptyList(),
     srcsGlob: List<String> = emptyList(),
     visibility: Visibility = Public,
@@ -233,7 +226,6 @@ fun StatementsBuilder.grabKtJvmTest(
 
     rule("grab_kt_jvm_test") {
         "name" eq name.quote()
-        "size" eq size.value.quote()
         srcs.notEmpty {
             "srcs" eq srcs.map(String::quote)
         }
