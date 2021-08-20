@@ -18,17 +18,12 @@ package com.grab.grazel.bazel.rules
 
 import com.grab.grazel.bazel.starlark.StatementsBuilder
 import com.grab.grazel.bazel.starlark.load
-import com.grab.grazel.bazel.starlark.quote
 
 internal const val FORMAT_ROBOLECTRIC_ARTIFACT = "org.robolectric:robolectric:%s"
 
 
-fun StatementsBuilder.robolectricWorkspaceRules(version: String = "4.4") {
-    httpArchive(
-        name = "robolectric",
-        stripPrefix = "robolectric-bazel-$version".quote(),
-        url = "https://github.com/robolectric/robolectric-bazel/archive/$version.tar.gz".quote()
-    )
+fun StatementsBuilder.robolectricWorkspaceRules(repository: BazelRepositoryRule) {
+    repository.addTo(this)
     load("@robolectric//bazel:robolectric.bzl", "robolectric_repositories")
     add("robolectric_repositories()")
 }

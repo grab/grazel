@@ -94,11 +94,11 @@ class HttpArchiveRule(
 ) : BazelRepositoryRule {
     override fun StatementsBuilder.addRule() {
         httpArchive(
-            name = name,
-            url = url,
+            name = name.quote(),
+            url = url.quote(),
             sha256 = sha256?.quote(),
-            type = type,
-            stripPrefix = stripPrefix
+            type = type?.quote(),
+            stripPrefix = stripPrefix?.quote()
         )
     }
 }

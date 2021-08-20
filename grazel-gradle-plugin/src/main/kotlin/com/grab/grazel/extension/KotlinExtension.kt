@@ -63,7 +63,7 @@ class KotlinToolChain(
 internal val KOTLIN_REPOSITORY = HttpArchiveRule(
     name = RULE_KOTLIN_NAME,
     sha256 = RULES_KOTLIN_SHA,
-    url = """"https://github.com/bazelbuild/rules_kotlin/releases/download/%s/rules_kotlin_release.tgz" % ${RULES_KOTLIN_VERSION.quote()}"""
+    url = """https://github.com/bazelbuild/rules_kotlin/releases/download/%s/rules_kotlin_release.tgz % ${RULES_KOTLIN_VERSION}"""
 )
 
 data class KotlinCompiler(

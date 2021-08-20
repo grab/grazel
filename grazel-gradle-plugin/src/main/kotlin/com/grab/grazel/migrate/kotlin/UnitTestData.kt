@@ -10,7 +10,7 @@ data class UnitTestData(
     val associates: List<BazelDependency>
 )
 
-internal fun UnitTestData.toUnitTestTarget(config: TestExtension): UnitTestTarget {
+internal fun UnitTestData.toUnitTestTarget(): UnitTestTarget {
     return UnitTestTarget(
         name = name,
         srcs = srcs,

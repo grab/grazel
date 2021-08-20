@@ -101,8 +101,10 @@ grazel {
             androidTest {
                 robolectric {
                     version = "4.4"
-                    stripPrefix = "robolectric-bazel-4.4"
-                    archiveUrl = "https://github.com/robolectric/robolectric-bazel/archive/4.4.tar.gz"
+                    httpArchiveRepository{
+                        stripPrefix = "robolectric-bazel-4.4"
+                        url = "https://github.com/robolectric/robolectric-bazel/archive/4.4.tar.gz"
+                    }
                 }
             }
         }

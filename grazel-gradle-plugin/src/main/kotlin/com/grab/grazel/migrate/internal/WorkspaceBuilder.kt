@@ -115,10 +115,11 @@ internal class WorkspaceBuilder(
 
     private fun StatementsBuilder.setupRobolectric() {
         if (hasAndroidLocalTest)
-            robolectricWorkspaceRules(grazelExtension.rules.test.robolectricVersion())
+            robolectricWorkspaceRules(grazelExtension.rules.test.robolectricRepository())
     }
 
     private fun TestExtension.robolectricVersion() = androidTest.robolectric.version
+    private fun TestExtension.robolectricRepository() = androidTest.robolectric.repository
 
     private fun StatementsBuilder.buildJvmRules() {
         val hasDagger = gradleProjectInfo.hasDagger
