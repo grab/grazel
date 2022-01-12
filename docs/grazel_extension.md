@@ -70,7 +70,8 @@ grazel {
 
 ### Ignore artifacts
 
-Bazel's `rules_jvm_external` does not support all of Gradle's supported repositories such as AWS or private Maven repositories with auth headers. `ignoreArtifacts` can be used to exclude certain dependencies from migration. 
+Bazel's `rules_jvm_external` does not support all of Gradle's supported repositories such as AWS or private Maven repositories with auth headers. `ignoreArtifacts` can be used to exclude certain dependencies from migration. Alternately for dependencies that can not be fetched from maven, override targets can be 
+used to point to a local target. See [override_targets](#override-targets) for more details.
 
 !!! warning
     Any module that uses any of the ignored artifacts will be excluded from migration to not fail the build during dependency resolution by `maven_install` rule.
@@ -173,6 +174,12 @@ grazel {
             excludeArtifacts.add("androidx.test.espresso:espresso-contrib")
             jetifyIncludeList.add("com.android.support:cardview-v7")
             jetifyExcludeList.add("androidx.appcompat:appcompat")
+            artifactPinning {
+                enabled.set(true)
+            }
+            overrideTargetLabels.putAll(
+                    ["androidx.appcompat:appcompat": "@//third_party:androidx_appcompat_appcompat"]
+            )
         }
     }
 }
@@ -181,6 +188,28 @@ grazel {
 #### Exclude artifacts
 
 Control globally excluded artifacts as specified [here](https://github.com/bazelbuild/rules_jvm_external#artifact-exclusion). This can be used to filter out unsupported dependencies or dependencies that have issues resolving with `mavenInstall`. This does not affect a module's [migration criteria](migration_criteria.md).
+
+### Override targets
+
+Override targets can be used to point to a local target instead of one present in Maven. [Reference](https://github.com/bazelbuild/rules_jvm_external#overriding-generated-targets).
+
+```groovy
+grazel {
+    rules {
+        mavenInstall {
+            overrideTargetLabels.putAll(
+                    ["androidx.appcompat:appcompat": "@//third_party:androidx_appcompat_appcompat"]
+            )
+        }
+    }
+}
+```
+
+### Artifact pinning
+
+Grazel by default enabled `rules_jvm_external`s artifact [pinning](https://github.com/bazelbuild/rules_jvm_external#pinning-artifacts-and-integration-with-bazels-downloader). 
+It automatically managed pinning/repinning and is integrated with `migrateToBazel` command. If any changes are present in
+Gradle, running `migrateToBazel` would automatically update the `maven_install.json` file. 
 
 #### Jetifier
 
