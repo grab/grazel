@@ -93,12 +93,12 @@ private fun Project.buildAarTargets() {
 
 internal fun Project.bazelCommand(
     command: String,
-    vararg targets: String,
+    vararg args: String,
     ignoreExit: Boolean = false,
     outputstream: OutputStream? = null
 ) {
     val commands: List<String> = mutableListOf("bazelisk", command).apply {
-        addAll(targets)
+        addAll(args)
     }
     logger.quiet("Running ${commands.joinToString(separator = " ")}")
     exec {

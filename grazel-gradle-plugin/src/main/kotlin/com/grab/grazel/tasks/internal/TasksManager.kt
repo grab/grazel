@@ -44,12 +44,16 @@ internal class TaskManager @Inject constructor(
     /**
      * Register and configure task dependencies for generation, formatting and `migrateToBazel`.
      *
+     * A <-- B means B depends on A
+     *
      * * Root Scripts generation <-- Project level generation
      * * Root Scripts generation <-- Root formatting
      * * Project level generation <-- Project level formatting
+     * * Project level generation <-- Post script generate task
      * * Root formatting <-- Formatting
      * * Project level formatting <-- Formatting
      * * Formatting <-- Migrate To Bazel
+     * * Post script generate task <-- Migrate To Bazel
      */
     fun configTasks() {
         // Root bazel file generation task that should run at the start of migration
@@ -63,6 +67,9 @@ internal class TaskManager @Inject constructor(
             dependsOn(rootGenerateBazelScriptsTasks)
         }
 
+        // Post script generate task must run after scripts are generated
+        val postScriptGenerateTask = PostScriptGenerateTask.register(rootProject, grazelComponent)
+
         // Project level Bazel file formatting tasks
         val projectBazelFormattingTasks = rootProject.subprojects.map { project ->
             // Project level Bazel generation tasks
@@ -70,6 +77,9 @@ internal class TaskManager @Inject constructor(
                 .register(project, grazelComponent) {
                     dependsOn(rootGenerateBazelScriptsTasks)
                 }
+
+            // Post script generate task must run after project level tasks are generated
+            postScriptGenerateTask.dependsOn(generateBazelScriptsTasks)
 
             // Project level Bazel formatting depends on generation tasks
             FormatBazelFileTask.register(project) {
@@ -79,7 +89,9 @@ internal class TaskManager @Inject constructor(
 
         formatBazelFilesTask.dependsOn(projectBazelFormattingTasks)
 
-        val migrateTask = migrateToBazelTask().apply { dependsOn(formatBazelFilesTask) }
+        val migrateTask = migrateToBazelTask().apply {
+            dependsOn(formatBazelFilesTask, postScriptGenerateTask)
+        }
 
         bazelBuildAllTask().dependsOn(migrateTask)
 

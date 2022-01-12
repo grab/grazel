@@ -25,6 +25,7 @@ import com.grab.grazel.bazel.starlark.array
 import com.grab.grazel.bazel.starlark.asString
 import com.grab.grazel.bazel.starlark.assigneeBuilder
 import com.grab.grazel.bazel.starlark.load
+import com.grab.grazel.bazel.starlark.obj
 import com.grab.grazel.bazel.starlark.quote
 
 sealed class MavenRepository : AssigneeBuilder {
@@ -67,10 +68,12 @@ fun StatementsBuilder.mavenInstall(
     externalArtifacts: List<String> = emptyList(),
     externalRepositories: List<String> = emptyList(),
     jetify: Boolean = false,
+    mavenInstallJson: String? = null,
     jetifyIncludeList: List<String> = emptyList(),
     failOnMissingChecksum: Boolean = true,
     resolveTimeout: Int = 600,
-    excludeArtifacts: List<String> = emptyList()
+    excludeArtifacts: List<String> = emptyList(),
+    overrideTargets: Map<String, String> = emptyMap()
 ) {
     load("@$rulesJvmExternalName//:defs.bzl", "maven_install")
     load("@$rulesJvmExternalName//:specs.bzl", "maven")
@@ -103,6 +106,17 @@ fun StatementsBuilder.mavenInstall(
         "resolve_timeout" eq resolveTimeout
         excludeArtifacts.notEmpty {
             "excluded_artifacts" eq excludeArtifacts.quote
+        }
+
+        if (overrideTargets.isNotEmpty()) {
+            "override_targets" eq obj {
+                overrideTargets.forEach { (mavenArtifact, bazelLabel) ->
+                    mavenArtifact.quote() eq bazelLabel.quote()
+                }
+            }
+        }
+        mavenInstallJson?.let {
+            "maven_install_json" eq mavenInstallJson.quote()
         }
     }
 }
@@ -173,13 +187,16 @@ fun StatementsBuilder.jvmRules(
     rulesJvmExternalRule: BazelRepositoryRule,
     resolveTimeout: Int = 600,
     artifacts: Set<MavenInstallArtifact> = emptySet(),
+    artifactPinning: Boolean,
+    mavenInstallJson: String? = null,
     mavenRepositories: List<MavenRepository> = emptyList(),
     externalArtifacts: List<String> = emptyList(),
     externalRepositories: List<String> = emptyList(),
     excludeArtifacts: List<String> = emptyList(),
+    overrideTargets: Map<String, String> = emptyMap(),
     jetify: Boolean = false,
     jetifyIncludeList: List<String> = emptyList(),
-    failOnMissingChecksum: Boolean = true
+    failOnMissingChecksum: Boolean = true,
 ) {
     add(rulesJvmExternalRule)
 
@@ -191,10 +208,17 @@ fun StatementsBuilder.jvmRules(
         mavenRepositories = mavenRepositories,
         externalArtifacts = externalArtifacts,
         externalRepositories = externalRepositories,
+        overrideTargets = overrideTargets,
+        mavenInstallJson = mavenInstallJson,
         jetify = jetify,
         jetifyIncludeList = jetifyIncludeList,
         failOnMissingChecksum = failOnMissingChecksum,
         resolveTimeout = resolveTimeout,
         excludeArtifacts = excludeArtifacts
     )
+
+    if (artifactPinning) {
+        load("@maven//:defs.bzl", "pinned_maven_install")
+        add("pinned_maven_install()")
+    }
 }

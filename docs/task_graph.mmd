@@ -7,4 +7,5 @@ graph TD
     F(project:formatBazelScripts) --> A
     C --> F
     H(migrateToBazel) --> C
-  
+    G(postScriptGenerateTask) --> A
+    H(migrateToBazel) --> G

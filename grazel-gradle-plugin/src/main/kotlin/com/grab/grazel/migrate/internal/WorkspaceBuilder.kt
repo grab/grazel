@@ -51,6 +51,7 @@ import com.grab.grazel.gradle.isAndroidApplication
 import com.grab.grazel.migrate.BazelFileBuilder
 import com.grab.grazel.migrate.android.JetifierDataExtractor
 import com.grab.grazel.migrate.android.parseCompileSdkVersion
+import com.grab.grazel.migrate.dependencies.ArtifactsPinner
 import org.gradle.api.Project
 import org.gradle.api.artifacts.repositories.PasswordCredentials
 import org.gradle.kotlin.dsl.the
@@ -63,7 +64,8 @@ internal class WorkspaceBuilder(
     private val grazelExtension: GrazelExtension,
     private val gradleProjectInfo: GradleProjectInfo,
     private val dependenciesDataSource: DependenciesDataSource,
-    private val repositoryDataSource: RepositoryDataSource
+    private val repositoryDataSource: RepositoryDataSource,
+    private val artifactsPinner: ArtifactsPinner
 ) : BazelFileBuilder {
     @Singleton
     class Factory @Inject constructor(
@@ -71,7 +73,8 @@ internal class WorkspaceBuilder(
         private val grazelExtension: GrazelExtension,
         private val gradleProjectInfo: GradleProjectInfo,
         private val dependenciesDataSource: DependenciesDataSource,
-        private val repositoryDataSource: RepositoryDataSource
+        private val repositoryDataSource: RepositoryDataSource,
+        private val artifactsPinner: ArtifactsPinner,
     ) {
         fun create(
             projectsToMigrate: List<Project>
@@ -81,7 +84,8 @@ internal class WorkspaceBuilder(
             grazelExtension,
             gradleProjectInfo,
             dependenciesDataSource,
-            repositoryDataSource
+            repositoryDataSource,
+            artifactsPinner
         )
     }
 
@@ -175,8 +179,11 @@ internal class WorkspaceBuilder(
             jetify = jetifierData.isEnabled,
             jetifyIncludeList = jetifierData.includeList,
             failOnMissingChecksum = false,
+            artifactPinning = artifactsPinner.isEnabled,
+            mavenInstallJson = artifactsPinner.mavenInstallJson(),
             resolveTimeout = mavenInstall.resolveTimeout,
-            excludeArtifacts = mavenInstall.excludeArtifacts.get()
+            excludeArtifacts = mavenInstall.excludeArtifacts.get(),
+            overrideTargets = mavenInstall.overrideTargetLabels.get()
         )
     }
 

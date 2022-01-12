@@ -86,6 +86,10 @@ maven_install(
         "org.jetbrains.kotlin:kotlin-stdlib",
         "org.jetbrains.kotlin:kotlin-stdlib-jdk8",
     ],
+    maven_install_json = "//:maven_install.json",
+    override_targets = {
+        "androidx.appcompat:appcompat": "@//third_party:androidx_appcompat_appcompat",
+    },
     repositories = DAGGER_REPOSITORIES + [
         "https://dl.google.com/dl/android/maven2/",
         "https://repo.maven.apache.org/maven2/",
@@ -94,6 +98,10 @@ maven_install(
     ],
     resolve_timeout = 1000,
 )
+
+load("@maven//:defs.bzl", "pinned_maven_install")
+
+pinned_maven_install()
 
 load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository")
 

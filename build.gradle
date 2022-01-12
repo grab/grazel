@@ -121,6 +121,12 @@ grazel {
             excludeArtifacts.add("androidx.test.espresso:espresso-contrib")
             jetifyIncludeList.add("com.android.support:cardview-v7")
             jetifyExcludeList.add("androidx.appcompat:appcompat")
+            artifactPinning {
+                enabled.set(true)
+            }
+            overrideTargetLabels.putAll(
+                    ["androidx.appcompat:appcompat": "@//third_party:androidx_appcompat_appcompat"]
+            )
         }
         kotlin {
             gitRepository {

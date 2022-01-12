@@ -37,7 +37,7 @@ internal open class GenerateRootBazelScriptsTask
 constructor(
     private val migrationChecker: Lazy<MigrationChecker>,
     private val workspaceBuilderFactory: Lazy<WorkspaceBuilder.Factory>,
-    private val rootBazelBuilder: Lazy<RootBazelFileBuilder>
+    private val rootBazelBuilder: Lazy<RootBazelFileBuilder>,
 ) : DefaultTask() {
 
     init {
@@ -74,7 +74,7 @@ constructor(
             TASK_NAME,
             grazelComponent.migrationChecker(),
             grazelComponent.workspaceBuilderFactory(),
-            grazelComponent.rootBazelFileBuilder()
+            grazelComponent.rootBazelFileBuilder(),
         ).apply {
             configure {
                 group = GRAZEL_TASK_GROUP

@@ -1,0 +1,21 @@
+aar_import(
+    name = "androidx_appcompat_appcompat",
+    aar = "@maven//:v1/https/maven.google.com/androidx/appcompat/appcompat/1.3.1/appcompat-1.3.1.aar",
+    tags = ["maven_coordinates=androidx.appcompat:appcompat:1.3.1"],
+    visibility = [
+        "//visibility:public",
+    ],
+    deps = [
+        "@maven//:androidx_activity_activity",
+        "@maven//:androidx_annotation_annotation",
+        "@maven//:androidx_appcompat_appcompat_resources",
+        "@maven//:androidx_collection_collection",
+        "@maven//:androidx_core_core",
+        "@maven//:androidx_cursoradapter_cursoradapter",
+        "@maven//:androidx_drawerlayout_drawerlayout",
+        "@maven//:androidx_fragment_fragment",
+        "@maven//:androidx_lifecycle_lifecycle_runtime",
+        "@maven//:androidx_lifecycle_lifecycle_viewmodel",
+        "@maven//:androidx_savedstate_savedstate",
+    ],
+)

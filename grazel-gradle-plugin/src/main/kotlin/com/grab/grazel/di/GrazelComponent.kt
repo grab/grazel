@@ -37,6 +37,8 @@ import com.grab.grazel.migrate.builder.AndroidBinaryTargetBuilderModule
 import com.grab.grazel.migrate.builder.AndroidLibTargetBuilderModule
 import com.grab.grazel.migrate.builder.KtAndroidLibTargetBuilderModule
 import com.grab.grazel.migrate.builder.KtLibTargetBuilderModule
+import com.grab.grazel.migrate.dependencies.ArtifactsPinner
+import com.grab.grazel.migrate.dependencies.DefaultArtifactsPinner
 import com.grab.grazel.migrate.internal.ProjectBazelFileBuilder
 import com.grab.grazel.migrate.internal.RootBazelFileBuilder
 import com.grab.grazel.migrate.internal.WorkspaceBuilder
@@ -76,6 +78,7 @@ internal interface GrazelComponent {
     fun projectBazelFileBuilderFactory(): Lazy<ProjectBazelFileBuilder.Factory>
     fun workspaceBuilderFactory(): Lazy<WorkspaceBuilder.Factory>
     fun rootBazelFileBuilder(): Lazy<RootBazelFileBuilder>
+    fun artifactsPinner(): Lazy<ArtifactsPinner>
 }
 
 @Module(
@@ -120,6 +123,10 @@ internal object GrazelModule {
     @Provides
     @Singleton
     fun GrazelExtension.provideTestExtension() = rules.test
+
+    @Provides
+    @Singleton
+    fun GrazelExtension.provideMavenInstallExtension() = rules.mavenInstall
 }
 
 @Module
@@ -135,6 +142,9 @@ internal interface GrazelModuleBinder {
 
     @Binds
     fun DefaultAndroidVariantsExtractor.bindAndroidVariantsExtractor(): AndroidVariantsExtractor
+
+    @Binds
+    fun DefaultArtifactsPinner.bindArtifactsPinner(): ArtifactsPinner
 }
 
 
