@@ -22,6 +22,11 @@ Attached to root project, this task generates `BUILD.bazel` and `WORKPSACE` file
 
 Depends on `generateBazelScripts` and responsible for formatting the generated file with `buildifier`. `formatBuildBazel` and `formatWorkSpace` depends on `generateRootBazelScripts` to format root project's Bazel scripts.
 
+### postScriptGenerateTask
+
+Runs after all Bazel scripts are successfully generated. At this stage any Bazel command is assumed to work and Grazel 
+may run any cleanup or post migrate Bazel commands as part of the migration.
+
 ## Task Graph
 
 The task graph allows project's migration tasks to run in parallel to increase `migrateToBazel` performance.
