@@ -42,14 +42,13 @@ constructor(
     }
 
     companion object {
-
         fun register(
             @RootProject rootProject: Project,
             grazelComponent: GrazelComponent,
             configureAction: PostScriptGenerateTask.() -> Unit = {}
         ) = rootProject.tasks
             .register<PostScriptGenerateTask>(
-                "postScriptGeneratedTask",
+                "postScriptGenerateTask",
                 grazelComponent.artifactsPinner()
             ).apply {
                 configure {

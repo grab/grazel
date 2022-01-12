@@ -28,13 +28,17 @@ import javax.inject.Singleton
  * [artifact pinning](https://github.com/bazelbuild/rules_jvm_external#pinning-artifacts-and-integration-with-bazels-downloader)
  */
 internal interface ArtifactsPinner {
+
     val isEnabled: Boolean
 
     /**
-     * @return The mavenInstall json target label for Bazel, null if it could be added
+     * @return The mavenInstall json target label for Bazel, null if it could not be added
      */
     fun mavenInstallJson(): String?
 
+    /**
+     * Run rules jvm external's artifact pinning
+     */
     fun pin()
 }
 
@@ -57,14 +61,25 @@ constructor(
         "//:" + artifactPinning.mavenInstallJson
     } else null
 
+    /**
+     * Determines the correct pinning target. i.e if maven_install.json already exists then `@maven//:pin` would not work,
+     * so `@unpinned_maven//:pin` is chosen. Alternatively during first time when maven_install.json is not found in the repo
+     * then `@maven//:pin` is used.
+     */
+    internal fun determinePinningTarget(): String {
+        return when {
+            isMavenInstallJsonExists -> "@unpinned_maven//:pin"
+            else -> "@maven//:pin"
+        }
+    }
+
     override fun pin() {
         if (isEnabled) {
-            val pinningTarget = when {
-                isMavenInstallJsonExists -> "@unpinned_maven//:pin"
-                else -> "@maven//:pin"
-            }
-            rootProject.bazelCommand("run", pinningTarget, "--noshow_progress")
-
+            rootProject.bazelCommand(
+                "run",
+                determinePinningTarget(),
+                "--noshow_progress"
+            )
         }
     }
 }
