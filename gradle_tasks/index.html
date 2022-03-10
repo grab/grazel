@@ -315,6 +315,13 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#postscriptgeneratetask" class="md-nav__link">
+    postScriptGenerateTask
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -520,6 +527,13 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#postscriptgeneratetask" class="md-nav__link">
+    postScriptGenerateTask
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -564,6 +578,9 @@
 <p>Attached to root project, this task generates <code>BUILD.bazel</code> and <code>WORKPSACE</code> files. </p>
 <h3 id="formatbazelscripts">formatBazelScripts<a class="headerlink" href="#formatbazelscripts" title="Permanent link">&para;</a></h3>
 <p>Depends on <code>generateBazelScripts</code> and responsible for formatting the generated file with <code>buildifier</code>. <code>formatBuildBazel</code> and <code>formatWorkSpace</code> depends on <code>generateRootBazelScripts</code> to format root project's Bazel scripts.</p>
+<h3 id="postscriptgeneratetask">postScriptGenerateTask<a class="headerlink" href="#postscriptgeneratetask" title="Permanent link">&para;</a></h3>
+<p>Runs after all Bazel scripts are successfully generated. At this stage any Bazel command is assumed to work and Grazel 
+may run any cleanup or post migrate Bazel commands as part of the migration.</p>
 <h2 id="task-graph">Task Graph<a class="headerlink" href="#task-graph" title="Permanent link">&para;</a></h2>
 <p>The task graph allows project's migration tasks to run in parallel to increase <code>migrateToBazel</code> performance.</p>
 <p><img src="../images/task_graph.png" width="100%"></p>

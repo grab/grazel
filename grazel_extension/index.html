@@ -365,6 +365,26 @@
   
 </li>
         
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#override-targets" class="md-nav__link">
+    Override targets
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#artifact-pinning" class="md-nav__link">
+    Artifact pinning
+  </a>
+  
+    <nav class="md-nav" aria-label="Artifact pinning">
+      <ul class="md-nav__list">
+        
           <li class="md-nav__item">
   <a href="#jetifier" class="md-nav__link">
     Jetifier
@@ -649,6 +669,26 @@
   
 </li>
         
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#override-targets" class="md-nav__link">
+    Override targets
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#artifact-pinning" class="md-nav__link">
+    Artifact pinning
+  </a>
+  
+    <nav class="md-nav" aria-label="Artifact pinning">
+      <ul class="md-nav__list">
+        
           <li class="md-nav__item">
   <a href="#jetifier" class="md-nav__link">
     Jetifier
@@ -740,7 +780,8 @@
 <p>Here even though Gradle uses <code>androidx.preference:preference:1.1.1</code>, due to <code>overrideArtifactVersions</code> the generated <code>maven_install</code> rule will contain version <code>1.1.0</code>.</p>
 </div>
 <h3 id="ignore-artifacts">Ignore artifacts<a class="headerlink" href="#ignore-artifacts" title="Permanent link">&para;</a></h3>
-<p>Bazel's <code>rules_jvm_external</code> does not support all of Gradle's supported repositories such as AWS or private Maven repositories with auth headers. <code>ignoreArtifacts</code> can be used to exclude certain dependencies from migration. </p>
+<p>Bazel's <code>rules_jvm_external</code> does not support all of Gradle's supported repositories such as AWS or private Maven repositories with auth headers. <code>ignoreArtifacts</code> can be used to exclude certain dependencies from migration. Alternately for dependencies that can not be fetched from maven, override targets can be 
+used to point to a local target. See <a href="#override-targets">override_targets</a> for more details.</p>
 <div class="admonition warning">
 <p class="admonition-title">Warning</p>
 <p>Any module that uses any of the ignored artifacts will be excluded from migration to not fail the build during dependency resolution by <code>maven_install</code> rule.</p>
@@ -829,6 +870,12 @@
             <span class="n">excludeArtifacts</span><span class="o">.</span><span class="na">add</span><span class="o">(</span><span class="s2">&quot;androidx.test.espresso:espresso-contrib&quot;</span><span class="o">)</span>
             <span class="n">jetifyIncludeList</span><span class="o">.</span><span class="na">add</span><span class="o">(</span><span class="s2">&quot;com.android.support:cardview-v7&quot;</span><span class="o">)</span>
             <span class="n">jetifyExcludeList</span><span class="o">.</span><span class="na">add</span><span class="o">(</span><span class="s2">&quot;androidx.appcompat:appcompat&quot;</span><span class="o">)</span>
+            <span class="n">artifactPinning</span> <span class="o">{</span>
+                <span class="n">enabled</span><span class="o">.</span><span class="na">set</span><span class="o">(</span><span class="kc">true</span><span class="o">)</span>
+            <span class="o">}</span>
+            <span class="n">overrideTargetLabels</span><span class="o">.</span><span class="na">putAll</span><span class="o">(</span>
+                    <span class="o">[</span><span class="s2">&quot;androidx.appcompat:appcompat&quot;</span><span class="o">:</span> <span class="s2">&quot;@//third_party:androidx_appcompat_appcompat&quot;</span><span class="o">]</span>
+            <span class="o">)</span>
         <span class="o">}</span>
     <span class="o">}</span>
 <span class="o">}</span>
@@ -836,6 +883,23 @@
 
 <h4 id="exclude-artifacts">Exclude artifacts<a class="headerlink" href="#exclude-artifacts" title="Permanent link">&para;</a></h4>
 <p>Control globally excluded artifacts as specified <a href="https://github.com/bazelbuild/rules_jvm_external#artifact-exclusion">here</a>. This can be used to filter out unsupported dependencies or dependencies that have issues resolving with <code>mavenInstall</code>. This does not affect a module's <a href="../migration_criteria/">migration criteria</a>.</p>
+<h3 id="override-targets">Override targets<a class="headerlink" href="#override-targets" title="Permanent link">&para;</a></h3>
+<p>Override targets can be used to point to a local target instead of one present in Maven. <a href="https://github.com/bazelbuild/rules_jvm_external#overriding-generated-targets">Reference</a>.</p>
+<div class="highlight"><pre><span></span><code><span class="n">grazel</span> <span class="o">{</span>
+    <span class="n">rules</span> <span class="o">{</span>
+        <span class="n">mavenInstall</span> <span class="o">{</span>
+            <span class="n">overrideTargetLabels</span><span class="o">.</span><span class="na">putAll</span><span class="o">(</span>
+                    <span class="o">[</span><span class="s2">&quot;androidx.appcompat:appcompat&quot;</span><span class="o">:</span> <span class="s2">&quot;@//third_party:androidx_appcompat_appcompat&quot;</span><span class="o">]</span>
+            <span class="o">)</span>
+        <span class="o">}</span>
+    <span class="o">}</span>
+<span class="o">}</span>
+</code></pre></div>
+
+<h3 id="artifact-pinning">Artifact pinning<a class="headerlink" href="#artifact-pinning" title="Permanent link">&para;</a></h3>
+<p>Grazel by default enabled <code>rules_jvm_external</code>s artifact <a href="https://github.com/bazelbuild/rules_jvm_external#pinning-artifacts-and-integration-with-bazels-downloader">pinning</a>. 
+It automatically managed pinning/repinning and is integrated with <code>migrateToBazel</code> command. If any changes are present in
+Gradle, running <code>migrateToBazel</code> would automatically update the <code>maven_install.json</code> file. </p>
 <h4 id="jetifier">Jetifier<a class="headerlink" href="#jetifier" title="Permanent link">&para;</a></h4>
 <p>Jetifier is automatically detected by looking for presence of <code>android.enableJetifier</code> in <code>gradle.properties</code>.</p>
 <p>Configure options for <code>Jetifier</code>. </p>

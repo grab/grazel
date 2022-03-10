@@ -1,35 +1,35 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><url>
      <loc>https://github.com/grab/Grazel/</loc>
-     <lastmod>2021-11-18</lastmod>
+     <lastmod>2022-03-10</lastmod>
      <changefreq>daily</changefreq>
     </url><url>
      <loc>https://github.com/grab/Grazel/grazel_extension/</loc>
-     <lastmod>2021-11-18</lastmod>
+     <lastmod>2022-03-10</lastmod>
      <changefreq>daily</changefreq>
     </url><url>
      <loc>https://github.com/grab/Grazel/gradle_tasks/</loc>
-     <lastmod>2021-11-18</lastmod>
+     <lastmod>2022-03-10</lastmod>
      <changefreq>daily</changefreq>
     </url><url>
      <loc>https://github.com/grab/Grazel/bazel_configuration/</loc>
-     <lastmod>2021-11-18</lastmod>
+     <lastmod>2022-03-10</lastmod>
      <changefreq>daily</changefreq>
     </url><url>
      <loc>https://github.com/grab/Grazel/migration_capabilities/</loc>
-     <lastmod>2021-11-18</lastmod>
+     <lastmod>2022-03-10</lastmod>
      <changefreq>daily</changefreq>
     </url><url>
      <loc>https://github.com/grab/Grazel/migration_criteria/</loc>
-     <lastmod>2021-11-18</lastmod>
+     <lastmod>2022-03-10</lastmod>
      <changefreq>daily</changefreq>
     </url><url>
      <loc>https://github.com/grab/Grazel/hybrid_builds/</loc>
-     <lastmod>2021-11-18</lastmod>
+     <lastmod>2022-03-10</lastmod>
      <changefreq>daily</changefreq>
     </url><url>
      <loc>https://github.com/grab/Grazel/databinding/</loc>
-     <lastmod>2021-11-18</lastmod>
+     <lastmod>2022-03-10</lastmod>
      <changefreq>daily</changefreq>
     </url>
 </urlset>
