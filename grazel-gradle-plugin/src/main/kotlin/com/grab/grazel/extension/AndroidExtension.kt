@@ -36,7 +36,8 @@ data class AndroidExtension(
     var dexShards: Int? = null,
     var variantFilter: Action<VariantFilter>? = null,
     var incrementalDexing: Boolean = false,
-    var features: AndroidFeatures = DefaultAndroidFeatures()
+    var features: AndroidFeatures = DefaultAndroidFeatures(),
+    var ndkApiLevel: Int? = null
 ) {
     fun variantFilter(action: Action<VariantFilter>) {
         variantFilter = action

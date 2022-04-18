@@ -27,6 +27,7 @@ grazel {
         features {
             dataBinding = true
         }
+        ndkApiLevel = 30 // [Optional] Set android_ndk_repository rule api_level value
     }
     ...
 }

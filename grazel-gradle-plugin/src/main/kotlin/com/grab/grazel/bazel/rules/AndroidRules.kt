@@ -46,12 +46,16 @@ fun StatementsBuilder.androidSdkRepository(
 
 fun StatementsBuilder.androidNdkRepository(
     name: String = "androidndk",
-    path: String? = null
+    path: String? = null,
+    ndkApiLevel: Int? = null
 ) {
     rule("android_ndk_repository") {
         "name" eq name.quote()
         path?.let {
             "path" eq path.quote()
+        }
+        ndkApiLevel?.let {
+            "api_level" eq ndkApiLevel
         }
     }
 }
