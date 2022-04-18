@@ -66,7 +66,7 @@ internal class KtLibTargetBuilder @Inject constructor(
         return if (testExtension.enableTestMigration) {
             listOf(
                 projectData.toKtLibraryTarget(kotlinExtension.enabledTransitiveReduction),
-                unitTestData.toUnitTestTarget()
+                unitTestData.toUnitTestTarget(testExtension.enabledTransitiveReduction)
             )
         } else {
             listOf(projectData.toKtLibraryTarget(kotlinExtension.enabledTransitiveReduction))

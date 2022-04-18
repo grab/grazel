@@ -50,7 +50,8 @@ class AndroidTestExtension {
 
 data class TestExtension(
     var enableTestMigration: Boolean = false,
-    val androidTest: AndroidTestExtension = AndroidTestExtension()
+    val androidTest: AndroidTestExtension = AndroidTestExtension(),
+    var enabledTransitiveReduction: Boolean = false,
 ) {
 //    fun androidTest(block: AndroidTestExtension.() -> Unit) {
 //        androidTest.block()

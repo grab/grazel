@@ -92,7 +92,11 @@ internal class KtAndroidLibTargetBuilder @Inject constructor(
                 ?.also { add(it) }
 
             if (testExtension.enableTestMigration)
-                add(unitTestDataExtractor.extract(project).toUnitTestTarget())
+                add(
+                    unitTestDataExtractor
+                        .extract(project)
+                        .toUnitTestTarget(testExtension.enabledTransitiveReduction)
+                )
         }
     }
 
