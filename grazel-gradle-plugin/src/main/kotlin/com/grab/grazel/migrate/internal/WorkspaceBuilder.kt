@@ -55,6 +55,7 @@ import com.grab.grazel.migrate.dependencies.ArtifactsPinner
 import org.gradle.api.Project
 import org.gradle.api.artifacts.repositories.PasswordCredentials
 import org.gradle.kotlin.dsl.the
+import java.lang.IllegalStateException
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -223,8 +224,18 @@ internal class WorkspaceBuilder(
                 } ?: androidSdkRepository()
 
             // Add repository for NDK
-            androidNdkRepository()
+            validateNdkApiLevel()
+            androidNdkRepository(
+                ndkApiLevel = grazelExtension.android.ndkApiLevel
+            )
         }
+
+    private fun validateNdkApiLevel() {
+        val ndkApiLevel = grazelExtension.android.ndkApiLevel ?: return
+        if (ndkApiLevel <= 0) {
+            throw IllegalStateException("ndkApiLevel value should be greater than 0")
+        }
+    }
 
     /**
      * Add Kotlin specific statements to WORKSPACE namely

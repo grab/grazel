@@ -71,7 +71,30 @@ class AndroidWorkspaceRepositoriesTest : GrazelPluginTest() {
         }
     }
 
-    private fun buildRootProject(): Project {
+    @Test
+    fun `assert android ndk repository is generated with api_level`() {
+        val ndkApiLevel = 30
+        val buildRootProject = buildRootProject {
+            android.ndkApiLevel = ndkApiLevel
+        }
+        val workspaceBuilder = buildRootProject
+            .createGrazelComponent()
+            .workspaceBuilderFactory()
+            .get()
+            .create(listOf(buildRootProject))
+        val generatedCode = statements {
+            workspaceBuilder.addAndroidSdkRepositories(this)
+        }.asString()
+        Truth.assertThat(generatedCode).apply {
+            contains("android_ndk_repository")
+            contains("name = \"androidndk\"")
+            contains("api_level = $ndkApiLevel")
+        }
+    }
+
+    private fun buildRootProject(
+        grazelExtensionModifier: GrazelExtension.() -> Unit = {}
+    ): Project {
         val rootProject = buildProject("root")
         rootProject.extensions.add(GRAZEL_EXTENSION, GrazelExtension(rootProject))
         val androidBinary = buildProject("android-binary", rootProject)
@@ -86,6 +109,9 @@ class AndroidWorkspaceRepositoriesTest : GrazelPluginTest() {
                 }
             }
             doEvaluate()
+        }
+        rootProject.extensions.configure<GrazelExtension> {
+            this.grazelExtensionModifier()
         }
         return rootProject
     }
