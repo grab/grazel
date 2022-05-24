@@ -1,15 +1,17 @@
 # Grazel
 
-**Grazel** stands for `Gradle` to `Bazel`. A Gradle plugin to migrate Android projects to [Bazel build](https://bazel.build) system in an incremental and automated fashion. 
+**Grazel** stands for `Gradle` to `Bazel`. A Gradle plugin to migrate Android projects
+to [Bazel build](https://bazel.build) system in an incremental and automated fashion.
 
 <p align="center">
 <img src="images/grazel-demo.gif" width="100%">
 </p>
 
-
 ## How it works
 
-It works by automatically generating Bazel scripts for given Android project based on your Gradle configuration. For simple projects, it should be able to migrate, fully build and launch the app with `bazel mobile-install //<target-name>`. 
+It works by automatically generating Bazel scripts for given Android project based on your Gradle
+configuration. For simple projects, it should be able to migrate, fully build and launch the app
+with `bazel mobile-install //<target-name>`.
 
 For example, for the following Gradle configuration:
 
@@ -60,26 +62,34 @@ kt_android_library(
 )
 ```
 
-See [migration capabilities](migration_capabilities.md) for supported features. In advanced cases, where entire project might not be [migratable](migration_criteria.md), it migrates part of the graph and sets up [hybrid build](hybrid_builds.md) where part of the graph can be built with Bazel and rest with Gradle.
+See [migration capabilities](migration_capabilities.md) for supported features. In advanced cases,
+where entire project might not be [migratable](migration_criteria.md), it migrates part of the graph
+and sets up [hybrid build](hybrid_builds.md) where part of the graph can be built with Bazel and
+rest with Gradle.
 
 ## Features
 
-* Generate `BUILD.bazel`, `WORKSPACE` for given Android project and reduce the overall migration effort.
-* Setup [hybrid build](hybrid_builds.md) to build part of project graph to build with Bazel and rest with Gradle.
-* Minimal source changes to codebase - supported by [Grab Bazel Common](https://github.com/grab/grab-bazel-common).
+* Generate `BUILD.bazel`, `WORKSPACE` for given Android project and reduce the overall migration
+  effort.
+* Setup [hybrid build](hybrid_builds.md) to build part of project graph to build with Bazel and rest
+  with Gradle.
+* Minimal source changes to codebase - supported
+  by [Grab Bazel Common](https://github.com/grab/grab-bazel-common).
 * Gradle Configuration as source of truth.
 
 ## Components
 
 * [Gradle plugin](https://github.com/grab/Grazel/tree/master/grazel-gradle-plugin)
 * A Kotlin Starlark DSL to generate Starlark code in a type-safe way.
-* [Grab Bazel Common](https://github.com/grab/grab-bazel-common) - Custom rules to bridge the gap between Gradle/Bazel.
+* [Grab Bazel Common](https://github.com/grab/grab-bazel-common) - Custom rules to bridge the gap
+  between Gradle/Bazel.
 
 ## Getting Started
 
 ### Requirements
 
-* [Buildifier](https://github.com/bazelbuild/buildtools/tree/master/buildifier) is installed and avaialble in the path.
+* [Buildifier](https://github.com/bazelbuild/buildtools/tree/master/buildifier) is installed and
+  available in the path.
 
 === "Mac"
     Install via [homebrew](https://brew.sh/). 
@@ -95,7 +105,7 @@ See [migration capabilities](migration_capabilities.md) for supported features. 
 
 ## Apply Grazel plugin
 
-Grazel is available on Maven Central. 
+Grazel is available on Maven Central.
 
 <img alt="Maven Central" src="https://img.shields.io/maven-central/v/com.grab.grazel/grazel-gradle-plugin?logo=apache-maven&logoColor=%23C71A36&style=flat-square&colorB=00bdd6">
 
@@ -118,8 +128,10 @@ grazel {
 }
 ```
 
-!!! Note
-    Grazel registers `migrateToBazel` lifecycle task that can be used to generate Bazel build scripts. By default, it filters out modules based on a set of [migration criteria](migration_criteria.md) and generates scripts only for supported modules.
+!!! Note 
+    Grazel registers `migrateToBazel` lifecycle task that can be used to generate Bazel build
+    scripts. By default, it filters out modules based on a set
+    of [migration criteria](migration_criteria.md) and generates scripts only for supported modules.
 
 To run Grazel, execute
 

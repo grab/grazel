@@ -99,7 +99,8 @@ class DefaultConfigurationDataSourceTest : GrazelPluginTest() {
     fun `configurations should not return test or android tests configuration with build scope`() {
         val fakeVariantDataSource = FakeAndroidVariantDataSource(listOf(FLAVOR1, FLAVOR2))
         val configurationDataSource = DefaultConfigurationDataSource(fakeVariantDataSource)
-        val configurations = configurationDataSource.configurations(project, ConfigurationScope.BUILD).toList()
+        val configurations = configurationDataSource
+            .configurations(project, ConfigurationScope.BUILD).toList()
         assertTrue(configurations.isNotEmpty())
         configurations.forEach { configuration ->
             assertTrue(configuration.isNotTest())
@@ -112,7 +113,8 @@ class DefaultConfigurationDataSourceTest : GrazelPluginTest() {
     fun `configurations should return test and build configurations with test scope`() {
         val fakeVariantDataSource = FakeAndroidVariantDataSource(listOf(FLAVOR1, FLAVOR2))
         val configurationDataSource = DefaultConfigurationDataSource(fakeVariantDataSource)
-        val configurations = configurationDataSource.configurations(project, ConfigurationScope.TEST).toList()
+        val configurations = configurationDataSource
+            .configurations(project, ConfigurationScope.TEST).toList()
         assertTrue(configurations.isNotEmpty())
         assertTrue { configurations.any { it.isUnitTest() } }
         configurations.forEach { configuration ->
@@ -127,7 +129,9 @@ class DefaultConfigurationDataSourceTest : GrazelPluginTest() {
     fun `configurations should return android test and build configurations with android test scope`() {
         val fakeVariantDataSource = FakeAndroidVariantDataSource(listOf(FLAVOR1, FLAVOR2))
         val configurationDataSource = DefaultConfigurationDataSource(fakeVariantDataSource)
-        val configurations = configurationDataSource.configurations(project, ConfigurationScope.ANDROID_TEST).toList()
+        val configurations = configurationDataSource
+            .configurations(project, ConfigurationScope.ANDROID_TEST)
+            .toList()
         assertTrue(configurations.isNotEmpty())
         assertTrue { configurations.any { it.isAndroidTest() } }
         configurations.forEach { configuration ->
@@ -137,7 +141,6 @@ class DefaultConfigurationDataSourceTest : GrazelPluginTest() {
             assertFalse(configuration.isUnitTest())
         }
     }
-
 }
 
 

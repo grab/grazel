@@ -35,7 +35,10 @@ fun StatementsBuilder.toolAndroidRepository(
     repositoryRule: BazelRepositoryRule
 ) {
     add(repositoryRule)
-    load("@${repositoryRule.name}//tools/googleservices:defs.bzl", "google_services_workspace_dependencies")
+    load(
+        "@${repositoryRule.name}//tools/googleservices:defs.bzl",
+        "google_services_workspace_dependencies"
+    )
     add("google_services_workspace_dependencies()")
 }
 

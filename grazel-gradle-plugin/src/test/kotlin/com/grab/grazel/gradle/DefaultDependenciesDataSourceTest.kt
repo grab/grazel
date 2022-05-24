@@ -185,7 +185,8 @@ class DefaultDependenciesDataSourceTest : GrazelPluginTest() {
     fun `when ignore artifacts is given, assert artifact is excluded in resolved and declared dependencies`() {
         setUpDepsWithResolutionStrategy()
         resolveConfigurations()
-        val resolvedArtifacts = dependenciesDataSource.resolvedArtifactsFor(listOf(subProject)).map { it.id }
+        val resolvedArtifacts =
+            dependenciesDataSource.resolvedArtifactsFor(listOf(subProject)).map { it.id }
         val declaredArtifacts = dependenciesDataSource.mavenDependencies(subProject)
         assertTrue(
             "Resolved artifacts does not contain ignored artifact",
@@ -364,7 +365,10 @@ class DefaultDependenciesDataSourceTest : GrazelPluginTest() {
             dependencies {
                 add(IMPLEMENTATION, CONSTRAINT_LAYOUT.format(CL_VERSION)) {
                     exclude(group = "androidx.core", module = "core")
-                    exclude(group = "androidx.navigation", module = "") // Case where module is not given
+                    exclude(
+                        group = "androidx.navigation",
+                        module = ""
+                    ) // Case where module is not given
                 }
             }
         }

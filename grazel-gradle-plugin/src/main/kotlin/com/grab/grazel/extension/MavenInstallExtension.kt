@@ -28,14 +28,17 @@ import org.gradle.kotlin.dsl.mapProperty
 import org.gradle.kotlin.dsl.property
 
 internal const val RULES_JVM_EXTERNAL_NAME = "rules_jvm_external"
-internal const val RULES_JVM_EXTERNAL_SHA256 = "f36441aa876c4f6427bfb2d1f2d723b48e9d930b62662bf723ddfb8fc80f0140"
+internal const val RULES_JVM_EXTERNAL_SHA256 =
+    "f36441aa876c4f6427bfb2d1f2d723b48e9d930b62662bf723ddfb8fc80f0140"
 internal const val RULES_JVM_EXTERNAl_TAG = "4.1"
 
 internal val MAVEN_INSTALL_REPOSITORY = HttpArchiveRule(
     name = RULES_JVM_EXTERNAL_NAME,
     sha256 = RULES_JVM_EXTERNAL_SHA256,
     stripPrefix = "rules_jvm_external-%s".format(RULES_JVM_EXTERNAl_TAG),
-    url = "https://github.com/bazelbuild/rules_jvm_external/archive/%s.zip".format(RULES_JVM_EXTERNAl_TAG)
+    url = "https://github.com/bazelbuild/rules_jvm_external/archive/%s.zip".format(
+        RULES_JVM_EXTERNAl_TAG
+    )
 )
 
 /**

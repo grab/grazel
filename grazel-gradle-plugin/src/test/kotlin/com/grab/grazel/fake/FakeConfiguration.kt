@@ -186,7 +186,10 @@ class FakeConfiguration : Configuration {
         TODO("Not yet implemented")
     }
 
-    override fun getTaskDependencyFromProjectDependency(useDependedOn: Boolean, taskName: String): TaskDependency {
+    override fun getTaskDependencyFromProjectDependency(
+        useDependedOn: Boolean,
+        taskName: String
+    ): TaskDependency {
         TODO("Not yet implemented")
     }
 

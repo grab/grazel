@@ -58,10 +58,10 @@ internal class DefaultAndroidLibraryDataExtractor @Inject constructor(
     override fun extract(project: Project, sourceSetType: SourceSetType): AndroidLibraryData {
         if (project.isAndroid) {
             val extension = project.extensions.getByType<BaseExtension>()
-            val deps =
-                projectDependencyGraphs.directProjectDependencies(project, ConfigurationScope.BUILD) +
-                        dependenciesDataSource.collectMavenDeps(project) +
-                        project.kotlinParcelizeDeps()
+            val deps = projectDependencyGraphs
+                .directProjectDependencies(project, ConfigurationScope.BUILD) +
+                dependenciesDataSource.collectMavenDeps(project) +
+                project.kotlinParcelizeDeps()
 
             return project.extract(extension, sourceSetType, deps)
         } else {

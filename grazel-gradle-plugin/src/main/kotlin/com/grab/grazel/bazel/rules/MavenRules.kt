@@ -37,7 +37,9 @@ sealed class MavenRepository : AssigneeBuilder {
     ) : MavenRepository() {
         override fun build() = when {
             username == null || password == null -> StringStatement(url.quote())
-            else -> StringStatement(url.split("://").joinToString(separator = "://$username:$password@").quote())
+            else -> StringStatement(
+                url.split("://").joinToString(separator = "://$username:$password@").quote()
+            )
         }
     }
 }

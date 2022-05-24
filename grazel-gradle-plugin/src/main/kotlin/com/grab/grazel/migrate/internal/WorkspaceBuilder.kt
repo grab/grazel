@@ -55,7 +55,6 @@ import com.grab.grazel.migrate.dependencies.ArtifactsPinner
 import org.gradle.api.Project
 import org.gradle.api.artifacts.repositories.PasswordCredentials
 import org.gradle.kotlin.dsl.the
-import java.lang.IllegalStateException
 import javax.inject.Inject
 import javax.inject.Singleton
 

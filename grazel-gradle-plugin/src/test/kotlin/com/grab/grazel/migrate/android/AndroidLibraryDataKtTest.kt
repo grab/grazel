@@ -60,7 +60,12 @@ class AndroidLibraryDataKtTest : GrazelPluginTest() {
     fun `assert build resources converts all types of resources to statements`() {
         val resources = listOf("src/res/values.xml")
         val resValues = ResValues(mapOf("value" to "hello"))
-        val customResourceSet = listOf(ResourceSet("res-debug", "src/main/res-debug/values/strings.xml"))
+        val customResourceSet = listOf(
+            ResourceSet(
+                "res-debug",
+                "src/main/res-debug/values/strings.xml"
+            )
+        )
         val targetName = "target"
 
         // Setup

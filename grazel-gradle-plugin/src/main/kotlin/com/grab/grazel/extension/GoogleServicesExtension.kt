@@ -23,7 +23,8 @@ import groovy.lang.Closure
 
 internal const val TOOLS_ANDROID = "tools_android"
 internal const val TOOLS_ANDROID_COMMIT = "58d67fd54a3b7f5f1e6ddfa865442db23a60e1b6"
-internal const val TOOLS_ANDROID_SHA = "a192553d52a42df306437a8166fc6b5ec043282ac4f72e96999ae845ece6812f"
+internal const val TOOLS_ANDROID_SHA =
+    "a192553d52a42df306437a8166fc6b5ec043282ac4f72e96999ae845ece6812f"
 
 internal val TOOLS_ANDROID_REPOSITORY = HttpArchiveRule(
     name = TOOLS_ANDROID,

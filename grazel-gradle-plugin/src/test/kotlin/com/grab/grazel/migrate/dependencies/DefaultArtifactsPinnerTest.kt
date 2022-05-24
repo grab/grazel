@@ -53,7 +53,10 @@ class DefaultArtifactsPinnerTest {
         )
         assertEquals(MavenTargets.Pinned.targetName, artifactsPinner.determinePinningTarget())
         assertTrue("Artifacts pinning is enabled by default") { artifactsPinner.isEnabled }
-        assertNull(artifactsPinner.mavenInstallJson(), "Maven install json is not used for the first time")
+        assertNull(
+            artifactsPinner.mavenInstallJson(),
+            "Maven install json is not used for the first time"
+        )
     }
 
     @Test

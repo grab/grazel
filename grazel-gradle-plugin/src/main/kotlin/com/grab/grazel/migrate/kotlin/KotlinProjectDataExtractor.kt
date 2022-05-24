@@ -55,9 +55,9 @@ internal class DefaultKotlinProjectDataExtractor @Inject constructor(
 
         val deps =
             projectDependencyGraphs.directProjectDependencies(project, ConfigurationScope.BUILD) +
-                    dependenciesDataSource.collectMavenDeps(project) +
-                    project.androidJarDeps() +
-                    project.kotlinParcelizeDeps()
+                dependenciesDataSource.collectMavenDeps(project) +
+                project.androidJarDeps() +
+                project.kotlinParcelizeDeps()
 
         return KotlinProjectData(
             name = project.name,

@@ -40,7 +40,7 @@ android {
     buildTypes {
         debug {
             manifestPlaceholders = [
-                    libraryManifestHolder: "value",
+                libraryManifestHolder: "value",
             ]
         }
     }

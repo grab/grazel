@@ -127,7 +127,7 @@ grazel {
                 enabled.set(true)
             }
             overrideTargetLabels.putAll(
-                    ["androidx.appcompat:appcompat": "@//third_party:androidx_appcompat_appcompat"]
+                ["androidx.appcompat:appcompat": "@//third_party:androidx_appcompat_appcompat"]
             )
         }
         kotlin {
@@ -159,11 +159,11 @@ grazel {
 idea {
     module {
         excludeDirs += [
-                file("bazel-bin"),
-                file("bazel-grazel"),
-                file("bazel-cache"),
-                file("bazel-out"),
-                file("bazel-testlogs"),
+            file("bazel-bin"),
+            file("bazel-grazel"),
+            file("bazel-cache"),
+            file("bazel-out"),
+            file("bazel-testlogs"),
         ]
     }
 }

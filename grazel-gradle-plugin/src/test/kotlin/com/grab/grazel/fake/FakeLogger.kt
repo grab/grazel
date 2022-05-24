@@ -35,43 +35,33 @@ open class FakeLogger : Logger {
     }
 
     override fun trace(p0: String?) {
-
     }
 
     override fun trace(p0: String?, p1: Any?) {
-
     }
 
     override fun trace(p0: String?, p1: Any?, p2: Any?) {
-
     }
 
     override fun trace(p0: String?, vararg p1: Any?) {
-
     }
 
     override fun trace(p0: String?, p1: Throwable?) {
-
     }
 
     override fun trace(p0: Marker?, p1: String?) {
-
     }
 
     override fun trace(p0: Marker?, p1: String?, p2: Any?) {
-
     }
 
     override fun trace(p0: Marker?, p1: String?, p2: Any?, p3: Any?) {
-
     }
 
     override fun trace(p0: Marker?, p1: String?, vararg p2: Any?) {
-
     }
 
     override fun trace(p0: Marker?, p1: String?, p2: Throwable?) {
-
     }
 
     override fun isDebugEnabled(): Boolean {
@@ -83,43 +73,33 @@ open class FakeLogger : Logger {
     }
 
     override fun debug(message: String?, vararg objects: Any?) {
-
     }
 
     override fun debug(p0: String?) {
-
     }
 
     override fun debug(p0: String?, p1: Any?) {
-
     }
 
     override fun debug(p0: String?, p1: Any?, p2: Any?) {
-
     }
 
     override fun debug(p0: String?, p1: Throwable?) {
-
     }
 
     override fun debug(p0: Marker?, p1: String?) {
-
     }
 
     override fun debug(p0: Marker?, p1: String?, p2: Any?) {
-
     }
 
     override fun debug(p0: Marker?, p1: String?, p2: Any?, p3: Any?) {
-
     }
 
     override fun debug(p0: Marker?, p1: String?, vararg p2: Any?) {
-
     }
 
     override fun debug(p0: Marker?, p1: String?, p2: Throwable?) {
-
     }
 
     override fun isInfoEnabled(): Boolean {
@@ -131,43 +111,33 @@ open class FakeLogger : Logger {
     }
 
     override fun info(message: String?, vararg objects: Any?) {
-
     }
 
     override fun info(p0: String?) {
-
     }
 
     override fun info(p0: String?, p1: Any?) {
-
     }
 
     override fun info(p0: String?, p1: Any?, p2: Any?) {
-
     }
 
     override fun info(p0: String?, p1: Throwable?) {
-
     }
 
     override fun info(p0: Marker?, p1: String?) {
-
     }
 
     override fun info(p0: Marker?, p1: String?, p2: Any?) {
-
     }
 
     override fun info(p0: Marker?, p1: String?, p2: Any?, p3: Any?) {
-
     }
 
     override fun info(p0: Marker?, p1: String?, vararg p2: Any?) {
-
     }
 
     override fun info(p0: Marker?, p1: String?, p2: Throwable?) {
-
     }
 
     override fun isWarnEnabled(): Boolean {
@@ -179,43 +149,33 @@ open class FakeLogger : Logger {
     }
 
     override fun warn(p0: String?) {
-
     }
 
     override fun warn(p0: String?, p1: Any?) {
-
     }
 
     override fun warn(p0: String?, vararg p1: Any?) {
-
     }
 
     override fun warn(p0: String?, p1: Any?, p2: Any?) {
-
     }
 
     override fun warn(p0: String?, p1: Throwable?) {
-
     }
 
     override fun warn(p0: Marker?, p1: String?) {
-
     }
 
     override fun warn(p0: Marker?, p1: String?, p2: Any?) {
-
     }
 
     override fun warn(p0: Marker?, p1: String?, p2: Any?, p3: Any?) {
-
     }
 
     override fun warn(p0: Marker?, p1: String?, vararg p2: Any?) {
-
     }
 
     override fun warn(p0: Marker?, p1: String?, p2: Throwable?) {
-
     }
 
     override fun isErrorEnabled(): Boolean {
@@ -227,43 +187,33 @@ open class FakeLogger : Logger {
     }
 
     override fun error(p0: String?) {
-
     }
 
     override fun error(p0: String?, p1: Any?) {
-
     }
 
     override fun error(p0: String?, p1: Any?, p2: Any?) {
-
     }
 
     override fun error(p0: String?, vararg p1: Any?) {
-
     }
 
     override fun error(p0: String?, p1: Throwable?) {
-
     }
 
     override fun error(p0: Marker?, p1: String?) {
-
     }
 
     override fun error(p0: Marker?, p1: String?, p2: Any?) {
-
     }
 
     override fun error(p0: Marker?, p1: String?, p2: Any?, p3: Any?) {
-
     }
 
     override fun error(p0: Marker?, p1: String?, vararg p2: Any?) {
-
     }
 
     override fun error(p0: Marker?, p1: String?, p2: Throwable?) {
-
     }
 
     override fun isLifecycleEnabled(): Boolean {
@@ -271,15 +221,12 @@ open class FakeLogger : Logger {
     }
 
     override fun lifecycle(message: String?) {
-
     }
 
     override fun lifecycle(message: String?, vararg objects: Any?) {
-
     }
 
     override fun lifecycle(message: String?, throwable: Throwable?) {
-
     }
 
     override fun isQuietEnabled(): Boolean {
@@ -287,15 +234,12 @@ open class FakeLogger : Logger {
     }
 
     override fun quiet(message: String?) {
-
     }
 
     override fun quiet(message: String?, vararg objects: Any?) {
-
     }
 
     override fun quiet(message: String?, throwable: Throwable?) {
-
     }
 
     override fun isEnabled(level: LogLevel?): Boolean {
@@ -315,7 +259,6 @@ open class FakeLogger : Logger {
     }
 
     override fun log(level: LogLevel?, message: String?, vararg objects: Any?) {
-
     }
 
     override fun log(level: LogLevel?, message: String?, throwable: Throwable?) {

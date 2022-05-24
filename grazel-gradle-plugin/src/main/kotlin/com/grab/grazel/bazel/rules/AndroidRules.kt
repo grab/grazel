@@ -157,7 +157,10 @@ fun StatementsBuilder.androidBinary(
             "enable_data_binding" eq enableDataBinding.toString().capitalize()
         }
         resources.notEmpty {
-            "resource_files" eq resources.joinToString(separator = " + ", transform = Assignee::asString)
+            "resource_files" eq resources.joinToString(
+                separator = " + ",
+                transform = Assignee::asString
+            )
         }
         deps.notEmpty {
             "deps" eq array(deps.map(BazelDependency::toString).quote)
@@ -190,7 +193,10 @@ fun StatementsBuilder.androidLibrary(
         }
         "visibility" eq array(visibility.rule.quote())
         resourceFiles.notEmpty {
-            "resource_files" eq resourceFiles.joinToString(separator = " + ", transform = Assignee::asString)
+            "resource_files" eq resourceFiles.joinToString(
+                separator = " + ",
+                transform = Assignee::asString
+            )
         }
         deps.notEmpty {
             "deps" eq array(deps.map(BazelDependency::toString).map(String::quote))

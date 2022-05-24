@@ -3,51 +3,51 @@ name: Build workflow
 on: [ push, pull_request ]
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v1
-      - name: Set up JDK 11
-        uses: actions/setup-java@v1
-        with:
-          java-version: 11
+    build:
+        runs-on: ubuntu-latest
+        steps:
+            -   uses: actions/checkout@v1
+            -   name: Set up JDK 11
+                uses: actions/setup-java@v1
+                with:
+                    java-version: 11
 
-      - name: Install Bazelisk
-        env:
-          LINK_BAZELISK: "https://github.com/bazelbuild/bazelisk/releases/download/v1.3.0/bazelisk-linux-amd64"
-          PATH_BAZELISK: "/usr/local/bin/bazelisk"
-        run: |
-          sudo curl -sL "$LINK_BAZELISK" --output "$PATH_BAZELISK"
-          sudo chmod +x $PATH_BAZELISK
-          bazelisk version
+            -   name: Install Bazelisk
+                env:
+                    LINK_BAZELISK: "https://github.com/bazelbuild/bazelisk/releases/download/v1.3.0/bazelisk-linux-amd64"
+                    PATH_BAZELISK: "/usr/local/bin/bazelisk"
+                run: |
+                    sudo curl -sL "$LINK_BAZELISK" --output "$PATH_BAZELISK"
+                    sudo chmod +x $PATH_BAZELISK
+                    bazelisk version
 
-      - name: Set Gradle Permissions
-        run: |
-          sudo chmod +x ./gradlew
-          cd grazel-gradle-plugin
-          sudo chmod +x ./gradlew
+            -   name: Set Gradle Permissions
+                run: |
+                    sudo chmod +x ./gradlew
+                    cd grazel-gradle-plugin
+                    sudo chmod +x ./gradlew
 
-      - name: Install Buildifier
-        run: |
-          sudo apt update
-          sudo apt install nodejs
-          sudo apt install npm
-          sudo npm i -g @bazel/buildifier
+            -   name: Install Buildifier
+                run: |
+                    sudo apt update
+                    sudo apt install nodejs
+                    sudo apt install npm
+                    sudo npm i -g @bazel/buildifier
 
-      - name: Bazel Build
-        run: |
-          ./gradlew bazelBuildAll
+            -   name: Bazel Build
+                run: |
+                    ./gradlew bazelBuildAll
 
-      - name: Gradle Build
-        run: |
-          ./gradlew sample-android:assembleDebug
-          cd grazel-gradle-plugin
-          ./gradlew assemble
+            -   name: Gradle Build
+                run: |
+                    ./gradlew sample-android:assembleDebug
+                    cd grazel-gradle-plugin
+                    ./gradlew assemble
 
-      - name: Unit Test
-        run: |
-          cd grazel-gradle-plugin
-          ./gradlew test
+            -   name: Unit Test
+                run: |
+                    cd grazel-gradle-plugin
+                    ./gradlew test
 
 # Temporary disable due to long execution time
 #      - name: Functional Tests

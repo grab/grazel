@@ -170,7 +170,11 @@ class FakeProject(private val name: String) : Project {
         TODO("Not yet implemented")
     }
 
-    override fun task(args: MutableMap<String, *>, name: String, configureClosure: Closure<*>): Task {
+    override fun task(
+        args: MutableMap<String, *>,
+        name: String,
+        configureClosure: Closure<*>
+    ): Task {
         TODO("Not yet implemented")
     }
 
@@ -258,7 +262,10 @@ class FakeProject(private val name: String) : Project {
         TODO("Not yet implemented")
     }
 
-    override fun files(paths: Any, configureAction: Action<in ConfigurableFileCollection>): ConfigurableFileCollection {
+    override fun files(
+        paths: Any,
+        configureAction: Action<in ConfigurableFileCollection>
+    ): ConfigurableFileCollection {
         TODO("Not yet implemented")
     }
 
@@ -270,7 +277,10 @@ class FakeProject(private val name: String) : Project {
         TODO("Not yet implemented")
     }
 
-    override fun fileTree(baseDir: Any, configureAction: Action<in ConfigurableFileTree>): ConfigurableFileTree {
+    override fun fileTree(
+        baseDir: Any,
+        configureAction: Action<in ConfigurableFileTree>
+    ): ConfigurableFileTree {
         TODO("Not yet implemented")
     }
 
@@ -454,11 +464,17 @@ class FakeProject(private val name: String) : Project {
         TODO("Not yet implemented")
     }
 
-    override fun configure(objects: MutableIterable<*>, configureClosure: Closure<*>): MutableIterable<*> {
+    override fun configure(
+        objects: MutableIterable<*>,
+        configureClosure: Closure<*>
+    ): MutableIterable<*> {
         TODO("Not yet implemented")
     }
 
-    override fun <T : Any?> configure(objects: MutableIterable<T>, configureAction: Action<in T>): MutableIterable<T> {
+    override fun <T : Any?> configure(
+        objects: MutableIterable<T>,
+        configureAction: Action<in T>
+    ): MutableIterable<T> {
         TODO("Not yet implemented")
     }
 
@@ -525,7 +541,10 @@ class FakeProject(private val name: String) : Project {
         TODO("Not yet implemented")
     }
 
-    override fun <T : Any?> container(type: Class<T>, factoryClosure: Closure<*>): NamedDomainObjectContainer<T> {
+    override fun <T : Any?> container(
+        type: Class<T>,
+        factoryClosure: Closure<*>
+    ): NamedDomainObjectContainer<T> {
         TODO("Not yet implemented")
     }
 

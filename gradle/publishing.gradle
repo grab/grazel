@@ -103,9 +103,9 @@ private void configurePom(MavenPublication publication) {
 afterEvaluate {
     signing {
         useInMemoryPgpKeys(
-                rootProject.ext["signing.keyId"].toString(),
-                rootProject.ext["signing.key"].toString(),
-                rootProject.ext["signing.password"].toString(),
+            rootProject.ext["signing.keyId"].toString(),
+            rootProject.ext["signing.key"].toString(),
+            rootProject.ext["signing.password"].toString(),
         )
         sign publishing.publications
     }

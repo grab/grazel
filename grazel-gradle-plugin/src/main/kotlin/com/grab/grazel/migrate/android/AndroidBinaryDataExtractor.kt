@@ -56,7 +56,7 @@ internal class DefaultAndroidBinaryDataExtractor @Inject constructor(
             androidLibraryData.packageName
         )
         val multidexEnabled = extension.defaultConfig.multiDexEnabled == true
-                || grazelExtension.android.multiDexEnabled
+            || grazelExtension.android.multiDexEnabled
         val multidex = if (multidexEnabled) Multidex.Native else Multidex.Off
         val dexShards = if (multidexEnabled) {
             grazelExtension.android.dexShards

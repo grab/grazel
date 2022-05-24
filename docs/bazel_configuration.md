@@ -1,12 +1,17 @@
 # Bazel Configuration
 
-Once Grazel's `migrateToBazel` generates Bazel scripts, `bazel` can be used to run the build. Additional configuration files are required for optimal builds and currently Grazel does not generate these (may change in the future).
+Once Grazel's `migrateToBazel` generates Bazel scripts, `bazel` can be used to run the build.
+Additional configuration files are required for optimal builds and currently Grazel does not
+generate these (may change in the future).
 
-Recommended usage is via [bazelisk](https://github.com/bazelbuild/bazelisk) which is wrapper for `bazel` similar to `gradlew` for `gradle`.
+Recommended usage is via [bazelisk](https://github.com/bazelbuild/bazelisk) which is wrapper
+for `bazel` similar to `gradlew` for `gradle`.
 
 ## .bazelrc
 
-`.bazelrc` is used to specifiy additional properties and flags to Bazel similar to `gradle.properties`. A basic configuration is given below but it may vary depending on project needs.
+`.bazelrc` is used to specifiy additional properties and flags to Bazel similar
+to `gradle.properties`. A basic configuration is given below but it may vary depending on project
+needs.
 
 ```python
 # Disk cache
@@ -55,4 +60,7 @@ Used to specify the `bazel` version that will be used to build the project. Used
 
 ## Custom Android Tools
 
-Grazel also ships patched Android tools used in `bazel` as part of [grab-bazel-common](https://github.com/grab/grab-bazel-common) to fix few performance and build related issues. See [patches](https://github.com/grab/grab-bazel-common/tree/master/patches) for more info. 
+Grazel also ships patched Android tools used in `bazel` as part
+of [grab-bazel-common](https://github.com/grab/grab-bazel-common) to fix few performance and build
+related issues. See [patches](https://github.com/grab/grab-bazel-common/tree/master/patches) for
+more info. 

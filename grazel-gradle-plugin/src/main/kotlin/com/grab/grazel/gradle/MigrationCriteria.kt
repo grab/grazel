@@ -114,7 +114,8 @@ internal class DependenciesMigrationCriteria @Inject constructor(
     private val dependenciesDataSource: DependenciesDataSource
 ) : MigrationCriteria {
     override fun canMigrate(project: Project): Boolean {
-        val hasPrivateDependencies = dependenciesDataSource.hasDepsFromUnsupportedRepositories(project)
+        val hasPrivateDependencies =
+            dependenciesDataSource.hasDepsFromUnsupportedRepositories(project)
         val hasIgnoredArtifacts = dependenciesDataSource.hasIgnoredArtifacts(project)
         return !hasPrivateDependencies && !hasIgnoredArtifacts
     }

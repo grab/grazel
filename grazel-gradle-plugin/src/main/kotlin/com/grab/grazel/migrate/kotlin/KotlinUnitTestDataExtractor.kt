@@ -57,7 +57,12 @@ internal class DefaultKotlinUnitTestDataExtractor @Inject constructor(
         val associate = calculateTestAssociate(project)
 
         val deps: List<BazelDependency> = buildList {
-            addAll(projectDependencyGraphs.directProjectDependencies(project, ConfigurationScope.TEST))
+            addAll(
+                projectDependencyGraphs.directProjectDependencies(
+                    project,
+                    ConfigurationScope.TEST
+                )
+            )
             addAll(dependenciesDataSource.collectMavenDeps(project, ConfigurationScope.TEST))
             addAll(project.kotlinParcelizeDeps())
             if (projectDependency.toString() != associate.toString()) {
@@ -88,5 +93,5 @@ internal fun Project.hasAndroidJarDep(): Boolean {
     return configurations.findByName("compileOnly")
         ?.dependencies
         ?.filterIsInstance<DefaultSelfResolvingDependency>()
-        ?.any {  dep -> dep.files.any { it.name.contains("android.jar") } } == true
+        ?.any { dep -> dep.files.any { it.name.contains("android.jar") } } == true
 }

@@ -58,7 +58,11 @@ class DefaultDependencyGraphsTest {
         val directDepsFromAWithBuildAndTestScope = setOf(projectB, projectC, projectE)
         assertEquals(
             directDepsFromAWithBuildAndTestScope,
-            dependenciesGraphs.directDependencies(projectA, ConfigurationScope.BUILD, ConfigurationScope.TEST)
+            dependenciesGraphs.directDependencies(
+                projectA,
+                ConfigurationScope.BUILD,
+                ConfigurationScope.TEST
+            )
         )
     }
 
@@ -74,7 +78,10 @@ class DefaultDependencyGraphsTest {
     @Test
     fun dependenciesSubGraphShouldReturnDepsFromBuildScope() {
         val expectDeps = setOf(projectB, projectC)
-        assertEquals(expectDeps, dependenciesGraphs.dependenciesSubGraph(projectB, ConfigurationScope.BUILD))
+        assertEquals(
+            expectDeps,
+            dependenciesGraphs.dependenciesSubGraph(projectB, ConfigurationScope.BUILD)
+        )
     }
 
     @Test
@@ -82,28 +89,34 @@ class DefaultDependencyGraphsTest {
         val expectDeps = setOf(projectB, projectC, projectD, projectE)
         assertEquals(
             expectDeps,
-            dependenciesGraphs.dependenciesSubGraph(projectB, ConfigurationScope.BUILD, ConfigurationScope.TEST)
+            dependenciesGraphs.dependenciesSubGraph(
+                projectB,
+                ConfigurationScope.BUILD,
+                ConfigurationScope.TEST
+            )
         )
     }
 
-    private fun buildBuildGraphs(): ImmutableValueGraph<Project, Configuration> = ValueGraphBuilder.directed()
-        .allowsSelfLoops(false)
-        .expectedNodeCount(6)
-        .build<Project, Configuration>().apply {
-            putEdgeValue(projectA, projectB, FakeConfiguration())
-            putEdgeValue(projectA, projectC, FakeConfiguration())
-            putEdgeValue(projectB, projectC, FakeConfiguration())
-        }.run { ImmutableValueGraph.copyOf(this) }
+    private fun buildBuildGraphs(): ImmutableValueGraph<Project, Configuration> =
+        ValueGraphBuilder.directed()
+            .allowsSelfLoops(false)
+            .expectedNodeCount(6)
+            .build<Project, Configuration>().apply {
+                putEdgeValue(projectA, projectB, FakeConfiguration())
+                putEdgeValue(projectA, projectC, FakeConfiguration())
+                putEdgeValue(projectB, projectC, FakeConfiguration())
+            }.run { ImmutableValueGraph.copyOf(this) }
 
-    private fun buildTestGraphs(): ImmutableValueGraph<Project, Configuration> = ValueGraphBuilder.directed()
-        .allowsSelfLoops(false)
-        .expectedNodeCount(6)
-        .build<Project, Configuration>().apply {
-            putEdgeValue(projectA, projectB, FakeConfiguration())
-            putEdgeValue(projectA, projectC, FakeConfiguration())
-            putEdgeValue(projectB, projectC, FakeConfiguration())
-            putEdgeValue(projectC, projectD, FakeConfiguration())
-            putEdgeValue(projectB, projectE, FakeConfiguration())
-            putEdgeValue(projectA, projectE, FakeConfiguration())
-        }.run { ImmutableValueGraph.copyOf(this) }
+    private fun buildTestGraphs(): ImmutableValueGraph<Project, Configuration> =
+        ValueGraphBuilder.directed()
+            .allowsSelfLoops(false)
+            .expectedNodeCount(6)
+            .build<Project, Configuration>().apply {
+                putEdgeValue(projectA, projectB, FakeConfiguration())
+                putEdgeValue(projectA, projectC, FakeConfiguration())
+                putEdgeValue(projectB, projectC, FakeConfiguration())
+                putEdgeValue(projectC, projectD, FakeConfiguration())
+                putEdgeValue(projectB, projectE, FakeConfiguration())
+                putEdgeValue(projectA, projectE, FakeConfiguration())
+            }.run { ImmutableValueGraph.copyOf(this) }
 }

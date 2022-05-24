@@ -9,7 +9,8 @@ import groovy.lang.Closure
 private const val DEFAULT_ROBOLECTRIC_VERSION = "4.4"
 private const val ROBOLECTRIC = "robolectric"
 private const val DEFAULT_ROBOLECTRIC_STRIP_PREFIX = "robolectric-bazel-%s"
-private const val DEFAULT_ROBOLECTRIC_URL = "https://github.com/robolectric/robolectric-bazel/archive/%s.tar.gz"
+private const val DEFAULT_ROBOLECTRIC_URL =
+    "https://github.com/robolectric/robolectric-bazel/archive/%s.tar.gz"
 
 private val DEFAULT_ROBOLECTRIC_ARCHIVE = HttpArchiveRule(
     name = ROBOLECTRIC,

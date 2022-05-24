@@ -190,8 +190,10 @@ internal class DefaultDependenciesDataSource @Inject constructor(
             .toMap()
     }
 
-    private fun Project.resolvableConfigurations(): Sequence<Configuration> = configurationDataSource
-        .resolvedConfigurations(this, *configurationScopes)
+    private fun Project.resolvableConfigurations(): Sequence<Configuration> {
+        return configurationDataSource
+            .resolvedConfigurations(this, *configurationScopes)
+    }
 
     /**
      * Given a group, name and version will update version with following properties
@@ -209,7 +211,9 @@ internal class DefaultDependenciesDataSource @Inject constructor(
         // Additionally we also check if user needs to override the version via overrideArtifactVersions and use
         // that if found
         val id = "${mavenArtifact.group}:${mavenArtifact.name}"
-        val newVersion = overrideArtifactVersions[id] ?: resolvedVersions[id] ?: mavenArtifact.version
+        val newVersion = overrideArtifactVersions[id]
+            ?: resolvedVersions[id]
+            ?: mavenArtifact.version
         return mavenArtifact.copy(version = newVersion)
     }
 
@@ -264,7 +268,11 @@ internal class DefaultDependenciesDataSource @Inject constructor(
                 // Merge all exclude rules so that we have a cumulative set
                 mavenArtifacts
                     .first()
-                    .copy(excludeRules = mavenArtifacts.flatMap(MavenArtifact::excludeRules).toSet())
+                    .copy(
+                        excludeRules = mavenArtifacts
+                            .flatMap(MavenArtifact::excludeRules)
+                            .toSet()
+                    )
             }.asSequence()
             .filter { mavenArtifact ->
                 // Only allow dependencies from supported repositories
@@ -352,7 +360,8 @@ internal class DefaultDependenciesDataSource @Inject constructor(
             .filter { !DEP_GROUP_EMBEDDED_BY_RULES.contains(it.moduleGroup) }
     }
 
-    internal fun firstLevelModuleDependencies(project: Project) = project.firstLevelModuleDependencies()
+    internal fun firstLevelModuleDependencies(project: Project) =
+        project.firstLevelModuleDependencies()
 
     /**
      * Collects dependencies from all available configuration in the pre-resolution state i.e without dependency resolutions.

@@ -46,7 +46,7 @@ internal class QueryBazelDependencyAnalytics(
         return mavenDeps.filter { gradleItem ->
             !bazelMavenDeps.any { bazelItem ->
                 gradleItem.name == bazelItem.name
-                        && gradleItem.group?.run {
+                    && gradleItem.group?.run {
                     bazelItem.mavenPath.replace('/', '.').contains(this)
                 } ?: false
             }
@@ -57,10 +57,10 @@ internal class QueryBazelDependencyAnalytics(
         return mavenDeps.map { gradleItem ->
             val diffVersionItem = bazelMavenDeps.find { bazelItem ->
                 gradleItem.name == bazelItem.name
-                        && gradleItem.group?.run {
+                    && gradleItem.group?.run {
                     bazelItem.mavenPath.replace('/', '.').contains(this)
                 } ?: false
-                        && gradleItem.version != bazelItem.version
+                    && gradleItem.version != bazelItem.version
             }
             if (diffVersionItem != null) gradleItem to DependencyVersionDecorator(
                 gradleItem,

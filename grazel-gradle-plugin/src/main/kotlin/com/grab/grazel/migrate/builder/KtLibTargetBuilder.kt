@@ -48,7 +48,6 @@ internal interface KtLibTargetBuilderModule {
     @Binds
     @IntoSet
     fun KtLibTargetBuilder.bindKtLibTargetBuilder(): TargetBuilder
-
 }
 
 

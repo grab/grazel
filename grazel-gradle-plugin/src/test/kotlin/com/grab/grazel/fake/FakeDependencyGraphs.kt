@@ -11,8 +11,14 @@ internal class FakeDependencyGraphs(
 ) : DependencyGraphs {
     override fun nodes(vararg scopes: ConfigurationScope): Set<Project> = nodes
 
-    override fun dependenciesSubGraph(project: Project, scopes: Array<ConfigurationScope>): Set<Project> =
+    override fun dependenciesSubGraph(
+        project: Project,
+        scopes: Array<ConfigurationScope>
+    ): Set<Project> =
         dependenciesSubGraph
 
-    override fun directDependencies(project: Project, scopes: Array<ConfigurationScope>): Set<Project> = directDeps
+    override fun directDependencies(
+        project: Project,
+        scopes: Array<ConfigurationScope>
+    ): Set<Project> = directDeps
 }

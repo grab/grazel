@@ -39,14 +39,14 @@ val Project.isAndroidApplication get() = plugins.hasPlugin(ANDROID_APPLICATION_P
 val Project.isAndroidDynamicFeature get() = plugins.hasPlugin(ANDROID_DYNAMIC_FEATURE)
 val Project.isAndroid
     get() = isAndroidApplication
-            || isAndroidLibrary
-            || isAndroidDynamicFeature
+        || isAndroidLibrary
+        || isAndroidDynamicFeature
 
 val Project.hasDatabinding: Boolean
     get() {
         val buildFeatures = extensions.findByType<BaseExtension>()?.buildFeatures
         return (buildFeatures as? LibraryBuildFeatures)?.dataBinding == true ||
-                (buildFeatures as? ApplicationBuildFeatures)?.dataBinding == true
+            (buildFeatures as? ApplicationBuildFeatures)?.dataBinding == true
     }
 
 val Project.hasCrashlytics get() = plugins.hasPlugin(FIREBASE_CRASHLYTICS_PLUGIN)
@@ -56,7 +56,7 @@ val Project.isKotlinJvm get() = plugins.hasPlugin(KOTLIN_PLUGIN)
 val Project.isKotlinAndroid get() = plugins.hasPlugin(KOTLIN_ANDROID_PLUGIN)
 val Project.hasKotlinAndroidExtensions
     get() = plugins.hasPlugin(KOTLIN_ANDROID_EXTENSION)
-            || plugins.hasPlugin(KOTLIN_PARCELIZE)
+        || plugins.hasPlugin(KOTLIN_PARCELIZE)
 val Project.isKotlin get() = isKotlinJvm || isKotlinAndroid
 
 const val JAVA_PLUGIN = "java"

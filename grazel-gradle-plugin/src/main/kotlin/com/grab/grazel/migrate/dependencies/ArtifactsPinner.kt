@@ -121,7 +121,8 @@ constructor(
 
     override val isEnabled: Boolean get() = mavenInstallExtension.artifactPinning.enabled.get()
 
-    private val isMavenInstallJsonExists get() = rootProject.file(artifactPinning.mavenInstallJson).exists()
+    private val isMavenInstallJsonExists
+        get() = rootProject.file(artifactPinning.mavenInstallJson).exists()
 
     override fun mavenInstallJson(): String? = when {
         isMavenInstallJsonExists -> "//:" + artifactPinning.mavenInstallJson
@@ -150,7 +151,9 @@ constructor(
                 ignoreExit = true,
                 errorOutputStream = outputStream
             )
-            val errors = outputStream.errors.onEach { error -> rootProject.logger.quiet(error.message) }
+            val errors = outputStream
+                .errors
+                .onEach { error -> rootProject.logger.quiet(error.message) }
 
             if (errors.any { it is InvalidSignature } || errors.any { it is JsonCorrupted }) {
                 rootProject

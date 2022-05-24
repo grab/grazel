@@ -61,10 +61,11 @@ internal class DefaultAndroidUnitTestDataExtractor @Inject constructor(
 
         val associate = calculateTestAssociate(project)
 
-        val deps = projectDependencyGraphs.directProjectDependencies(project, ConfigurationScope.TEST) +
-                dependenciesDataSource.collectMavenDeps(project, ConfigurationScope.TEST) +
-                project.kotlinParcelizeDeps() +
-                BazelDependency.ProjectDependency(project)
+        val deps = projectDependencyGraphs
+            .directProjectDependencies(project, ConfigurationScope.TEST) +
+            dependenciesDataSource.collectMavenDeps(project, ConfigurationScope.TEST) +
+            project.kotlinParcelizeDeps() +
+            BazelDependency.ProjectDependency(project)
 
         return AndroidUnitTestData(
             name = FORMAT_UNIT_TEST_NAME.format(project.name),
@@ -106,7 +107,6 @@ internal class DefaultAndroidUnitTestDataExtractor @Inject constructor(
             project.extensions.getByType(),
             migratableSourceSets
         ) ?: ""
-
     }
 }
 

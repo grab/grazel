@@ -10,44 +10,44 @@ repo_url: "https://github.com/grab/Grazel"
 copyright: "Copyright 2021 Grabtaxi Holdings PTE LTE (GRAB)"
 
 theme:
-  name: "material"
-  palette:
-    primary: "cyan"
-  font:
-    text: "Roboto"
-    code: "Roboto Mono"
-  features:
-    - navigation.indexes
+    name: "material"
+    palette:
+        primary: "cyan"
+    font:
+        text: "Roboto"
+        code: "Roboto Mono"
+    features:
+        - navigation.indexes
 
 nav:
-  - Overview: index.md
-  - Configuration:
-      - Grazel Extension: grazel_extension.md
-      - Gradle Tasks: gradle_tasks.md
-      - Bazel: bazel_configuration.md
-  - Migration:
-      - Migration Capabilities: migration_capabilities.md
-      - Migration Criteria and Workflow: migration_criteria.md
-  - Hybrid Builds: hybrid_builds.md
-  - Misc:
-      - Databinding: databinding.md
+    -   Overview: index.md
+    -   Configuration:
+            -   Grazel Extension: grazel_extension.md
+            -   Gradle Tasks: gradle_tasks.md
+            -   Bazel: bazel_configuration.md
+    -   Migration:
+            -   Migration Capabilities: migration_capabilities.md
+            -   Migration Criteria and Workflow: migration_criteria.md
+    -   Hybrid Builds: hybrid_builds.md
+    -   Misc:
+            -   Databinding: databinding.md
 
 
 plugins:
-  - search
+    - search
 
 markdown_extensions:
-  - admonition
-  - pymdownx.details
-  - pymdownx.magiclink
-  - pymdownx.tabbed
-  - pymdownx.superfences
-  - pymdownx.highlight
-  - codehilite:
-      guess_lang: false
-  - toc:
-      permalink: true
+    - admonition
+    - pymdownx.details
+    - pymdownx.magiclink
+    - pymdownx.tabbed
+    - pymdownx.superfences
+    - pymdownx.highlight
+    -   codehilite:
+            guess_lang: false
+    -   toc:
+            permalink: true
 
 # Customization
 extra_css:
-  - "css/site.css"
+    - "css/site.css"

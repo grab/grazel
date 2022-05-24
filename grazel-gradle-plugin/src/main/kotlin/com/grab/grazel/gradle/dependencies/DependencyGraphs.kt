@@ -45,7 +45,10 @@ internal class DefaultDependencyGraphs(
         }
     }
 
-    override fun dependenciesSubGraph(project: Project, scopes: Array<ConfigurationScope>): Set<Project> =
+    override fun dependenciesSubGraph(
+        project: Project,
+        scopes: Array<ConfigurationScope>
+    ): Set<Project> =
         scopes.flatMap {
             when (it) {
                 ConfigurationScope.BUILD -> Graphs.reachableNodes(buildGraph.asGraph(), project)
@@ -54,7 +57,10 @@ internal class DefaultDependencyGraphs(
             }
         }.toSet()
 
-    override fun directDependencies(project: Project, scopes: Array<ConfigurationScope>): Set<Project> =
+    override fun directDependencies(
+        project: Project,
+        scopes: Array<ConfigurationScope>
+    ): Set<Project> =
         scopes.flatMap {
             when (it) {
                 ConfigurationScope.BUILD -> buildGraph.successors(project)
@@ -64,10 +70,16 @@ internal class DefaultDependencyGraphs(
         }.toSet()
 }
 
-internal fun DependencyGraphs.dependenciesSubGraph(project: Project, vararg scopes: ConfigurationScope): Set<Project> {
+internal fun DependencyGraphs.dependenciesSubGraph(
+    project: Project,
+    vararg scopes: ConfigurationScope
+): Set<Project> {
     return dependenciesSubGraph(project, arrayOf(*scopes))
 }
 
-internal fun DependencyGraphs.directDependencies(project: Project, vararg scopes: ConfigurationScope): Set<Project> {
+internal fun DependencyGraphs.directDependencies(
+    project: Project,
+    vararg scopes: ConfigurationScope
+): Set<Project> {
     return directDependencies(project, arrayOf(*scopes))
 }

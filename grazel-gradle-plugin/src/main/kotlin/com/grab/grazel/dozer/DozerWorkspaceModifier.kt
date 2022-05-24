@@ -33,7 +33,11 @@ internal fun createDozerWorkspaceModifier(
         ReplaceMavenDependency(gradleProjectInfo.rootProject)
     )
     val tempFileManager = DefaultTempFileManager(gradleProjectInfo.rootProject.rootDir)
-    val bazelDependencyAnalytics = QueryBazelDependencyAnalytics(gradleProjectInfo, dependencyGraphs, extension)
+    val bazelDependencyAnalytics = QueryBazelDependencyAnalytics(
+        gradleProjectInfo,
+        dependencyGraphs,
+        extension
+    )
     return DozerWorkspaceModifier(
         dozerUpdates, tempFileManager,
         bazelDependencyAnalytics, gradleProjectInfo.rootProject.logger

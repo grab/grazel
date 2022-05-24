@@ -27,8 +27,11 @@ internal enum class ConfigurationScope {
 }
 
 internal fun GrazelExtension.configurationScopes(): Array<ConfigurationScope> {
-    return if (rules.test.enableTestMigration) arrayOf(ConfigurationScope.TEST, ConfigurationScope.BUILD)
-    else arrayOf(ConfigurationScope.BUILD)
+    return if (rules.test.enableTestMigration) {
+        arrayOf(ConfigurationScope.TEST, ConfigurationScope.BUILD)
+    } else {
+        arrayOf(ConfigurationScope.BUILD)
+    }
 }
 
 
@@ -37,7 +40,10 @@ internal interface ConfigurationDataSource {
      * Return a sequence of the configurations which are filtered out by the ignore flavors & build variants
      * these configuration can be queried or resolved.
      */
-    fun resolvedConfigurations(project: Project, vararg scopes: ConfigurationScope): Sequence<Configuration>
+    fun resolvedConfigurations(
+        project: Project,
+        vararg scopes: ConfigurationScope
+    ): Sequence<Configuration>
 
     /**
      * Return a sequence of the configurations filtered out by the ignore flavors, build variants and the configuration scopes
@@ -51,7 +57,10 @@ internal class DefaultConfigurationDataSource @Inject constructor(
     private val androidVariantDataSource: AndroidVariantDataSource
 ) : ConfigurationDataSource {
 
-    override fun configurations(project: Project, vararg scopes: ConfigurationScope): Sequence<Configuration> {
+    override fun configurations(
+        project: Project,
+        vararg scopes: ConfigurationScope
+    ): Sequence<Configuration> {
         val ignoreFlavors = androidVariantDataSource.getIgnoredFlavors(project)
         val ignoreVariants = androidVariantDataSource.getIgnoredVariants(project)
         return project.configurations
@@ -76,13 +85,15 @@ internal class DefaultConfigurationDataSource @Inject constructor(
             .filter { config ->
                 !config.name.let { configurationName ->
                     ignoreFlavors.any { configurationName.contains(it.name, true) }
-                            || ignoreVariants.any { configurationName.contains(it.name, true) }
+                        || ignoreVariants.any { configurationName.contains(it.name, true) }
                 }
             }
-
     }
 
-    override fun resolvedConfigurations(project: Project, vararg scopes: ConfigurationScope): Sequence<Configuration> {
+    override fun resolvedConfigurations(
+        project: Project,
+        vararg scopes: ConfigurationScope
+    ): Sequence<Configuration> {
         return configurations(project, *scopes).filter { it.isCanBeResolved }
     }
 }

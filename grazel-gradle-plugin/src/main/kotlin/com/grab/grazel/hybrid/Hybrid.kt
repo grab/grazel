@@ -86,7 +86,7 @@ private fun Project.buildAarTargets() {
     val (databindingAar, _) = executeCommand("bazelisk", "query", "kind(databinding_aar, //...:*)")
 
     val aarTargets = findUniqueAarTargets(bazelAarOut.lineSequence()) +
-            collectDatabindingAarTargets(databindingAar.lineSequence())
+        collectDatabindingAarTargets(databindingAar.lineSequence())
     logger.quiet("Found aar targets : $aarTargets")
 
     bazelCommand("build", *aarTargets.distinct().toTypedArray(), ignoreExit = true)

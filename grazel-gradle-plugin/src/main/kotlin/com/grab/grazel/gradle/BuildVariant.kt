@@ -65,7 +65,8 @@ internal class DefaultAndroidVariantDataSource(
     }
 
     private fun Project.androidVariants() =
-        androidVariantsExtractor.getVariants(this) + androidVariantsExtractor.getUnitTestVariants(this)
+        androidVariantsExtractor.getVariants(this) +
+            androidVariantsExtractor.getUnitTestVariants(this)
 
     override fun getIgnoredVariants(project: Project): List<BaseVariant> {
         return project.androidVariants().filter(::ignoredVariantFilter)

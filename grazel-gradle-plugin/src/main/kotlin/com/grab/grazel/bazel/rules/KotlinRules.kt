@@ -27,7 +27,6 @@ import com.grab.grazel.bazel.starlark.array
 import com.grab.grazel.bazel.starlark.asString
 import com.grab.grazel.bazel.starlark.glob
 import com.grab.grazel.bazel.starlark.load
-import com.grab.grazel.bazel.starlark.obj
 import com.grab.grazel.bazel.starlark.quote
 import com.grab.grazel.extension.JavaCOptions
 import com.grab.grazel.extension.KotlinCOptions
@@ -40,7 +39,10 @@ fun StatementsBuilder.kotlinRepository(repositoryRule: BazelRepositoryRule) {
     add(repositoryRule)
     if (repositoryRule is GitRepositoryRule) {
         // If repository is git repository then transitive dependencies of Kotlin repo needs to be manually added
-        load("@io_bazel_rules_kotlin//kotlin:dependencies.bzl", "kt_download_local_dev_dependencies")
+        load(
+            "@io_bazel_rules_kotlin//kotlin:dependencies.bzl",
+            "kt_download_local_dev_dependencies"
+        )
         add("kt_download_local_dev_dependencies()")
     }
 }
@@ -195,7 +197,10 @@ fun StatementsBuilder.ktLibrary(
             "deps" eq array(deps.map(BazelDependency::toString).map(String::quote))
         }
         resourceFiles.notEmpty {
-            "resource_files" eq resourceFiles.joinToString(separator = " + ", transform = Assignee::asString)
+            "resource_files" eq resourceFiles.joinToString(
+                separator = " + ",
+                transform = Assignee::asString
+            )
         }
         resources.notEmpty {
             "resource_files" eq glob(resources.quote)

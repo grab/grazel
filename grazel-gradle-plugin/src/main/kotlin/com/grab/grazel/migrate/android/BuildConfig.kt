@@ -40,8 +40,8 @@ internal fun BaseExtension.extractBuildConfig(
         .getMigratableBuildVariants(project)
         .firstOrNull()?.buildType?.buildConfigFields
         ?: emptyMap()) +
-            defaultConfig.buildConfigFields.toMap() +
-            project.androidBinaryBuildConfigFields(this)
+        defaultConfig.buildConfigFields.toMap() +
+        project.androidBinaryBuildConfigFields(this)
     val buildConfigTypeMap = buildConfigFields
         .asSequence()
         .map { it.value }

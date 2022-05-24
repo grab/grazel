@@ -1,6 +1,7 @@
 # Grazel Extension
 
-Grazel aims to infer most of the project data from Gradle and ships with sensible defaults for migration. However it is also configurable via Gradle extensions based on project needs.
+Grazel aims to infer most of the project data from Gradle and ships with sensible defaults for
+migration. However it is also configurable via Gradle extensions based on project needs.
 
 ## Configuring Grazel Extension
 
@@ -35,15 +36,24 @@ grazel {
 
 ### Variant Filter
 
-Currently Grazel supports migrating only one variant. `variantFilter {}` can be used to specify the variants that should be excluded. In case the variant filter is not supplied or filter allows more than one variant, Grazel will still generate a single Bazel target by merging all the source sets in which case build might fail with duplicate classes error. 
+Currently Grazel supports migrating only one variant. `variantFilter {}` can be used to specify the
+variants that should be excluded. In case the variant filter is not supplied or filter allows more
+than one variant, Grazel will still generate a single Bazel target by merging all the source sets in
+which case build might fail with duplicate classes error.
 
 ### Databinding
 
-By default, all modules that use databinding are excluded from migration since Bazel's Android databinding support is an ongoing [effort](https://github.com/bazelbuild/bazel/issues/2694), especially for Kotlin. Setting `dataBinding` to `true` will migrate the project using Grab's [custom macro](https://github.com/grab/grab-bazel-common/tree/master/tools/databinding). See [databinding](databinding.md) for more info.
+By default, all modules that use databinding are excluded from migration since Bazel's Android
+databinding support is an ongoing [effort](https://github.com/bazelbuild/bazel/issues/2694),
+especially for Kotlin. Setting `dataBinding` to `true` will migrate the project using
+Grab's [custom macro](https://github.com/grab/grab-bazel-common/tree/master/tools/databinding).
+See [databinding](databinding.md) for more info.
 
 ## Dependencies
 
-Grazel uses Gradle's [dependencies](migration_capabilities.md#dependencies) resolution data to generate Bazel dependencies information. This block can be used to control how dependencies are read or override Gradle information in generated code.
+Grazel uses Gradle's [dependencies](migration_capabilities.md#dependencies) resolution data to
+generate Bazel dependencies information. This block can be used to control how dependencies are read
+or override Gradle information in generated code.
 
 ```groovy
 grazel {
@@ -66,16 +76,21 @@ grazel {
 }
 ```
 
-!!! example
-    Here even though Gradle uses `androidx.preference:preference:1.1.1`, due to `overrideArtifactVersions` the generated `maven_install` rule will contain version `1.1.0`.
+!!! example 
+    Here even though Gradle uses `androidx.preference:preference:1.1.1`, due
+    to `overrideArtifactVersions` the generated `maven_install` rule will contain version `1.1.0`.
 
 ### Ignore artifacts
 
-Bazel's `rules_jvm_external` does not support all of Gradle's supported repositories such as AWS or private Maven repositories with auth headers. `ignoreArtifacts` can be used to exclude certain dependencies from migration. Alternately for dependencies that can not be fetched from maven, override targets can be 
-used to point to a local target. See [override_targets](#override-targets) for more details.
+Bazel's `rules_jvm_external` does not support all of Gradle's supported repositories such as AWS or
+private Maven repositories with auth headers. `ignoreArtifacts` can be used to exclude certain
+dependencies from migration. Alternately for dependencies that can not be fetched from maven,
+override targets can be used to point to a local target. See [override_targets](#override-targets)
+for more details.
 
-!!! warning
-    Any module that uses any of the ignored artifacts will be excluded from migration to not fail the build during dependency resolution by `maven_install` rule.
+!!! warning 
+    Any module that uses any of the ignored artifacts will be excluded from migration to not
+    fail the build during dependency resolution by `maven_install` rule.
 
 ## Rules
 
@@ -91,7 +106,9 @@ grazel {
 
 ### Bazel Common
 
-Grazel uses [Grab Bazel Common](https://github.com/grab/grab-bazel-common) to implement Gradle features in Bazel that are not readily available in Bazel. For example, `build config fields` or `res values`. 
+Grazel uses [Grab Bazel Common](https://github.com/grab/grab-bazel-common) to implement Gradle
+features in Bazel that are not readily available in Bazel. For example, `build config fields`
+or `res values`.
 
 ```groovy
 grazel {
@@ -106,9 +123,10 @@ grazel {
 }
 ```
 
-`gitRepository` or `httpRepository` can be used to configure the `WORKPSACE` repository target that will be generated. 
+`gitRepository` or `httpRepository` can be used to configure the `WORKPSACE` repository target that
+will be generated.
 
-!!! example
+!!! example 
     For example, the above configuration will generate the following.
 
     ```python
@@ -124,7 +142,6 @@ grazel {
 ### Kotlin
 
 Configure options for [rules_kotlin](https://github.com/bazelbuild/rules_kotlin).
-
 
 ```kotlin
 rules {
@@ -160,7 +177,9 @@ rules {
 
 ### Maven Install
 
-Grazel uses official [rules_jvm_external](https://github.com/bazelbuild/rules_jvm_external) to resolve maven dependencies. Maven install extension is used to configure options for `maven_install` rule.
+Grazel uses official [rules_jvm_external](https://github.com/bazelbuild/rules_jvm_external) to
+resolve maven dependencies. Maven install extension is used to configure options for `maven_install`
+rule.
 
 ```groovy
 grazel {
@@ -188,11 +207,15 @@ grazel {
 
 #### Exclude artifacts
 
-Control globally excluded artifacts as specified [here](https://github.com/bazelbuild/rules_jvm_external#artifact-exclusion). This can be used to filter out unsupported dependencies or dependencies that have issues resolving with `mavenInstall`. This does not affect a module's [migration criteria](migration_criteria.md).
+Control globally excluded artifacts as
+specified [here](https://github.com/bazelbuild/rules_jvm_external#artifact-exclusion). This can be
+used to filter out unsupported dependencies or dependencies that have issues resolving
+with `mavenInstall`. This does not affect a module's [migration criteria](migration_criteria.md).
 
 ### Override targets
 
-Override targets can be used to point to a local target instead of one present in Maven. [Reference](https://github.com/bazelbuild/rules_jvm_external#overriding-generated-targets).
+Override targets can be used to point to a local target instead of one present in
+Maven. [Reference](https://github.com/bazelbuild/rules_jvm_external#overriding-generated-targets).
 
 ```groovy
 grazel {
@@ -208,17 +231,22 @@ grazel {
 
 ### Artifact pinning
 
-Grazel by default enabled `rules_jvm_external`s artifact [pinning](https://github.com/bazelbuild/rules_jvm_external#pinning-artifacts-and-integration-with-bazels-downloader). 
-It automatically managed pinning/repinning and is integrated with `migrateToBazel` command. If any changes are present in
-Gradle, running `migrateToBazel` would automatically update the `maven_install.json` file. 
+Grazel by default enabled `rules_jvm_external`s
+artifact [pinning](https://github.com/bazelbuild/rules_jvm_external#pinning-artifacts-and-integration-with-bazels-downloader)
+. It automatically managed pinning/repinning and is integrated with `migrateToBazel` command. If any
+changes are present in Gradle, running `migrateToBazel` would automatically update
+the `maven_install.json` file.
 
 #### Jetifier
 
-Jetifier is automatically detected by looking for presence of `android.enableJetifier` in `gradle.properties`.
+Jetifier is automatically detected by looking for presence of `android.enableJetifier`
+in `gradle.properties`.
 
-Configure options for `Jetifier`. 
+Configure options for `Jetifier`.
 
 * `jetifyIncludeList` - Configure artifacts that should be included for Jetification.
 * `jetifyExcludeList` - Configure artifacts that should be excluded from Jetification.
 
-With these options, Grazel generates `jetify_include_list` as specified [here](https://github.com/bazelbuild/rules_jvm_external#jetifier) with the formula `jetify_include_list = (allArtifacts + jetifyIncludeList) - jetifyExcludeList`
+With these options, Grazel generates `jetify_include_list` as
+specified [here](https://github.com/bazelbuild/rules_jvm_external#jetifier) with the
+formula `jetify_include_list = (allArtifacts + jetifyIncludeList) - jetifyExcludeList`

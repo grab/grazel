@@ -99,10 +99,10 @@ dependencies {
      * https://github.com/gradle/gradle/issues/17783
      */
     def toolingApiBuildersJar = (project as ProjectInternal).services.get(ModuleRegistry.class)
-            .getModule("gradle-tooling-api-builders")
-            .classpath
-            .asFiles
-            .first()
+        .getModule("gradle-tooling-api-builders")
+        .classpath
+        .asFiles
+        .first()
     testRuntimeOnly(files(toolingApiBuildersJar))
 }
 

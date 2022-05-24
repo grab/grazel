@@ -60,7 +60,11 @@ abstract class BaseGrazelPluginTest {
         .build()
         .also(assertions)
 
-    protected fun runTaskAndClean(taskName: String, fixtureRoot: File, assertions: BuildResult.() -> Unit = {}) {
+    protected fun runTaskAndClean(
+        taskName: String,
+        fixtureRoot: File,
+        assertions: BuildResult.() -> Unit = {}
+    ) {
         runGradleBuild(taskName, fixtureRoot, assertions)
         bazelClean(fixtureRoot)
     }
