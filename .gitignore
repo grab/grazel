@@ -11,6 +11,7 @@ local.properties
 .idea/workspace.xml
 .idea/compiler.xml
 /.idea/jarRepositories.xml
+.idea/google-java-format.xml
 .idea/shelf
 .idea/modules/app/
 /.idea/uiDesigner.xml
