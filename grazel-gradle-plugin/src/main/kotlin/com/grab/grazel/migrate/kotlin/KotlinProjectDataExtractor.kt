@@ -16,8 +16,10 @@
 
 package com.grab.grazel.migrate.kotlin
 
+import com.grab.grazel.GrazelExtension
 import com.grab.grazel.bazel.rules.KOTLIN_PARCELIZE_TARGET
 import com.grab.grazel.bazel.starlark.BazelDependency
+import com.grab.grazel.extension.KotlinExtension
 import com.grab.grazel.gradle.ConfigurationScope
 import com.grab.grazel.gradle.dependencies.DependenciesDataSource
 import com.grab.grazel.gradle.dependencies.DependencyGraphs
@@ -26,6 +28,7 @@ import com.grab.grazel.gradle.hasKotlinAndroidExtensions
 import com.grab.grazel.migrate.android.SourceSetType
 import com.grab.grazel.migrate.android.collectMavenDeps
 import com.grab.grazel.migrate.android.filterSourceSetPaths
+import com.grab.grazel.migrate.dependencies.calculateDirectDependencyTags
 import dagger.Lazy
 import org.gradle.api.NamedDomainObjectContainer
 import org.gradle.api.Project
@@ -43,27 +46,36 @@ internal interface KotlinProjectDataExtractor {
 @Singleton
 internal class DefaultKotlinProjectDataExtractor @Inject constructor(
     private val dependenciesDataSource: DependenciesDataSource,
-    private val dependencyGraphsProvider: Lazy<DependencyGraphs>
+    private val dependencyGraphsProvider: Lazy<DependencyGraphs>,
+    private val grazelExtension: GrazelExtension,
 ) : KotlinProjectDataExtractor {
+
+    private val kotlinExtension: KotlinExtension get() = grazelExtension.rules.kotlin
 
     private val projectDependencyGraphs get() = dependencyGraphsProvider.get()
 
     override fun extract(project: Project): KotlinProjectData {
+        val name = project.name
         val sourceSets = project.the<KotlinJvmProjectExtension>().sourceSets
         val srcs = project.kotlinSources(sourceSets, SourceSetType.JAVA_KOTLIN).toList()
         val resources = project.kotlinSources(sourceSets, SourceSetType.RESOURCES).toList()
 
-        val deps =
-            projectDependencyGraphs.directProjectDependencies(project, ConfigurationScope.BUILD) +
-                dependenciesDataSource.collectMavenDeps(project) +
-                project.androidJarDeps() +
-                project.kotlinParcelizeDeps()
+        val deps = projectDependencyGraphs
+            .directProjectDependencies(project, ConfigurationScope.BUILD) +
+            dependenciesDataSource.collectMavenDeps(project) +
+            project.androidJarDeps() +
+            project.kotlinParcelizeDeps()
+
+        val tags = if (kotlinExtension.enabledTransitiveReduction) {
+            deps.calculateDirectDependencyTags(self = name)
+        } else emptyList()
 
         return KotlinProjectData(
-            name = project.name,
+            name = name,
             srcs = srcs,
             res = resources,
-            deps = deps
+            deps = deps,
+            tags = tags
         )
     }
 
@@ -99,9 +111,7 @@ internal fun Project.kotlinParcelizeDeps(): List<BazelDependency.StringDependenc
 
 internal fun Project.androidJarDeps(): List<BazelDependency> =
     if (this.hasAndroidJarDep()) {
-        listOf(
-            BazelDependency.StringDependency("//shared_versions:android_sdk")
-        )
+        listOf(BazelDependency.StringDependency("//shared_versions:android_sdk"))
     } else {
         emptyList()
     }

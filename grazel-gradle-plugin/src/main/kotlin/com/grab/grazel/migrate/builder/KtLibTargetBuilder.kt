@@ -44,7 +44,6 @@ internal interface KtLibTargetBuilderModule {
     @Binds
     fun DefaultKotlinUnitTestDataExtractor.bindKotlinUnitTestDataExtractor(): KotlinUnitTestDataExtractor
 
-
     @Binds
     @IntoSet
     fun KtLibTargetBuilder.bindKtLibTargetBuilder(): TargetBuilder
@@ -65,7 +64,7 @@ internal class KtLibTargetBuilder @Inject constructor(
         return if (testExtension.enableTestMigration) {
             listOf(
                 projectData.toKtLibraryTarget(kotlinExtension.enabledTransitiveReduction),
-                unitTestData.toUnitTestTarget(testExtension.enabledTransitiveReduction)
+                unitTestData.toUnitTestTarget()
             )
         } else {
             listOf(projectData.toKtLibraryTarget(kotlinExtension.enabledTransitiveReduction))
@@ -83,9 +82,7 @@ private fun KotlinProjectData.toKtLibraryTarget(enabledTransitiveDepsReduction: 
         srcs = srcs,
         res = res,
         deps = deps,
-        tags = if (enabledTransitiveDepsReduction) {
-            deps.toDirectTranDepTags(self = name)
-        } else emptyList()
+        tags = tags,
     )
 }
 

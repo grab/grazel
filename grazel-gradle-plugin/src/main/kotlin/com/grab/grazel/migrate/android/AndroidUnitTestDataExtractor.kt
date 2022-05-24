@@ -16,7 +16,9 @@
 package com.grab.grazel.migrate.android
 
 import com.android.build.gradle.api.AndroidSourceSet
+import com.grab.grazel.GrazelExtension
 import com.grab.grazel.bazel.starlark.BazelDependency
+import com.grab.grazel.extension.KotlinExtension
 import com.grab.grazel.gradle.AndroidVariantDataSource
 import com.grab.grazel.gradle.ConfigurationScope
 import com.grab.grazel.gradle.dependencies.DependenciesDataSource
@@ -25,6 +27,7 @@ import com.grab.grazel.gradle.dependencies.directProjectDependencies
 import com.grab.grazel.gradle.getMigratableBuildVariants
 import com.grab.grazel.gradle.getMigratableUnitTestVariants
 import com.grab.grazel.migrate.common.calculateTestAssociate
+import com.grab.grazel.migrate.dependencies.calculateDirectDependencyTags
 import com.grab.grazel.migrate.kotlin.kotlinParcelizeDeps
 import dagger.Lazy
 import org.gradle.api.Project
@@ -44,11 +47,17 @@ internal class DefaultAndroidUnitTestDataExtractor @Inject constructor(
     private val dependenciesDataSource: DependenciesDataSource,
     private val variantDataSource: AndroidVariantDataSource,
     private val dependencyGraphsProvider: Lazy<DependencyGraphs>,
-    private val androidManifestParser: AndroidManifestParser
+    private val androidManifestParser: AndroidManifestParser,
+    private val grazelExtension: GrazelExtension,
 ) : AndroidUnitTestDataExtractor {
+
     private val projectDependencyGraphs get() = dependencyGraphsProvider.get()
 
+    private val kotlinExtension: KotlinExtension get() = grazelExtension.rules.kotlin
+
     override fun extract(project: Project): AndroidUnitTestData {
+        val name = FORMAT_UNIT_TEST_NAME.format(project.name)
+
         val migratableSourceSets = variantDataSource
             .getMigratableUnitTestVariants(project)
             .asSequence()
@@ -67,10 +76,15 @@ internal class DefaultAndroidUnitTestDataExtractor @Inject constructor(
             project.kotlinParcelizeDeps() +
             BazelDependency.ProjectDependency(project)
 
+        val tags = if (kotlinExtension.enabledTransitiveReduction) {
+            deps.calculateDirectDependencyTags(name)
+        } else emptyList()
+
         return AndroidUnitTestData(
-            name = FORMAT_UNIT_TEST_NAME.format(project.name),
+            name = name,
             srcs = srcs,
             deps = deps,
+            tags = tags,
             customPackage = extractPackageName(project),
             associates = buildList { associate?.let(::add) },
             resources = resources,

@@ -16,7 +16,9 @@
 
 package com.grab.grazel.migrate.kotlin
 
+import com.grab.grazel.GrazelExtension
 import com.grab.grazel.bazel.starlark.BazelDependency
+import com.grab.grazel.extension.KotlinExtension
 import com.grab.grazel.gradle.ConfigurationScope
 import com.grab.grazel.gradle.dependencies.DependenciesDataSource
 import com.grab.grazel.gradle.dependencies.DependencyGraphs
@@ -26,6 +28,7 @@ import com.grab.grazel.migrate.android.SourceSetType
 import com.grab.grazel.migrate.android.collectMavenDeps
 import com.grab.grazel.migrate.android.filterSourceSetPaths
 import com.grab.grazel.migrate.common.calculateTestAssociate
+import com.grab.grazel.migrate.dependencies.calculateDirectDependencyTags
 import dagger.Lazy
 import org.gradle.api.NamedDomainObjectContainer
 import org.gradle.api.Project
@@ -43,12 +46,16 @@ internal interface KotlinUnitTestDataExtractor {
 @Singleton
 internal class DefaultKotlinUnitTestDataExtractor @Inject constructor(
     private val dependenciesDataSource: DependenciesDataSource,
-    private val dependencyGraphsProvider: Lazy<DependencyGraphs>
+    private val dependencyGraphsProvider: Lazy<DependencyGraphs>,
+    private val grazelExtension: GrazelExtension
 ) : KotlinUnitTestDataExtractor {
+
+    private val kotlinExtension: KotlinExtension get() = grazelExtension.rules.kotlin
 
     private val projectDependencyGraphs get() = dependencyGraphsProvider.get()
 
     override fun extract(project: Project): UnitTestData {
+        val name = FORMAT_UNIT_TEST_NAME.format(project.name)
         val sourceSets = project.the<KotlinJvmProjectExtension>().sourceSets
 
         val srcs = project.kotlinTestSources(sourceSets).toList()
@@ -69,12 +76,18 @@ internal class DefaultKotlinUnitTestDataExtractor @Inject constructor(
                 add(projectDependency)
             }
         }
+
+        val tags = if (kotlinExtension.enabledTransitiveReduction) {
+            deps.calculateDirectDependencyTags(name)
+        } else emptyList()
+
         return UnitTestData(
-            name = FORMAT_UNIT_TEST_NAME.format(project.name),
+            name = name,
             srcs = srcs,
             deps = deps,
             associates = buildList { associate?.let(::add) },
             hasAndroidJarDep = project.hasAndroidJarDep(),
+            tags = tags
         )
     }
 

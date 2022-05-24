@@ -55,7 +55,8 @@ internal data class AndroidLibraryData(
     val extraRes: List<ResourceSet> = emptyList(),
     val deps: List<BazelDependency> = emptyList(),
     val plugins: List<BazelDependency> = emptyList(),
-    val hasDatabinding: Boolean = false
+    val hasDatabinding: Boolean = false,
+    val tags: List<String> = emptyList(),
 )
 
 

@@ -18,6 +18,7 @@ package com.grab.grazel.migrate.android
 
 import com.android.build.gradle.BaseExtension
 import com.android.build.gradle.api.AndroidSourceSet
+import com.grab.grazel.GrazelExtension
 import com.grab.grazel.bazel.rules.ANDROIDX_GROUP
 import com.grab.grazel.bazel.rules.ANNOTATION_ARTIFACT
 import com.grab.grazel.bazel.rules.DAGGER_GROUP
@@ -31,6 +32,7 @@ import com.grab.grazel.gradle.dependencies.directProjectDependencies
 import com.grab.grazel.gradle.getMigratableBuildVariants
 import com.grab.grazel.gradle.hasDatabinding
 import com.grab.grazel.gradle.isAndroid
+import com.grab.grazel.migrate.dependencies.calculateDirectDependencyTags
 import com.grab.grazel.migrate.kotlin.kotlinParcelizeDeps
 import dagger.Lazy
 import org.gradle.api.Project
@@ -51,7 +53,8 @@ internal class DefaultAndroidLibraryDataExtractor @Inject constructor(
     private val variantDataSource: AndroidVariantDataSource,
     private val dependenciesDataSource: DependenciesDataSource,
     private val dependencyGraphsProvider: Lazy<DependencyGraphs>,
-    private val androidManifestParser: AndroidManifestParser
+    private val androidManifestParser: AndroidManifestParser,
+    private val grazelExtension: GrazelExtension,
 ) : AndroidLibraryDataExtractor {
     private val projectDependencyGraphs get() = dependencyGraphsProvider.get()
 
@@ -101,6 +104,10 @@ internal class DefaultAndroidLibraryDataExtractor @Inject constructor(
             .androidManifestFile(migratableSourceSets)
             ?.let(::relativePath)
 
+        val tags = if (grazelExtension.rules.kotlin.enabledTransitiveReduction) {
+            deps.calculateDirectDependencyTags(name)
+        } else emptyList()
+
         return AndroidLibraryData(
             name = name,
             srcs = srcs,
@@ -113,7 +120,8 @@ internal class DefaultAndroidLibraryDataExtractor @Inject constructor(
             buildConfigData = extension.extractBuildConfig(this, variantDataSource),
             resValues = extension.extractResValue(),
             extraRes = extraRes,
-            deps = deps
+            deps = deps,
+            tags = tags
         )
     }
 
@@ -180,7 +188,8 @@ internal class DefaultAndroidLibraryDataExtractor @Inject constructor(
     ): String? {
         return if (assets.isNotEmpty()) {
             val assetItem = assets.first()
-            sourceSets.flatMap { it.assets.srcDirs }
+            sourceSets
+                .flatMap { it.assets.srcDirs }
                 .map { relativePath(it) }
                 .first { assetItem.contains(it) }
         } else null

@@ -104,12 +104,13 @@ internal class AndroidBinaryTargetBuilder @Inject constructor(
     }
 
     private fun buildKtAndroidTargets(project: Project): List<BazelTarget> {
-        return mutableListOf<BazelTarget>().apply {
+        return buildList {
             val androidProjectData = androidLibDataExtractor.extract(
                 project = project,
                 sourceSetType = SourceSetType.JAVA_KOTLIN
             ).copy(name = "${project.name}_lib", hasDatabinding = false)
             var deps = androidProjectData.deps
+
             with(androidProjectData) {
                 toBuildConfigTarget().also {
                     deps += it.toBazelDependency()
@@ -118,7 +119,10 @@ internal class AndroidBinaryTargetBuilder @Inject constructor(
             }
 
             androidProjectData
-                .copy(deps = deps)
+                .copy(
+                    deps = deps,
+                    tags = emptyList() // Don't generate classpath reduction tags for final binary target
+                )
                 .toKtLibraryTarget()
                 ?.also { add(it) }
         }

@@ -79,7 +79,6 @@ internal class DefaultAndroidBinaryDataExtractor @Inject constructor(
             variant = variantDataSource.getMigratableBuildVariants(project).firstOrNull()
         )
 
-
         return AndroidBinaryData(
             name = project.name,
             manifestValues = manifestValues,

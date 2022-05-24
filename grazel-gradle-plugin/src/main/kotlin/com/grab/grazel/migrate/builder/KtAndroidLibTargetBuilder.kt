@@ -18,7 +18,6 @@ package com.grab.grazel.migrate.builder
 
 import com.grab.grazel.bazel.rules.KotlinProjectType
 import com.grab.grazel.bazel.rules.Visibility
-import com.grab.grazel.bazel.starlark.BazelDependency
 import com.grab.grazel.extension.KotlinExtension
 import com.grab.grazel.extension.TestExtension
 import com.grab.grazel.gradle.isAndroid
@@ -58,7 +57,6 @@ internal interface KtAndroidLibTargetBuilderModule {
     @Binds
     fun DefaultAndroidUnitTestDataExtractor.bindAndroidUnitTestDataExtractor(): AndroidUnitTestDataExtractor
 
-
     @Binds
     @IntoSet
     fun KtAndroidLibTargetBuilder.bindKtLibTargetBuilder(): TargetBuilder
@@ -88,14 +86,14 @@ internal class KtAndroidLibTargetBuilder @Inject constructor(
             }
             projectData
                 .copy(deps = deps)
-                .toKtLibraryTarget(kotlinExtension.enabledTransitiveReduction)
+                .toKtLibraryTarget()
                 ?.also { add(it) }
 
             if (testExtension.enableTestMigration)
                 add(
                     unitTestDataExtractor
                         .extract(project)
-                        .toUnitTestTarget(testExtension.enabledTransitiveReduction)
+                        .toUnitTestTarget()
                 )
         }
     }
@@ -106,35 +104,24 @@ internal class KtAndroidLibTargetBuilder @Inject constructor(
 }
 
 
-internal fun AndroidLibraryData.toKtLibraryTarget(
-    enabledTransitiveDepsReduction: Boolean = false
-): KtLibraryTarget? = if (srcs.isNotEmpty() || hasDatabinding) {
-    KtLibraryTarget(
-        name = name,
-        kotlinProjectType = KotlinProjectType.Android(hasDatabinding = hasDatabinding),
-        packageName = packageName,
-        srcs = srcs,
-        manifest = manifestFile,
-        res = res,
-        resValues = resValues,
-        customResourceSets = extraRes,
-        deps = deps,
-        plugins = plugins,
-        assetsGlob = assets,
-        assetsDir = assetsDir,
-        tags = if (enabledTransitiveDepsReduction) {
-            deps.toDirectTranDepTags(self = name)
-        } else emptyList()
-    )
-} else null
-
-fun List<BazelDependency>.toDirectTranDepTags(self: String): List<String> =
-    filterIsInstance<BazelDependency.ProjectDependency>()
-        .map { "@direct${it}" }
-        .toMutableList()
-        .also {
-            it.add("@self//$self")
-        }
+internal fun AndroidLibraryData.toKtLibraryTarget(): KtLibraryTarget? =
+    if (srcs.isNotEmpty() || hasDatabinding) {
+        KtLibraryTarget(
+            name = name,
+            kotlinProjectType = KotlinProjectType.Android(hasDatabinding = hasDatabinding),
+            packageName = packageName,
+            srcs = srcs,
+            manifest = manifestFile,
+            res = res,
+            resValues = resValues,
+            customResourceSets = extraRes,
+            deps = deps,
+            plugins = plugins,
+            assetsGlob = assets,
+            assetsDir = assetsDir,
+            tags = tags
+        )
+    } else null
 
 internal fun AndroidLibraryData.toAarResTarget(): AndroidLibraryTarget? {
     return if (res.isNotEmpty() && !hasDatabinding) {

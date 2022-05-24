@@ -42,7 +42,7 @@ internal data class KtLibraryTarget(
     val plugins: List<BazelDependency> = emptyList(),
     val assetsGlob: List<String> = emptyList(),
     val assetsDir: String? = null,
-    val tags: List<String> = emptyList()
+    val tags: List<String> = emptyList(),
 ) : BazelBuildTarget {
 
     override fun statements(): List<Statement> = statements {

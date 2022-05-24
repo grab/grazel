@@ -1,5 +1,5 @@
 /*
- * Copyright 2021 Grabtaxi Holdings PTE LTD (GRAB)
+ * Copyright 2022 Grabtaxi Holdings PTE LTD (GRAB)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,14 +14,14 @@
  * limitations under the License.
  */
 
-package com.grab.grazel.migrate.kotlin
+package com.grab.grazel.migrate.dependencies
 
 import com.grab.grazel.bazel.starlark.BazelDependency
 
-data class KotlinProjectData(
-    val name: String,
-    val srcs: List<String>,
-    val res: List<String>,
-    val deps: List<BazelDependency>,
-    val tags: List<String>
-)
+fun List<BazelDependency>.calculateDirectDependencyTags(self: String): List<String> =
+    filterIsInstance<BazelDependency.ProjectDependency>()
+        .map { "@direct${it}" }
+        .toMutableList()
+        .also {
+            it.add("@self//$self")
+        }
