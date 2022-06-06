@@ -57,10 +57,6 @@ class DefaultKeyStoreExtractor @Inject constructor() : KeyStoreExtractor {
                     statements {
                         filegroup(name = targetName, srcs = listOf(storeFile.name))
                     }.writeToFile(keystoreBuildBazel)
-                    // Format it
-                    rootProject.exec {
-                        commandLine = listOf("buildifier", keystoreBuildBazel.absolutePath)
-                    }
                     return "//${rootProject.relativePath(keystoreDir)}:$targetName"
                 }
             }

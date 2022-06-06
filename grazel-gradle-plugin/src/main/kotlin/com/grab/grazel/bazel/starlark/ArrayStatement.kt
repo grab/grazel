@@ -24,15 +24,16 @@ open class ArrayStatement(open vararg val elements: Assignee) : Assignee {
         for (element in elements) {
             indent(level + 1, writer)
             element.write(level + 1, writer)
-            writer.write(", \n")
+            writer.write(",\n")
         }
-        indent(level, writer)
+        indent(level + 1, writer)
         writer.print("]")
     }
 }
 
 fun array(vararg elements: Assignee) = ArrayStatement(*elements)
 
-fun array(vararg elements: String) = ArrayStatement(*elements.map { StringStatement(it) }.toTypedArray())
+fun array(vararg elements: String) =
+    ArrayStatement(*elements.map { StringStatement(it) }.toTypedArray())
 
 fun array(list: Collection<String>): ArrayStatement = array(*list.toTypedArray())
