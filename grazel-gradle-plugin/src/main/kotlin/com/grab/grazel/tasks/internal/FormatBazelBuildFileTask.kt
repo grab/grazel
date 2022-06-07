@@ -16,6 +16,7 @@
 
 package com.grab.grazel.tasks.internal
 
+import com.grab.grazel.util.BUILDIFIER
 import com.grab.grazel.util.BUILD_BAZEL
 import com.grab.grazel.util.WORKSPACE
 import org.gradle.api.DefaultTask
@@ -68,7 +69,10 @@ abstract class FormatBazelFileTask : DefaultTask() {
 
         private fun Project.register(
             taskName: String,
-            buildifierScriptProvider: Provider<RegularFile>,
+            buildifierScriptProvider: Provider<RegularFile> =
+                objects.fileProperty().convention(
+                    rootProject.layout.buildDirectory.file(BUILDIFIER)
+                ),
             configureAction: FormatBazelFileTask.() -> Unit
         ): TaskProvider<out Task> {
             return tasks.register<FormatBazelFileTask>(name = taskName).apply {
@@ -120,7 +124,6 @@ abstract class FormatBazelFileTask : DefaultTask() {
                 // Aggregating task to depend on above
                 return rootProject.register(
                     taskName = FORMAT_BAZEL_FILE_TASK,
-                    buildifierScriptProvider = buildifierScriptProvider,
                 ) {
                     description = TASK_DESCRIPTION
                     dependsOn(formatWorkspace, formatBuildBazel)

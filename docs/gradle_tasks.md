@@ -32,7 +32,7 @@ appropriate `buildifier` binary that is used for formatting the bazel scripts.
 ### formatBazelScripts
 
 Depends on `generateBazelScripts` and responsible for formatting the generated file
-with `buildifier`. `formatBuildBazel` and `formatWorkSpace` depends on `generateRootBazelScripts` to
+with `buildifier`. `formatBuildBazel` and `formatWorkSpace` depends on `generateRootBazelScripts` and the buildifier output from `generateBuildifierScript` to
 format root project's Bazel scripts.
 
 ### postScriptGenerateTask

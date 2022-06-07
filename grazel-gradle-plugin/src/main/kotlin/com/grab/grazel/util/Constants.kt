@@ -29,3 +29,6 @@ internal const val BAZEL_CLEAN_TASK_NAME = "bazelClean"
 internal const val WORKSPACE = "WORKSPACE"
 internal const val BUILD_BAZEL = "BUILD.bazel"
 internal const val BUILD_BAZEL_IGNORE = "BUILD.bazelignore"
+
+// Buildifier FILE NAME
+internal const val BUILDIFIER = "buildifier"

@@ -18,6 +18,7 @@ package com.grab.grazel.tasks.internal
 
 import com.grab.grazel.di.qualifiers.RootProject
 import com.grab.grazel.hybrid.bazelCommand
+import com.grab.grazel.util.BUILDIFIER
 import org.gradle.api.DefaultTask
 import org.gradle.api.Project
 import org.gradle.api.file.RegularFileProperty
@@ -48,7 +49,6 @@ abstract class GenerateBuildifierScriptTask : DefaultTask() {
 
     companion object {
         private const val TASK_NAME = "generateBuildifierScript"
-        private const val SCRIPT_NAME = "buildifier"
 
         fun register(
             @RootProject project: Project,
@@ -58,7 +58,7 @@ abstract class GenerateBuildifierScriptTask : DefaultTask() {
         ) {
             description = "Generates buildifier executable script"
             group = GRAZEL_TASK_GROUP
-            buildifierScript.set(project.layout.buildDirectory.file(SCRIPT_NAME))
+            buildifierScript.set(project.layout.buildDirectory.file(BUILDIFIER))
 
             configureAction(this)
         }
