@@ -21,6 +21,9 @@ import com.grab.grazel.util.WORKSPACE
 import org.gradle.api.DefaultTask
 import org.gradle.api.Project
 import org.gradle.api.Task
+import org.gradle.api.file.RegularFile
+import org.gradle.api.file.RegularFileProperty
+import org.gradle.api.provider.Provider
 import org.gradle.api.tasks.InputFile
 import org.gradle.api.tasks.OutputFile
 import org.gradle.api.tasks.TaskAction
@@ -39,8 +42,8 @@ abstract class FormatBazelFileTask : DefaultTask() {
     @get:OutputFile
     var bazelFile: File = File(project.projectDir, BUILD_BAZEL)
 
-    @InputFile
-    val buildifierScript: File = File(project.rootProject.buildDir, "buildifier")
+    @get:InputFile
+    abstract val buildifierScript: RegularFileProperty
 
     init {
         outputs.upToDateWhen { false } // This task is supposed to run always until we figure out up-to-date checks
@@ -53,7 +56,7 @@ abstract class FormatBazelFileTask : DefaultTask() {
         if (bazelFile.exists()) {
             execOperations.exec {
                 commandLine = listOf(
-                    buildifierScript.path,
+                    buildifierScript.get().asFile.absolutePath,
                     bazelFile.absolutePath
                 )
             }
@@ -65,11 +68,13 @@ abstract class FormatBazelFileTask : DefaultTask() {
 
         private fun Project.register(
             taskName: String,
+            buildifierScriptProvider: Provider<RegularFile>,
             configureAction: FormatBazelFileTask.() -> Unit
         ): TaskProvider<out Task> {
             return tasks.register<FormatBazelFileTask>(name = taskName).apply {
                 configure {
                     group = GRAZEL_TASK_GROUP
+                    buildifierScript.set(buildifierScriptProvider)
                     configureAction(this)
                 }
             }
@@ -88,30 +93,43 @@ abstract class FormatBazelFileTask : DefaultTask() {
          */
         fun register(
             project: Project,
+            buildifierScriptProvider: Provider<RegularFile>,
             configureAction: Task.() -> Unit
         ): TaskProvider<out Task> {
             val rootProject = project.rootProject
             if (project == rootProject) {
                 // Format work space
-                val formatWorkspace = rootProject.register(FORMAT_WORK_SPACE_FILE_TASK) {
+                val formatWorkspace = rootProject.register(
+                    taskName = FORMAT_WORK_SPACE_FILE_TASK,
+                    buildifierScriptProvider = buildifierScriptProvider,
+                ) {
                     bazelFile = File(rootProject.projectDir, WORKSPACE)
                     description = "Format $WORKSPACE file"
 
                     configureAction(this)
                 }
                 // Format build.bazel
-                val formatBuildBazel = rootProject.register(FORMAT_BUILD_BAZEL_FILE_TASK) {
+                val formatBuildBazel = rootProject.register(
+                    taskName = FORMAT_BUILD_BAZEL_FILE_TASK,
+                    buildifierScriptProvider = buildifierScriptProvider,
+                ) {
                     description = "Format $BUILD_BAZEL file"
 
                     configureAction(this)
                 }
                 // Aggregating task to depend on above
-                return rootProject.register(FORMAT_BAZEL_FILE_TASK) {
+                return rootProject.register(
+                    taskName = FORMAT_BAZEL_FILE_TASK,
+                    buildifierScriptProvider = buildifierScriptProvider,
+                ) {
                     description = TASK_DESCRIPTION
                     dependsOn(formatWorkspace, formatBuildBazel)
                 }
             } else {
-                return project.register(FORMAT_BAZEL_FILE_TASK) {
+                return project.register(
+                    taskName = FORMAT_BAZEL_FILE_TASK,
+                    buildifierScriptProvider = buildifierScriptProvider,
+                ) {
                     description = TASK_DESCRIPTION
                     configureAction(this)
                 }

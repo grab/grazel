@@ -19,6 +19,7 @@ local.properties
 .idea/.gitignore
 .idea/rules_kotlin.iml
 .idea/runConfigurations.xml
+.idea/.name
 .DS_Store
 /build
 /captures
