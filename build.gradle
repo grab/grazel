@@ -91,6 +91,7 @@ grazel {
         }
         features {
             dataBinding = true
+            dataBindingMetaData = true
         }
         ndkApiLevel = 30
     }

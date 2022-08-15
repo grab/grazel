@@ -30,6 +30,7 @@ import com.grab.grazel.gradle.GradleProjectInfo
 import com.grab.grazel.gradle.MigrationChecker
 import com.grab.grazel.gradle.MigrationCriteriaModule
 import com.grab.grazel.gradle.RepositoryDataSource
+import com.grab.grazel.gradle.dependencies.DependenciesDataSource
 import com.grab.grazel.gradle.dependencies.DependenciesGraphsBuilder
 import com.grab.grazel.gradle.dependencies.DependenciesModule
 import com.grab.grazel.gradle.dependencies.DependencyGraphs
@@ -72,6 +73,7 @@ internal interface GrazelComponent {
         fun create(@BindsInstance @RootProject rootProject: Project): GrazelComponent
     }
 
+    fun extension(): GrazelExtension
     fun gradleProjectInfo(): GradleProjectInfo
     fun migrationChecker(): Lazy<MigrationChecker>
     fun progressLogger(): Lazy<ProgressLogger>
@@ -79,6 +81,7 @@ internal interface GrazelComponent {
     fun workspaceBuilderFactory(): Lazy<WorkspaceBuilder.Factory>
     fun rootBazelFileBuilder(): Lazy<RootBazelFileBuilder>
     fun artifactsPinner(): Lazy<ArtifactsPinner>
+    fun dependenciesDataSource(): Lazy<DependenciesDataSource>
 }
 
 @Module(

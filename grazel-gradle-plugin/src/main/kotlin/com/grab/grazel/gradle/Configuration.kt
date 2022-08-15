@@ -34,7 +34,6 @@ internal fun GrazelExtension.configurationScopes(): Array<ConfigurationScope> {
     }
 }
 
-
 internal interface ConfigurationDataSource {
     /**
      * Return a sequence of the configurations which are filtered out by the ignore flavors & build variants

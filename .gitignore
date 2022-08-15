@@ -59,6 +59,7 @@ _sandbox
 
 # Bazel
 bazel-*
+databinding_info.bazelrc
 
 local.bazelrc
 /.idea/libraries-with-intellij-classes.xml

@@ -48,6 +48,7 @@ internal class TaskManager @Inject constructor(
      *
      * * Root Scripts generation <-- Project level generation
      * * Root Scripts generation <-- Buildifier Script generation
+     * * Root Scripts generation <-- Android data binding metadata generation (if enabled)
      * * Project level generation <-- Project level formatting
      * * Project level generation <-- Post script generate task
      * * Buildifier Script generation <-- Root formatting
@@ -65,6 +66,11 @@ internal class TaskManager @Inject constructor(
             rootProject,
             grazelComponent
         )
+
+        val dataBindingMetaDataTask = AndroidDatabindingMetaDataTask
+            .register(rootProject, grazelComponent) {
+                dependsOn(rootGenerateBazelScriptsTasks)
+            }
 
         val generateBuildifierScriptTask = GenerateBuildifierScriptTask.register(
             rootProject
@@ -109,6 +115,9 @@ internal class TaskManager @Inject constructor(
 
         val migrateTask = migrateToBazelTask().apply {
             dependsOn(formatBazelFilesTask, postScriptGenerateTask)
+            if (grazelComponent.extension().android.features.dataBindingMetaData) {
+                dependsOn(dataBindingMetaDataTask)
+            }
         }
 
         bazelBuildAllTask().dependsOn(migrateTask)

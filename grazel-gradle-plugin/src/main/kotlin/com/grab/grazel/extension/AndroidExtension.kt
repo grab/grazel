@@ -64,9 +64,26 @@ interface AndroidFeatures {
      * Default `false`
      */
     var dataBinding: Boolean
+
+    /**
+     * Generate a `.bazelrc` compatible metadata file containing metadata about which maven dependencies
+     * use databinding.
+     * Example:
+     * ```
+     * build --android_databinding_package_info=com_grab_grazel=com.grab.grazel
+     * ```
+     *
+     * Needed due to https://github.com/bazelbuild/bazel/issues/13640
+     *
+     * Note: This requires a patch on bazel to ensure the flag is read correctly
+     */
+    var dataBindingMetaData: Boolean
 }
 
-data class DefaultAndroidFeatures(override var dataBinding: Boolean = false) : AndroidFeatures
+data class DefaultAndroidFeatures(
+    override var dataBinding: Boolean = false,
+    override var dataBindingMetaData: Boolean = false
+) : AndroidFeatures
 
 interface VariantFilter {
     fun setIgnore(ignore: Boolean)

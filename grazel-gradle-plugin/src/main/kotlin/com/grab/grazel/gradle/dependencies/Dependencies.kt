@@ -36,6 +36,7 @@ import org.gradle.api.artifacts.ProjectDependency
 import org.gradle.api.artifacts.ResolvedDependency
 import org.gradle.api.internal.artifacts.DefaultResolvedDependency
 import org.gradle.api.internal.artifacts.result.ResolvedComponentResultInternal
+import java.io.File
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -122,7 +123,6 @@ internal interface DependenciesDataSource {
         vararg scopes: ConfigurationScope
     ): Sequence<Pair<Configuration, ProjectDependency>>
 
-
     /**
      * Returns the resolved artifacts dependencies for the given projects in the fully qualified Maven format.
      *
@@ -149,6 +149,18 @@ internal interface DependenciesDataSource {
      * @param project the project to check against.
      */
     fun hasIgnoredArtifacts(project: Project): Boolean
+
+    /**
+     * Returns map of [MavenArtifact] and the corresponding artifact file (aar or jar)
+     *
+     * @param rootProject The root project instance
+     * @param fileExtension The file extension to look for. Use this to reduce the overall number of
+     * values returned
+     */
+    fun dependencyArtifactMap(
+        rootProject: Project,
+        fileExtension: String? = null
+    ): Map<MavenArtifact, File>
 }
 
 @Singleton
@@ -321,6 +333,36 @@ internal class DefaultDependenciesDataSource @Inject constructor(
         .filter { it.second is ProjectDependency }
         .map { it.first to it.second as ProjectDependency }
 
+    override fun dependencyArtifactMap(
+        rootProject: Project,
+        fileExtension: String?
+    ): Map<MavenArtifact, File> {
+        val results = mutableMapOf<MavenArtifact, File>()
+
+        fun add(defaultResolvedDependency: DefaultResolvedDependency) {
+            defaultResolvedDependency.moduleArtifacts
+                .firstOrNull()
+                ?.file
+                ?.let { file ->
+                    if (fileExtension == null || file.extension == fileExtension) {
+                        results.getOrPut(defaultResolvedDependency.toMavenArtifact()) { file }
+                    }
+                }
+        }
+        rootProject.subprojects
+            .flatMap { it.firstLevelModuleDependencies() }
+            .onEach(::add)
+            // It would be easier to just flatMapTo(set) but we are dealing with graphs and we need
+            // to avoid unnecessary recalculation
+            .forEach { defaultResolvedDependency ->
+                defaultResolvedDependency
+                    .outgoingEdges
+                    .filterIsInstance<DefaultResolvedDependency>()
+                    .forEach(::add)
+            }
+        return results
+    }
+
     /**
      * Resolves all the external dependencies for the given project. By resolving all the dependencies, we get accurate
      * dependency information that respects resolution strategy, substitution and any other modification by Gradle apart
@@ -349,7 +391,7 @@ internal class DefaultDependenciesDataSource @Inject constructor(
      */
     private fun Project.firstLevelModuleDependencies(): Sequence<DefaultResolvedDependency> {
         return resolvableConfigurations()
-            .map(Configuration::getResolvedConfiguration)
+            .map { it.resolvedConfiguration.lenientConfiguration }
             .flatMap {
                 try {
                     it.firstLevelModuleDependencies.asSequence()
@@ -415,6 +457,12 @@ internal class DefaultDependenciesDataSource @Inject constructor(
                 .toSet()
         )
     }
+
+    private fun DefaultResolvedDependency.toMavenArtifact() = MavenArtifact(
+        group = moduleGroup,
+        name = moduleName,
+        version = moduleVersion,
+    )
 }
 
 internal fun MavenArtifact.toMavenInstallArtifact(): MavenInstallArtifact {
