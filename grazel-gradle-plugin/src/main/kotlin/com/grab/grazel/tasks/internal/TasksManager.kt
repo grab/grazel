@@ -115,8 +115,13 @@ internal class TaskManager @Inject constructor(
 
         val migrateTask = migrateToBazelTask().apply {
             dependsOn(formatBazelFilesTask, postScriptGenerateTask)
-            if (grazelComponent.extension().android.features.dataBindingMetaData) {
-                dependsOn(dataBindingMetaDataTask)
+            configure {
+                // Inside a configure block since GrazelExtension won't be configured yet if
+                // we write it as part of plugin application and all extension value would
+                // have default value instead of user configured value.
+                if (grazelComponent.extension().android.features.dataBindingMetaData) {
+                    dependsOn(dataBindingMetaDataTask)
+                }
             }
         }
 

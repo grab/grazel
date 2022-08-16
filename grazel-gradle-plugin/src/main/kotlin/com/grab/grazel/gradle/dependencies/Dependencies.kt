@@ -423,7 +423,10 @@ internal class DefaultDependenciesDataSource @Inject constructor(
             version = version,
             excludeRules = excludeRules
                 .asSequence()
-                .map { ExcludeRule(it.group, it.module) }
+                .map {
+                    @Suppress("USELESS_ELVIS") // Gradle lying, module can be null
+                    ExcludeRule(it.group, it.module ?: "")
+                }
                 .filterNot { it.artifact.isNullOrBlank() }
                 .filterNot { excludeArtifactsDenyList.contains(it.toString()) }
                 .toSet()
