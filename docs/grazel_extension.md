@@ -49,6 +49,10 @@ especially for Kotlin. Setting `dataBinding` to `true` will migrate the project 
 Grab's [custom macro](https://github.com/grab/grab-bazel-common/tree/master/tools/databinding).
 See [databinding](databinding.md) for more info.
 
+`dataBindingMetaData` to `true` will generated additional `databinding_info.bazelrc` file in root
+project folder that can be later used by bazel for optimization (Grazel does not ship bazel side
+patches)
+
 ## Dependencies
 
 Grazel uses Gradle's [dependencies](migration_capabilities.md#dependencies) resolution data to

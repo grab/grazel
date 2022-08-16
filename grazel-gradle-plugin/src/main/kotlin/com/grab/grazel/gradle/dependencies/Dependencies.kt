@@ -25,9 +25,6 @@ import com.grab.grazel.gradle.ConfigurationScope
 import com.grab.grazel.gradle.RepositoryDataSource
 import com.grab.grazel.gradle.configurationScopes
 import com.grab.grazel.util.GradleProvider
-import dagger.Binds
-import dagger.Module
-import dagger.Provides
 import org.gradle.api.Project
 import org.gradle.api.artifacts.Configuration
 import org.gradle.api.artifacts.Dependency
@@ -39,27 +36,6 @@ import org.gradle.api.internal.artifacts.result.ResolvedComponentResultInternal
 import java.io.File
 import javax.inject.Inject
 import javax.inject.Singleton
-
-@Module(includes = [DependenciesBinder::class])
-internal object DependenciesModule {
-
-    @Provides
-    @Singleton
-    fun GrazelExtension.provideArtifactsConfig(): ArtifactsConfig = toArtifactsConfig()
-
-    @Singleton
-    @Provides
-    fun dependencyResolutionCacheService(
-        @RootProject rootProject: Project
-    ): GradleProvider<@JvmSuppressWildcards DefaultDependencyResolutionService> =
-        DefaultDependencyResolutionService.register(rootProject)
-}
-
-@Module
-internal interface DependenciesBinder {
-    @Binds
-    fun DefaultDependenciesDataSource.dependenciesDataSource(): DependenciesDataSource
-}
 
 /**
  * TODO To remove this once test rules support is added
@@ -101,11 +77,6 @@ internal data class MavenArtifact(
 internal data class ArtifactsConfig(
     val excludedList: List<String> = emptyList(),
     val ignoredList: List<String> = emptyList()
-)
-
-private fun GrazelExtension.toArtifactsConfig() = ArtifactsConfig(
-    excludedList = rules.mavenInstall.excludeArtifacts.get(),
-    ignoredList = dependencies.ignoreArtifacts.get()
 )
 
 internal interface DependenciesDataSource {
@@ -356,7 +327,7 @@ internal class DefaultDependenciesDataSource @Inject constructor(
             // to avoid unnecessary recalculation
             .forEach { defaultResolvedDependency ->
                 defaultResolvedDependency
-                    .outgoingEdges
+                    .outgoingEdges // will get all transitives of this artifact
                     .filterIsInstance<DefaultResolvedDependency>()
                     .forEach(::add)
             }
@@ -451,7 +422,7 @@ internal class DefaultDependenciesDataSource @Inject constructor(
             version = version,
             excludeRules = excludeRules
                 .asSequence()
-                .map { ExcludeRule(it.group, it.module ?: "") }
+                .map { ExcludeRule(it.group, it.module) }
                 .filterNot { it.artifact.isNullOrBlank() }
                 .filterNot { excludeArtifactsDenyList.contains(it.toString()) }
                 .toSet()

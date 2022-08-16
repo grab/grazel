@@ -19,6 +19,7 @@ package com.grab.grazel.tasks.internal
 import com.grab.grazel.di.GrazelComponent
 import com.grab.grazel.di.qualifiers.RootProject
 import com.grab.grazel.gradle.dependencies.DependenciesDataSource
+import com.grab.grazel.util.ansiGreen
 import dagger.Lazy
 import org.gradle.api.DefaultTask
 import org.gradle.api.Project
@@ -56,15 +57,19 @@ constructor(
                 }
                 mavenId to databindingPackage
             }.filter { it.second != null }
+            .sortedBy { it.first }
+            .distinctBy { it.first }
             .joinToString(separator = ",") { "${it.first}=${it.second}" }
 
-        project.rootProject.file("databinding_info.bazelrc")
-            .writeText(
+        project.rootProject.file("databinding_info.bazelrc").apply {
+            writeText(
                 """
             |# Generated file. DO NOT MODIFY.
             |build --android_databinding_package_info=$databindingPackageInfo
             """.trimMargin()
             )
+            logger.quiet("Generated $name".ansiGreen)
+        }
     }
 
     companion object {
