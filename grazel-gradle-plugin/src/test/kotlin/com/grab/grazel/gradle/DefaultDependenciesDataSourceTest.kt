@@ -276,6 +276,37 @@ class DefaultDependenciesDataSourceTest : GrazelPluginTest() {
         }
     }
 
+    @Test
+    fun `assert dependencyArtifactMap returns artifact and corresponding artifact file`() {
+        setUpDepsWithResolutionStrategy()
+        dependenciesDataSource = DefaultDependenciesDataSource(
+            rootProject = rootProject,
+            configurationDataSource = configurationDataSource,
+            artifactsConfig = ArtifactsConfig(excludedList = listOf()),
+            repositoryDataSource = repositoryDataSource,
+            dependencyResolutionService = DefaultDependencyResolutionService.register(rootProject),
+            grazelExtension = GrazelExtension(rootProject)
+        )
+        val dependencyArtifactMap = dependenciesDataSource.dependencyArtifactMap(
+            rootProject,
+            "aar"
+        )
+        // assert only valid files are returned
+        kotlin.test.assertTrue("Only valid files are returned") {
+            dependencyArtifactMap.values.all {
+                it.extension == "aar" && it.exists()
+            }
+        }
+        // assert valid maven coordinates
+        kotlin.test.assertTrue("Valid maven artifact ids are returned") {
+            listOf(
+                // We expect force version since dependency resolution happens
+                APP_COMPAT.format(APP_COMPAT_FORCE_VERSION),
+                CONSTRAINT_LAYOUT.format(CL_FORCE_VERSION)
+            ).all { dep -> dependencyArtifactMap.keys.map { it.toString() }.contains(dep) }
+        }
+    }
+
 
     private fun setUpFlavorModulesDep() {
         // sub -> flavor1

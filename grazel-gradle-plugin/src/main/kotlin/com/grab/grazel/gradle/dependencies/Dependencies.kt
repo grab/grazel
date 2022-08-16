@@ -122,7 +122,8 @@ internal interface DependenciesDataSource {
     fun hasIgnoredArtifacts(project: Project): Boolean
 
     /**
-     * Returns map of [MavenArtifact] and the corresponding artifact file (aar or jar)
+     * Returns map of [MavenArtifact] and the corresponding artifact file (aar or jar). Guarantees the
+     * returned file is downloaded and available on disk
      *
      * @param rootProject The root project instance
      * @param fileExtension The file extension to look for. Use this to reduce the overall number of
