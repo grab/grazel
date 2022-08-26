@@ -227,6 +227,7 @@ fun StatementsBuilder.ktLibrary(
 fun StatementsBuilder.grabKtJvmTest(
     name: String,
     srcs: List<String> = emptyList(),
+    additionalSrcSets: List<String> = emptyList(),
     srcsGlob: List<String> = emptyList(),
     visibility: Visibility = Public,
     associates: List<BazelDependency> = emptyList(),
@@ -243,6 +244,9 @@ fun StatementsBuilder.grabKtJvmTest(
         }
         srcsGlob.notEmpty {
             "srcs" eq glob(srcsGlob.map(String::quote))
+        }
+        additionalSrcSets.notEmpty {
+            "additional_src_sets" eq additionalSrcSets.map(String::quote)
         }
         "visibility" eq array(visibility.rule.quote())
         deps.notEmpty {

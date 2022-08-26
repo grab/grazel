@@ -65,6 +65,7 @@ internal class DefaultAndroidUnitTestDataExtractor @Inject constructor(
             .filterIsInstance<AndroidSourceSet>()
 
         val srcs = project.unitTestSources(migratableSourceSets).toList()
+        val additionalSrcSets = project.unitTestNonDefaultSourceSets(migratableSourceSets).toList()
 
         val resources = project.unitTestResources(migratableSourceSets).toList()
 
@@ -83,6 +84,7 @@ internal class DefaultAndroidUnitTestDataExtractor @Inject constructor(
         return AndroidUnitTestData(
             name = name,
             srcs = srcs,
+            additionalSrcSets = additionalSrcSets,
             deps = deps,
             tags = tags,
             customPackage = extractPackageName(project),
@@ -98,6 +100,14 @@ internal class DefaultAndroidUnitTestDataExtractor @Inject constructor(
         val dirs = sourceSets.flatMap { it.java.srcDirs.asSequence() }
         val dirsKotlin = dirs.map { File(it.path.replace("/java", "/kotlin")) }
         return filterSourceSetPaths(dirs + dirsKotlin, sourceSetType.patterns)
+    }
+
+    private fun Project.unitTestNonDefaultSourceSets(
+        sourceSets: Sequence<AndroidSourceSet>,
+    ): Sequence<String> {
+        val dirs = sourceSets.flatMap { it.java.srcDirs.asSequence() }
+        val dirsKotlin = dirs.map { File(it.path.replace("/java", "/kotlin")) }
+        return filterNonDefaultSourceSetDirs(dirs + dirsKotlin)
     }
 
     private fun Project.unitTestResources(

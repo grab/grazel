@@ -26,6 +26,7 @@ import com.grab.grazel.gradle.dependencies.directProjectDependencies
 import com.grab.grazel.migrate.android.FORMAT_UNIT_TEST_NAME
 import com.grab.grazel.migrate.android.SourceSetType
 import com.grab.grazel.migrate.android.collectMavenDeps
+import com.grab.grazel.migrate.android.filterNonDefaultSourceSetDirs
 import com.grab.grazel.migrate.android.filterSourceSetPaths
 import com.grab.grazel.migrate.common.calculateTestAssociate
 import com.grab.grazel.migrate.dependencies.calculateDirectDependencyTags
@@ -59,6 +60,7 @@ internal class DefaultKotlinUnitTestDataExtractor @Inject constructor(
         val sourceSets = project.the<KotlinJvmProjectExtension>().sourceSets
 
         val srcs = project.kotlinTestSources(sourceSets).toList()
+        val additionalSrcSets = project.kotlinTestNonDefaultSourceSets(sourceSets).toList()
 
         val projectDependency = BazelDependency.ProjectDependency(project)
         val associate = calculateTestAssociate(project)
@@ -84,6 +86,7 @@ internal class DefaultKotlinUnitTestDataExtractor @Inject constructor(
         return UnitTestData(
             name = name,
             srcs = srcs,
+            additionalSrcSets = additionalSrcSets,
             deps = deps,
             associates = buildList { associate?.let(::add) },
             hasAndroidJarDep = project.hasAndroidJarDep(),
@@ -100,6 +103,14 @@ internal class DefaultKotlinUnitTestDataExtractor @Inject constructor(
             .flatMap { it.kotlin.srcDirs.asSequence() }
         return filterSourceSetPaths(dirs, SourceSetType.JAVA_KOTLIN.patterns)
     }
+
+    private fun Project.kotlinTestNonDefaultSourceSets(
+        sourceSets: NamedDomainObjectContainer<KotlinSourceSet>,
+    ): Sequence<String> = sourceSets
+        .asSequence()
+        .filter { it.name.toLowerCase().contains("test") }
+        .flatMap { it.kotlin.srcDirs.asSequence() }
+        .let(::filterNonDefaultSourceSetDirs)
 }
 
 internal fun Project.hasAndroidJarDep(): Boolean {

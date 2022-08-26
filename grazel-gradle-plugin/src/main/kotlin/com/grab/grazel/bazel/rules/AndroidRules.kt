@@ -254,6 +254,7 @@ fun StatementsBuilder.grabAndroidLocalTest(
     name: String,
     customPackage: String,
     srcs: List<String> = emptyList(),
+    additionalSrcSets: List<String> = emptyList(),
     srcsGlob: List<String> = emptyList(),
     visibility: Visibility = Visibility.Public,
     deps: List<BazelDependency> = emptyList(),
@@ -269,6 +270,9 @@ fun StatementsBuilder.grabAndroidLocalTest(
         "custom_package" eq customPackage.quote()
         srcs.notEmpty {
             "srcs" eq srcs.map(String::quote)
+        }
+        additionalSrcSets.notEmpty {
+            "additional_src_sets" eq additionalSrcSets.map(String::quote)
         }
         srcsGlob.notEmpty {
             "srcs" eq glob(srcsGlob.map(String::quote))

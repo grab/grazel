@@ -7,6 +7,7 @@ import com.grab.grazel.migrate.android.AndroidUnitTestTarget
 data class UnitTestData(
     val name: String,
     val srcs: List<String>,
+    val additionalSrcSets: List<String>,
     val deps: List<BazelDependency>,
     val tags: List<String>,
     val associates: List<BazelDependency>,
@@ -18,6 +19,7 @@ internal fun UnitTestData.toUnitTestTarget(): BazelBuildTarget =
         AndroidUnitTestTarget(
             name = name,
             srcs = srcs,
+            additionalSrcSets = additionalSrcSets,
             deps = deps,
             associates = associates,
             customPackage = "",
@@ -27,6 +29,7 @@ internal fun UnitTestData.toUnitTestTarget(): BazelBuildTarget =
         UnitTestTarget(
             name = name,
             srcs = srcs,
+            additionalSrcSets = additionalSrcSets,
             deps = deps,
             associates = associates,
             tags = tags,

@@ -28,13 +28,15 @@ internal data class UnitTestTarget(
     override val srcs: List<String> = emptyList(),
     override val visibility: Visibility = Visibility.Public,
     val associates: List<BazelDependency> = emptyList(),
-    val tags: List<String> = emptyList()
+    val tags: List<String> = emptyList(),
+    val additionalSrcSets: List<String> = emptyList(),
 ) : BazelBuildTarget {
     override fun statements() = statements {
         if (srcs.isEmpty()) return@statements
         grabKtJvmTest(
             name = name,
             srcsGlob = srcs,
+            additionalSrcSets = additionalSrcSets,
             deps = deps,
             visibility = visibility,
             associates = associates,

@@ -101,10 +101,11 @@ grazel {
     rules {
         test {
             enableTestMigration = true
+            detectSourceSets = true
         }
         bazelCommon {
             gitRepository {
-                commit = "1d48088efeb6de455350192e10437abc2c2e0f7a"
+                commit = "d21b8d8a0aba5424cd3f42525b488de14dc47518"
                 remote = "https://github.com/grab/grab-bazel-common.git"
             }
             toolchains {

@@ -44,23 +44,9 @@ data class RobolectricExtension(
     }
 }
 
-
-class AndroidTestExtension {
-    // TODO
-}
-
 data class TestExtension(
     var enableTestMigration: Boolean = false,
-    val androidTest: AndroidTestExtension = AndroidTestExtension(),
     var enabledTransitiveReduction: Boolean = false,
-) {
-//    fun androidTest(block: AndroidTestExtension.() -> Unit) {
-//        androidTest.block()
-//    }
-//
-//    fun androidTest(closure: Closure<*>) {
-//        closure.delegate = androidTest
-//        closure.call()
-//    }
-}
+    var detectSourceSets: Boolean = false,
+)
 

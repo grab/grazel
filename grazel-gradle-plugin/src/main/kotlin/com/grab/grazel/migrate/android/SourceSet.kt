@@ -24,6 +24,9 @@ private const val JAVA_PATTERN = "**/*.java"
 private const val KOTLIN_PATTERN = "**/*.kt"
 private const val ALL_PATTERN = "**"
 
+private const val JAVA_DEFAULT_TEST_DIR = "src/test/java"
+private const val KOTLIN_DEFAULT_TEST_DIR = "src/test/kotlin"
+
 enum class SourceSetType(val patterns: Sequence<String>) {
     JAVA(patterns = sequenceOf(JAVA_PATTERN)),
     JAVA_KOTLIN(patterns = sequenceOf(JAVA_PATTERN, KOTLIN_PATTERN)),
@@ -39,7 +42,7 @@ enum class SourceSetType(val patterns: Sequence<String>) {
  */
 internal fun Project.filterSourceSetPaths(
     dirs: Sequence<File>,
-    patterns: Sequence<String>
+    patterns: Sequence<String>,
 ): Sequence<String> = dirs.filter(File::exists)
     .map(::relativePath)
     .flatMap { dir ->
@@ -59,3 +62,11 @@ internal fun Project.filterSourceSetPaths(
             }
         }
     }.distinct()
+
+internal fun Project.filterNonDefaultSourceSetDirs(
+    dirs: Sequence<File>,
+): Sequence<String> = dirs.filter(File::exists)
+    .map(::relativePath)
+    .filter { dir ->
+        dir != JAVA_DEFAULT_TEST_DIR && dir != KOTLIN_DEFAULT_TEST_DIR
+    }
