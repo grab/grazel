@@ -22,6 +22,7 @@ import org.gradle.api.file.CopySpec
 import org.gradle.api.file.DeleteSpec
 import org.gradle.api.file.FileTree
 import org.gradle.api.file.ProjectLayout
+import org.gradle.api.file.SyncSpec
 import org.gradle.api.initialization.dsl.ScriptHandler
 import org.gradle.api.invocation.Gradle
 import org.gradle.api.logging.Logger
@@ -523,7 +524,7 @@ class FakeProject(private val name: String) : Project {
         TODO("Not yet implemented")
     }
 
-    override fun sync(action: Action<in CopySpec>): WorkResult {
+    override fun sync(action: Action<in SyncSpec>): WorkResult {
         TODO("Not yet implemented")
     }
 

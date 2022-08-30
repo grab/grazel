@@ -80,7 +80,7 @@ maven_install(
         "androidx.databinding:viewbinding:7.1.2",
         "junit:junit:4.13.2",
         "org.jacoco:org.jacoco.ant:0.8.3",
-        "org.jetbrains.kotlin:kotlin-annotation-processing-gradle:1.6.10",
+        "org.jetbrains.kotlin:kotlin-annotation-processing-gradle:1.6.21",
         "org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.4.32",
         "org.jetbrains.kotlin:kotlin-stdlib:1.4.32",
     ],
@@ -115,6 +115,7 @@ maven_install(
         "https://repo1.maven.org/maven2",
     ],
     resolve_timeout = 1000,
+    version_conflict_policy = "pinned",
 )
 
 load("@maven//:defs.bzl", "pinned_maven_install")

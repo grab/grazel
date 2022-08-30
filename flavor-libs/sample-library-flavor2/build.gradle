@@ -18,5 +18,5 @@ apply plugin: "java-library"
 apply plugin: "kotlin"
 
 dependencies {
-    testImplementation "junit:junit:$jUnitVersion"
+    testImplementation libs.junit
 }

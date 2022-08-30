@@ -19,15 +19,15 @@ import org.gradle.api.internal.project.ProjectInternal
 buildscript {
     apply from: "../constants.gradle"
     dependencies {
-        classpath "io.github.gradle-nexus:publish-plugin:${nexusVersion}"
-        classpath "org.jetbrains.dokka:dokka-gradle-plugin:${dokkaVersion}"
+        classpath libs.nexus.gradle.publish.plugin
+        classpath libs.dokka.gradle.plugin
     }
 }
 
 plugins {
     id "java-gradle-plugin"
-    id "org.gradle.kotlin.kotlin-dsl" version "2.1.6"
-    id "com.gradle.plugin-publish" version "0.14.0"
+    alias(libs.plugins.kotlin.dsl)
+    alias(libs.plugins.gradle.publish)
     id "maven-publish"
     id "idea"
 }
@@ -76,22 +76,22 @@ gradlePlugin {
 
 dependencies {
     implementation platform("org.jetbrains.kotlin:kotlin-bom")
-    implementation "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlinVersion"
-    implementation "com.android.tools.build:gradle:$agpVersion"
+    implementation libs.kotlin.gradle.plugin
+    implementation libs.android.gradle.plugin
 
-    implementation "com.google.guava:guava:$guavaVersion"
-    implementation "com.jakewharton.picnic:picnic:$picnicVersion"
+    implementation libs.google.guava
+    implementation libs.picnic
 
-    implementation "com.google.dagger:dagger:$daggerVersion"
-    kapt "com.google.dagger:dagger-compiler:$daggerVersion"
+    implementation libs.google.dagger
+    kapt libs.google.dagger.compiler
 
     testImplementation "org.jetbrains.kotlin:kotlin-test"
     testImplementation "org.jetbrains.kotlin:kotlin-test-junit"
-    testImplementation "com.google.truth:truth:$truthVersion"
-    testImplementation "junit:junit:$jUnitVersion"
-    testImplementation "com.android.tools.build:gradle:$agpVersion"
+    testImplementation libs.google.truth
+    testImplementation libs.junit
+    testImplementation libs.android.gradle.plugin
     testImplementation gradleTestKit()
-    testImplementation "com.nhaarman:mockito-kotlin:1.6.0"
+    testImplementation libs.mockito.kotlin
 
     /**
      * In Gradle 6.7-rc-1 BuildEventsListenerRegistry service is not created in we need it in order

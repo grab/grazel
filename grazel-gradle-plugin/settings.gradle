@@ -24,3 +24,4 @@
  */
 
 rootProject.name = "grazel-gradle-plugin"
+apply from: "../dependency-catalog.gradle"

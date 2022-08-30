@@ -25,11 +25,11 @@ buildscript {
         gradlePluginPortal()
     }
     dependencies {
-        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlinVersion"
-        classpath "com.android.tools.build:gradle:$agpVersion"
+        classpath libs.kotlin.gradle.plugin
+        classpath libs.android.gradle.plugin
         classpath "com.grab:grazel:$versionName"
-        classpath "com.google.firebase:firebase-crashlytics-gradle:$fabricPluginVersion"
-        classpath "com.google.gms:google-services:$googleServicesPluginVersion"
+        classpath libs.google.firebase.crashlytics
+        classpath libs.google.mobile.services
     }
 }
 
@@ -75,7 +75,7 @@ allprojects {
 }
 
 tasks.named("wrapper") {
-    gradleVersion = "7.1.1"
+    gradleVersion = libs.versions.gradle.wrapper.get()
     distributionType = Wrapper.DistributionType.ALL
 }
 
@@ -138,6 +138,7 @@ grazel {
             overrideTargetLabels.putAll(
                 ["androidx.appcompat:appcompat": "@//third_party:androidx_appcompat_appcompat"]
             )
+            versionConflictPolicy = "pinned"
         }
         kotlin {
             httpArchiveRepository {

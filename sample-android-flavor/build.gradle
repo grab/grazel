@@ -50,8 +50,8 @@ dependencies {
     flavor1Implementation project(path: ':flavor-libs:sample-library-flavor1')
     flavor2Implementation project(path: ":flavor-libs:sample-library-flavor2")
 
-    implementation "androidx.appcompat:appcompat:1.3.1"
-    implementation "androidx.core:core:1.5.0"
+    implementation libs.androidx.appcompat
+    implementation libs.androidx.core
     implementation "androidx.constraintlayout:constraintlayout-core:1.0.1"
 
     implementation("androidx.constraintlayout:constraintlayout:2.1.1") {
@@ -61,11 +61,10 @@ dependencies {
         exclude group: "androidx.constraintlayout", module: "constraintlayout-core"
     }
 
-    implementation "androidx.databinding:databinding-common:$agpVersion"
-    implementation "androidx.databinding:databinding-runtime:$agpVersion"
+    implementation libs.databinding.common
+    implementation libs.databinding.runtime
 
-
-    testImplementation "junit:junit:$jUnitVersion"
-    androidTestImplementation "androidx.test.ext:junit:1.1.3"
-    androidTestImplementation "androidx.test.espresso:espresso-core:3.4.0"
+    testImplementation libs.junit
+    androidTestImplementation libs.androidx.test.junit
+    androidTestImplementation libs.androidx.test.espresso.core
 }
