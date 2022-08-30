@@ -141,4 +141,25 @@ class DefaultAndroidUnitTestDataExtractorTest : GrazelPluginTest() {
             contains("src/test/resources/**")
         }
     }
+
+    @Test
+    fun `assert additional source sets are extracted correctly`() {
+        val defaultTestSourceSets = listOf("src/test/java", "src/test/kotlin")
+        val additionalTestSourceSets = listOf("src/testDebug/java")
+
+        additionalTestSourceSets.map { sourceSet ->
+            File(subProjectDir, "$sourceSet/Test.kt")
+        }.forEach { file ->
+            file.parentFile.mkdirs()
+            file.createNewFile()
+        }
+
+        subProject.doEvaluate()
+        val androidUnitTestData = defaultAndroidUnitTestDataExtractor.extract(subProject)
+
+        Truth.assertThat(androidUnitTestData.additionalSrcSets).apply {
+            containsExactlyElementsIn(additionalTestSourceSets)
+            containsNoneIn(defaultTestSourceSets)
+        }
+    }
 }
