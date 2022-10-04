@@ -53,6 +53,9 @@ android {
             buildConfigField("String", "SOME_STRING", "\"Something\"")
             signingConfig signingConfigs.debug
         }
+        staging {
+            matchingFallbacks = ['debug', 'release']
+        }
     }
 
     flavorDimensions "service"
@@ -71,6 +74,9 @@ android {
         }
         release {
             res.srcDirs += "src/main/res-release"
+        }
+        staging{
+            res.srcDirs += "src/main/res-staging"
         }
     }
 

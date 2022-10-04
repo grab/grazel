@@ -16,7 +16,7 @@
 
 package com.grab.grazel.gradle.dependencies
 
-import org.junit.Assert.*
+import org.junit.Assert.assertEquals
 import org.junit.Test
 
 class BuildGraphTypeKtTest{

@@ -18,7 +18,6 @@ package com.grab.grazel.migrate.android
 
 import com.android.build.gradle.BaseExtension
 import com.android.build.gradle.api.AndroidSourceSet
-import com.android.build.gradle.api.BaseVariant
 import com.grab.grazel.GrazelExtension
 import com.grab.grazel.bazel.rules.ANDROIDX_GROUP
 import com.grab.grazel.bazel.rules.ANNOTATION_ARTIFACT
@@ -45,7 +44,7 @@ import javax.inject.Singleton
 internal interface AndroidLibraryDataExtractor {
     fun extract(
         project: Project,
-        variant: BaseVariant,
+        mergedVariant: MergedVariant,
         sourceSetType: SourceSetType = SourceSetType.JAVA
     ): AndroidLibraryData
 }
@@ -63,7 +62,7 @@ internal class DefaultAndroidLibraryDataExtractor @Inject constructor(
 
     override fun extract(
         project: Project,
-        variant: BaseVariant,
+        mergedVariant: MergedVariant,
         sourceSetType: SourceSetType
     ): AndroidLibraryData {
         if (project.isAndroid) {
@@ -71,27 +70,30 @@ internal class DefaultAndroidLibraryDataExtractor @Inject constructor(
             val deps = projectDependencyGraphs
                 .directDependencies(
                     project,
-                    BuildGraphType(ConfigurationScope.BUILD, variant)
+                    BuildGraphType(ConfigurationScope.BUILD, mergedVariant.variant)
                 ).map { dependent ->
-                    gradleDependencyToBazelDependency.map(project, dependent, variant)
+                    gradleDependencyToBazelDependency.map(project, dependent, mergedVariant)
                 } +
-                dependenciesDataSource.collectMavenDeps(project) +
+                dependenciesDataSource.collectMavenDeps(
+                    project,
+                    BuildGraphType(ConfigurationScope.BUILD, mergedVariant.variant)
+                ) +
                 project.kotlinParcelizeDeps()
 
-            return project.extract(variant, extension, sourceSetType, deps)
+            return project.extract(mergedVariant, extension, sourceSetType, deps)
         } else {
             throw IllegalArgumentException("${project.name} is not an Android project")
         }
     }
 
     private fun Project.extract(
-        variant: BaseVariant,
+        mergedVariant: MergedVariant,
         extension: BaseExtension,
         sourceSetType: SourceSetType = SourceSetType.JAVA,
         deps: List<BazelDependency>
     ): AndroidLibraryData {
         // Only consider source sets from migratable variants
-        val migratableSourceSets = variant.sourceSets
+        val migratableSourceSets = mergedVariant.variant.sourceSets
             .filterIsInstance<AndroidSourceSet>()
             .toList()
 
@@ -127,7 +129,7 @@ internal class DefaultAndroidLibraryDataExtractor @Inject constructor(
             manifestFile = manifestFile,
             packageName = packageName,
             hasDatabinding = project.hasDatabinding,
-            buildConfigData = extension.extractBuildConfig(this, variantDataSource),
+            buildConfigData = extension.extractBuildConfig(this, mergedVariant.variant),
             resValues = extension.extractResValue(),
             extraRes = extraRes,
             deps = deps,

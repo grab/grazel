@@ -17,8 +17,8 @@
 package com.grab.grazel.migrate.builder
 
 import com.grab.grazel.extension.TestExtension
-import com.grab.grazel.gradle.AndroidVariantDataSource
 import com.grab.grazel.gradle.ConfigurationScope
+import com.grab.grazel.gradle.dependencies.variantNameSuffix
 import com.grab.grazel.gradle.isAndroid
 import com.grab.grazel.gradle.isAndroidApplication
 import com.grab.grazel.gradle.isKotlin
@@ -28,6 +28,7 @@ import com.grab.grazel.migrate.android.AndroidLibraryData
 import com.grab.grazel.migrate.android.AndroidLibraryDataExtractor
 import com.grab.grazel.migrate.android.AndroidLibraryTarget
 import com.grab.grazel.migrate.android.AndroidUnitTestDataExtractor
+import com.grab.grazel.migrate.android.VariantsMerger
 import com.grab.grazel.migrate.android.toUnitTestTarget
 import dagger.Binds
 import dagger.Module
@@ -48,25 +49,24 @@ internal class AndroidLibTargetBuilder @Inject constructor(
     private val projectDataExtractor: AndroidLibraryDataExtractor,
     private val unitTestDataExtractor: AndroidUnitTestDataExtractor,
     private val testExtension: TestExtension,
-    private val androidVariantDataSource: AndroidVariantDataSource
+    private val variantsMerger: VariantsMerger
 ) : TargetBuilder {
 
     override fun build(project: Project): List<BazelTarget> {
-        return androidVariantDataSource.getMigratableVariants(
-            project,
-            ConfigurationScope.BUILD
-        ).map { variant ->
-            projectDataExtractor.extract(project, variant).toAndroidLibTarget()
+
+        return variantsMerger.merge(project, ConfigurationScope.BUILD).map { mergedVariant ->
+            projectDataExtractor.extract(project, mergedVariant)
+                .toAndroidLibTarget(mergedVariant.variantName.variantNameSuffix())
         } + unitTestsTargets(project)
     }
 
     private fun unitTestsTargets(project: Project) =
         if (testExtension.enableTestMigration) {
-            androidVariantDataSource.getMigratableVariants(
+            variantsMerger.merge(
                 project,
                 ConfigurationScope.TEST
-            ).map { variant ->
-                unitTestDataExtractor.extract(project, variant).toUnitTestTarget()
+            ).map { mergedVariant ->
+                unitTestDataExtractor.extract(project, mergedVariant).toUnitTestTarget()
             }
         } else {
             emptyList()
@@ -77,8 +77,8 @@ internal class AndroidLibTargetBuilder @Inject constructor(
     }
 }
 
-private fun AndroidLibraryData.toAndroidLibTarget() = AndroidLibraryTarget(
-    name = name,
+private fun AndroidLibraryData.toAndroidLibTarget(suffix: String) = AndroidLibraryTarget(
+    name = "$name$suffix",
     srcs = srcs,
     deps = deps,
     enableDataBinding = hasDatabinding,

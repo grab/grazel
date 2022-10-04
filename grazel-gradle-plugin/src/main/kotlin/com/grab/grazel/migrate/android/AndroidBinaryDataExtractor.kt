@@ -18,8 +18,6 @@ package com.grab.grazel.migrate.android
 
 import com.android.build.gradle.BaseExtension
 import com.android.build.gradle.api.BaseVariant
-import com.android.build.gradle.internal.variant.BaseVariantFactory
-import com.android.builder.model.Variant
 import com.grab.grazel.GrazelExtension
 import com.grab.grazel.bazel.rules.DATABINDING_ARTIFACTS
 import com.grab.grazel.bazel.rules.Multidex

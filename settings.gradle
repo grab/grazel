@@ -19,8 +19,8 @@ rootProject.name = "grazel"
 include(":sample-android")
 include(':sample-android-library')
 include(":sample-android-flavor")
-include(':sample-library-flavor1')
-include(":sample-library-flavor2")
+include(':flavor-libs:sample-library-flavor1')
+include(":flavor-libs:sample-library-flavor2")
 include(':sample-kotlin-library')
 
 

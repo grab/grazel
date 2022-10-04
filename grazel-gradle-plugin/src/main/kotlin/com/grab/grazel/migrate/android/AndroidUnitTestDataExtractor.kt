@@ -16,7 +16,6 @@
 package com.grab.grazel.migrate.android
 
 import com.android.build.gradle.api.AndroidSourceSet
-import com.android.build.gradle.api.BaseVariant
 import com.grab.grazel.GrazelExtension
 import com.grab.grazel.bazel.starlark.BazelDependency
 import com.grab.grazel.extension.KotlinExtension
@@ -28,7 +27,6 @@ import com.grab.grazel.gradle.dependencies.DependencyGraphs
 import com.grab.grazel.gradle.dependencies.GradleDependencyToBazelDependency
 import com.grab.grazel.gradle.dependencies.variantNameSuffix
 import com.grab.grazel.gradle.getMigratableBuildVariants
-import com.grab.grazel.gradle.getMigratableUnitTestVariants
 import com.grab.grazel.migrate.common.calculateTestAssociate
 import com.grab.grazel.migrate.dependencies.calculateDirectDependencyTags
 import com.grab.grazel.migrate.kotlin.kotlinParcelizeDeps
@@ -42,7 +40,7 @@ import javax.inject.Singleton
 internal const val FORMAT_UNIT_TEST_NAME = "%s-test"
 
 internal interface AndroidUnitTestDataExtractor {
-    fun extract(project: Project, variant: BaseVariant): AndroidUnitTestData
+    fun extract(project: Project, mergedVariant: MergedVariant): AndroidUnitTestData
 }
 
 @Singleton
@@ -59,10 +57,10 @@ internal class DefaultAndroidUnitTestDataExtractor @Inject constructor(
 
     private val kotlinExtension: KotlinExtension get() = grazelExtension.rules.kotlin
 
-    override fun extract(project: Project, variant: BaseVariant): AndroidUnitTestData {
+    override fun extract(project: Project, mergedVariant: MergedVariant): AndroidUnitTestData {
         val name = FORMAT_UNIT_TEST_NAME.format(project.name)
 
-        val migratableSourceSets = variant.sourceSets
+        val migratableSourceSets = mergedVariant.variant.sourceSets
             .asSequence()
             .filterIsInstance<AndroidSourceSet>()
 
@@ -71,23 +69,23 @@ internal class DefaultAndroidUnitTestDataExtractor @Inject constructor(
 
         val resources = project.unitTestResources(migratableSourceSets).toList()
 
-        val associate = calculateTestAssociate(project, targetVariantSuffix(variant))
+        val associate = calculateTestAssociate(project, targetVariantSuffix(mergedVariant))
 
         val deps = projectDependencyGraphs
             .directDependencies(
                 project,
-                BuildGraphType(ConfigurationScope.TEST, variant)
+                BuildGraphType(ConfigurationScope.TEST, mergedVariant.variant)
             ).map { dependent ->
-                gradleDependencyToBazelDependency.map(project, dependent, variant)
+                gradleDependencyToBazelDependency.map(project, dependent, mergedVariant)
             } +
             dependenciesDataSource.collectMavenDeps(
                 project,
-                BuildGraphType(ConfigurationScope.TEST, variant)
+                BuildGraphType(ConfigurationScope.TEST, mergedVariant.variant)
             ) +
             project.kotlinParcelizeDeps() +
             BazelDependency.ProjectDependency(
                 project,
-                targetVariantSuffix(variant)
+                targetVariantSuffix(mergedVariant)
             )
 
         val tags = if (kotlinExtension.enabledTransitiveReduction) {
@@ -95,7 +93,7 @@ internal class DefaultAndroidUnitTestDataExtractor @Inject constructor(
         } else emptyList()
 
         return AndroidUnitTestData(
-            name = "$name${variant.name.variantNameSuffix()}",
+            name = "$name${mergedVariant.variantName.variantNameSuffix()}",
             srcs = srcs,
             additionalSrcSets = additionalSrcSets,
             deps = deps,
@@ -106,8 +104,8 @@ internal class DefaultAndroidUnitTestDataExtractor @Inject constructor(
         )
     }
 
-    private fun targetVariantSuffix(variant: BaseVariant) =
-        ("${variant.flavorName}${variant.buildType.name.capitalize()}".variantNameSuffix())
+    private fun targetVariantSuffix(variant: MergedVariant) =
+        ("${variant.variantName}".variantNameSuffix())
 
     private fun Project.unitTestSources(
         sourceSets: Sequence<AndroidSourceSet>,

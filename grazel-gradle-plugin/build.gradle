@@ -91,6 +91,7 @@ dependencies {
     testImplementation "junit:junit:$jUnitVersion"
     testImplementation "com.android.tools.build:gradle:$agpVersion"
     testImplementation gradleTestKit()
+    testImplementation "com.nhaarman:mockito-kotlin:1.6.0"
 
     /**
      * In Gradle 6.7-rc-1 BuildEventsListenerRegistry service is not created in we need it in order

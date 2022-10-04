@@ -16,12 +16,14 @@
 
 package com.grab.grazel.migrate
 
+import com.android.build.gradle.AppExtension
 import com.android.build.gradle.LibraryExtension
 import com.google.common.truth.Truth
 import com.grab.grazel.GrazelExtension
 import com.grab.grazel.GrazelExtension.Companion.GRAZEL_EXTENSION
 import com.grab.grazel.bazel.starlark.asString
 import com.grab.grazel.buildProject
+import com.grab.grazel.gradle.ANDROID_APPLICATION_PLUGIN
 import com.grab.grazel.gradle.ANDROID_LIBRARY_PLUGIN
 import com.grab.grazel.gradle.KOTLIN_ANDROID_PLUGIN
 import com.grab.grazel.migrate.internal.ProjectBazelFileBuilder
@@ -29,6 +31,7 @@ import com.grab.grazel.util.createGrazelComponent
 import com.grab.grazel.util.doEvaluate
 import org.gradle.api.Project
 import org.gradle.kotlin.dsl.configure
+import org.gradle.kotlin.dsl.dependencies
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -42,6 +45,7 @@ class KotlinTargetsTest {
 
     private lateinit var androidLibrary: Project
     private lateinit var projectDir: File
+    private lateinit var app: Project
 
     @get:Rule
     val temporaryFolder = TemporaryFolder()
@@ -61,11 +65,38 @@ class KotlinTargetsTest {
             mkdirs()
         }
         configureAndroidLibraryProject()
+        app = buildAppProject()
         projectBazelFileBuilder = rootProject
             .createGrazelComponent()
             .projectBazelFileBuilderFactory()
             .get()
             .create(androidLibrary)
+    }
+
+    private fun buildAppProject(): Project {
+        val app = buildProject(
+            name = "app",
+            parent = rootProject
+        )
+        app.run {
+            plugins.apply {
+                apply(ANDROID_APPLICATION_PLUGIN)
+                apply(KOTLIN_ANDROID_PLUGIN)
+            }
+            extensions.configure<AppExtension> {
+                defaultConfig {
+                    compileSdkVersion(29)
+                    versionCode = 1
+                    versionName = "1.0"
+                    manifestPlaceholders.putAll(setOf("binaryPlaceholder" to "true"))
+                }
+            }
+            dependencies {
+                add("implementation", androidLibrary)
+            }
+        }
+
+        return app
     }
 
     private fun configureAndroidLibraryProject() {
@@ -112,6 +143,8 @@ class KotlinTargetsTest {
     @Test
     fun `assert for empty resources module with databinding enabled has kt_db_android_library generated`() {
         androidLibrary.doEvaluate()
+        app.doEvaluate()
+
         val generatedStatements = projectBazelFileBuilder.build().asString()
         Truth.assertThat(generatedStatements).apply {
             contains("kt_db_android_library")

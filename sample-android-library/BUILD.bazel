@@ -1,14 +1,14 @@
 load("@grab_bazel_common//tools/build_config:build_config.bzl", "build_config")
 
 build_config(
-    name = "sample-android-library-debug-build-config",
+    name = "sample-android-library-flavor1-debug-build-config",
     package_name = "com.grab.grazel.android.sample.lib",
 )
 
 load("@grab_bazel_common//tools/kotlin:android.bzl", "kt_android_library")
 
 kt_android_library(
-    name = "sample-android-library-debug",
+    name = "sample-android-library-flavor1-debug",
     srcs = glob([
         "src/main/java/com/grab/grazel/android/sample/SampleViewModel.kt",
     ]),
@@ -18,32 +18,7 @@ kt_android_library(
         "//visibility:public",
     ],
     deps = [
-        ":sample-android-library-debug-build-config",
+        ":sample-android-library-flavor1-debug-build-config",
         "//:parcelize",
-        "@maven//:org_jacoco_org_jacoco_ant",
-    ],
-)
-
-load("@grab_bazel_common//tools/test:test.bzl", "grab_android_local_test")
-
-grab_android_local_test(
-    name = "sample-android-library-test-debug-unit-test",
-    srcs = glob([
-        "src/test/java/com/grab/grazel/android/sample/SampleViewModelTest.kt",
-    ]),
-    associates = [
-        "//sample-android-library:sample-android-library-debug_kt",
-    ],
-    custom_package = "com.grab.grazel.android.sample.lib",
-    resources = glob([
-        "src/test/resources/**",
-    ]),
-    visibility = [
-        "//visibility:public",
-    ],
-    deps = [
-        "//:parcelize",
-        "//sample-android-library:sample-android-library-debug",
-        "@maven//:junit_junit",
     ],
 )

@@ -32,6 +32,7 @@ import com.grab.grazel.gradle.ANDROID_APPLICATION_PLUGIN
 import com.grab.grazel.gradle.ANDROID_LIBRARY_PLUGIN
 import com.grab.grazel.gradle.AndroidVariantDataSource
 import com.grab.grazel.gradle.DefaultAndroidVariantDataSource
+import com.grab.grazel.gradle.DefaultAndroidVariantsExtractor
 import com.grab.grazel.util.doEvaluate
 import org.gradle.api.Project
 import org.gradle.api.artifacts.*
@@ -90,7 +91,9 @@ class DefaultManifestValuesBuilderTest : GrazelPluginTest() {
 
         val dependencyGraphs = FakeDependencyGraphs(dependenciesSubGraph = setOf(androidLibrary))
 
-        val variantDataSource: AndroidVariantDataSource = DefaultAndroidVariantDataSource()
+        val variantDataSource: AndroidVariantDataSource = DefaultAndroidVariantDataSource(
+            DefaultAndroidVariantsExtractor()
+        )
         defaultManifestValuesBuilder = DefaultManifestValuesBuilder(
             { dependencyGraphs },
             variantDataSource

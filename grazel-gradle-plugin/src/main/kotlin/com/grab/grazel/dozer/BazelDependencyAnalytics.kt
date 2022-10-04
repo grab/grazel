@@ -30,7 +30,7 @@ interface BazelDependencyAnalytics {
 
 internal class QueryBazelDependencyAnalytics(
     private val gradleProjectInfo: DefaultGradleProjectInfo,
-    private val dependencyGraphs: DependencyGraphs,
+    dependencyGraphs: DependencyGraphs,
     extension: GrazelExtension
 ) : BazelDependencyAnalytics {
     private val mavenDeps = dependencyGraphs.nodes()

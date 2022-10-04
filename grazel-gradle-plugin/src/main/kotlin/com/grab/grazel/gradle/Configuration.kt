@@ -17,16 +17,16 @@
 package com.grab.grazel.gradle
 
 import com.android.build.gradle.api.BaseVariant
-import com.android.build.gradle.internal.variant.BaseVariantFactory
 import com.grab.grazel.GrazelExtension
 import com.grab.grazel.gradle.dependencies.BuildGraphType
 import org.gradle.api.Project
 import org.gradle.api.artifacts.Configuration
+import org.jetbrains.kotlin.gradle.internal.Kapt3GradleSubplugin.Companion.findKaptConfiguration
 import javax.inject.Inject
 import javax.inject.Singleton
 
-enum class ConfigurationScope {
-    BUILD, TEST, ANDROID_TEST;
+enum class ConfigurationScope(val scopeName: String) {
+    BUILD(""), TEST("UnitTest"), ANDROID_TEST("AndroidTest");
 }
 
 internal fun GrazelExtension.configurationScopes(): Array<ConfigurationScope> {
@@ -57,6 +57,7 @@ internal interface ConfigurationDataSource {
     ): Sequence<Configuration>
 
     fun isThisConfigurationBelongsToThisVariants(
+        project: Project,
         vararg variants: BaseVariant?,
         configuration: Configuration
     ): Boolean
@@ -102,13 +103,18 @@ internal class DefaultConfigurationDataSource @Inject constructor(
     }
 
     override fun isThisConfigurationBelongsToThisVariants(
+        project: Project,
         vararg variants: BaseVariant?,
         configuration: Configuration
     ) = variants.any { variant ->
         variant == null ||
             variant.compileConfiguration.hierarchy.contains(configuration) ||
             variant.runtimeConfiguration.hierarchy.contains(configuration) ||
-            variant.annotationProcessorConfiguration.hierarchy.contains(configuration)
+            variant.annotationProcessorConfiguration.hierarchy.contains(configuration) ||
+            variant.sourceSets.map { it.name }.any { sourceSetName ->
+                project.findKaptConfiguration(sourceSetName)?.name == configuration.name
+            } ||
+            configuration.name == "kotlin-extension"
     }
 
     override fun resolvedConfigurations(

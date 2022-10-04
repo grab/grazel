@@ -2,7 +2,6 @@ package com.grab.grazel.gradle.dependencies
 
 import com.google.common.graph.Graphs
 import com.google.common.graph.ImmutableValueGraph
-import com.grab.grazel.bazel.starlark.BazelDependency
 import org.gradle.api.Project
 import org.gradle.api.artifacts.Configuration
 
@@ -40,7 +39,11 @@ internal class DefaultDependencyGraphs(
     ): Set<Project> =
         if (buildGraphTypes.isEmpty()) {
             buildGraphs.values.flatMap {
-                Graphs.reachableNodes(it.asGraph(), project)
+                if (it.nodes().contains(project)) {
+                    Graphs.reachableNodes(it.asGraph(), project)
+                } else {
+                    emptyList()
+                }
             }
         } else {
             buildGraphTypes.flatMap { buildGraphType ->

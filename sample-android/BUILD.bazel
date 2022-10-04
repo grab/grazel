@@ -120,10 +120,9 @@ kt_android_library(
         "//:dagger",
         "//:parcelize",
         "//sample-android-flavor:sample-android-flavor-flavor1-debug",
-        "//sample-android-library:sample-android-library-debug",
+        "//sample-android-library:sample-android-library-flavor1-debug",
         "//sample-kotlin-library",
         "@maven//:androidx_appcompat_appcompat",
         "@maven//:androidx_constraintlayout_constraintlayout",
-        "@maven//:org_jacoco_org_jacoco_ant",
     ],
 )

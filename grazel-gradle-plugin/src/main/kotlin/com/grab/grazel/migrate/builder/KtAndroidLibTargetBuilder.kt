@@ -19,7 +19,6 @@ package com.grab.grazel.migrate.builder
 import com.grab.grazel.bazel.rules.KotlinProjectType
 import com.grab.grazel.bazel.rules.Visibility
 import com.grab.grazel.extension.TestExtension
-import com.grab.grazel.gradle.AndroidVariantDataSource
 import com.grab.grazel.gradle.ConfigurationScope
 import com.grab.grazel.gradle.dependencies.variantNameSuffix
 import com.grab.grazel.gradle.isAndroid
@@ -37,6 +36,7 @@ import com.grab.grazel.migrate.android.DefaultAndroidLibraryDataExtractor
 import com.grab.grazel.migrate.android.DefaultAndroidManifestParser
 import com.grab.grazel.migrate.android.DefaultAndroidUnitTestDataExtractor
 import com.grab.grazel.migrate.android.SourceSetType
+import com.grab.grazel.migrate.android.VariantsMerger
 import com.grab.grazel.migrate.android.toUnitTestTarget
 import com.grab.grazel.migrate.kotlin.KtLibraryTarget
 import com.grab.grazel.migrate.toBazelDependency
@@ -68,39 +68,39 @@ internal interface KtAndroidLibTargetBuilderModule {
 internal class KtAndroidLibTargetBuilder @Inject constructor(
     private val projectDataExtractor: AndroidLibraryDataExtractor,
     private val unitTestDataExtractor: AndroidUnitTestDataExtractor,
-    private val androidVariantDataSource: AndroidVariantDataSource,
-    private val testExtension: TestExtension
+    private val testExtension: TestExtension,
+    private val variantsMerger: VariantsMerger
 ) : TargetBuilder {
 
     override fun build(project: Project): List<BazelTarget> {
         return mutableListOf<BazelTarget>().apply {
-            androidVariantDataSource.getMigratableVariants(project, ConfigurationScope.BUILD)
-                .forEach { variant ->
+            variantsMerger.merge(project, ConfigurationScope.BUILD)
+                .forEach { mergedVariant ->
                     val projectData = projectDataExtractor.extract(
                         project,
                         sourceSetType = SourceSetType.JAVA_KOTLIN,
-                        variant = variant
+                        mergedVariant = mergedVariant
                     )
                     var deps = projectData.deps
                     with(projectData) {
-                        toAarResTarget(variant.name.variantNameSuffix())?.also { add(it) }
-                        toBuildConfigTarget(variant.name.variantNameSuffix()).also {
+                        toAarResTarget(mergedVariant.variantName.variantNameSuffix())?.also { add(it) }
+                        toBuildConfigTarget(mergedVariant.variantName.variantNameSuffix()).also {
                             deps += it.toBazelDependency()
                             add(it)
                         }
                     }
                     projectData
                         .copy(
-                            name = projectData.name + variant.name.variantNameSuffix(),
+                            name = projectData.name + mergedVariant.variantName.variantNameSuffix(),
                             deps = deps
                         )
                         .toKtLibraryTarget()
-                        ?.also { add(it) }
-
-
+                        ?.also {
+                            add(it)
+                        }
                 }
             if (testExtension.enableTestMigration) {
-                androidVariantDataSource.getMigratableVariants(project, ConfigurationScope.TEST)
+                variantsMerger.merge(project, ConfigurationScope.TEST)
                     .forEach { variant ->
                         add(unitTestDataExtractor.extract(project, variant).toUnitTestTarget())
                     }
@@ -137,7 +137,7 @@ internal fun AndroidLibraryData.toAarResTarget(variantName: String): AndroidLibr
     return if (res.isNotEmpty() && !hasDatabinding) {
         // For hybrid builds we need separate AAR for resources
         // When it is a pure resource module, keep the res target as the main target
-        val targetName = if (srcs.isEmpty()) name else "${name}-res$variantName"
+        val targetName = if (srcs.isEmpty()) "$name$variantName" else "${name}-res$variantName"
         AndroidLibraryTarget(
             name = targetName,
             packageName = packageName,

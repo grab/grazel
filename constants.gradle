@@ -16,7 +16,7 @@
 // TODO migrate to version catalogs
 ext {
     groupId = "com.grab.grazel"
-    versionName = "0.4.0-alpha16"
+    versionName = "0.4.0-alpha17"
 
     kotlinVersion = "1.6.10"
     agpVersion = "7.1.2"

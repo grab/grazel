@@ -276,7 +276,7 @@ class FakeBuildType : BuildType {
     override val applicationIdSuffix: String?
         get() = TODO("Not yet implemented")
     override val buildConfigFields: Map<String, ClassField>
-        get() = TODO("Not yet implemented")
+        get() = mapOf()
     override val consumerProguardFiles: Collection<File>
         get() = TODO("Not yet implemented")
     override val isDebuggable: Boolean

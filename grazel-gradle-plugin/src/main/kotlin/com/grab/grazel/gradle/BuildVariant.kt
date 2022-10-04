@@ -63,8 +63,8 @@ internal interface AndroidVariantDataSource {
 }
 
 internal class DefaultAndroidVariantDataSource(
-    private val androidVariantsExtractor: AndroidVariantsExtractor = DefaultAndroidVariantsExtractor(),
-    override val variantFilter: Action<VariantFilter>? = null
+    private val androidVariantsExtractor: AndroidVariantsExtractor,
+    override val variantFilter: Action<VariantFilter>? = null,
 ) : AndroidVariantDataSource {
 
     override fun getMigratableVariants(

@@ -16,17 +16,13 @@
 
 package com.grab.grazel.gradle.dependencies
 
-import com.android.build.gradle.api.BaseVariant
 import com.grab.grazel.bazel.starlark.BazelDependency
-import com.grab.grazel.gradle.AndroidVariantsExtractor
 import com.grab.grazel.gradle.isAndroid
+import com.grab.grazel.migrate.android.MergedVariant
 import org.gradle.api.Project
-import java.lang.IllegalStateException
 import javax.inject.Inject
 
-internal class GradleDependencyToBazelDependency @Inject constructor(
-    private val androidVariantsExtractor: AndroidVariantsExtractor
-) {
+internal class GradleDependencyToBazelDependency @Inject constructor() {
 
     /**
      * [variant] can only be null if and only if the [project] is a Java/Kotlin project
@@ -34,37 +30,19 @@ internal class GradleDependencyToBazelDependency @Inject constructor(
     fun map(
         project: Project,
         dependency: Project,
-        variant: BaseVariant? = null
+        mergedVariant: MergedVariant?
     ): BazelDependency.ProjectDependency {
-
         return if (project.isAndroid) {
-            if (variant == null) {
+            if (mergedVariant == null) {
                 throw IllegalStateException(
                     "please provide the variant for the android project=${project.name}"
                 )
             }
             if (dependency.isAndroid) {// project is an android project, dependent is also
-                val dependentVariants = androidVariantsExtractor.getVariants(dependency)
-
-                if (dependentVariants.firstOrNull { dependentVariant ->
-                        dependentVariant.name == variant.name
-                    } != null
-                ) {
-                    BazelDependency.ProjectDependency(dependency, variant.name.variantNameSuffix())
-                } else {
-                    if (isThereAnyCompatibleDependentBuildType(dependentVariants, variant)) {
-                        BazelDependency.ProjectDependency(
-                            dependency,
-                            variant.buildType.name.variantNameSuffix()
-                        )
-                    } else {
-                        throw IllegalStateException(
-                            "${project.name} with variant=${variant.name}" +
-                                " depends on ${dependency.name} which doesn't have that variant " +
-                                "${dependentVariants.map { it.name }}"
-                        )
-                    }
-                }
+                BazelDependency.ProjectDependency(
+                    dependency,
+                    mergedVariant.variantName.variantNameSuffix()
+                )
             } else {// project is an android project, dependent is NOT
                 BazelDependency.ProjectDependency(dependency)
             }
@@ -80,12 +58,4 @@ internal class GradleDependencyToBazelDependency @Inject constructor(
             }
         }
     }
-
-
-    private fun isThereAnyCompatibleDependentBuildType(
-        dependentVariants: Set<BaseVariant>,
-        variant: BaseVariant
-    ) = dependentVariants.firstOrNull { dependentVariant ->
-        dependentVariant.name == variant.buildType.name
-    } != null
 }

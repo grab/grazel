@@ -315,6 +315,7 @@ internal class DefaultDependenciesDataSource @Inject constructor(
                     true
                 } else {
                     configurationDataSource.isThisConfigurationBelongsToThisVariants(
+                        project,
                         *buildGraphTypes.map { it.variant }.toTypedArray(),
                         configuration = configuration
                     )

@@ -47,8 +47,8 @@ android {
 }
 
 dependencies {
-    flavor1Implementation project(path: ':sample-library-flavor1')
-    flavor2Implementation project(path: ":sample-library-flavor2")
+    flavor1Implementation project(path: ':flavor-libs:sample-library-flavor1')
+    flavor2Implementation project(path: ":flavor-libs:sample-library-flavor2")
 
     implementation "androidx.appcompat:appcompat:1.3.1"
     implementation "androidx.core:core:1.5.0"

@@ -18,7 +18,6 @@ package com.grab.grazel.migrate.common
 
 import com.grab.grazel.bazel.starlark.BazelDependency
 import com.grab.grazel.bazel.starlark.BazelDependency.ProjectDependency
-import com.grab.grazel.gradle.buildTargetName
 import com.grab.grazel.gradle.hasDatabinding
 import com.grab.grazel.gradle.isAndroid
 import com.grab.grazel.gradle.isKotlin

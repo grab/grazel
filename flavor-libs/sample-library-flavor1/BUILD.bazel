@@ -1,7 +1,7 @@
 load("@io_bazel_rules_kotlin//kotlin:jvm.bzl", "kt_jvm_library")
 
 kt_jvm_library(
-    name = "sample-library-flavor2",
+    name = "sample-library-flavor1",
     srcs = glob([
         "src/main/java/com/grab/grazel/android/flavor/ModuleName.kt",
     ]),
@@ -13,12 +13,12 @@ kt_jvm_library(
 load("@grab_bazel_common//tools/test:test.bzl", "grab_kt_jvm_test")
 
 grab_kt_jvm_test(
-    name = "sample-library-flavor2-test",
+    name = "sample-library-flavor1-test",
     srcs = glob([
-        "src/test/java/com/grab/grazel/flavor2/ModuleNameTest.kt",
+        "src/test/java/com/grab/grazel/flavor1/ModuleNameTest.kt",
     ]),
     associates = [
-        "//sample-library-flavor2:sample-library-flavor2",
+        "//flavor-libs/sample-library-flavor1:sample-library-flavor1",
     ],
     visibility = [
         "//visibility:public",

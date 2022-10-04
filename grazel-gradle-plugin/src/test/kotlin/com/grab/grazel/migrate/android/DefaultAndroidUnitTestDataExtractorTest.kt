@@ -24,6 +24,7 @@ import com.grab.grazel.buildProject
 import com.grab.grazel.fake.FakeDependencyGraphs
 import com.grab.grazel.gradle.ANDROID_LIBRARY_PLUGIN
 import com.grab.grazel.gradle.DefaultAndroidVariantDataSource
+import com.grab.grazel.gradle.DefaultAndroidVariantsExtractor
 import com.grab.grazel.gradle.DefaultConfigurationDataSource
 import com.grab.grazel.gradle.DefaultRepositoryDataSource
 import com.grab.grazel.gradle.FakeAndroidVariantsExtractor
@@ -77,8 +78,7 @@ class DefaultAndroidUnitTestDataExtractorTest : GrazelPluginTest() {
             }
         }
         androidVariantsExtractor = FakeAndroidVariantsExtractor()
-        gradleDependencyToBazelDependency =
-            GradleDependencyToBazelDependency(androidVariantsExtractor)
+        gradleDependencyToBazelDependency = GradleDependencyToBazelDependency()
         File(subProjectDir, "src/main/AndroidManifest.xml").apply {
             parentFile.mkdirs()
             createNewFile()
@@ -91,7 +91,7 @@ class DefaultAndroidUnitTestDataExtractorTest : GrazelPluginTest() {
             )
         }
 
-        val variantDataSource = DefaultAndroidVariantDataSource()
+        val variantDataSource = DefaultAndroidVariantDataSource(DefaultAndroidVariantsExtractor())
         val configurationDataSource = DefaultConfigurationDataSource(variantDataSource)
         val repositoryDataSource = DefaultRepositoryDataSource(rootProject)
 
@@ -182,8 +182,15 @@ class DefaultAndroidUnitTestDataExtractorTest : GrazelPluginTest() {
         }
     }
 
-    private fun debugUnitTestVariant(project: Project) =
-        project.project.the<LibraryExtension>().unitTestVariants.first {
+    private fun debugUnitTestVariant(project: Project): MergedVariant {
+        val variant = project.the<LibraryExtension>().unitTestVariants.first {
             it.name == "debugUnitTest"
         }
+
+        return MergedVariant(
+            variant.flavorName,
+            variant.buildType.name,
+            variant
+        )
+    }
 }

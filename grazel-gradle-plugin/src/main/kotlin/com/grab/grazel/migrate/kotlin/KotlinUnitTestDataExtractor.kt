@@ -73,7 +73,7 @@ internal class DefaultKotlinUnitTestDataExtractor @Inject constructor(
                     project,
                     BuildGraphType(ConfigurationScope.TEST)
                 ).map { dependent ->
-                    gradleDependencyToBazelDependency.map(project, dependent)
+                    gradleDependencyToBazelDependency.map(project, dependent, null)
                 }
             )
             addAll(

@@ -116,8 +116,13 @@ internal object GrazelModule {
 
     @Provides
     @Singleton
-    fun GrazelExtension.provideAndroidVariantDataSource(): AndroidVariantDataSource =
-        DefaultAndroidVariantDataSource(variantFilter = android.variantFilter)
+    fun GrazelExtension.provideAndroidVariantDataSource(
+        androidVariantsExtractor: DefaultAndroidVariantsExtractor,
+        @RootProject rootProject: Project
+    ): AndroidVariantDataSource = DefaultAndroidVariantDataSource(
+        variantFilter = android.variantFilter,
+        androidVariantsExtractor = androidVariantsExtractor
+    )
 
     @Provides
     @Singleton
