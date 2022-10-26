@@ -14,7 +14,7 @@ jobs:
 
             -   name: Install Bazelisk
                 env:
-                    LINK_BAZELISK: "https://github.com/bazelbuild/bazelisk/releases/download/v1.3.0/bazelisk-linux-amd64"
+                    LINK_BAZELISK: "https://github.com/bazelbuild/bazelisk/releases/download/v1.14.0/bazelisk-linux-amd64"
                     PATH_BAZELISK: "/usr/local/bin/bazelisk"
                 run: |
                     sudo curl -sL "$LINK_BAZELISK" --output "$PATH_BAZELISK"
