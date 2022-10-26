@@ -7,7 +7,6 @@ build --disk_cache=bazel-cache
 
 # Env config
 build --incompatible_strict_action_env
-build --incompatible_disable_depset_items
 
 # Error config
 build --verbose_failures

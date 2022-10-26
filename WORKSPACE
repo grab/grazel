@@ -4,14 +4,14 @@ load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository")
 
 git_repository(
     name = "grab_bazel_common",
-    commit = "d21b8d8a0aba5424cd3f42525b488de14dc47518",
+    commit = "56a1877335972df9714a23e48c79bd04cc24cdd1",
     remote = "https://github.com/grab/grab-bazel-common.git",
 )
 
 load("@grab_bazel_common//:workspace_defs.bzl", "android_tools")
 
 android_tools(
-    commit = "d21b8d8a0aba5424cd3f42525b488de14dc47518",
+    commit = "56a1877335972df9714a23e48c79bd04cc24cdd1",
     remote = "https://github.com/grab/grab-bazel-common.git",
 )
 
@@ -125,8 +125,8 @@ load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
 http_archive(
     name = "io_bazel_rules_kotlin",
-    sha256 = "f1a4053eae0ea381147f5056bb51e396c5c494c7f8d50d0dee4cc2f9d5c701b0",
-    url = "https://github.com/bazelbuild/rules_kotlin/releases/download/1.6.0-RC-1/rules_kotlin_release.tgz",
+    sha256 = "f033fa36f51073eae224f18428d9493966e67c27387728b6be2ebbdae43f140e",
+    url = "https://github.com/bazelbuild/rules_kotlin/releases/download/v1.7.0-RC-3/rules_kotlin_release.tgz",
 )
 
 KOTLIN_VERSION = "1.6.10"
