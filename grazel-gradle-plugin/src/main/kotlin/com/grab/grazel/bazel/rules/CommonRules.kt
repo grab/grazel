@@ -17,6 +17,7 @@
 package com.grab.grazel.bazel.rules
 
 import com.grab.grazel.bazel.starlark.StatementsBuilder
+import com.grab.grazel.bazel.starlark.add
 import com.grab.grazel.bazel.starlark.function
 import com.grab.grazel.bazel.starlark.load
 import com.grab.grazel.bazel.starlark.quote
@@ -43,4 +44,32 @@ fun StatementsBuilder.loadBazelCommonArtifacts(bazelCommonRepoName: String) {
 
 fun StatementsBuilder.registerToolchain(toolchain: String) {
     function("register_toolchains", toolchain.quote())
+}
+
+fun StatementsBuilder.bazelCommonRepository(
+    repositoryRule: GitRepositoryRule,
+    buildifierVersion: String,
+) {
+    add(repositoryRule)
+    bazelCommonDependencies(repositoryRule.name)
+    bazelCommonInitialize(
+        repositoryRule.name,
+        buildifierVersion,
+    )
+}
+
+fun StatementsBuilder.bazelCommonDependencies(bazelCommonRepoName: String) {
+    load("@${bazelCommonRepoName}//android:repositories.bzl", "bazel_common_dependencies")
+    function("bazel_common_dependencies")
+}
+
+fun StatementsBuilder.bazelCommonInitialize(
+    bazelCommonRepoName: String,
+    buildifierVersion: String,
+) {
+    load("@${bazelCommonRepoName}//android:initialize.bzl", "bazel_common_initialize")
+    function("bazel_common_initialize") {
+        "patched_android_tools" eq "True"
+        "buildifier_version" eq buildifierVersion.quote()
+    }
 }

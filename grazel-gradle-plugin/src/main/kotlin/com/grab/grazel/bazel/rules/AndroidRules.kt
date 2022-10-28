@@ -21,7 +21,6 @@ import com.grab.grazel.bazel.starlark.BazelDependency
 import com.grab.grazel.bazel.starlark.StatementsBuilder
 import com.grab.grazel.bazel.starlark.array
 import com.grab.grazel.bazel.starlark.asString
-import com.grab.grazel.bazel.starlark.function
 import com.grab.grazel.bazel.starlark.glob
 import com.grab.grazel.bazel.starlark.load
 import com.grab.grazel.bazel.starlark.quote
@@ -224,14 +223,6 @@ internal val DATABINDING_ARTIFACTS by lazy {
         MavenArtifact(DATABINDING_GROUP, "viewbinding", version),
         MavenArtifact(ANDROIDX_GROUP, ANNOTATION_ARTIFACT, "1.1.0")
     )
-}
-
-fun StatementsBuilder.androidToolsRepository(commit: String? = null, remote: String) {
-    load("@grab_bazel_common//:workspace_defs.bzl", "android_tools")
-    function("android_tools") {
-        commit?.let { "commit" eq commit.quote() }
-        "remote" eq remote.quote()
-    }
 }
 
 fun StatementsBuilder.loadCustomRes() {

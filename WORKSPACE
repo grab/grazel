@@ -1,35 +1,46 @@
 workspace(name = "grazel")
 
+load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
+
+http_archive(
+    name = "io_bazel_rules_kotlin",
+    sha256 = "f033fa36f51073eae224f18428d9493966e67c27387728b6be2ebbdae43f140e",
+    url = "https://github.com/bazelbuild/rules_kotlin/releases/download/v1.7.0-RC-3/rules_kotlin_release.tgz",
+)
+
+KOTLIN_VERSION = "1.6.10"
+
+KOTLINC_RELEASE_SHA = "432267996d0d6b4b17ca8de0f878e44d4a099b7e9f1587a98edc4d27e76c215a"
+
+load("@io_bazel_rules_kotlin//kotlin:repositories.bzl", "kotlin_repositories", "kotlinc_version")
+
+KOTLINC_RELEASE = kotlinc_version(
+    release = KOTLIN_VERSION,
+    sha256 = KOTLINC_RELEASE_SHA,
+)
+
+kotlin_repositories(compiler_release = KOTLINC_RELEASE)
+
+register_toolchains("//:kotlin_toolchain")
+
 load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository")
 
 git_repository(
     name = "grab_bazel_common",
-    commit = "56a1877335972df9714a23e48c79bd04cc24cdd1",
+    commit = "f5f196d46406e44c00b64cb767de9d9eb7219c2e",
     remote = "https://github.com/grab/grab-bazel-common.git",
 )
 
-load("@grab_bazel_common//:workspace_defs.bzl", "android_tools")
+load("@grab_bazel_common//android:repositories.bzl", "bazel_common_dependencies")
 
-android_tools(
-    commit = "56a1877335972df9714a23e48c79bd04cc24cdd1",
-    remote = "https://github.com/grab/grab-bazel-common.git",
+bazel_common_dependencies()
+
+load("@grab_bazel_common//android:initialize.bzl", "bazel_common_initialize")
+
+bazel_common_initialize(
+    buildifier_version = "5.1.0",
+    patched_android_tools = True,
 )
-
-load("@grab_bazel_common//toolchains:toolchains.bzl", "buildifier_version", "register_common_toolchains")
-
-BUILDIFIER_RELEASE = buildifier_version(
-    supported_arch = [
-        "amd64",
-        "arm64",
-    ],
-    supported_os = [
-        "linux",
-        "darwin",
-    ],
-    version = "5.1.0",
-)
-
-register_common_toolchains(buildifier = BUILDIFIER_RELEASE)
 
 DAGGER_TAG = "2.37"
 
@@ -125,29 +136,6 @@ maven_install(
 load("@maven//:defs.bzl", "pinned_maven_install")
 
 pinned_maven_install()
-
-load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
-
-http_archive(
-    name = "io_bazel_rules_kotlin",
-    sha256 = "f033fa36f51073eae224f18428d9493966e67c27387728b6be2ebbdae43f140e",
-    url = "https://github.com/bazelbuild/rules_kotlin/releases/download/v1.7.0-RC-3/rules_kotlin_release.tgz",
-)
-
-KOTLIN_VERSION = "1.6.10"
-
-KOTLINC_RELEASE_SHA = "432267996d0d6b4b17ca8de0f878e44d4a099b7e9f1587a98edc4d27e76c215a"
-
-load("@io_bazel_rules_kotlin//kotlin:repositories.bzl", "kotlin_repositories", "kotlinc_version")
-
-KOTLINC_RELEASE = kotlinc_version(
-    release = KOTLIN_VERSION,
-    sha256 = KOTLINC_RELEASE_SHA,
-)
-
-kotlin_repositories(compiler_release = KOTLINC_RELEASE)
-
-register_toolchains("//:kotlin_toolchain")
 
 android_sdk_repository(
     name = "androidsdk",

@@ -22,41 +22,7 @@ import com.grab.grazel.bazel.starlark.load
 import com.grab.grazel.bazel.starlark.quote
 import com.grab.grazel.extension.CommonToolchainExtension
 
-private const val BUILDIFIER_RELEASE = "BUILDIFIER_RELEASE"
 private const val BUILDIFIER_CONFIG = "BUILDIFIER_CONFIG"
-
-fun StatementsBuilder.registerCommonToolchains(
-    bazelCommonRepoName: String,
-    toolchains: CommonToolchainExtension,
-) {
-    val buildifier = toolchains.buildifier
-    if (buildifier.releaseVersion == null && buildifier.supportedOs == null && buildifier.supportedArch == null ) {
-        load("@$bazelCommonRepoName//toolchains:toolchains.bzl", "register_common_toolchains")
-        function("register_common_toolchains")
-    } else {
-        load(
-            "@$bazelCommonRepoName//toolchains:toolchains.bzl",
-            "register_common_toolchains",
-            "buildifier_version",
-        )
-
-        BUILDIFIER_RELEASE eq """buildifier_version(
-            ${buildifier.releaseVersion.notNullOrBlank(default = {""}) {
-                "version = ${it.quote()},"
-            }}
-            ${buildifier.supportedOs.notNullOrEmpty(default = {""}) {
-                "supported_os = ${it.quote},"
-            }}
-            ${buildifier.supportedArch.notNullOrEmpty(default = {""}) {
-                "supported_arch = ${it.quote},"
-            }}
-        )""".trimIndent()
-
-        function("register_common_toolchains") {
-            "buildifier" eq BUILDIFIER_RELEASE
-        }
-    }
-}
 
 fun StatementsBuilder.configureCommonToolchains(
     bazelCommonRepoName: String,

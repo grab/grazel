@@ -28,19 +28,17 @@ import com.grab.grazel.bazel.rules.MavenRepository
 import com.grab.grazel.bazel.rules.MavenRepository.DefaultMavenRepository
 import com.grab.grazel.bazel.rules.androidNdkRepository
 import com.grab.grazel.bazel.rules.androidSdkRepository
-import com.grab.grazel.bazel.rules.androidToolsRepository
+import com.grab.grazel.bazel.rules.bazelCommonRepository
 import com.grab.grazel.bazel.rules.daggerWorkspaceRules
 import com.grab.grazel.bazel.rules.jvmRules
 import com.grab.grazel.bazel.rules.kotlinCompiler
 import com.grab.grazel.bazel.rules.kotlinRepository
 import com.grab.grazel.bazel.rules.loadBazelCommonArtifacts
 import com.grab.grazel.bazel.rules.loadDaggerArtifactsAndRepositories
-import com.grab.grazel.bazel.rules.registerCommonToolchains
 import com.grab.grazel.bazel.rules.registerKotlinToolchain
 import com.grab.grazel.bazel.rules.toolAndroidRepository
 import com.grab.grazel.bazel.rules.workspace
 import com.grab.grazel.bazel.starlark.StatementsBuilder
-import com.grab.grazel.bazel.starlark.add
 import com.grab.grazel.bazel.starlark.statements
 import com.grab.grazel.di.qualifiers.RootProject
 import com.grab.grazel.gradle.GradleProjectInfo
@@ -97,11 +95,11 @@ internal class WorkspaceBuilder(
     override fun build() = statements {
         workspace(name = rootProject.name)
 
+        buildKotlinRules()
+
         setupBazelCommon()
 
         buildJvmRules()
-
-        buildKotlinRules()
 
         addAndroidSdkRepositories(this)
 
@@ -194,19 +192,12 @@ internal class WorkspaceBuilder(
     private fun StatementsBuilder.setupBazelCommon() {
         val bazelCommon = grazelExtension.rules.bazelCommon
         val bazelCommonRepo = bazelCommon.repository
-
-        add(bazelCommonRepo)
-        bazelCommonRepo.remote?.run {
-            androidToolsRepository(
-                commit = bazelCommonRepo.commit,
-                remote = this
-            )
-        }
-
         val toolchains = bazelCommon.toolchains
-        registerCommonToolchains(
-            bazelCommonRepoName = bazelCommon.repository.name,
-            toolchains = toolchains,
+        val buildifier = toolchains.buildifier
+
+        bazelCommonRepository(
+            bazelCommonRepo,
+            buildifier.releaseVersion,
         )
     }
 
