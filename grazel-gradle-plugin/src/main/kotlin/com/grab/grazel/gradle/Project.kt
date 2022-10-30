@@ -19,6 +19,7 @@ package com.grab.grazel.gradle
 import com.android.build.api.dsl.ApplicationBuildFeatures
 import com.android.build.api.dsl.LibraryBuildFeatures
 import com.android.build.gradle.BaseExtension
+import com.grab.grazel.migrate.android.extractTestInstrumentationRunner
 import com.grab.grazel.util.BUILD_BAZEL
 import com.grab.grazel.util.WORKSPACE
 import org.gradle.api.Project
@@ -58,6 +59,11 @@ val Project.hasKotlinAndroidExtensions
     get() = plugins.hasPlugin(KOTLIN_ANDROID_EXTENSION)
         || plugins.hasPlugin(KOTLIN_PARCELIZE)
 val Project.isKotlin get() = isKotlinJvm || isKotlinAndroid
+
+val Project.hasTestInstrumentationRunner get() = !extensions
+    .findByType<BaseExtension>()
+    ?.extractTestInstrumentationRunner()
+    .isNullOrBlank()
 
 const val JAVA_PLUGIN = "java"
 const val JAVA_LIBRARY_PLUGIN = "java-library"

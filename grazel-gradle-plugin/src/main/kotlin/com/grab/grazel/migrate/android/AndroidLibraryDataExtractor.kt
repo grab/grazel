@@ -155,45 +155,6 @@ internal class DefaultAndroidLibraryDataExtractor @Inject constructor(
         }
     }
 
-
-    private fun Project.androidSources(
-        sourceSets: List<AndroidSourceSet>,
-        sourceSetType: SourceSetType
-    ): Sequence<String> {
-        val sourceSetChoosers: AndroidSourceSet.() -> Sequence<File> =
-            when (sourceSetType) {
-                SourceSetType.JAVA, SourceSetType.JAVA_KOTLIN, SourceSetType.KOTLIN -> {
-                    { java.srcDirs.asSequence() }
-                }
-                SourceSetType.RESOURCES -> {
-                    {
-                        res.srcDirs
-                            .asSequence()
-                            .filter { it.endsWith("res") } // Filter all custom resource sets
-                    }
-                }
-                SourceSetType.RESOURCES_CUSTOM -> {
-                    {
-                        res.srcDirs
-                            .asSequence()
-                            .filter { !it.endsWith("res") } // Filter all standard resource sets
-                    }
-                }
-                SourceSetType.ASSETS -> {
-                    {
-                        assets.srcDirs
-                            .asSequence()
-                            .filter { it.endsWith("assets") } // Filter all custom resource sets
-                    }
-                }
-            }
-        val dirs = sourceSets.asSequence().flatMap(sourceSetChoosers)
-        val dirsKotlin = dirs
-            .map { File(it.path.replace("/java", "/kotlin")) } //TODO(arun) Remove hardcoding
-        return filterSourceSetPaths(dirs + dirsKotlin, sourceSetType.patterns)
-    }
-
-
     private fun Project.assetsDirectory(
         sourceSets: List<AndroidSourceSet>,
         assets: List<String>
@@ -206,6 +167,43 @@ internal class DefaultAndroidLibraryDataExtractor @Inject constructor(
                 .first { assetItem.contains(it) }
         } else null
     }
+}
+
+internal fun Project.androidSources(
+    sourceSets: List<AndroidSourceSet>,
+    sourceSetType: SourceSetType
+): Sequence<String> {
+    val sourceSetChoosers: AndroidSourceSet.() -> Sequence<File> =
+        when (sourceSetType) {
+            SourceSetType.JAVA, SourceSetType.JAVA_KOTLIN, SourceSetType.KOTLIN -> {
+                { java.srcDirs.asSequence() }
+            }
+            SourceSetType.RESOURCES -> {
+                {
+                    res.srcDirs
+                        .asSequence()
+                        .filter { it.endsWith("res") } // Filter all custom resource sets
+                }
+            }
+            SourceSetType.RESOURCES_CUSTOM -> {
+                {
+                    res.srcDirs
+                        .asSequence()
+                        .filter { !it.endsWith("res") } // Filter all standard resource sets
+                }
+            }
+            SourceSetType.ASSETS -> {
+                {
+                    assets.srcDirs
+                        .asSequence()
+                        .filter { it.endsWith("assets") } // Filter all custom resource sets
+                }
+            }
+        }
+    val dirs = sourceSets.asSequence().flatMap(sourceSetChoosers)
+    val dirsKotlin = dirs
+        .map { File(it.path.replace("/java", "/kotlin")) } //TODO(arun) Remove hardcoding
+    return filterSourceSetPaths(dirs + dirsKotlin, sourceSetType.patterns)
 }
 
 internal fun DependenciesDataSource.collectMavenDeps(

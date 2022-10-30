@@ -295,3 +295,55 @@ fun StatementsBuilder.grabAndroidLocalTest(
         }
     }
 }
+
+fun StatementsBuilder.androidInstrumentationBinary(
+    name: String,
+    associates: List<BazelDependency> = emptyList(),
+    customPackage: String,
+    debugKey: String? = null,
+    deps: List<BazelDependency>,
+    instruments: BazelDependency,
+    manifestValues: Map<String, String?> = mapOf(),
+    resources: List<String> = emptyList(),
+    resourceFiles: List<Assignee> = emptyList(),
+    srcsGlob: List<String> = emptyList(),
+    testInstrumentationRunner: String? = null,
+) {
+    load(
+        "@$GRAB_BAZEL_COMMON//android/test:instrumentation.bzl",
+        "android_instrumentation_binary"
+    )
+    rule("android_instrumentation_binary") {
+        "name" eq name.quote()
+        associates.notEmpty {
+            "associates" eq array(associates.map(BazelDependency::toString).map(String::quote))
+        }
+        "custom_package" eq customPackage.quote()
+        debugKey?.let { "debug_key" eq debugKey.quote() }
+        deps.notEmpty {
+            "deps" eq array(deps.map(BazelDependency::toString).map(String::quote))
+        }
+        "instruments" eq instruments.toString().quote()
+        manifestValues.notEmpty {
+            "manifest_values" eq manifestValues.toObject(
+                quoteKeys = true,
+                quoteValues = true
+            )
+        }
+        resources.notEmpty {
+            "resources" eq glob(resources.quote)
+        }
+        resourceFiles.notEmpty {
+            "resource_files" eq resourceFiles.joinToString(
+                separator = " + ",
+                transform = Assignee::asString
+            )
+        }
+        srcsGlob.notEmpty {
+            "srcs" eq glob(srcsGlob.quote)
+        }
+        testInstrumentationRunner?.let {
+            "test_instrumentation_runner" eq it.quote()
+        }
+    }
+}

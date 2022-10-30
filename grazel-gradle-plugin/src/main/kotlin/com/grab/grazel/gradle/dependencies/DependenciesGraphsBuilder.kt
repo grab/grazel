@@ -46,6 +46,7 @@ internal class DependenciesGraphsBuilder @Inject constructor(
             add(ConfigurationScope.BUILD)
             if (testExtension.enableTestMigration) {
                 add(ConfigurationScope.TEST)
+                add(ConfigurationScope.ANDROID_TEST)
             }
         }.forEach { configurationScope ->
             rootProject.subprojects.forEach { sourceProject ->

@@ -1,0 +1,136 @@
+/*
+ * Copyright 2022 Grabtaxi Holdings PTE LTD (GRAB)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package com.grab.grazel.migrate.android
+
+import com.android.build.gradle.BaseExtension
+import com.android.build.gradle.api.AndroidSourceSet
+import com.grab.grazel.bazel.starlark.BazelDependency
+import com.grab.grazel.gradle.AndroidVariantDataSource
+import com.grab.grazel.gradle.ConfigurationScope
+import com.grab.grazel.gradle.dependencies.BuildGraphType
+import com.grab.grazel.gradle.dependencies.DependenciesDataSource
+import com.grab.grazel.gradle.dependencies.DependencyGraphs
+import com.grab.grazel.gradle.dependencies.GradleDependencyToBazelDependency
+import com.grab.grazel.gradle.dependencies.variantNameSuffix
+import com.grab.grazel.gradle.getMigratableBuildVariants
+import dagger.Lazy
+import org.gradle.api.Project
+import org.gradle.kotlin.dsl.getByType
+import javax.inject.Inject
+import javax.inject.Singleton
+
+internal interface AndroidInstrumentationBinaryDataExtractor {
+    fun extract(
+        project: Project,
+        mergedVariant: MergedVariant,
+        sourceSetType: SourceSetType = SourceSetType.JAVA,
+    ): AndroidInstrumentationBinaryData
+}
+
+@Singleton
+internal class DefaultAndroidInstrumentationBinaryDataExtractor
+@Inject constructor(
+    private val variantDataSource: AndroidVariantDataSource,
+    private val dependenciesDataSource: DependenciesDataSource,
+    private val dependencyGraphsProvider: Lazy<DependencyGraphs>,
+    private val gradleDependencyToBazelDependency: GradleDependencyToBazelDependency,
+    private val androidManifestParser: AndroidManifestParser,
+    private val keyStoreExtractor: KeyStoreExtractor,
+) : AndroidInstrumentationBinaryDataExtractor {
+    private val projectDependencyGraphs get() = dependencyGraphsProvider.get()
+
+    override fun extract(
+        project: Project,
+        mergedVariant: MergedVariant,
+        sourceSetType: SourceSetType,
+    ): AndroidInstrumentationBinaryData {
+        val extension = project.extensions.getByType<BaseExtension>()
+        val deps = projectDependencyGraphs
+            .directDependencies(
+                project,
+                BuildGraphType(ConfigurationScope.ANDROID_TEST, mergedVariant.variant)
+            ).map { dependency ->
+                gradleDependencyToBazelDependency.map(project, dependency, mergedVariant)
+            } +
+            dependenciesDataSource.collectMavenDeps(
+                project,
+                BuildGraphType(ConfigurationScope.ANDROID_TEST, mergedVariant.variant)
+            ) +
+            BazelDependency.ProjectDependency(
+                project,
+                "_lib${mergedVariant.variantName.variantNameSuffix()}"
+            )
+
+        return project.extract(
+            mergedVariant = mergedVariant,
+            extension = extension,
+            deps = deps,
+            sourceSetType = sourceSetType,
+        )
+    }
+
+    private fun Project.extract(
+        mergedVariant: MergedVariant,
+        extension: BaseExtension,
+        deps: List<BazelDependency>,
+        sourceSetType: SourceSetType,
+    ): AndroidInstrumentationBinaryData {
+
+        val migratableSourceSets = mergedVariant.variant.sourceSets
+            .filterIsInstance<AndroidSourceSet>()
+            .toList()
+
+        val packageName = androidManifestParser.parsePackageName(
+            extension,
+            migratableSourceSets
+        ) ?: ""
+
+        val debugKey = keyStoreExtractor.extract(
+            rootProject = rootProject,
+            variant = variantDataSource.getMigratableBuildVariants(this).firstOrNull()
+        )
+
+        val associate = BazelDependency.ProjectDependency(
+            dependencyProject = this,
+            suffix = "_lib${mergedVariant.variantName.variantNameSuffix()}_kt"
+        )
+
+        val resources = unitTestResources(migratableSourceSets.asSequence()).toList()
+        val resourceFiles = androidSources(migratableSourceSets, SourceSetType.RESOURCES).toList()
+
+        val srcs = androidSources(migratableSourceSets, sourceSetType).toList()
+        val testInstrumentationRunner = extension.extractTestInstrumentationRunner()
+
+        return AndroidInstrumentationBinaryData(
+            name = "${name}${mergedVariant.variantName.variantNameSuffix()}-android-test",
+            associates = listOf(associate),
+            customPackage = packageName,
+            debugKey = debugKey,
+            deps = deps,
+            instruments = BazelDependency.StringDependency(
+                ":${name}${mergedVariant.variantName.variantNameSuffix()}"
+            ),
+            resources = resources,
+            resourceFiles = resourceFiles,
+            srcs = srcs,
+            testInstrumentationRunner = testInstrumentationRunner,
+        )
+    }
+}
+
+internal fun BaseExtension.extractTestInstrumentationRunner(): String? =
+    defaultConfig.testInstrumentationRunner

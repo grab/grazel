@@ -35,6 +35,7 @@ class ProjectBazelFileBuilder(
 
     override fun build(): List<Statement> {
         return targetBuilders
+            .sortedBy { it.toString() }
             .filter { it.canHandle(project) }
             .flatMap { it.build(project) }
             .flatMap { it.statements() }

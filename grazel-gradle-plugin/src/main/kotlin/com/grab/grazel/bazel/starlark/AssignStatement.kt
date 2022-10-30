@@ -136,6 +136,14 @@ interface AssignmentBuilder {
     }
 
     /**
+     * A common pattern is to not add statements if a map is empty. This function only executes `block` if the given map
+     * is not empty.
+     */
+    fun Map<*, *>.notEmpty(block: () -> Unit) {
+        if (isNotEmpty()) block()
+    }
+
+    /**
      * Calls the specified function [block] with `this` value as its argument and returns its result
      * if this nullable list is either null or empty.
      * Otherwise, the specified function [default] is called and returns its result

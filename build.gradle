@@ -85,7 +85,12 @@ grazel {
         multiDexEnabled = true
         incrementalDexing = true
         variantFilter { variant ->
-            if (variant.name != "flavor1Debug" && variant.name != "debug" && variant.name != "debugUnitTest") {
+            if (
+                variant.name != "flavor1Debug" &&
+                    variant.name != "flavor1DebugAndroidTest" &&
+                    variant.name != "debug" &&
+                    variant.name != "debugUnitTest"
+            ) {
                 variant.setIgnore(true)
             }
         }

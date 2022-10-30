@@ -41,6 +41,6 @@ build --strategy=Javac=worker
 # build --nojava_header_compilation # Turn off Java header compilation (might affect incremental build performance)
 
 build --incompatible_java_common_parameters=false # Can be removed once migrated to Kotlin 1.5
-
+build --experimental_disable_instrumentation_manifest_merge
 
 try-import local.bazelrc

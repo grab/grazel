@@ -127,15 +127,6 @@ internal class DefaultAndroidUnitTestDataExtractor @Inject constructor(
         return filterNonDefaultSourceSetDirs(dirs + dirsKotlin)
     }
 
-    private fun Project.unitTestResources(
-        sourceSets: Sequence<AndroidSourceSet>,
-        sourceSetType: SourceSetType = SourceSetType.RESOURCES
-    ): Sequence<String> {
-        val dirs = sourceSets.flatMap { it.resources.srcDirs.asSequence() }
-        val dirsKotlin = dirs.map { File(it.path.replace("/java", "/kotlin")) }
-        return filterSourceSetPaths(dirs + dirsKotlin, sourceSetType.patterns)
-    }
-
     private fun extractPackageName(project: Project): String {
         val migratableSourceSets = variantDataSource
             .getMigratableBuildVariants(project)
@@ -151,3 +142,11 @@ internal class DefaultAndroidUnitTestDataExtractor @Inject constructor(
     }
 }
 
+internal fun Project.unitTestResources(
+    sourceSets: Sequence<AndroidSourceSet>,
+    sourceSetType: SourceSetType = SourceSetType.RESOURCES
+): Sequence<String> {
+    val dirs = sourceSets.flatMap { it.resources.srcDirs.asSequence() }
+    val dirsKotlin = dirs.map { File(it.path.replace("/java", "/kotlin")) }
+    return filterSourceSetPaths(dirs + dirsKotlin, sourceSetType.patterns)
+}

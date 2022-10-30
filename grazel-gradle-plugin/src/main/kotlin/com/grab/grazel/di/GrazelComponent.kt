@@ -35,6 +35,7 @@ import com.grab.grazel.gradle.dependencies.DependenciesGraphsBuilder
 import com.grab.grazel.gradle.dependencies.DependenciesModule
 import com.grab.grazel.gradle.dependencies.DependencyGraphs
 import com.grab.grazel.migrate.builder.AndroidBinaryTargetBuilderModule
+import com.grab.grazel.migrate.builder.AndroidInstrumentationBinaryTargetBuilderModule
 import com.grab.grazel.migrate.builder.AndroidLibTargetBuilderModule
 import com.grab.grazel.migrate.builder.KtAndroidLibTargetBuilderModule
 import com.grab.grazel.migrate.builder.KtLibTargetBuilderModule
@@ -62,7 +63,8 @@ import javax.inject.Singleton
         KtLibTargetBuilderModule::class,
         KtAndroidLibTargetBuilderModule::class,
         AndroidLibTargetBuilderModule::class,
-        AndroidBinaryTargetBuilderModule::class
+        AndroidBinaryTargetBuilderModule::class,
+        AndroidInstrumentationBinaryTargetBuilderModule::class,
     ]
 )
 @Singleton

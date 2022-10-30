@@ -126,3 +126,31 @@ kt_android_library(
         "@maven//:androidx_constraintlayout_constraintlayout",
     ],
 )
+
+load("@grab_bazel_common//android/test:instrumentation.bzl", "android_instrumentation_binary")
+
+android_instrumentation_binary(
+    name = "sample-android-flavor1-debug-android-test",
+    srcs = glob([
+        "src/androidTest/java/JavaTest.java",
+        "src/androidTest/java/KotlinTest.kt",
+    ]),
+    associates = [
+        "//sample-android:sample-android_lib-flavor1-debug_kt",
+    ],
+    custom_package = "com.grab.grazel.android.sample",
+    debug_key = "//buildsystem:debug-keystore",
+    instruments = ":sample-android-flavor1-debug",
+    test_instrumentation_runner = "androidx.test.runner.AndroidJUnitRunner",
+    deps = [
+        "//:dagger",
+        "//sample-android:sample-android_lib-flavor1-debug",
+        "//sample-android-flavor:sample-android-flavor-flavor1-debug",
+        "//sample-android-library:sample-android-library-flavor1-debug",
+        "//sample-kotlin-library",
+        "@maven//:androidx_appcompat_appcompat",
+        "@maven//:androidx_constraintlayout_constraintlayout",
+        "@maven//:androidx_test_espresso_espresso_core",
+        "@maven//:androidx_test_ext_junit",
+    ],
+)
