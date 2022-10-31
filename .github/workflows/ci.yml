@@ -23,9 +23,9 @@ jobs:
             -   name: Lint
                 run: |
                     find "$(pwd -P)" -type f \
-                    ( -name "*.bazel" -o -name "WORKSPACE" ) \
-                    -not -path "./buildsystem/*" \
-                    -exec bazelisk run //:buildifier -- --mode=check -v {} \\+ \\
+                    \( -name "*.bazel" -o -name "WORKSPACE" \) \
+                    -not -path "*/buildsystem/*" \
+                    -exec bazelisk run //:buildifier -- --mode=check -v {} +
     bazel-build:
         runs-on: ubuntu-latest
         steps:
