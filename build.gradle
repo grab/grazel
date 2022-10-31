@@ -128,9 +128,9 @@ grazel {
         }
         mavenInstall {
             httpArchiveRepository {
-                sha256 = "f36441aa876c4f6427bfb2d1f2d723b48e9d930b62662bf723ddfb8fc80f0140"
-                stripPrefix = "rules_jvm_external-4.1"
-                url = "https://github.com/bazelbuild/rules_jvm_external/archive/4.1.zip"
+                sha256 = "735602f50813eb2ea93ca3f5e43b1959bd80b213b836a07a62a29d757670b77b"
+                stripPrefix = "rules_jvm_external-4.4.2"
+                url = "https://github.com/bazelbuild/rules_jvm_external/archive/4.4.2.zip"
             }
             resolveTimeout = 1000
             excludeArtifactsDenyList.add("androidx.constraintlayout:constraintlayout-core")
