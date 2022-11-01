@@ -1,8 +1,5 @@
-import org.gradle.api.internal.classpath.ModuleRegistry
-import org.gradle.api.internal.project.ProjectInternal
-
 /*
- * Copyright 2021 Grabtaxi Holdings PTE LTD (GRAB)
+ * Copyright 2022 Grabtaxi Holdings PTE LTD (GRAB)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,6 +13,11 @@ import org.gradle.api.internal.project.ProjectInternal
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+import org.gradle.api.internal.classpath.ModuleRegistry
+import org.gradle.api.internal.project.ProjectInternal
+
+
 buildscript {
     apply from: "../constants.gradle"
     dependencies {
