@@ -15,7 +15,7 @@
  */
 ext {
     groupId = "com.grab.grazel"
-    versionName = "0.4.0-alpha18"
+    versionName = "0.4.0"
 
     website = "https://grab.github.io/Grazel/"
 }
