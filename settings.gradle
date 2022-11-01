@@ -13,7 +13,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
+pluginManagement {
+    repositories {
+        gradlePluginPortal()
+        mavenCentral()
+    }
+    plugins {
+        id "com.gradle.enterprise" version "3.6.3"
+    }
+}
+plugins {
+    id "com.gradle.enterprise"
+}
 rootProject.name = "grazel"
 apply from: "dependency-catalog.gradle"
 
@@ -23,6 +34,17 @@ include(":sample-android-flavor")
 include(':flavor-libs:sample-library-flavor1')
 include(":flavor-libs:sample-library-flavor2")
 include(':sample-kotlin-library')
+
+def isCiServer = System.getenv().containsKey("CI") || true
+if (isCiServer) {
+    gradleEnterprise {
+        buildScan {
+            termsOfServiceUrl = "https://gradle.com/terms-of-service"
+            termsOfServiceAgree = "yes"
+            tag("CI")
+        }
+    }
+}
 
 includeBuild("grazel-gradle-plugin") {
     dependencySubstitution {

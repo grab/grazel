@@ -1,0 +1,29 @@
+name: 'Run Bazel Command'
+description: 'Ensures bazelisk, mounts Bazel Cache from artifacts and runs Bazel command'
+inputs:
+    bazel-command:
+        description: 'The bazel command to run. Typically the arguments after bazelisk'
+        required: true
+    cache-key:
+        description: 'The cache key to uniquely identify this build'
+        required: true
+runs:
+    using: "composite"
+    steps:
+        -   name: Setup Bazelisk
+            uses: bazelbuild/setup-bazelisk@v2
+        -   name: Install JDK 11
+            uses: actions/setup-java@v3
+            with:
+                distribution: "zulu"
+                java-version: "11"
+
+        -   name: Mount bazel cache
+            uses: actions/cache@v3
+            with:
+                path: "bazel-cache"
+                key: ${{ inputs.cache-key }}
+
+        -   name: Run bazel command
+            shell: bash
+            run: bazelisk ${{ inputs.bazel-command }}

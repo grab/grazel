@@ -1,0 +1,43 @@
+# Disk cache
+build --disk_cache=bazel-cache
+
+# Env config
+build --incompatible_strict_action_env
+build --repo_env=RJE_VERBOSE=true
+
+# Error config
+build --verbose_failures
+
+# D8 and Dexing flags
+build --define=android_incremental_dexing_tool=d8_dexbuilder
+build --define=android_standalone_dexing_tool=d8_compat_dx
+build --define=android_dexmerger_tool=d8_dexmerger
+build --use_workers_with_dexbuilder
+#build --use_multiplex_workers_with_dexbuilder=true
+build --strategy=Desugar=worker
+build --modify_execution_info=Desugar=+supports-multiplex-workers
+
+# Databinding - START
+# Databinding flags
+build --experimental_android_databinding_v2
+build --android_databinding_use_v3_4_args
+build --android_databinding_use_androidx
+# Flags to enable latest android providers in rules
+build --experimental_google_legacy_api
+query --experimental_google_legacy_api
+# Databinding - END
+
+# JAVA - START
+build --experimental_strict_java_deps=off # Turn off strict java deps
+build --java_runtime_version=remotejdk_11 # Use inbuilt Java 11 for hermeticity
+build --jvmopt="-Djava.locale.providers=COMPAT,SPI" # Use Java 8 default locale provider
+# JAVA - END
+
+# Workers
+build --persistent_android_resource_processor
+build --strategy=KotlinCompile=worker
+build --strategy=Javac=worker
+build --experimental_persistent_multiplex_busybox_tools=true
+build --strategy=DatabindingStubs=worker
+
+build --experimental_disable_instrumentation_manifest_merge

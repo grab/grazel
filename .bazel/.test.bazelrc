@@ -1,0 +1,6 @@
+# Test config
+test --build_tests_only
+test --test_verbose_timeout_warnings
+test --test_output=errors # Print test logs for failed tests
+test --test_summary=terse # Print information only about unsuccessful tests that were run
+test --ui_event_filters=-DEBUG
