@@ -42,6 +42,10 @@ bazel_common_initialize(
     patched_android_tools = True,
 )
 
+load("@grab_bazel_common//android:maven.bzl", "pin_bazel_common_artifacts")
+
+pin_bazel_common_artifacts()
+
 DAGGER_TAG = "2.37"
 
 DAGGER_SHA = "0f001ed38ed4ebc6f5c501c20bd35a68daf01c8dbd7541b33b7591a84fcc7b1c"

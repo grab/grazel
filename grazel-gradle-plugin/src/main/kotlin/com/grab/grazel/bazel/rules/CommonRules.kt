@@ -51,11 +51,18 @@ fun StatementsBuilder.bazelCommonRepository(
     buildifierVersion: String,
 ) {
     add(repositoryRule)
-    bazelCommonDependencies(repositoryRule.name)
+    val bazelCommonRepoName = repositoryRule.name
+    bazelCommonDependencies(bazelCommonRepoName)
     bazelCommonInitialize(
-        repositoryRule.name,
+        bazelCommonRepoName,
         buildifierVersion,
     )
+    pinBazelCommonArtifacts(bazelCommonRepoName)
+}
+
+fun StatementsBuilder.pinBazelCommonArtifacts(bazelCommonRepoName: String) {
+    load("@$bazelCommonRepoName//android:maven.bzl", "pin_bazel_common_artifacts")
+    function("pin_bazel_common_artifacts")
 }
 
 fun StatementsBuilder.bazelCommonDependencies(bazelCommonRepoName: String) {
