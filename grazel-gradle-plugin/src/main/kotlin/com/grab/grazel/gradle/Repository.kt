@@ -32,6 +32,11 @@ internal interface RepositoryDataSource {
     val allRepositories: List<DefaultMavenArtifactRepository>
 
     /**
+     * All configured Maven repositories in the project, key by their Gradle name.
+     */
+    val allRepositoriesByName: Map<String, DefaultMavenArtifactRepository>
+
+    /**
      * The Maven repositories among `allRepositories` that can be migrated. This is usually list of Maven repositories
      * without any auth or only Basic Auth.
      */
@@ -61,6 +66,12 @@ internal class DefaultRepositoryDataSource @Inject constructor(
             .filterIsInstance<DefaultMavenArtifactRepository>()
             .filter { it !is DefaultMavenLocalArtifactRepository }
             .toList()
+    }
+    override val allRepositoriesByName: Map<String, DefaultMavenArtifactRepository> by lazy {
+        allRepositories
+            .map { it.name to it }
+            .distinctBy { it.first }
+            .toMap()
     }
 
     override val supportedRepositories: List<DefaultMavenArtifactRepository> by lazy {

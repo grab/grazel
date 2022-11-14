@@ -17,24 +17,59 @@
 package com.grab.grazel.gradle.dependencies
 
 import com.android.build.gradle.internal.utils.toImmutableMap
+import com.grab.grazel.GrazelExtension
 import com.grab.grazel.di.qualifiers.RootProject
 import com.grab.grazel.gradle.ConfigurationDataSource
+import com.grab.grazel.gradle.RepositoryDataSource
 import com.grab.grazel.gradle.VariantInfo.Default
 import org.gradle.api.Project
 import org.gradle.api.artifacts.Configuration
-import org.gradle.api.artifacts.result.ResolvedComponentResult
+import org.gradle.api.artifacts.ExternalDependency
+import org.gradle.api.artifacts.result.ResolutionResult
+import org.gradle.api.internal.artifacts.repositories.DefaultMavenArtifactRepository
 import org.gradle.api.internal.artifacts.result.DefaultResolvedComponentResult
 import org.gradle.api.internal.artifacts.result.DefaultResolvedDependencyResult
 import javax.inject.Inject
+
+data class Repository(
+    val name: String,
+    val repository: DefaultMavenArtifactRepository
+)
+
+data class ExcludeRule(
+    val group: String,
+    val artifact: String
+) {
+    override fun toString(): String = "$group:$artifact"
+}
+
+class MavenExternalArtifact(
+    val group: String,
+    val name: String,
+    val version: String,
+    val repository: Repository,
+    val componentResult: DefaultResolvedComponentResult,
+    val excludeRules: List<ExcludeRule>
+) {
+    val id get() = "$group:$name:$version resolved from ${repository.name}"
+    override fun toString() = id
+}
+
 
 internal class MavenInstallArtifactsCalculator
 @Inject
 constructor(
     @param:RootProject private val rootProject: Project,
     private val configurationDataSource: ConfigurationDataSource,
+    private val repositoryDataSource: RepositoryDataSource,
+    private val grazelExtension: GrazelExtension,
 ) {
 
-    fun calculate(): Map<String, List<DefaultResolvedComponentResult>> {
+    private val excludeArtifactsDenyList by lazy {
+        grazelExtension.rules.mavenInstall.excludeArtifactsDenyList.get()
+    }
+
+    fun calculate(): Map<String, List<MavenExternalArtifact>> {
         val variantConfigs = calculateVariantConfigurations()
         // Resolve the dependencies in each variant bucket from the configuration
         val variantDependencies = resolveVariantDependencies(variantConfigs)
@@ -42,10 +77,24 @@ constructor(
         return filterDependencies(variantDependencies)
     }
 
+    /**
+     * Takes a list of variants and the list of configurations in them to produce a `MavenExternalArtifact`
+     * The data required for `MavenExternalArtifact` comes from different places and this method merges
+     * from all of them to produce `Map` of variants and `MavenExternalArtifact`s.
+     *
+     *  * Repository is calculated from merging all repositories in the project.
+     *  @see [RepositoryDataSource.allRepositoriesByName]
+     *  * Exclude rules are calculated from `ExternalDependency` provided from `configuration.dependencies`
+     *  * [ResolutionResult] is used to calculate dependency versions to ensure final version after
+     *  dependency resolution is used
+     *
+     */
     private fun resolveVariantDependencies(
         variantConfigs: Map<String, List<Configuration>>
-    ): Map<String, List<DefaultResolvedComponentResult>> {
+    ): Map<String, List<MavenExternalArtifact>> {
+        val repositories = repositoryDataSource.allRepositoriesByName
         return variantConfigs.mapValues { (_, configurations) ->
+            val excludeRules = calculateExcludeRules(configurations)
             configurations
                 .asSequence()
                 .filter { it.isCanBeResolved }
@@ -60,14 +109,50 @@ constructor(
                             .filterIsInstance<DefaultResolvedDependencyResult>()
                             .map { it.selected }
                             .filter { !it.toString().startsWith("project :") }
+                            .filterIsInstance<DefaultResolvedComponentResult>()
+                            .map { componentResult ->
+                                val version = componentResult.moduleVersion!!
+                                MavenExternalArtifact(
+                                    group = version.group,
+                                    version = version.version,
+                                    name = version.name,
+                                    repository = Repository(
+                                        name = componentResult.repositoryName!!,
+                                        repository = repositories[componentResult.repositoryName!!]!!
+                                    ),
+                                    componentResult = componentResult,
+                                    excludeRules = excludeRules.getOrDefault(
+                                        version.toString(),
+                                        emptyList()
+                                    )
+                                )
+                            }
                     } catch (e: Exception) {
-                        emptySequence<ResolvedComponentResult>()
+                        emptySequence()
                     }
-                }.filterIsInstance<DefaultResolvedComponentResult>()
-                .sortedBy(DefaultResolvedComponentResult::toString)
-                .distinctBy(DefaultResolvedComponentResult::toString)
+                }.toSortedSet(compareBy(MavenExternalArtifact::id))
                 .toList()
         }
+    }
+
+    /**
+     * Calculate and merge exclude rules from all dependency declarations.
+     *
+     * @param configurations Configurations to merge exclude rules from
+     * @return Map of maven id and its merged exclude rules.
+     */
+    private fun calculateExcludeRules(
+        configurations: List<Configuration>
+    ): Map<String, List<ExcludeRule>> {
+        return configurations
+            .asSequence()
+            .flatMap { it.dependencies }
+            .filter { it.group != null }
+            .filterIsInstance<ExternalDependency>()
+            .groupBy { dep -> "${dep.group}:${dep.name}:${dep.version}" }
+            .mapValues { (_, artifacts) ->
+                artifacts.flatMap { it.extractExcludeRules() }.distinct()
+            }.filterValues { it.isNotEmpty() }
     }
 
     /**
@@ -96,22 +181,34 @@ constructor(
      * dependencies in `default` configuration.
      */
     private fun filterDependencies(
-        variantDependencies: Map<String, List<DefaultResolvedComponentResult>>
-    ): Map<String, List<DefaultResolvedComponentResult>> {
+        variantDependencies: Map<String, List<MavenExternalArtifact>>
+    ): Map<String, List<MavenExternalArtifact>> {
         val defaultDependencies = variantDependencies.getOrDefault(Default.toString(), emptyList())
-        val filteredDependencies = mutableMapOf<String, List<DefaultResolvedComponentResult>>()
-            .apply {
-                put(Default.toString(), defaultDependencies)
-            }
+        val filteredDependencies = mutableMapOf<String, List<MavenExternalArtifact>>().apply {
+            put(Default.toString(), defaultDependencies)
+        }
         variantDependencies.forEach { (variantName, dependencies) ->
             if (variantName != Default.toString()) {
-                filteredDependencies[variantName] = dependencies.filter { componentResult ->
-                    defaultDependencies.none { componentResult.toString() == it.toString() }
-                }
+                filteredDependencies[variantName] = dependencies
+                    .filter { mavenExternalArtifact ->
+                        defaultDependencies.none { mavenExternalArtifact.id == it.id }
+                    }.sortedBy { it.id }
             }
         }
         return filteredDependencies
             .filterValues { it.isNotEmpty() }
             .toImmutableMap()
+    }
+
+    private fun ExternalDependency.extractExcludeRules(): Set<ExcludeRule> {
+        return excludeRules
+            .asSequence()
+            .map {
+                @Suppress("USELESS_ELVIS") // Gradle lying, module can be null
+                ExcludeRule(it.group, it.module ?: "")
+            }
+            .filterNot { it.artifact.isNullOrBlank() }
+            .filterNot { excludeArtifactsDenyList.contains(it.toString()) }
+            .toSet()
     }
 }

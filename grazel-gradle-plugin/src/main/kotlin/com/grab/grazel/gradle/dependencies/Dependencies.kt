@@ -55,7 +55,7 @@ internal val DEP_GROUP_EMBEDDED_BY_RULES = listOf(
     "org.jetbrains.kotlin"
 )
 
-data class ExcludeRule(
+data class ExcludeRuleOld(
     val group: String,
     val artifact: String
 ) {
@@ -69,7 +69,7 @@ internal data class MavenArtifact(
     val group: String?,
     val name: String?,
     val version: String? = null,
-    val excludeRules: Set<ExcludeRule> = emptySet()
+    val excludeRuleOlds: Set<ExcludeRuleOld> = emptySet()
 ) {
     val id get() = "$group:$name"
     override fun toString() = "$group:$name:$version"
@@ -270,8 +270,8 @@ internal class DefaultDependenciesDataSource @Inject constructor(
                 mavenArtifacts
                     .first()
                     .copy(
-                        excludeRules = mavenArtifacts
-                            .flatMap(MavenArtifact::excludeRules)
+                        excludeRuleOlds = mavenArtifacts
+                            .flatMap(MavenArtifact::excludeRuleOlds)
                             .toSet()
                     )
             }.asSequence()
@@ -456,11 +456,11 @@ internal class DefaultDependenciesDataSource @Inject constructor(
             group = group,
             name = name,
             version = version,
-            excludeRules = excludeRules
+            excludeRuleOlds = excludeRules
                 .asSequence()
                 .map {
                     @Suppress("USELESS_ELVIS") // Gradle lying, module can be null
-                    ExcludeRule(it.group, it.module ?: "")
+                    ExcludeRuleOld(it.group, it.module ?: "")
                 }
                 .filterNot { it.artifact.isNullOrBlank() }
                 .filterNot { excludeArtifactsDenyList.contains(it.toString()) }
@@ -477,12 +477,12 @@ internal class DefaultDependenciesDataSource @Inject constructor(
 
 internal fun MavenArtifact.toMavenInstallArtifact(): MavenInstallArtifact {
     return when {
-        excludeRules.isEmpty() -> MavenInstallArtifact.SimpleArtifact(toString())
+        excludeRuleOlds.isEmpty() -> MavenInstallArtifact.SimpleArtifact(toString())
         else -> MavenInstallArtifact.DetailedArtifact(
             group = group!!,
             artifact = name!!,
             version = version!!,
-            exclusions = excludeRules.map { SimpleExclusion("${it.group}:${it.artifact}") }
+            exclusions = excludeRuleOlds.map { SimpleExclusion("${it.group}:${it.artifact}") }
         )
     }
 }
