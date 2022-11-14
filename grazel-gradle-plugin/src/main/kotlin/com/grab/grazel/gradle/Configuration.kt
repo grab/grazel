@@ -163,23 +163,34 @@ internal class DefaultConfigurationDataSource @Inject constructor(
         return if (project.isAndroid) {
             val availableConfigurations = configurations(project)
             val availableVariants = androidVariantDataSource.getMigratableVariants(project)
-            val variantConfigMap = availableConfigurations
-                .groupBy { configuration ->
-                    val matchingVariant = availableVariants
-                        .firstOrNull() { variant -> configuration.name.startsWith(variant.name) }
-                    val matchingFlavor = availableVariants
-                        .firstOrNull() { variant -> configuration.name.startsWith(variant.flavorName) }
-                    when {
-                        matchingVariant != null -> AndroidVariant(matchingVariant)
-                        matchingFlavor?.flavorName?.isNotEmpty() == true ->
-                            AndroidFlavor(matchingFlavor.flavorName)
-                        else -> VariantInfo.Default
-                    }
-                }
-
-            return variantConfigMap
+            return availableConfigurations
+                .groupBy { configuration -> calculateVariantKey(availableVariants, configuration) }
         } else {
             mapOf(VariantInfo.Default to configurations(project).toList())
+        }
+    }
+
+    /** Return the grouping key that will be used to split the configurations,
+     *  first checks a matching variant, then flavor, then build type and fallback to `VariantInfo.Default`.
+     *  We could ideally just group by variant name but that is not sufficient since
+     *  there can be configurations like `debugImplementation` etc that might not
+     *  have been caught by variant name check but will be caught by buildType check.
+     */
+    private fun calculateVariantKey(
+        availableVariants: List<BaseVariant>,
+        configuration: Configuration
+    ): VariantInfo {
+        val matchingVariant = availableVariants
+            .firstOrNull() { variant -> configuration.name.startsWith(variant.name) }
+        val matchingFlavor = availableVariants
+            .firstOrNull() { variant -> configuration.name.startsWith(variant.flavorName) }
+        val matchingBuildType = availableVariants
+            .firstOrNull() { variant -> configuration.name.startsWith(variant.buildType.name) }
+        return when {
+            matchingVariant != null -> AndroidVariant(matchingVariant)
+            matchingFlavor?.flavorName?.isNotEmpty() == true -> AndroidFlavor(matchingFlavor.flavorName)
+            matchingBuildType != null -> AndroidFlavor(matchingBuildType.name)
+            else -> VariantInfo.Default
         }
     }
 }
