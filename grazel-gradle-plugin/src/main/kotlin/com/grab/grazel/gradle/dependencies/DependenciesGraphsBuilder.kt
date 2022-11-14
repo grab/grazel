@@ -61,22 +61,21 @@ internal class DependenciesGraphsBuilder @Inject constructor(
                         androidVariantDataSource.getMigratableVariants(
                             sourceProject,
                             configurationScope
-                        )
-                            .forEach { variant ->
-                                if (configurationDataSource.isThisConfigurationBelongsToThisVariants(
-                                        sourceProject,
-                                        variant,
-                                        configuration = configuration
-                                    )
-                                ) {
-                                    buildGraphs.putEdgeValue(
-                                        BuildGraphType(configurationScope, variant),
-                                        sourceProject,
-                                        projectDependency.dependencyProject,
-                                        configuration
-                                    )
-                                }
+                        ).forEach { variant ->
+                            if (configurationDataSource.isThisConfigurationBelongsToThisVariants(
+                                    sourceProject,
+                                    variant,
+                                    configuration = configuration
+                                )
+                            ) {
+                                buildGraphs.putEdgeValue(
+                                    BuildGraphType(configurationScope, variant),
+                                    sourceProject,
+                                    projectDependency.dependencyProject,
+                                    configuration
+                                )
                             }
+                        }
                     }
             }
         }
@@ -97,8 +96,10 @@ internal class DependenciesGraphsBuilder @Inject constructor(
     ) {
         dependenciesDataSource.projectDependencies(project, configurationScope)
             .forEach { (configuration, projectDependency) ->
-                val variants =
-                    androidVariantDataSource.getMigratableVariants(project, configurationScope)
+                val variants = androidVariantDataSource.getMigratableVariants(
+                    project,
+                    configurationScope
+                )
                 if (variants.isNotEmpty()) {
                     variants.forEach { variant ->
                         if (variant.compileConfiguration.hierarchy.contains(configuration)) {
@@ -137,7 +138,7 @@ internal class DependenciesGraphsBuilder @Inject constructor(
         ) {
             buildGraphs.addNode(BuildGraphType(configurationScope, null), sourceProject)
         } else {
-            rootProject.logger.warn("${sourceProject.name} is a simple directory")
+            rootProject.logger.info("${sourceProject.name} is a simple directory")
         }
     }
 }

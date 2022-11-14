@@ -34,6 +34,7 @@ import com.grab.grazel.gradle.dependencies.DependenciesDataSource
 import com.grab.grazel.gradle.dependencies.DependenciesGraphsBuilder
 import com.grab.grazel.gradle.dependencies.DependenciesModule
 import com.grab.grazel.gradle.dependencies.DependencyGraphs
+import com.grab.grazel.gradle.dependencies.MavenInstallArtifactsCalculator
 import com.grab.grazel.migrate.builder.AndroidBinaryTargetBuilderModule
 import com.grab.grazel.migrate.builder.AndroidInstrumentationBinaryTargetBuilderModule
 import com.grab.grazel.migrate.builder.AndroidLibTargetBuilderModule
@@ -84,6 +85,7 @@ internal interface GrazelComponent {
     fun rootBazelFileBuilder(): Lazy<RootBazelFileBuilder>
     fun artifactsPinner(): Lazy<ArtifactsPinner>
     fun dependenciesDataSource(): Lazy<DependenciesDataSource>
+    fun mavenInstallArtifactsCalculator(): Lazy<MavenInstallArtifactsCalculator>
 }
 
 @Module(

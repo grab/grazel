@@ -31,6 +31,21 @@ import org.gradle.kotlin.dsl.the
 import javax.inject.Inject
 import javax.inject.Singleton
 
+
+sealed class VariantInfo {
+    object Default : VariantInfo() {
+        override fun toString() = "default"
+    }
+
+    data class AndroidFlavor(val flavorName: String) : VariantInfo() {
+        override fun toString() = flavorName
+    }
+
+    data class AndroidVariant(val baseVariant: BaseVariant) : VariantInfo() {
+        override fun toString(): String = baseVariant.name
+    }
+}
+
 internal interface AndroidVariantDataSource {
     /**
      * Variant filter instance to filter out unsupported variants

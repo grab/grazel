@@ -23,6 +23,8 @@ import org.gradle.api.artifacts.Configuration
 
 
 internal interface DependencyGraphs {
+    val buildGraphs: Map<BuildGraphType, ImmutableValueGraph<Project, Configuration>>
+
     fun nodes(vararg buildGraphType: BuildGraphType): Set<Project>
     fun dependenciesSubGraph(
         project: Project,
@@ -36,7 +38,7 @@ internal interface DependencyGraphs {
 }
 
 internal class DefaultDependencyGraphs(
-    private val buildGraphs: Map<BuildGraphType, ImmutableValueGraph<Project, Configuration>>
+    override val buildGraphs: Map<BuildGraphType, ImmutableValueGraph<Project, Configuration>>
 ) : DependencyGraphs {
     override fun nodes(vararg buildGraphType: BuildGraphType): Set<Project> {
         return when {

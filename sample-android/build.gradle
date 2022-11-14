@@ -54,7 +54,7 @@ android {
             signingConfig signingConfigs.debug
         }
         staging {
-            matchingFallbacks = ['debug', 'release']
+            matchingFallbacks = ["debug", "release"]
         }
     }
 
@@ -87,8 +87,8 @@ android {
 
 dependencies {
     implementation fileTree(dir: "libs", include: ["*.jar"])
-    implementation project(path: ':sample-kotlin-library')
-    implementation project(path: ':sample-android-library')
+    implementation project(path: ":sample-kotlin-library")
+    implementation project(path: ":sample-android-library")
     implementation project(path: ":sample-android-flavor")
     implementation libs.androidx.appcompat
 
@@ -100,9 +100,14 @@ dependencies {
     implementation libs.google.dagger
     kapt libs.google.dagger.compiler
 
+    // Added to test per variant maven install resolution
+    implementation "com.squareup.leakcanary:leakcanary-android:2.10"
+    //noinspection GradleDependency
+    flavor1Implementation "com.squareup.leakcanary:leakcanary-android:2.9.1"
+
     testImplementation libs.junit
     androidTestImplementation libs.androidx.test.junit
     androidTestImplementation libs.androidx.test.espresso.core
 }
 
-apply plugin: 'com.google.gms.google-services'
+apply plugin: "com.google.gms.google-services"
