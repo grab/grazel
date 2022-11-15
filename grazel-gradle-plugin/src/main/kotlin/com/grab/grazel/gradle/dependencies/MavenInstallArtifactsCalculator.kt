@@ -22,6 +22,7 @@ import com.grab.grazel.di.qualifiers.RootProject
 import com.grab.grazel.gradle.ConfigurationDataSource
 import com.grab.grazel.gradle.RepositoryDataSource
 import com.grab.grazel.gradle.VariantInfo.Default
+import com.grab.grazel.util.merge
 import org.gradle.api.Project
 import org.gradle.api.artifacts.Configuration
 import org.gradle.api.artifacts.ExternalDependency
@@ -159,18 +160,15 @@ constructor(
      * Calculate a `Map` of `Variant` and its `Configuration`s for the whole project.
      */
     private fun calculateVariantConfigurations(): Map<String, List<Configuration>> {
-        val variantConfigs = mutableMapOf<String, List<Configuration>>()
-        rootProject.subprojects.forEach { project ->
-            val variantConfigMap = configurationDataSource.configurationByVariant(project)
-            variantConfigMap.forEach { (variantInfo, configurations) ->
-                val prevConfigurations = variantConfigs.getOrDefault(
-                    key = variantInfo.toString(),
-                    defaultValue = emptyList()
-                )
-                variantConfigs[variantInfo.toString()] = configurations + prevConfigurations
+        return rootProject
+            .subprojects
+            .map { project ->
+                configurationDataSource
+                    .configurationByVariant(project = project)
+                    .mapKeys { it.key.toString() }
             }
-        }
-        return variantConfigs.toImmutableMap()
+            .merge { prev, next -> (prev + next) }
+            .toImmutableMap()
     }
 
     /**
