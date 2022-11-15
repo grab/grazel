@@ -182,17 +182,19 @@ constructor(
         variantDependencies: Map<String, List<MavenExternalArtifact>>
     ): Map<String, List<MavenExternalArtifact>> {
         val defaultDependencies = variantDependencies.getOrDefault(Default.toString(), emptyList())
+        val defaultDependenciesMap = defaultDependencies.groupBy { it.id }
+
         val filteredDependencies = mutableMapOf<String, List<MavenExternalArtifact>>().apply {
             put(Default.toString(), defaultDependencies)
         }
-        variantDependencies.forEach { (variantName, dependencies) ->
-            if (variantName != Default.toString()) {
+        variantDependencies
+            .asSequence()
+            .filter { it.key != Default.toString() }
+            .forEach { (variantName, dependencies) ->
                 filteredDependencies[variantName] = dependencies
-                    .filter { mavenExternalArtifact ->
-                        defaultDependencies.none { mavenExternalArtifact.id == it.id }
-                    }.sortedBy { it.id }
+                    .filter { !defaultDependenciesMap.contains(it.id) }
+                    .sortedBy { it.id }
             }
-        }
         return filteredDependencies
             .filterValues { it.isNotEmpty() }
             .toImmutableMap()
