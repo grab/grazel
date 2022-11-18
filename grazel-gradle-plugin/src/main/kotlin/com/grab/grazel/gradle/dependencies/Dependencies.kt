@@ -46,6 +46,10 @@ internal val DEP_GROUP_EMBEDDED_BY_RULES = listOf(
     "org.jetbrains.kotlin"
 )
 
+@Deprecated(
+    "No longer used, use com.grab.grazel.gradle.dependencies.ExcludeRule instead.",
+    replaceWith = ReplaceWith("ExcludeRule", "com.grab.grazel.gradle.dependencies.ExcludeRule")
+)
 data class ExcludeRuleOld(
     val group: String,
     val artifact: String

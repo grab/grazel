@@ -128,6 +128,7 @@ constructor(
                                 )
                             }
                     } catch (e: Exception) {
+                        e.printStackTrace()
                         emptySequence()
                     }
                 }.toSortedSet(compareBy(MavenExternalArtifact::id))
