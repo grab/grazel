@@ -17,6 +17,54 @@ crashlytics_android_library(
 load("@grab_bazel_common//tools/custom_res:custom_res.bzl", "custom_res")
 
 android_binary(
+    name = "sample-android-flavor2-debug",
+    assets = glob([
+        "src/main/assets/assert-file.png",
+    ]),
+    assets_dir = "src/main/assets",
+    crunch_png = False,
+    custom_package = "com.grab.grazel.android.sample",
+    debug_key = "//buildsystem:debug-keystore",
+    dex_shards = 5,
+    enable_data_binding = True,
+    incremental_dexing = True,
+    manifest = "src/debug/AndroidManifest.xml",
+    manifest_values = {
+        "versionCode": "1",
+        "versionName": "1.0",
+        "minSdkVersion": "16",
+        "targetSdkVersion": "29",
+        "applicationId": "com.grab.grazel.android.sample",
+        "orientation": "portrait",
+        "libraryManifestHolder": "value",
+    },
+    multidex = "native",
+    resource_files = glob([
+        "src/main/res/**",
+    ]) + custom_res(
+        dir_name = "res-debug",
+        resource_files = glob([
+            "src/main/res-debug/values/strings.xml",
+        ]),
+        target = "sample-android-flavor2-debug",
+    ) + GOOGLE_SERVICES_XML,
+    visibility = [
+        "//visibility:public",
+    ],
+    deps = [
+        ":crashlytics_lib",
+        ":sample-android_lib-flavor2-debug",
+        "@maven//:androidx_annotation_annotation",
+        "@maven//:androidx_databinding_databinding_adapters",
+        "@maven//:androidx_databinding_databinding_common",
+        "@maven//:androidx_databinding_databinding_runtime",
+        "@maven//:androidx_databinding_viewbinding",
+    ],
+)
+
+load("@grab_bazel_common//tools/custom_res:custom_res.bzl", "custom_res")
+
+android_binary(
     name = "sample-android-flavor1-debug",
     assets = glob([
         "src/main/assets/assert-file.png",
@@ -59,6 +107,72 @@ android_binary(
         "@maven//:androidx_databinding_databinding_common",
         "@maven//:androidx_databinding_databinding_runtime",
         "@maven//:androidx_databinding_viewbinding",
+    ],
+)
+
+load("@grab_bazel_common//tools/build_config:build_config.bzl", "build_config")
+
+build_config(
+    name = "sample-android_lib-flavor2-debug-build-config",
+    package_name = "com.grab.grazel.android.sample",
+    booleans = {
+        "SOME_BOOLEAN": "false",
+    },
+    ints = {
+        "SOME_INT": 0,
+        "VERSION_CODE": 1,
+    },
+    longs = {
+        "SOME_LONG": 0,
+    },
+    strings = {
+        "SOME_STRING": "Something",
+        "VERSION_NAME": "1.0",
+    },
+)
+
+load("@grab_bazel_common//tools/custom_res:custom_res.bzl", "custom_res")
+load("@grab_bazel_common//tools/res_value:res_value.bzl", "res_value")
+load("@grab_bazel_common//tools/kotlin:android.bzl", "kt_android_library")
+
+kt_android_library(
+    name = "sample-android_lib-flavor2-debug",
+    srcs = glob([
+        "src/main/java/com/grab/grazel/android/sample/MainActivity.kt",
+    ]),
+    assets = glob([
+        "src/main/assets/assert-file.png",
+    ]),
+    assets_dir = "src/main/assets",
+    custom_package = "com.grab.grazel.android.sample",
+    manifest = "src/debug/AndroidManifest.xml",
+    resource_files = glob([
+        "src/main/res/**",
+    ]) + custom_res(
+        dir_name = "res-debug",
+        resource_files = glob([
+            "src/main/res-debug/values/strings.xml",
+        ]),
+        target = "sample-android_lib-flavor2-debug",
+    ) + res_value(
+        name = "sample-android_lib-flavor2-debug-res-value",
+        strings = {
+            "generated_value": "important-key",
+        },
+    ),
+    visibility = [
+        "//visibility:public",
+    ],
+    deps = [
+        ":sample-android_lib-flavor2-debug-build-config",
+        "//:dagger",
+        "//:parcelize",
+        "//sample-android-flavor:sample-android-flavor-flavor2-debug",
+        "//sample-android-library:sample-android-library-flavor2-debug",
+        "//sample-kotlin-library",
+        "@maven//:androidx_appcompat_appcompat",
+        "@maven//:androidx_constraintlayout_constraintlayout",
+        "@maven//:com_squareup_leakcanary_leakcanary_android",
     ],
 )
 
@@ -124,6 +238,7 @@ kt_android_library(
         "//sample-kotlin-library",
         "@maven//:androidx_appcompat_appcompat",
         "@maven//:androidx_constraintlayout_constraintlayout",
+        "@maven//:com_squareup_leakcanary_leakcanary_android",
     ],
 )
 
@@ -152,5 +267,6 @@ android_instrumentation_binary(
         "@maven//:androidx_constraintlayout_constraintlayout",
         "@maven//:androidx_test_espresso_espresso_core",
         "@maven//:androidx_test_ext_junit",
+        "@maven//:com_squareup_leakcanary_leakcanary_android",
     ],
 )
