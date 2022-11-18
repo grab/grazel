@@ -24,7 +24,6 @@ import com.grab.grazel.bazel.rules.DAGGER_REPOSITORIES
 import com.grab.grazel.bazel.rules.DATABINDING_ARTIFACTS
 import com.grab.grazel.bazel.rules.DATABINDING_GROUP
 import com.grab.grazel.bazel.rules.GRAB_BAZEL_COMMON_ARTIFACTS
-import com.grab.grazel.bazel.rules.MavenRepository
 import com.grab.grazel.bazel.rules.MavenRepository.DefaultMavenRepository
 import com.grab.grazel.bazel.rules.androidNdkRepository
 import com.grab.grazel.bazel.rules.androidSdkRepository
@@ -95,9 +94,9 @@ internal class WorkspaceBuilder(
     override fun build() = statements {
         workspace(name = rootProject.name)
 
-        buildKotlinRules()
+        kotlinRules()
 
-        setupBazelCommon()
+        bazelCommon()
 
         buildJvmRules()
 
@@ -105,11 +104,6 @@ internal class WorkspaceBuilder(
 
         toolsAndroid()
     }
-
-    private val injectedRepositories = listOf<MavenRepository>(
-        DefaultMavenRepository("https://maven.google.com"),
-        DefaultMavenRepository("https://repo1.maven.org/maven2")
-    )
 
     private fun StatementsBuilder.buildJvmRules() {
         val hasDagger = gradleProjectInfo.hasDagger
@@ -131,10 +125,7 @@ internal class WorkspaceBuilder(
         }
 
         val mavenArtifacts = dependenciesDataSource
-            .resolvedArtifactsFor(
-                projects = projectsToMigrate,
-                overrideArtifactVersions = dependenciesExtension.overrideArtifactVersions.get()
-            ).asSequence()
+            .resolvedArtifactsFor(projects = projectsToMigrate).asSequence()
             .filter {
                 val dagger = if (hasDagger) !it.id.contains(DAGGER_GROUP) else true
                 val db = if (hasDatabinding) !it.id.contains(DATABINDING_GROUP) else true
@@ -172,7 +163,7 @@ internal class WorkspaceBuilder(
         jvmRules(
             rulesJvmExternalRule = mavenInstall.repository,
             artifacts = allArtifacts,
-            mavenRepositories = (repositories + injectedRepositories).distinct().toList(),
+            mavenRepositories = (repositories).distinct().toList(),
             externalArtifacts = externalArtifacts.toList(),
             externalRepositories = externalRepositories.toList(),
             jetify = jetifierData.isEnabled,
@@ -189,12 +180,11 @@ internal class WorkspaceBuilder(
 
 
     /** Configure imports for Grab bazel common repository */
-    private fun StatementsBuilder.setupBazelCommon() {
+    private fun StatementsBuilder.bazelCommon() {
         val bazelCommon = grazelExtension.rules.bazelCommon
         val bazelCommonRepo = bazelCommon.repository
         val toolchains = bazelCommon.toolchains
         val buildifier = toolchains.buildifier
-
         bazelCommonRepository(
             bazelCommonRepo,
             buildifier.releaseVersion,
@@ -242,7 +232,7 @@ internal class WorkspaceBuilder(
      * * Kotlin compiler
      * * Registering toolchains
      */
-    private fun StatementsBuilder.buildKotlinRules() {
+    private fun StatementsBuilder.kotlinRules() {
         val kotlin = grazelExtension.rules.kotlin
         kotlinRepository(repositoryRule = kotlin.repository)
         kotlinCompiler(kotlin.compiler.tag, kotlin.compiler.sha)

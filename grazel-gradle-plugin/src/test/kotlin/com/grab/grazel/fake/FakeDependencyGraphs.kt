@@ -16,14 +16,17 @@
 
 package com.grab.grazel.fake
 
+import com.google.common.graph.ImmutableValueGraph
 import com.grab.grazel.gradle.dependencies.BuildGraphType
 import com.grab.grazel.gradle.dependencies.DependencyGraphs
 import org.gradle.api.Project
+import org.gradle.api.artifacts.Configuration
 
 internal class FakeDependencyGraphs(
     private val directDeps: Set<Project> = emptySet(),
     private val dependenciesSubGraph: Set<Project> = emptySet(),
-    private val nodes: Set<Project> = emptySet()
+    private val nodes: Set<Project> = emptySet(),
+    override val buildGraphs: Map<BuildGraphType, ImmutableValueGraph<Project, Configuration>> = emptyMap()
 ) : DependencyGraphs {
     override fun nodes(vararg buildGraphType: BuildGraphType): Set<Project> = nodes
 

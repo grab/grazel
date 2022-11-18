@@ -39,15 +39,6 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * TODO To remove this once test rules support is added
- */
-private val DEFAULT_MAVEN_ARTIFACTS: List<MavenArtifact> = listOf(
-    MavenArtifact("junit", "junit", "4.12"),
-    MavenArtifact("org.mockito", "mockito-core", "3.4.6"),
-    MavenArtifact("com.nhaarman", "mockito-kotlin", "1.6.0")
-)
-
-/**
  * Maven group names for artifacts that should be excluded from dependencies calculation everywhere.
  */
 internal val DEP_GROUP_EMBEDDED_BY_RULES = listOf(
@@ -263,7 +254,7 @@ internal class DefaultDependenciesDataSource @Inject constructor(
             }
             .let(::collectForcedVersions)
 
-        return (DEFAULT_MAVEN_ARTIFACTS + externalArtifacts + forcedVersions)
+        return (externalArtifacts + forcedVersions)
             .groupBy { it.id }
             .map { (_, mavenArtifacts) ->
                 // Merge all exclude rules so that we have a cumulative set

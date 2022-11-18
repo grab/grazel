@@ -25,30 +25,28 @@ import dagger.Provides
 import org.gradle.api.Project
 import javax.inject.Singleton
 
-@Module(includes = [DependenciesBinder::class])
-internal object DependenciesModule {
-
-    @Provides
-    @Singleton
-    fun GrazelExtension.provideArtifactsConfig(): ArtifactsConfig = toArtifactsConfig()
-
-    @Singleton
-    @Provides
-    fun dependencyResolutionCacheService(
-        @RootProject rootProject: Project
-    ): GradleProvider<@JvmSuppressWildcards DefaultDependencyResolutionService> =
-        DefaultDependencyResolutionService.register(rootProject)
-}
-
-
 @Module
-internal interface DependenciesBinder {
+internal interface DependenciesModule {
     @Binds
     fun DefaultDependenciesDataSource.dependenciesDataSource(): DependenciesDataSource
+
+    @Module
+    companion object {
+        @Provides
+        @Singleton
+        fun GrazelExtension.provideArtifactsConfig(): ArtifactsConfig = artifactsConfig()
+
+        @Singleton
+        @Provides
+        fun dependencyResolutionCacheService(
+            @RootProject rootProject: Project
+        ): GradleProvider<@JvmSuppressWildcards DefaultDependencyResolutionService> =
+            DefaultDependencyResolutionService.register(rootProject)
+    }
 }
 
 
-private fun GrazelExtension.toArtifactsConfig() = ArtifactsConfig(
+private fun GrazelExtension.artifactsConfig() = ArtifactsConfig(
     excludedList = rules.mavenInstall.excludeArtifacts.get(),
     ignoredList = dependencies.ignoreArtifacts.get()
 )

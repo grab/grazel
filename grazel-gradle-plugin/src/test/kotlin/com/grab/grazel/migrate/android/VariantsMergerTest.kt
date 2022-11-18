@@ -23,7 +23,6 @@ class VariantsMergerTest {
 
     @Test
     fun `extra build type in app and fall back for it`() {
-
         VariantsMergerRobo()
             .scope(ConfigurationScope.BUILD)
             .appFlavor("flavor1", "service")

@@ -56,7 +56,6 @@ class MavenExternalArtifact(
     override fun toString() = id
 }
 
-
 internal class MavenInstallArtifactsCalculator
 @Inject
 constructor(
@@ -166,8 +165,7 @@ constructor(
                 configurationDataSource
                     .configurationByVariant(project = project)
                     .mapKeys { it.key.toString() }
-            }
-            .merge { prev, next -> (prev + next) }
+            }.merge { prev, next -> (prev + next) }
             .toImmutableMap()
     }
 

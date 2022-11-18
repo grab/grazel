@@ -28,8 +28,9 @@ import org.gradle.api.services.BuildServiceParameters
 import java.util.concurrent.ConcurrentSkipListMap
 
 /**
- * A [BuildService] to cache and maintain a project's resolved dependency resolution graph obtained after configuration
- * resolution. This cache lazily resolves dependencies the first time and caches result thereafter. Thread safe and
+ * A [BuildService] to cache and maintain a project's resolved dependency resolution graph obtained
+ * after dependency resolution.
+ * This cache lazily resolves dependencies the first time and caches result thereafter. Thread safe and
  * can be queried from multiple threads.
  */
 internal interface DependencyResolutionService : BuildService<DependencyResolutionService.Params>,

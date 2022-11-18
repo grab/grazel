@@ -32,8 +32,9 @@ import org.gradle.api.provider.Provider
 import org.gradle.api.specs.Spec
 import java.util.*
 
-class FakeConfigurationContainer(private var configurations: List<Configuration> = emptyList()) :
-    ConfigurationContainer {
+class FakeConfigurationContainer(
+    private var configurations: List<Configuration> = emptyList()
+) : ConfigurationContainer {
     override fun add(element: Configuration): Boolean {
         TODO("Not yet implemented")
     }

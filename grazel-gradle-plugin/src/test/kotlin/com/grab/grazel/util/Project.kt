@@ -16,6 +16,7 @@
 
 package com.grab.grazel.util
 
+import com.grab.grazel.GrazelExtension
 import com.grab.grazel.di.DaggerGrazelComponent
 import com.grab.grazel.di.GrazelComponent
 import org.gradle.api.Project
@@ -28,4 +29,9 @@ fun Project.doEvaluate(): MutableSet<Task> = getTasksByName("tasks", false)
 
 internal fun Project.createGrazelComponent(): GrazelComponent {
     return DaggerGrazelComponent.factory().create(this)
+}
+
+internal fun Project.addGrazelExtension() {
+    val grazelGradlePluginExtension = GrazelExtension(rootProject)
+    rootProject.extensions.add(GrazelExtension.GRAZEL_EXTENSION, grazelGradlePluginExtension)
 }
