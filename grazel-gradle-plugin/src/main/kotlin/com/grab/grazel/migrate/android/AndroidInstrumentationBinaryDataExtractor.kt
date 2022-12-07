@@ -30,6 +30,7 @@ import com.grab.grazel.gradle.getMigratableBuildVariants
 import dagger.Lazy
 import org.gradle.api.Project
 import org.gradle.kotlin.dsl.getByType
+import java.io.File
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -110,6 +111,7 @@ internal class DefaultAndroidInstrumentationBinaryDataExtractor
         )
 
         val resources = unitTestResources(migratableSourceSets.asSequence()).toList()
+        val resourceStripPrefix = resourceStripPrefix(migratableSourceSets.asSequence())
         val resourceFiles = androidSources(migratableSourceSets, SourceSetType.RESOURCES).toList()
 
         val srcs = androidSources(migratableSourceSets, sourceSetType).toList()
@@ -125,6 +127,7 @@ internal class DefaultAndroidInstrumentationBinaryDataExtractor
                 ":${name}${mergedVariant.variantName.variantNameSuffix()}"
             ),
             resources = resources,
+            resourceStripPrefix = resourceStripPrefix,
             resourceFiles = resourceFiles,
             srcs = srcs,
             testInstrumentationRunner = testInstrumentationRunner,
@@ -134,3 +137,17 @@ internal class DefaultAndroidInstrumentationBinaryDataExtractor
 
 internal fun BaseExtension.extractTestInstrumentationRunner(): String? =
     defaultConfig.testInstrumentationRunner
+
+internal fun Project.resourceStripPrefix(
+    sourceSets: Sequence<AndroidSourceSet>,
+): String? = sourceSets
+    .flatMap { sourceSet ->
+        sourceSet.resources.srcDirs.asSequence()
+    }
+    .filter(File::exists)
+    .map(::relativePath)
+    .map { dir ->
+        "$name/$dir"
+    }
+    .distinct()
+    .firstOrNull()

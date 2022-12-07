@@ -1,0 +1,11 @@
+[
+    {
+        "this": [
+            "should",
+            "not",
+            "appear",
+            "in",
+            "androidTest"
+        ]
+    }
+]

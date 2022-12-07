@@ -28,6 +28,7 @@ internal data class AndroidInstrumentationBinaryData(
     val name: String,
     val resourceFiles: List<String>,
     val resources: List<String>,
+    val resourceStripPrefix: String? = null,
     val srcs: List<String>,
     val testInstrumentationRunner: String? = null,
 )

@@ -296,6 +296,7 @@ fun StatementsBuilder.androidInstrumentationBinary(
     instruments: BazelDependency,
     manifestValues: Map<String, String?> = mapOf(),
     resources: List<String> = emptyList(),
+    resourceStripPrefix: String? = null,
     resourceFiles: List<Assignee> = emptyList(),
     srcsGlob: List<String> = emptyList(),
     testInstrumentationRunner: String? = null,
@@ -323,6 +324,9 @@ fun StatementsBuilder.androidInstrumentationBinary(
         }
         resources.notEmpty {
             "resources" eq glob(resources.quote)
+        }
+        resourceStripPrefix?.let {
+            "resource_strip_prefix" eq it.quote()
         }
         resourceFiles.notEmpty {
             "resource_files" eq resourceFiles.joinToString(

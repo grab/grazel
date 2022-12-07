@@ -85,6 +85,7 @@ internal class AndroidInstrumentationBinaryTargetBuilder
             instruments = instruments,
             manifestValues = manifestValues,
             resources = resources,
+            resourceStripPrefix = resourceStripPrefix,
             resourceFiles = resourceFiles,
             srcs = srcs,
             testInstrumentationRunner = testInstrumentationRunner,

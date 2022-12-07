@@ -256,6 +256,10 @@ android_instrumentation_binary(
     custom_package = "com.grab.grazel.android.sample",
     debug_key = "//buildsystem:debug-keystore",
     instruments = ":sample-android-flavor1-debug",
+    resource_strip_prefix = "sample-android/src/androidTest/resources",
+    resources = glob([
+        "src/androidTest/resources/resource.json",
+    ]),
     test_instrumentation_runner = "androidx.test.runner.AndroidJUnitRunner",
     deps = [
         "//:dagger",
