@@ -43,7 +43,7 @@ import org.junit.Test
 import org.junit.rules.TemporaryFolder
 import java.io.File
 
-private const val KOTLIN_STDLIB = "org.jetbrains.kotlin:kotlin-stdlib"
+internal const val KOTLIN_STDLIB = "org.jetbrains.kotlin:kotlin-stdlib"
 
 class DefaultAndroidUnitTestDataExtractorTest : GrazelPluginTest() {
     private lateinit var rootProject: Project
