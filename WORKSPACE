@@ -85,7 +85,7 @@ maven_install(
                 "androidx.core:core",
             ],
             group = "androidx.constraintlayout",
-            version = "2.1.1",
+            version = "1.1.2",
         ),
         "androidx.core:core:1.5.0",
         "androidx.databinding:databinding-adapters:7.1.2",

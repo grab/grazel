@@ -125,7 +125,10 @@ internal class WorkspaceBuilder(
         }
 
         val mavenArtifacts = dependenciesDataSource
-            .resolvedArtifactsFor(projects = projectsToMigrate).asSequence()
+            .resolvedArtifactsFor(
+                projects = projectsToMigrate,
+                overrideArtifactVersions = dependenciesExtension.overrideArtifactVersions.get()
+            ).asSequence()
             .filter {
                 val dagger = if (hasDagger) !it.id.contains(DAGGER_GROUP) else true
                 val db = if (hasDatabinding) !it.id.contains(DATABINDING_GROUP) else true
