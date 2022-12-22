@@ -1,3 +1,19 @@
+load("@tools_android//tools/googleservices:defs.bzl", "google_services_xml")
+
+GOOGLE_SERVICES_XML = google_services_xml(
+    package_name = "com.grab.grazel.android.sample",
+    google_services_json = "google-services.json",
+)
+
+load("@tools_android//tools/crashlytics:defs.bzl", "crashlytics_android_library")
+
+crashlytics_android_library(
+    name = "crashlytics_lib",
+    package_name = "com.grab.grazel.android.sample",
+    build_id = "042cb4d8-56f8-41a0-916a-9da28e94d1ba",
+    resource_files = GOOGLE_SERVICES_XML,
+)
+
 load("@grab_bazel_common//tools/custom_res:custom_res.bzl", "custom_res")
 
 android_binary(
@@ -257,20 +273,4 @@ android_instrumentation_binary(
         "@maven//:androidx_test_ext_junit",
         "@maven//:com_squareup_leakcanary_leakcanary_android",
     ],
-)
-
-load("@tools_android//tools/googleservices:defs.bzl", "google_services_xml")
-
-GOOGLE_SERVICES_XML = google_services_xml(
-    package_name = "com.grab.grazel.android.sample",
-    google_services_json = "google-services.json",
-)
-
-load("@tools_android//tools/crashlytics:defs.bzl", "crashlytics_android_library")
-
-crashlytics_android_library(
-    name = "crashlytics_lib",
-    package_name = "com.grab.grazel.android.sample",
-    build_id = "042cb4d8-56f8-41a0-916a-9da28e94d1ba",
-    resource_files = GOOGLE_SERVICES_XML,
 )

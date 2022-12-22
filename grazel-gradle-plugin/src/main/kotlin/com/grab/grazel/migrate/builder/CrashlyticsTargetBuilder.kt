@@ -60,6 +60,7 @@ internal class CrashlyticsTargetBuilder @Inject constructor(
             project.hasGooglePlayServicesPlugin &&
             project.hasCrashlytics
 
+    override fun sortOrder(): Int = 0
 
     private fun Project.buildCrashlyticsTarget(): BazelTarget =
         variantsMerger

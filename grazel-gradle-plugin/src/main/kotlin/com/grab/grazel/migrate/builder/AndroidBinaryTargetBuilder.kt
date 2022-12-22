@@ -157,4 +157,5 @@ internal class AndroidBinaryTargetBuilder @Inject constructor(
     }
 
     override fun canHandle(project: Project): Boolean = project.isAndroidApplication
+    override fun sortOrder(): Int = 1
 }

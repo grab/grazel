@@ -41,4 +41,6 @@ interface BazelBuildTarget : BazelTarget {
 interface TargetBuilder {
     fun build(project: Project): List<BazelTarget>
     fun canHandle(project: Project): Boolean
+
+    fun sortOrder(): Int = Int.MAX_VALUE
 }
