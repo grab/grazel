@@ -55,16 +55,19 @@ internal const val GOOGLE_SERVICES_XML = "GOOGLE_SERVICES_XML"
  *     google_services.xml
  */
 fun StatementsBuilder.googleServicesXml(
-    packageName: String,
-    googleServicesJson: String
+    packageName: String?,
+    googleServicesJson: String?,
 ): Assignee {
-    load("@tools_android//tools/googleservices:defs.bzl", "google_services_xml")
-    GOOGLE_SERVICES_XML eq Assignee { // Create new statements scope to not add to current scope
-        function("google_services_xml") {
-            "package_name" eq packageName.quote()
-            "google_services_json" eq googleServicesJson.quote()
+    if (!packageName.isNullOrBlank() && !googleServicesJson.isNullOrBlank()) {
+        load("@tools_android//tools/googleservices:defs.bzl", "google_services_xml")
+        GOOGLE_SERVICES_XML eq Assignee { // Create new statements scope to not add to current scope
+            function("google_services_xml") {
+                "package_name" eq packageName.quote()
+                "google_services_json" eq googleServicesJson.quote()
+            }
         }
     }
+
     return GOOGLE_SERVICES_XML.toStatement()
 }
 
@@ -81,16 +84,19 @@ fun StatementsBuilder.googleServicesXml(
  */
 fun StatementsBuilder.crashlyticsAndroidLibrary(
     name: String = "crashlytics_lib",
-    packageName: String,
-    buildId: String,
+    packageName: String?,
+    buildId: String?,
     resourceFiles: String
 ): BazelDependency {
-    load("@tools_android//tools/crashlytics:defs.bzl", "crashlytics_android_library")
-    rule("crashlytics_android_library") {
-        "name" eq name.quote()
-        "package_name" eq packageName.quote()
-        "build_id" eq buildId.quote()
-        "resource_files" eq resourceFiles
+    if (!packageName.isNullOrBlank() && !buildId.isNullOrBlank()) {
+        load("@tools_android//tools/crashlytics:defs.bzl", "crashlytics_android_library")
+        rule("crashlytics_android_library") {
+            "name" eq name.quote()
+            "package_name" eq packageName.quote()
+            "build_id" eq buildId.quote()
+            "resource_files" eq resourceFiles
+        }
     }
+
     return BazelDependency.StringDependency(":$name")
 }

@@ -16,8 +16,11 @@
 
 package com.grab.grazel.migrate.builder
 
+import com.grab.grazel.bazel.starlark.BazelDependency
 import com.grab.grazel.gradle.ConfigurationScope
 import com.grab.grazel.gradle.dependencies.variantNameSuffix
+import com.grab.grazel.gradle.hasCrashlytics
+import com.grab.grazel.gradle.hasGooglePlayServicesPlugin
 import com.grab.grazel.gradle.isAndroidApplication
 import com.grab.grazel.gradle.isKotlin
 import com.grab.grazel.migrate.BazelTarget
@@ -93,7 +96,7 @@ internal class AndroidBinaryTargetBuilder @Inject constructor(
                 listOf(
                     AndroidBinaryTarget(
                         name = "${binaryData.name}${mergedVariant.variantName.variantNameSuffix()}",
-                        deps = androidLibData.deps + binaryData.deps,
+                        deps = androidLibData.deps + binaryData.deps + crashlyticsDeps(project),
                         srcs = androidLibData.srcs,
                         multidex = binaryData.multidex,
                         debugKey = binaryData.debugKey,
@@ -104,50 +107,24 @@ internal class AndroidBinaryTargetBuilder @Inject constructor(
                         manifest = androidLibData.manifestFile,
                         manifestValues = binaryData.manifestValues,
                         res = androidLibData.res,
-                        resValues = androidLibData.resValues,
                         customResourceSets = androidLibData.extraRes,
                         assetsGlob = androidLibData.assets,
                         assetsDir = androidLibData.assetsDir,
-                        buildId = binaryData.buildId,
-                        googleServicesJson = binaryData.googleServicesJson,
-                        hasCrashlytics = binaryData.hasCrashlytics
                     )
                 )
             } + intermediateTargets
 
-        targets = addCrashlyticsTarget(targets)
-
         return targets
     }
 
-    private fun addCrashlyticsTarget(targets: List<BazelTarget>): List<BazelTarget> {
-        var resultTargets = targets
-        val androidTargetWithCrashlytics = resultTargets.firstOrNull { bazelTarget ->
-            bazelTarget is AndroidBinaryTarget &&
-                bazelTarget.hasCrashlytics &&
-                bazelTarget.buildId != null &&
-                bazelTarget.googleServicesJson != null
-        } as AndroidBinaryTarget?
-        if (androidTargetWithCrashlytics != null) {
-            val crashlyticsTarget = with(androidTargetWithCrashlytics) {
-                CrashlyticsTarget(
-                    packageName = packageName,
-                    buildId = buildId!!,
-                    googleServicesJson = googleServicesJson!!
-                )
-            }
-
-            resultTargets = resultTargets.map { bazelTarget ->
-                if (bazelTarget is AndroidBinaryTarget) {
-                    bazelTarget.copy(deps = bazelTarget.deps + crashlyticsTarget.toBazelDependency())
-                } else {
-                    bazelTarget
-                }
-            }.toMutableList()
-            resultTargets.add(0, crashlyticsTarget)
+    private fun crashlyticsDeps(project: Project): List<BazelDependency> =
+        if (project.hasGooglePlayServicesPlugin && project.hasCrashlytics) {
+            listOf(
+                CrashlyticsTarget().toBazelDependency()
+            )
+        } else {
+            emptyList()
         }
-        return resultTargets
-    }
 
     private fun buildKtAndroidTargets(project: Project): List<BazelTarget> {
         return buildList {

@@ -16,14 +16,12 @@
 
 package com.grab.grazel.migrate.android
 
-import com.grab.grazel.bazel.rules.GOOGLE_SERVICES_XML
 import com.grab.grazel.bazel.rules.Multidex
 import com.grab.grazel.bazel.rules.Visibility
 import com.grab.grazel.bazel.rules.androidBinary
 import com.grab.grazel.bazel.starlark.BazelDependency
 import com.grab.grazel.bazel.starlark.Statement
 import com.grab.grazel.bazel.starlark.statements
-import com.grab.grazel.bazel.starlark.toStatement
 import com.grab.grazel.migrate.BazelBuildTarget
 
 internal data class AndroidBinaryTarget(
@@ -45,16 +43,9 @@ internal data class AndroidBinaryTarget(
     val enableDataBinding: Boolean = false,
     val assetsGlob: List<String> = emptyList(),
     val assetsDir: String? = null,
-    val buildId: String? = null,
-    val googleServicesJson: String?,
-    val hasCrashlytics: Boolean
 ) : BazelBuildTarget {
     override fun statements(): List<Statement> = statements {
-        var resourceFiles = buildResources(res, ResValues(), customResourceSets, name)
-        var finalDeps = deps
-        if (googleServicesJson != null) {
-            resourceFiles += GOOGLE_SERVICES_XML.toStatement()
-        }
+        val resourceFiles = buildResources(res, resValues, customResourceSets, name)
 
         androidBinary(
             name = name,
@@ -70,7 +61,7 @@ internal data class AndroidBinaryTarget(
             manifest = manifest,
             manifestValues = manifestValues,
             resources = resourceFiles,
-            deps = finalDeps,
+            deps = deps,
             assetsGlob = assetsGlob,
             assetsDir = assetsDir
         )

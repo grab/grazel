@@ -24,9 +24,9 @@ import com.grab.grazel.migrate.BazelTarget
 
 class CrashlyticsTarget(
     override val name: String = "crashlytics_lib",
-    val packageName: String,
-    private val buildId: String,
-    private val googleServicesJson: String
+    val packageName: String? = null,
+    private val buildId: String? = null,
+    private val googleServicesJson: String? = null,
 ) : BazelTarget {
 
     override fun statements(): List<Statement> = com.grab.grazel.bazel.starlark.statements {
