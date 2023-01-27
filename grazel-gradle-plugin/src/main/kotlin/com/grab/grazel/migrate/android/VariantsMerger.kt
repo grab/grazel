@@ -33,8 +33,8 @@ internal class VariantsMerger @Inject constructor(
     @RootProject private val rootProject: Project,
 ) {
 
-    private val androidApplicationsModules =
-        rootProject.subprojects.filter { it.isAndroidApplication }
+    private val androidApplicationsModules = rootProject.subprojects
+        .filter { it.isAndroidApplication }
 
     fun merge(project: Project, scope: ConfigurationScope): Set<MergedVariant> {
         val moduleVariants = androidVariantDataSource.getMigratableVariants(project, scope)

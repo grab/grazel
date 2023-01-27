@@ -30,7 +30,6 @@ import org.gradle.api.DefaultTask
 import org.gradle.api.Project
 import org.gradle.api.tasks.TaskAction
 import org.gradle.api.tasks.TaskProvider
-import org.gradle.internal.logging.progress.ProgressLogger
 import org.gradle.kotlin.dsl.register
 import javax.inject.Inject
 
@@ -38,8 +37,7 @@ internal open class GenerateBazelScriptsTask
 @Inject
 constructor(
     private val migrationChecker: Lazy<MigrationChecker>,
-    private val bazelFileBuilder: Lazy<ProjectBazelFileBuilder.Factory>,
-    private val progressLogger: Lazy<ProgressLogger>
+    private val bazelFileBuilder: Lazy<ProjectBazelFileBuilder.Factory>
 ) : DefaultTask() {
 
     private val rootProject get() = project.rootProject
@@ -61,15 +59,13 @@ constructor(
             if (content.isNotEmpty()) {
                 content.writeToFile(buildBazelFile)
                 val generatedMessage = "Generated ${rootProject.relativePath(buildBazelFile)}"
-                progressLogger.get().progress(generatedMessage)
                 logger.quiet(generatedMessage.ansiGreen)
                 bazelIgnoreFile.delete()
             } else {
                 // No content was generated, delete the file
                 buildBazelFile.delete()
                 val deletedMessage = "Deleted ${rootProject.relativePath(buildBazelFile)}"
-                progressLogger.get().progress(deletedMessage.ansiGreen)
-                logger.quiet(deletedMessage)
+                logger.quiet(deletedMessage.ansiGreen)
             }
         } else {
             // If not migrateable but was already migrated, rename build.bazel to build.bazelignore if it exists
@@ -94,7 +90,6 @@ constructor(
                 TASK_NAME,
                 grazelComponent.migrationChecker(),
                 grazelComponent.projectBazelFileBuilderFactory(),
-                grazelComponent.progressLogger()
             ).apply {
                 configure {
                     group = GRAZEL_TASK_GROUP

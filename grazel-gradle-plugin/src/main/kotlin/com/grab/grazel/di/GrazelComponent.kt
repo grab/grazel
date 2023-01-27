@@ -54,9 +54,6 @@ import dagger.Lazy
 import dagger.Module
 import dagger.Provides
 import org.gradle.api.Project
-import org.gradle.internal.logging.progress.ProgressLogger
-import org.gradle.internal.logging.progress.ProgressLoggerFactory
-import org.gradle.kotlin.dsl.support.serviceOf
 import org.gradle.kotlin.dsl.the
 import javax.inject.Singleton
 
@@ -80,9 +77,7 @@ internal interface GrazelComponent {
     }
 
     fun extension(): GrazelExtension
-    fun gradleProjectInfo(): GradleProjectInfo
     fun migrationChecker(): Lazy<MigrationChecker>
-    fun progressLogger(): Lazy<ProgressLogger>
     fun projectBazelFileBuilderFactory(): Lazy<ProjectBazelFileBuilder.Factory>
     fun workspaceBuilderFactory(): Lazy<WorkspaceBuilder.Factory>
     fun rootBazelFileBuilder(): Lazy<RootBazelFileBuilder>
@@ -95,59 +90,11 @@ internal interface GrazelComponent {
 
 @Module(
     includes = [
-        GrazelModuleBinder::class,
         MigrationCriteriaModule::class,
         DependenciesModule::class
     ]
 )
-internal object GrazelModule {
-
-    @Singleton
-    @Provides
-    fun @receiver:RootProject Project.provideGrazelGradlePluginExtension(): GrazelExtension = the()
-
-    @Provides
-    @Singleton
-    fun @receiver:RootProject Project.provideProgressLoggerFactory(): ProgressLoggerFactory =
-        rootProject.serviceOf()
-
-    @Provides
-    @Singleton
-    fun ProgressLoggerFactory.provideProgressLogger(): ProgressLogger =
-        newOperation(GradleProjectInfo::class.java)
-            .run {
-                start("Generating Bazel scripts", null)
-            }
-
-    @Provides
-    @Singleton
-    fun DependenciesGraphsBuilder.provideDependencyGraphs(): DependencyGraphs = build()
-
-    @Provides
-    @Singleton
-    fun GrazelExtension.provideAndroidVariantDataSource(
-        androidVariantsExtractor: DefaultAndroidVariantsExtractor,
-        @RootProject rootProject: Project
-    ): AndroidVariantDataSource = DefaultAndroidVariantDataSource(
-        variantFilter = android.variantFilter,
-        androidVariantsExtractor = androidVariantsExtractor
-    )
-
-    @Provides
-    @Singleton
-    fun GrazelExtension.provideKotlinExtension() = rules.kotlin
-
-    @Provides
-    @Singleton
-    fun GrazelExtension.provideTestExtension() = rules.test
-
-    @Provides
-    @Singleton
-    fun GrazelExtension.provideMavenInstallExtension() = rules.mavenInstall
-}
-
-@Module
-internal interface GrazelModuleBinder {
+internal interface GrazelModule {
     @Binds
     fun DefaultGradleProjectInfo.bindGradleProjectIndo(): GradleProjectInfo
 
@@ -162,6 +109,38 @@ internal interface GrazelModuleBinder {
 
     @Binds
     fun DefaultArtifactsPinner.bindArtifactsPinner(): ArtifactsPinner
+
+    companion object {
+        @Singleton
+        @Provides
+        fun @receiver:RootProject Project.provideGrazelExtension(): GrazelExtension = the()
+
+        @Provides
+        @Singleton
+        fun DependenciesGraphsBuilder.provideDependencyGraphs(): DependencyGraphs = build()
+
+        @Provides
+        @Singleton
+        fun GrazelExtension.provideAndroidVariantDataSource(
+            androidVariantsExtractor: DefaultAndroidVariantsExtractor,
+            @RootProject rootProject: Project
+        ): AndroidVariantDataSource = DefaultAndroidVariantDataSource(
+            variantFilter = android.variantFilter,
+            androidVariantsExtractor = androidVariantsExtractor
+        )
+
+        @Provides
+        @Singleton
+        fun GrazelExtension.provideKotlinExtension() = rules.kotlin
+
+        @Provides
+        @Singleton
+        fun GrazelExtension.provideTestExtension() = rules.test
+
+        @Provides
+        @Singleton
+        fun GrazelExtension.provideMavenInstallExtension() = rules.mavenInstall
+    }
 }
 
 

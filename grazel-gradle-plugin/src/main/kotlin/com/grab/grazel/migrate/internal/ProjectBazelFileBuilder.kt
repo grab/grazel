@@ -29,7 +29,11 @@ class ProjectBazelFileBuilder(
 ) : BazelFileBuilder {
 
     @Singleton
-    class Factory @Inject constructor(private val targetBuilders: Set<@JvmSuppressWildcards TargetBuilder>) {
+    class Factory
+    @Inject
+    constructor(
+        private val targetBuilders: Set<@JvmSuppressWildcards TargetBuilder>
+    ) {
         fun create(project: Project) = ProjectBazelFileBuilder(project, targetBuilders)
     }
 

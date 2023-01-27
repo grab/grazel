@@ -77,7 +77,7 @@ internal class AndroidBinaryTargetBuilder @Inject constructor(
         intermediateTargets: List<BazelTarget>
     ): List<BazelTarget> {
 
-        var targets = variantsMerger.merge(project, ConfigurationScope.BUILD)
+        val targets = variantsMerger.merge(project, ConfigurationScope.BUILD)
             .flatMap { mergedVariant ->
                 var androidLibData = androidLibDataExtractor.extract(project, mergedVariant)
                 val deps = if (project.isKotlin) {
@@ -157,5 +157,6 @@ internal class AndroidBinaryTargetBuilder @Inject constructor(
     }
 
     override fun canHandle(project: Project): Boolean = project.isAndroidApplication
+
     override fun sortOrder(): Int = 1
 }
