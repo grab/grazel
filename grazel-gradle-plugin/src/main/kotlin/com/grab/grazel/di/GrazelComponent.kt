@@ -18,11 +18,7 @@ package com.grab.grazel.di
 
 import com.grab.grazel.GrazelExtension
 import com.grab.grazel.di.qualifiers.RootProject
-import com.grab.grazel.gradle.AndroidVariantDataSource
-import com.grab.grazel.gradle.AndroidVariantsExtractor
 import com.grab.grazel.gradle.ConfigurationDataSource
-import com.grab.grazel.gradle.DefaultAndroidVariantDataSource
-import com.grab.grazel.gradle.DefaultAndroidVariantsExtractor
 import com.grab.grazel.gradle.DefaultConfigurationDataSource
 import com.grab.grazel.gradle.DefaultGradleProjectInfo
 import com.grab.grazel.gradle.DefaultRepositoryDataSource
@@ -35,6 +31,12 @@ import com.grab.grazel.gradle.dependencies.DependenciesGraphsBuilder
 import com.grab.grazel.gradle.dependencies.DependenciesModule
 import com.grab.grazel.gradle.dependencies.DependencyGraphs
 import com.grab.grazel.gradle.dependencies.MavenInstallArtifactsCalculator
+import com.grab.grazel.gradle.variant.AndroidVariantDataSource
+import com.grab.grazel.gradle.variant.AndroidVariantsExtractor
+import com.grab.grazel.gradle.variant.DefaultAndroidVariantDataSource
+import com.grab.grazel.gradle.variant.DefaultAndroidVariantsExtractor
+import com.grab.grazel.gradle.variant.VariantBuilder
+import com.grab.grazel.gradle.variant.VariantModule
 import com.grab.grazel.migrate.android.AndroidInstrumentationBinaryDataExtractor
 import com.grab.grazel.migrate.builder.AndroidBinaryTargetBuilderModule
 import com.grab.grazel.migrate.builder.AndroidInstrumentationBinaryTargetBuilderModule
@@ -86,12 +88,14 @@ internal interface GrazelComponent {
     fun mavenInstallArtifactsCalculator(): Lazy<MavenInstallArtifactsCalculator>
 
     fun androidInstrumentationBinaryDataExtractor(): Lazy<AndroidInstrumentationBinaryDataExtractor>
+    fun variantBuilder(): Lazy<VariantBuilder>
 }
 
 @Module(
     includes = [
         MigrationCriteriaModule::class,
-        DependenciesModule::class
+        DependenciesModule::class,
+        VariantModule::class
     ]
 )
 internal interface GrazelModule {

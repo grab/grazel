@@ -26,6 +26,8 @@ import com.grab.grazel.fake.FLAVOR1
 import com.grab.grazel.fake.FLAVOR2
 import com.grab.grazel.fake.FakeAndroidVariantDataSource
 import com.grab.grazel.gradle.dependencies.*
+import com.grab.grazel.gradle.variant.AndroidVariantsExtractor
+import com.grab.grazel.gradle.variant.DefaultAndroidVariantsExtractor
 import org.gradle.api.Project
 import org.gradle.kotlin.dsl.add
 import org.gradle.kotlin.dsl.configure
@@ -207,7 +209,7 @@ class DefaultDependenciesDataSourceTest : GrazelPluginTest() {
         assertTrue(
             "First level module dependencies does not contain embedded artifacts",
             dependenciesDataSource.firstLevelModuleDependencies(subProject)
-                .none { DEP_GROUP_EMBEDDED_BY_RULES.contains(it.moduleGroup) })
+                .none { IGNORED_ARTIFACT_GROUPS.contains(it.moduleGroup) })
     }
 
     @Test

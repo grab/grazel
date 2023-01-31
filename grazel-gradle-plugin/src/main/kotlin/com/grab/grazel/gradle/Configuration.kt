@@ -21,6 +21,7 @@ import com.grab.grazel.GrazelExtension
 import com.grab.grazel.gradle.VariantInfo.AndroidFlavor
 import com.grab.grazel.gradle.VariantInfo.AndroidVariant
 import com.grab.grazel.gradle.dependencies.BuildGraphType
+import com.grab.grazel.gradle.variant.AndroidVariantDataSource
 import org.gradle.api.Project
 import org.gradle.api.artifacts.Configuration
 import org.jetbrains.kotlin.gradle.internal.Kapt3GradleSubplugin.Companion.findKaptConfiguration

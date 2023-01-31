@@ -25,9 +25,9 @@ import com.grab.grazel.GrazelPluginTest
 import com.grab.grazel.buildProject
 import com.grab.grazel.fake.FakeVariant
 import com.grab.grazel.gradle.ANDROID_APPLICATION_PLUGIN
-import com.grab.grazel.gradle.AndroidVariantDataSource
-import com.grab.grazel.gradle.DefaultAndroidVariantDataSource
-import com.grab.grazel.gradle.DefaultAndroidVariantsExtractor
+import com.grab.grazel.gradle.variant.AndroidVariantDataSource
+import com.grab.grazel.gradle.variant.DefaultAndroidVariantDataSource
+import com.grab.grazel.gradle.variant.DefaultAndroidVariantsExtractor
 import com.grab.grazel.migrate.android.extractBuildConfig
 import com.grab.grazel.util.doEvaluate
 import org.gradle.api.Project
@@ -47,7 +47,9 @@ class BuildConfigFieldsTest : GrazelPluginTest() {
 
         val grazelGradlePluginExtension = GrazelExtension(rootProject)
         rootProject.extensions.add(GRAZEL_EXTENSION, grazelGradlePluginExtension)
-        androidVariantDataSource = DefaultAndroidVariantDataSource(DefaultAndroidVariantsExtractor())
+        androidVariantDataSource = DefaultAndroidVariantDataSource(
+            DefaultAndroidVariantsExtractor()
+        )
 
         androidBinary = buildProject("android-binary", rootProject)
         androidBinary.run {

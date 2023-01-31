@@ -22,11 +22,11 @@ import com.grab.grazel.GrazelExtension
 import com.grab.grazel.bazel.rules.DATABINDING_ARTIFACTS
 import com.grab.grazel.bazel.rules.Multidex
 import com.grab.grazel.bazel.starlark.BazelDependency
-import com.grab.grazel.gradle.AndroidVariantDataSource
-import com.grab.grazel.gradle.getMigratableBuildVariants
 import com.grab.grazel.gradle.hasCrashlytics
 import com.grab.grazel.gradle.hasDatabinding
 import com.grab.grazel.gradle.hasGooglePlayServicesPlugin
+import com.grab.grazel.gradle.variant.AndroidVariantDataSource
+import com.grab.grazel.gradle.variant.getMigratableBuildVariants
 import org.gradle.api.Project
 import org.gradle.api.internal.artifacts.dependencies.DefaultExternalModuleDependency
 import org.gradle.kotlin.dsl.getByType

@@ -20,11 +20,11 @@ import com.grab.grazel.GrazelExtension
 import com.grab.grazel.bazel.rules.MavenInstallArtifact
 import com.grab.grazel.bazel.rules.MavenInstallArtifact.Exclusion.SimpleExclusion
 import com.grab.grazel.di.qualifiers.RootProject
-import com.grab.grazel.gradle.AndroidVariantsExtractor
 import com.grab.grazel.gradle.ConfigurationDataSource
 import com.grab.grazel.gradle.ConfigurationScope
 import com.grab.grazel.gradle.RepositoryDataSource
 import com.grab.grazel.gradle.configurationScopes
+import com.grab.grazel.gradle.variant.AndroidVariantsExtractor
 import com.grab.grazel.util.GradleProvider
 import org.gradle.api.Project
 import org.gradle.api.artifacts.Configuration
@@ -41,7 +41,7 @@ import javax.inject.Singleton
 /**
  * Maven group names for artifacts that should be excluded from dependencies calculation everywhere.
  */
-internal val DEP_GROUP_EMBEDDED_BY_RULES = listOf(
+internal val IGNORED_ARTIFACT_GROUPS = listOf(
     "com.android.tools.build",
     "org.jetbrains.kotlin"
 )
@@ -296,7 +296,7 @@ internal class DefaultDependenciesDataSource @Inject constructor(
     override fun hasIgnoredArtifacts(project: Project): Boolean {
         return project.firstLevelModuleDependencies()
             .flatMap { (listOf(it) + it.children).asSequence() }
-            .filter { !DEP_GROUP_EMBEDDED_BY_RULES.contains(it.moduleGroup) }
+            .filter { !IGNORED_ARTIFACT_GROUPS.contains(it.moduleGroup) }
             .any { MavenArtifact(it.moduleGroup, it.moduleName).isIgnored }
     }
 
@@ -317,7 +317,7 @@ internal class DefaultDependenciesDataSource @Inject constructor(
                 }
             }
             .map { it.second }
-            .filter { it.group != null && !DEP_GROUP_EMBEDDED_BY_RULES.contains(it.group) }
+            .filter { it.group != null && !IGNORED_ARTIFACT_GROUPS.contains(it.group) }
             .filter {
                 val artifact = MavenArtifact(it.group, it.name)
                 !artifact.isExcluded && !artifact.isIgnored
@@ -384,7 +384,7 @@ internal class DefaultDependenciesDataSource @Inject constructor(
 
     /**
      * Collects first level module dependencies from their resolved configuration. Additionally, excludes any artifacts
-     * that are not meant to be used in Bazel as defined by [DEP_GROUP_EMBEDDED_BY_RULES]
+     * that are not meant to be used in Bazel as defined by [IGNORED_ARTIFACT_GROUPS]
      *
      * @return Sequence of [DefaultResolvedDependency] in the first level
      */
@@ -401,7 +401,7 @@ internal class DefaultDependenciesDataSource @Inject constructor(
                     sequenceOf<ResolvedDependency>()
                 }
             }.filterIsInstance<DefaultResolvedDependency>()
-            .filter { !DEP_GROUP_EMBEDDED_BY_RULES.contains(it.moduleGroup) }
+            .filter { !IGNORED_ARTIFACT_GROUPS.contains(it.moduleGroup) }
     }
 
     internal fun firstLevelModuleDependencies(project: Project) =

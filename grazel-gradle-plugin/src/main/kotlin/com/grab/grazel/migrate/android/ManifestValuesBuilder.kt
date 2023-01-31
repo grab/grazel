@@ -19,12 +19,12 @@ package com.grab.grazel.migrate.android
 import com.android.build.gradle.BaseExtension
 import com.android.build.gradle.api.BaseVariant
 import com.android.build.gradle.internal.dsl.DefaultConfig
-import com.grab.grazel.gradle.AndroidVariantDataSource
 import com.grab.grazel.gradle.ConfigurationScope
 import com.grab.grazel.gradle.dependencies.BuildGraphType
 import com.grab.grazel.gradle.dependencies.DependencyGraphs
-import com.grab.grazel.gradle.getMigratableBuildVariants
+import com.grab.grazel.gradle.variant.getMigratableBuildVariants
 import com.grab.grazel.gradle.isAndroid
+import com.grab.grazel.gradle.variant.AndroidVariantDataSource
 import dagger.Lazy
 import org.gradle.api.Project
 import org.gradle.kotlin.dsl.the

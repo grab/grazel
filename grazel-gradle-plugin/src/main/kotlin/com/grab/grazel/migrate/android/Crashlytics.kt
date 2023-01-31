@@ -19,8 +19,8 @@ package com.grab.grazel.migrate.android
 import com.android.build.gradle.BaseExtension
 import com.android.build.gradle.api.AndroidSourceSet
 import com.grab.grazel.GrazelExtension
-import com.grab.grazel.gradle.AndroidVariantDataSource
-import com.grab.grazel.gradle.getMigratableBuildVariants
+import com.grab.grazel.gradle.variant.AndroidVariantDataSource
+import com.grab.grazel.gradle.variant.getMigratableBuildVariants
 import org.gradle.api.Project
 import org.gradle.kotlin.dsl.getByType
 import javax.inject.Inject

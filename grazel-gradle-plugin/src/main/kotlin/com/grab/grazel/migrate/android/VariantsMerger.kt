@@ -21,9 +21,9 @@ import com.android.build.gradle.api.BaseVariant
 import com.android.builder.model.BuildType
 import com.android.builder.model.ProductFlavor
 import com.grab.grazel.di.qualifiers.RootProject
-import com.grab.grazel.gradle.AndroidVariantDataSource
 import com.grab.grazel.gradle.ConfigurationScope
 import com.grab.grazel.gradle.isAndroidApplication
+import com.grab.grazel.gradle.variant.AndroidVariantDataSource
 import org.gradle.api.Project
 import org.gradle.kotlin.dsl.the
 import javax.inject.Inject

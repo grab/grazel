@@ -53,7 +53,7 @@ open class AssignStatement(
     private val key: Assignable,
     private val value: Assignee,
     private val assignmentOp: AssignmentOp = EQUAL
-) : Statement {
+) : Assignee {
     override fun write(level: Int, writer: PrintWriter) {
         indent(level, writer)
         if (!key.isEmpty()) {
@@ -131,7 +131,7 @@ interface AssignmentBuilder {
      * A common pattern is to not add statements if a list is empty. This function only executes `block` if the given list
      * is not empty.
      */
-    fun List<*>.notEmpty(block: () -> Unit) {
+    fun Collection<*>.notEmpty(block: () -> Unit) {
         if (isNotEmpty()) block()
     }
 

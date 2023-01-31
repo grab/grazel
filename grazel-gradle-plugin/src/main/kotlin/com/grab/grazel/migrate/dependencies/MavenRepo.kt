@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 Grabtaxi Holdings PTE LTD (GRAB)
+ * Copyright 2023 Grabtaxi Holdings PTE LTD (GRAB)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,21 +14,12 @@
  * limitations under the License.
  */
 
-package com.grab.grazel.gradle
+package com.grab.grazel.migrate.dependencies
 
-import com.android.build.gradle.api.BaseVariant
+import com.grab.grazel.gradle.variant.DefaultVariants.Default
 
-
-sealed class VariantInfo {
-    object Default : VariantInfo() {
-        override fun toString() = "default"
-    }
-
-    data class AndroidFlavor(val flavorName: String) : VariantInfo() {
-        override fun toString() = flavorName
-    }
-
-    data class AndroidVariant(val baseVariant: BaseVariant) : VariantInfo() {
-        override fun toString(): String = baseVariant.name
-    }
+fun String.toMavenRepoName() = when (this) {
+    Default.toString() -> "maven"
+    else -> replace("([a-z])([A-Z]+)".toRegex(), "\$1_\$2")
+        .toLowerCase() + "_maven"
 }

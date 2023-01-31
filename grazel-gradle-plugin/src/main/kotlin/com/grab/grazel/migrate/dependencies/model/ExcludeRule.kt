@@ -14,21 +14,9 @@
  * limitations under the License.
  */
 
-package com.grab.grazel.gradle
+package com.grab.grazel.migrate.dependencies.model
 
-import com.android.build.gradle.api.BaseVariant
-
-
-sealed class VariantInfo {
-    object Default : VariantInfo() {
-        override fun toString() = "default"
-    }
-
-    data class AndroidFlavor(val flavorName: String) : VariantInfo() {
-        override fun toString() = flavorName
-    }
-
-    data class AndroidVariant(val baseVariant: BaseVariant) : VariantInfo() {
-        override fun toString(): String = baseVariant.name
-    }
-}
+internal data class ExcludeRule(
+    val group: String,
+    val artifact: String
+)

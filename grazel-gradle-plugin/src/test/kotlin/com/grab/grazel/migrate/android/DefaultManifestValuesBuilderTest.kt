@@ -30,9 +30,9 @@ import com.grab.grazel.fake.FakeDependencyGraphs
 import com.grab.grazel.fake.FakeVariant
 import com.grab.grazel.gradle.ANDROID_APPLICATION_PLUGIN
 import com.grab.grazel.gradle.ANDROID_LIBRARY_PLUGIN
-import com.grab.grazel.gradle.AndroidVariantDataSource
-import com.grab.grazel.gradle.DefaultAndroidVariantDataSource
-import com.grab.grazel.gradle.DefaultAndroidVariantsExtractor
+import com.grab.grazel.gradle.variant.AndroidVariantDataSource
+import com.grab.grazel.gradle.variant.DefaultAndroidVariantDataSource
+import com.grab.grazel.gradle.variant.DefaultAndroidVariantsExtractor
 import com.grab.grazel.util.doEvaluate
 import org.gradle.api.Project
 import org.gradle.api.artifacts.*

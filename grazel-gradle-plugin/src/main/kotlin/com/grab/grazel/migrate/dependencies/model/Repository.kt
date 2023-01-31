@@ -14,21 +14,19 @@
  * limitations under the License.
  */
 
-package com.grab.grazel.gradle
+package com.grab.grazel.migrate.dependencies.model
 
-import com.android.build.gradle.api.BaseVariant
+import com.google.common.base.Objects
+import org.gradle.api.internal.artifacts.repositories.DefaultMavenArtifactRepository
 
-
-sealed class VariantInfo {
-    object Default : VariantInfo() {
-        override fun toString() = "default"
+internal class Repository(
+    val name: String,
+    val repository: DefaultMavenArtifactRepository
+) {
+    override fun equals(other: Any?) = when (other) {
+        is Repository -> Objects.equal(name, repository.name)
+        else -> false
     }
 
-    data class AndroidFlavor(val flavorName: String) : VariantInfo() {
-        override fun toString() = flavorName
-    }
-
-    data class AndroidVariant(val baseVariant: BaseVariant) : VariantInfo() {
-        override fun toString(): String = baseVariant.name
-    }
+    override fun hashCode() = Objects.hashCode(name)
 }

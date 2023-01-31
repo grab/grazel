@@ -29,6 +29,7 @@ const val KOTLIN_PLUGIN = "kotlin"
 const val KOTLIN_ANDROID_PLUGIN = "kotlin-android"
 const val KOTLIN_ANDROID_EXTENSION = "kotlin-android-extensions"
 const val KOTLIN_PARCELIZE = "kotlin-parcelize"
+const val KOTLIN_KAPT = "kotlin-kapt"
 const val ANDROID_APPLICATION_PLUGIN = "com.android.application"
 const val ANDROID_LIBRARY_PLUGIN = "com.android.library"
 const val ANDROID_DYNAMIC_FEATURE = "com.android.dynamic-feature"
@@ -59,6 +60,7 @@ val Project.hasKotlinAndroidExtensions
     get() = plugins.hasPlugin(KOTLIN_ANDROID_EXTENSION)
         || plugins.hasPlugin(KOTLIN_PARCELIZE)
 val Project.isKotlin get() = isKotlinJvm || isKotlinAndroid
+val Project.hasKapt get() = plugins.hasPlugin(KOTLIN_KAPT)
 
 val Project.hasTestInstrumentationRunner
     get() = !extensions
@@ -71,6 +73,7 @@ const val JAVA_LIBRARY_PLUGIN = "java-library"
 const val APPLICATION = "application"
 val Project.isJava get() = plugins.hasPlugin(JAVA_PLUGIN) || plugins.hasPlugin(JAVA_LIBRARY_PLUGIN)
 
+val Project.isJvm get() = isKotlinJvm || isJava
 
 /**
  * @return True if the given project is migrated to Bazel. Calculated by checking for presence of `BUILD.bazel` file for
