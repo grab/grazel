@@ -83,7 +83,7 @@ class DefaultVariantBuilderTest {
 
         assertEquals(
             0,
-            variants.filter { it.variantType == VariantType.Test }.size,
+            androidVariants.filter { it.variantType == VariantType.JvmBuild }.size,
             "Pure Java Variants are not built for Android projects"
         )
     }
