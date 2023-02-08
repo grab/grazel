@@ -16,12 +16,15 @@
 
 package com.grab.grazel.migrate.android
 
+import com.android.build.api.variant.Variant
 import com.android.build.gradle.BaseExtension
 import com.android.build.gradle.api.BaseVariant
+import com.android.build.gradle.internal.api.BaseVariantImpl
 import com.android.builder.internal.ClassFieldImpl
 import com.android.builder.model.ClassField
 import com.grab.grazel.bazel.starlark.quote
 import com.grab.grazel.gradle.isAndroidApplication
+import com.grab.grazel.util.fieldValue
 import org.gradle.api.Project
 
 internal data class BuildConfigData(
@@ -39,7 +42,8 @@ internal fun BaseExtension.extractBuildConfig(
         variant.buildType?.buildConfigFields
             ?: emptyMap()) +
         defaultConfig.buildConfigFields.toMap() +
-        project.androidBinaryBuildConfigFields(this)
+        project.androidBinaryBuildConfigFields(this) +
+        variant.extractBuildConfigWithVariantApi()
     val buildConfigTypeMap = buildConfigFields
         .asSequence()
         .map { it.value }
@@ -74,3 +78,22 @@ private fun Project.androidBinaryBuildConfigFields(
         VERSION_NAME to ClassFieldImpl("String", VERSION_NAME, versionName.toString().quote())
     )
 } else emptyMap()
+
+/**
+ * Build config modifications done via the new Variant APIs are not reflected in the [BaseVariant]
+ * API and at the same time, new Variants API in AGP i.e `androidComponents {}` extension does not
+ * expose extensions currently to read properties. This is unfortunate and until an API is exposed
+ * at least as read only property we have to rely on reflection to access the new Variant API.
+ */
+private fun BaseVariant.extractBuildConfigWithVariantApi(): Map<String, ClassField> {
+    try {
+        val variantImpl = this as? BaseVariantImpl
+        return variantImpl
+            ?.fieldValue<Variant>("component")
+            ?.buildConfigFields?.get()
+            ?.mapValues { (key, value) -> ClassFieldImpl(value.type, key, value.value.toString()) }
+            ?: emptyMap()
+    } catch (ignored: Exception) {
+    }
+    return emptyMap()
+}

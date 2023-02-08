@@ -73,5 +73,6 @@ class MainActivity : AppCompatActivity() {
         BuildConfig.DEBUG
         BuildConfig.VERSION_CODE
         BuildConfig.VERSION_NAME
+        BuildConfig.VARIANT_NAME
     }
 }

@@ -1,3 +1,5 @@
+import com.android.build.api.variant.BuildConfigField
+
 /*
  * Copyright 2022 Grabtaxi Holdings PTE LTD (GRAB)
  *
@@ -65,6 +67,12 @@ android {
         }
         flavor1 {
             dimension "service"
+        }
+    }
+
+    androidComponents {
+        onVariants(selector().all()) { variant ->
+            variant.buildConfigFields.put("VARIANT_NAME", new BuildConfigField("String", "\"$variant.name\"", null))
         }
     }
 

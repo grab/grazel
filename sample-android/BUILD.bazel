@@ -128,6 +128,7 @@ build_config(
     strings = {
         "SOME_STRING": "Something",
         "VERSION_NAME": "1.0",
+        "VARIANT_NAME": "flavor2Debug",
     },
 )
 
@@ -194,6 +195,7 @@ build_config(
     strings = {
         "SOME_STRING": "Something",
         "VERSION_NAME": "1.0",
+        "VARIANT_NAME": "flavor1Debug",
     },
 )
 

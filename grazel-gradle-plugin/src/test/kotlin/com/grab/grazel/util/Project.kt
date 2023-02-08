@@ -21,11 +21,15 @@ import com.grab.grazel.di.DaggerGrazelComponent
 import com.grab.grazel.di.GrazelComponent
 import org.gradle.api.Project
 import org.gradle.api.Task
+import org.gradle.api.internal.project.DefaultProject
 
 /**
  * Forces an evaluation of the project thereby running all configurations
  */
-fun Project.doEvaluate(): MutableSet<Task> = getTasksByName("tasks", false)
+fun Project.doEvaluate() {
+    getTasksByName("tasks", false)
+    (this as DefaultProject).evaluate()
+}
 
 internal fun Project.createGrazelComponent(): GrazelComponent {
     return DaggerGrazelComponent.factory().create(this)

@@ -17,19 +17,17 @@
 package com.grab.grazel.migrate
 
 import com.android.build.gradle.AppExtension
-import com.android.build.gradle.BaseExtension
-import com.google.common.truth.Truth
 import com.grab.grazel.GrazelExtension
 import com.grab.grazel.GrazelExtension.Companion.GRAZEL_EXTENSION
 import com.grab.grazel.GrazelPluginTest
 import com.grab.grazel.buildProject
-import com.grab.grazel.fake.FakeVariant
 import com.grab.grazel.gradle.ANDROID_APPLICATION_PLUGIN
 import com.grab.grazel.gradle.variant.AndroidVariantDataSource
 import com.grab.grazel.gradle.variant.DefaultAndroidVariantDataSource
 import com.grab.grazel.gradle.variant.DefaultAndroidVariantsExtractor
 import com.grab.grazel.migrate.android.extractBuildConfig
 import com.grab.grazel.util.doEvaluate
+import com.grab.grazel.util.truth
 import org.gradle.api.Project
 import org.gradle.kotlin.dsl.configure
 import org.gradle.kotlin.dsl.the
@@ -66,38 +64,38 @@ class BuildConfigFieldsTest : GrazelPluginTest() {
                     buildConfigField("boolean", "SOME_BOOLEAN", "false")
                     buildConfigField("String", "SOME_STRING", "\"Something\"")
                 }
+
             }
+            doEvaluate()
         }
     }
 
     @Test
     fun `assert build config is extracted correctly in android binary target`() {
-        androidBinary.doEvaluate()
-        androidBinary
-            .the<BaseExtension>()
-            .extractBuildConfig(androidBinary, variant = FakeVariant("debug"))
-            .let { buildConfigData ->
-                Truth.assertThat(buildConfigData.strings).apply {
-                    hasSize(2)
-                    containsEntry("SOME_STRING", "\"Something\"")
-                    containsEntry("VERSION_NAME", "\"1.0\"")
-                }
-
-                Truth.assertThat(buildConfigData.booleans).apply {
-                    hasSize(1)
-                    containsEntry("SOME_BOOLEAN", "false")
-                }
-
-                Truth.assertThat(buildConfigData.ints).apply {
-                    hasSize(2)
-                    containsEntry("SOME_INT", "0")
-                    containsEntry("VERSION_CODE", "1")
-                }
-
-                Truth.assertThat(buildConfigData.longs).apply {
-                    hasSize(1)
-                    containsEntry("SOME_LONG", "0")
-                }
+        val extension = androidBinary.the<AppExtension>()
+        val buildConfigDataList = extension.applicationVariants.map { variant ->
+            extension.extractBuildConfig(androidBinary, variant)
+        }
+        buildConfigDataList.truth().hasSize(2)
+        buildConfigDataList.forEach { buildConfigData ->
+            buildConfigData.strings.truth {
+                hasSize(2)
+                containsEntry("SOME_STRING", "\"Something\"")
+                containsEntry("VERSION_NAME", "\"1.0\"")
             }
+            buildConfigData.booleans.truth {
+                hasSize(1)
+                containsEntry("SOME_BOOLEAN", "false")
+            }
+            buildConfigData.ints.truth {
+                hasSize(2)
+                containsEntry("SOME_INT", "0")
+                containsEntry("VERSION_CODE", "1")
+            }
+            buildConfigData.longs.truth {
+                hasSize(1)
+                containsEntry("SOME_LONG", "0")
+            }
+        }
     }
 }
