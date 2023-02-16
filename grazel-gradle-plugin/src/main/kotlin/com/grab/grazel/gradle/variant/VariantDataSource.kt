@@ -56,6 +56,11 @@ internal interface AndroidVariantDataSource {
         project: Project,
         configurationScope: ConfigurationScope?
     ): Set<BaseVariant>
+
+    fun getFlavorDimensions(
+        project: Project,
+        configurationScope: ConfigurationScope?
+    ): Set<String>
 }
 
 internal class DefaultAndroidVariantDataSource(
@@ -95,6 +100,15 @@ internal class DefaultAndroidVariantDataSource(
     override fun getMigratableVariants(project: Project): List<BaseVariant> {
         return project.androidVariants().filterNot(::ignoredVariantFilter)
     }
+
+    override fun getFlavorDimensions(
+        project: Project,
+        configurationScope: ConfigurationScope?
+    ): Set<String> = getMigratableVariants(project, configurationScope)
+        .asSequence()
+        .flatMap { it.productFlavors }
+        .mapNotNull { it.dimension }
+        .toSet()
 
     private fun ignoredVariantFilter(
         variant: BaseVariant

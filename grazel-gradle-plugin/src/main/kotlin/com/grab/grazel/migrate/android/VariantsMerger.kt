@@ -37,18 +37,23 @@ internal class VariantsMerger @Inject constructor(
         .filter { it.isAndroidApplication }
 
     fun merge(project: Project, scope: ConfigurationScope): Set<MergedVariant> {
-        val moduleVariants = androidVariantDataSource.getMigratableVariants(project, scope)
+        val applicationProject = applicationProject()
 
+        val appFlavors = androidVariantDataSource
+            .getMigratableVariants(applicationProject, scope)
+            .flatMap { it.productFlavors }
+            .toSet()
+        val appBuildTypes = androidVariantDataSource
+            .getMigratableVariants(applicationProject, scope)
+            .map { it.buildType }
+            .toSet()
+        val appFlavorDimension = androidVariantDataSource
+            .getFlavorDimensions(applicationProject, scope)
+
+
+        val moduleVariants = androidVariantDataSource.getMigratableVariants(project, scope)
         val moduleFlavors = moduleVariants.flatMap { it.productFlavors }.toSet()
         val moduleBuildTypes = moduleVariants.map { it.buildType }.toSet()
-
-        val appFlavors =
-            androidVariantDataSource.getMigratableVariants(getApp(), scope)
-                .flatMap { it.productFlavors }
-                .toSet()
-        val appBuildTypes =
-            androidVariantDataSource.getMigratableVariants(getApp(), scope).map { it.buildType }
-                .toSet()
 
         return if (appFlavors.isNotEmpty()) {
             appFlavors.flatMap { appFlavor ->
@@ -118,11 +123,12 @@ internal class VariantsMerger @Inject constructor(
             appBuildType.name == moduleBuildType.name
         }
         return mergedBuildTypeCandidate?.name
-            ?: (appBuildType.matchingFallbacks().firstOrNull { fallBackBuildType ->
-                moduleBuildTypes.firstOrNull { moduleBuildType ->
-                    fallBackBuildType == moduleBuildType.name
-                } != null
-            } ?: throw BuildTypesIsNotPresentException(project.name, appBuildType.name))
+            ?: appBuildType
+                .matchingFallbacks()
+                .firstOrNull { fallBackBuildType ->
+                    moduleBuildTypes.any { moduleBuildType -> fallBackBuildType == moduleBuildType.name }
+                }
+            ?: throw BuildTypesIsNotPresentException(project.name, appBuildType.name)
     }
 
     /**
@@ -135,23 +141,23 @@ internal class VariantsMerger @Inject constructor(
         appFlavor: ProductFlavor,
         project: Project
     ): String {
-
         if (moduleFlavors.isEmpty()) {
             return appFlavor.name
         }
-
-        val mergedFlavorCandidate =
-            moduleFlavors.firstOrNull { moduleFlavor -> moduleFlavor.name == appFlavor.name }
+        val mergedFlavorCandidate = moduleFlavors.firstOrNull { moduleFlavor ->
+            moduleFlavor.name == appFlavor.name
+        }
 
         return mergedFlavorCandidate?.name
-            ?: appFlavor.matchingFallbacks().firstOrNull { fallBackFlavor ->
-                moduleFlavors.firstOrNull { moduleFlavor ->
-                    fallBackFlavor == moduleFlavor.name
-                } != null
-            } ?: throw FlavorIsNotPresentException(project.name, appFlavor.name)
+            ?: appFlavor.matchingFallbacks()
+                .firstOrNull { fallBackFlavor ->
+                    moduleFlavors.any() { moduleFlavor ->
+                        fallBackFlavor == moduleFlavor.name
+                    }
+                } ?: throw FlavorIsNotPresentException(project.name, appFlavor.name)
     }
 
-    private fun getApp(): Project {
+    private fun applicationProject(): Project {
         return if (androidApplicationsModules.size == 1) {
             androidApplicationsModules.first()
         } else {
@@ -160,24 +166,23 @@ internal class VariantsMerger @Inject constructor(
     }
 
     private fun BuildType.matchingFallbacks(): List<String> {
-        return getApp().the<AppExtension>().buildTypes.first { it.name == name }.matchingFallbacks
+        return applicationProject().the<AppExtension>()
+            .buildTypes
+            .first { it.name == name }.matchingFallbacks
     }
 
     private fun ProductFlavor.matchingFallbacks(): List<String> {
-        return getApp().the<AppExtension>().productFlavors.first { it.name == name }
-            .matchingFallbacks
+        return applicationProject().the<AppExtension>()
+            .productFlavors
+            .first { it.name == name }.matchingFallbacks
     }
 }
 
-fun <E> Collection<E>.first(errorMessage: String, function: (E) -> Boolean): E {
-    return try {
-        first { function(it) }
-    } catch (e: Exception) {
-        throw IllegalStateException(errorMessage, e)
-    }
-}
-
-data class MergedVariant(val flavor: String, val buildType: String, val variant: BaseVariant) {
+data class MergedVariant(
+    val flavor: String,
+    val buildType: String,
+    val variant: BaseVariant
+) {
     val variantName = flavor + buildType.capitalize()
 }
 
@@ -192,8 +197,9 @@ class BuildTypesIsNotPresentException(project: String, buildType: String) : Ille
         "$buildType in app module"
 )
 
-class ProjectShouldHaveOnlyOneAppModuleException :
-    IllegalStateException("Root project should have at least and just one application module")
+class ProjectShouldHaveOnlyOneAppModuleException : IllegalStateException(
+    "Root project should have at least and just one application module"
+)
 
 class VariantIsNotPresentException(
     expectedModuleVariantName: String,
