@@ -2,6 +2,7 @@
 .gradle
 local.properties
 .idea/*
+.fleet
 !.idea/runConfigurations
 
 .DS_Store

@@ -6,7 +6,7 @@ to [Bazel build](https://bazel.build) system in an incremental and automated fas
 <p align="center"> 
 <!-- <a href="https://github.com/grab/Grazel/releases/latest"><img src="https://img.shields.io/github/release/grab/Grazel.svg?style=flat-square&label=Release&logo=github&colorB=00bdd6"/></a> -->
 <img alt="Maven Central" src="https://img.shields.io/maven-central/v/com.grab.grazel/grazel-gradle-plugin?logo=apache-maven&logoColor=%23C71A36&style=flat-square&colorB=00bdd6">
-<img src="https://img.shields.io/github/workflow/status/grab/Grazel/Default%20workflow?style=flat-square&logo=github">
+<img src="https://img.shields.io/github/actions/workflow/status/grab/Grazel/ci.yml?logo=github&style=flat-square">
 <a href="https://grab.github.io/Grazel/"><img src="https://img.shields.io/badge/Website-%20-lightgrey.svg?color=00bdd6&colorA=00bdd6&style=flat-square&logo=github"/></a>
 </p>
 
