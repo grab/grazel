@@ -60,13 +60,19 @@ android {
         }
     }
 
-    flavorDimensions "service"
+    flavorDimensions "service", "release"
     productFlavors {
+        flavor1 {
+            dimension "service"
+        }
         flavor2 {
             dimension "service"
         }
-        flavor1 {
-            dimension "service"
+        free {
+            dimension "release"
+        }
+        paid {
+            dimension "release"
         }
     }
 

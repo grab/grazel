@@ -28,11 +28,12 @@ import org.gradle.api.Project
 import org.gradle.kotlin.dsl.the
 import javax.inject.Inject
 
-internal class VariantsMerger @Inject constructor(
-    val androidVariantDataSource: AndroidVariantDataSource,
+internal class VariantsMerger
+@Inject
+constructor(
+    private val androidVariantDataSource: AndroidVariantDataSource,
     @RootProject private val rootProject: Project,
 ) {
-
     private val androidApplicationsModules = rootProject.subprojects
         .filter { it.isAndroidApplication }
 
@@ -134,7 +135,7 @@ internal class VariantsMerger @Inject constructor(
     /**
      * Find if the flavor or any of its matching fallbacks exist in the target module
      *
-     * throws exception if it cannot find anything
+     * @throws FlavorIsNotPresentException if it cannot find anything
      */
     private fun mergedFlavor(
         moduleFlavors: Set<ProductFlavor>,

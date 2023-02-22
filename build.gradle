@@ -92,7 +92,7 @@ grazel {
                 variant.name != "debug" &&
                 variant.name != "debugUnitTest"
             ) {
-                variant.setIgnore(true)
+                // variant.setIgnore(true)
             }
         }
         features {
