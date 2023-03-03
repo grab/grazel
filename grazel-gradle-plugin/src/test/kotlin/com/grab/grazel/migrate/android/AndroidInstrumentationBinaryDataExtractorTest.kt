@@ -23,6 +23,7 @@ import com.grab.grazel.GrazelPluginTest
 import com.grab.grazel.buildProject
 import com.grab.grazel.gradle.ANDROID_APPLICATION_PLUGIN
 import com.grab.grazel.gradle.KOTLIN_ANDROID_PLUGIN
+import com.grab.grazel.gradle.variant.MatchedVariant
 import com.grab.grazel.util.addGrazelExtension
 import com.grab.grazel.util.createGrazelComponent
 import com.grab.grazel.util.doEvaluate
@@ -37,7 +38,7 @@ import java.io.File
 
 private const val ANDROID_BINARY_MODULE_NAME = "android-binary"
 
-class AndroidInstrumentationBinaryDataExtratorTest : GrazelPluginTest() {
+class AndroidInstrumentationBinaryDataExtractorTest : GrazelPluginTest() {
     private lateinit var androidBinary: Project
     private lateinit var androidBinaryDir: File
 
@@ -70,7 +71,7 @@ class AndroidInstrumentationBinaryDataExtratorTest : GrazelPluginTest() {
         androidBinary.doEvaluate()
         val androidInstrumentationBinaryData = androidInstrumentationBinaryDataExtractor.extract(
             project = androidBinary,
-            mergedVariant = debugAndroidTestVariant(androidBinary),
+            matchedVariant = debugAndroidTestVariant(androidBinary),
             sourceSetType = SourceSetType.JAVA_KOTLIN,
         )
 
@@ -124,15 +125,15 @@ class AndroidInstrumentationBinaryDataExtratorTest : GrazelPluginTest() {
         return rootProject
     }
 
-    private fun debugAndroidTestVariant(project: Project): MergedVariant {
+    private fun debugAndroidTestVariant(project: Project): MatchedVariant {
         val variant = project.the<AppExtension>().testVariants.first {
             it.name == "debugAndroidTest"
         }
-
-        return MergedVariant(
-            variant.flavorName,
-            variant.buildType.name,
-            variant
+        return MatchedVariant(
+            variantName = variant.name,
+            variant = variant,
+            flavors = variant.productFlavors.map { it.name }.toSet(),
+            buildType = variant.buildType.name
         )
     }
 }

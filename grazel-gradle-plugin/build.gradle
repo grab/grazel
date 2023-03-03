@@ -91,6 +91,7 @@ dependencies {
     testImplementation "org.jetbrains.kotlin:kotlin-test-junit"
     testImplementation libs.google.truth
     testImplementation libs.junit
+    testImplementation libs.kotlin.test
     testImplementation libs.android.gradle.plugin
     testImplementation gradleTestKit()
     testImplementation libs.mockito.kotlin

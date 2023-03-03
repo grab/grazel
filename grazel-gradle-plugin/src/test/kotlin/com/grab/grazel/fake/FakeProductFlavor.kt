@@ -49,6 +49,14 @@ class FakeAndroidVariantDataSource(
     ): Set<BaseVariant> {
         return emptySet()
     }
+
+    override fun buildTypeFallbacks(project: Project): Map<String, Set<String>> {
+        TODO("Not yet implemented")
+    }
+
+    override fun flavorFallbacks(project: Project): Map<String, Set<String>> {
+        TODO("Not yet implemented")
+    }
 }
 
 class FakeProductFlavor(private val name: String) : ProductFlavor {

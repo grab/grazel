@@ -23,6 +23,3 @@ data class BuildGraphType(
     val configurationScope: ConfigurationScope,
     val variant: BaseVariant? = null
 )
-
-private val HUMPS = "(?<=.)(?=\\p{Upper})".toRegex()
-fun String.variantNameSuffix() = "-${replace(HUMPS, "-").toLowerCase()}"

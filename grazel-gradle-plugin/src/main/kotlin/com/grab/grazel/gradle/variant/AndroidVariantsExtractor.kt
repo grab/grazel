@@ -68,8 +68,8 @@ constructor() : AndroidVariantsExtractor {
 
     override fun getBuildTypes(project: Project): Set<BuildType> {
         return when {
-            project.isAndroidAppOrDynFeature -> project.the<AppExtension>().buildTypes
-            project.isAndroidLibrary -> project.the<LibraryExtension>().buildTypes
+            project.isAndroidAppOrDynFeature -> project.the<AppExtension>().buildTypes.toSet()
+            project.isAndroidLibrary -> project.the<LibraryExtension>().buildTypes.toSet()
             else -> emptySet()
         }
     }

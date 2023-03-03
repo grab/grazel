@@ -18,17 +18,17 @@ package com.grab.grazel.migrate.builder
 
 import com.grab.grazel.extension.TestExtension
 import com.grab.grazel.gradle.ConfigurationScope
-import com.grab.grazel.gradle.dependencies.variantNameSuffix
 import com.grab.grazel.gradle.isAndroid
 import com.grab.grazel.gradle.isAndroidApplication
 import com.grab.grazel.gradle.isKotlin
+import com.grab.grazel.gradle.variant.VariantMatcher
+import com.grab.grazel.gradle.variant.nameSuffix
 import com.grab.grazel.migrate.BazelTarget
 import com.grab.grazel.migrate.TargetBuilder
 import com.grab.grazel.migrate.android.AndroidLibraryData
 import com.grab.grazel.migrate.android.AndroidLibraryDataExtractor
 import com.grab.grazel.migrate.android.AndroidLibraryTarget
 import com.grab.grazel.migrate.android.AndroidUnitTestDataExtractor
-import com.grab.grazel.migrate.android.VariantsMerger
 import com.grab.grazel.migrate.android.toUnitTestTarget
 import dagger.Binds
 import dagger.Module
@@ -49,24 +49,25 @@ internal class AndroidLibTargetBuilder @Inject constructor(
     private val projectDataExtractor: AndroidLibraryDataExtractor,
     private val unitTestDataExtractor: AndroidUnitTestDataExtractor,
     private val testExtension: TestExtension,
-    private val variantsMerger: VariantsMerger
+    private val variantMatcher: VariantMatcher,
 ) : TargetBuilder {
 
     override fun build(project: Project): List<BazelTarget> {
-
-        return variantsMerger.merge(project, ConfigurationScope.BUILD).map { mergedVariant ->
-            projectDataExtractor.extract(project, mergedVariant)
-                .toAndroidLibTarget(mergedVariant.variantName.variantNameSuffix())
-        } + unitTestsTargets(project)
+        return variantMatcher.matchedVariants(project, ConfigurationScope.BUILD)
+            .map { matchedVariant ->
+                projectDataExtractor
+                    .extract(project, matchedVariant)
+                    .toAndroidLibTarget(matchedVariant.nameSuffix)
+            } + unitTestsTargets(project)
     }
 
     private fun unitTestsTargets(project: Project) =
         if (testExtension.enableTestMigration) {
-            variantsMerger.merge(
+            variantMatcher.matchedVariants(
                 project,
                 ConfigurationScope.TEST
-            ).map { mergedVariant ->
-                unitTestDataExtractor.extract(project, mergedVariant).toUnitTestTarget()
+            ).map { matchedVariant ->
+                unitTestDataExtractor.extract(project, matchedVariant).toUnitTestTarget()
             }
         } else {
             emptyList()

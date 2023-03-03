@@ -20,10 +20,11 @@ import com.grab.grazel.bazel.rules.KotlinProjectType
 import com.grab.grazel.bazel.rules.Visibility
 import com.grab.grazel.extension.TestExtension
 import com.grab.grazel.gradle.ConfigurationScope
-import com.grab.grazel.gradle.dependencies.variantNameSuffix
 import com.grab.grazel.gradle.isAndroid
 import com.grab.grazel.gradle.isAndroidApplication
 import com.grab.grazel.gradle.isKotlin
+import com.grab.grazel.gradle.variant.VariantMatcher
+import com.grab.grazel.gradle.variant.nameSuffix
 import com.grab.grazel.migrate.BazelTarget
 import com.grab.grazel.migrate.TargetBuilder
 import com.grab.grazel.migrate.android.AndroidLibraryData
@@ -36,7 +37,6 @@ import com.grab.grazel.migrate.android.DefaultAndroidLibraryDataExtractor
 import com.grab.grazel.migrate.android.DefaultAndroidManifestParser
 import com.grab.grazel.migrate.android.DefaultAndroidUnitTestDataExtractor
 import com.grab.grazel.migrate.android.SourceSetType
-import com.grab.grazel.migrate.android.VariantsMerger
 import com.grab.grazel.migrate.android.toUnitTestTarget
 import com.grab.grazel.migrate.kotlin.KtLibraryTarget
 import com.grab.grazel.migrate.toBazelDependency
@@ -69,29 +69,31 @@ internal class KtAndroidLibTargetBuilder @Inject constructor(
     private val projectDataExtractor: AndroidLibraryDataExtractor,
     private val unitTestDataExtractor: AndroidUnitTestDataExtractor,
     private val testExtension: TestExtension,
-    private val variantsMerger: VariantsMerger
+    private val variantMatcher: VariantMatcher
 ) : TargetBuilder {
 
     override fun build(project: Project): List<BazelTarget> {
         return mutableListOf<BazelTarget>().apply {
-            variantsMerger.merge(project, ConfigurationScope.BUILD)
-                .forEach { mergedVariant ->
+            variantMatcher.matchedVariants(project, ConfigurationScope.BUILD)
+                .forEach { matchedVariant ->
                     val projectData = projectDataExtractor.extract(
                         project,
                         sourceSetType = SourceSetType.JAVA_KOTLIN,
-                        mergedVariant = mergedVariant
+                        matchedVariant = matchedVariant
                     )
                     var deps = projectData.deps
                     with(projectData) {
-                        toAarResTarget(mergedVariant.variantName.variantNameSuffix())?.also { add(it) }
-                        toBuildConfigTarget(mergedVariant.variantName.variantNameSuffix()).also {
+                        toAarResTarget(matchedVariant.nameSuffix)?.also {
+                            add(it)
+                        }
+                        toBuildConfigTarget(matchedVariant.nameSuffix).also {
                             deps += it.toBazelDependency()
                             add(it)
                         }
                     }
                     projectData
                         .copy(
-                            name = projectData.name + mergedVariant.variantName.variantNameSuffix(),
+                            name = projectData.name + matchedVariant.nameSuffix,
                             deps = deps
                         )
                         .toKtLibraryTarget()
@@ -100,7 +102,7 @@ internal class KtAndroidLibTargetBuilder @Inject constructor(
                         }
                 }
             if (testExtension.enableTestMigration) {
-                variantsMerger.merge(project, ConfigurationScope.TEST)
+                variantMatcher.matchedVariants(project, ConfigurationScope.TEST)
                     .forEach { variant ->
                         add(unitTestDataExtractor.extract(project, variant).toUnitTestTarget())
                     }

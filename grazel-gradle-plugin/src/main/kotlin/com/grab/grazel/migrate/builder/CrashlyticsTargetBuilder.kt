@@ -21,13 +21,13 @@ import com.grab.grazel.gradle.ConfigurationScope
 import com.grab.grazel.gradle.hasCrashlytics
 import com.grab.grazel.gradle.hasGooglePlayServicesPlugin
 import com.grab.grazel.gradle.isAndroidApplication
+import com.grab.grazel.gradle.variant.VariantMatcher
 import com.grab.grazel.migrate.BazelTarget
 import com.grab.grazel.migrate.TargetBuilder
 import com.grab.grazel.migrate.android.CrashlyticsData
 import com.grab.grazel.migrate.android.CrashlyticsDataExtractor
 import com.grab.grazel.migrate.android.CrashlyticsTarget
 import com.grab.grazel.migrate.android.DefaultCrashlyticsDataExtractor
-import com.grab.grazel.migrate.android.VariantsMerger
 import dagger.Binds
 import dagger.Module
 import dagger.multibindings.IntoSet
@@ -47,13 +47,23 @@ internal interface CrashlyticsTargetBuilderModule {
 
 internal class CrashlyticsTargetBuilder @Inject constructor(
     private val crashlyticsDataExtractor: CrashlyticsDataExtractor,
-    private val variantsMerger: VariantsMerger,
+    private val variantMatcher: VariantMatcher,
 ) : TargetBuilder {
 
-    override fun build(project: Project): List<BazelTarget> =
-        listOf(
-            project.buildCrashlyticsTarget()
-        )
+    override fun build(project: Project): List<BazelTarget> = buildList {
+        variantMatcher
+            .matchedVariants(project, ConfigurationScope.BUILD)
+            .map { matchedVariant ->
+                matchedVariant.variant.sourceSets.filterIsInstance<AndroidSourceSet>()
+            }.map { migratableSourceSets ->
+                crashlyticsDataExtractor.extract(
+                    project = project,
+                    androidSourceSets = migratableSourceSets,
+                )
+            }.map { it.toTarget() }
+            .firstOrNull()
+            ?.let { add(it) }
+    }
 
     override fun canHandle(project: Project): Boolean =
         project.isAndroidApplication &&
@@ -61,22 +71,6 @@ internal class CrashlyticsTargetBuilder @Inject constructor(
             project.hasCrashlytics
 
     override fun sortOrder(): Int = 0
-
-    private fun Project.buildCrashlyticsTarget(): BazelTarget =
-        variantsMerger
-            .merge(project, ConfigurationScope.BUILD)
-            .map { mergedVariant ->
-                mergedVariant.variant.sourceSets
-                    .filterIsInstance<AndroidSourceSet>()
-            }
-            .map { migratableSourceSets ->
-                crashlyticsDataExtractor.extract(
-                    project = project,
-                    androidSourceSets = migratableSourceSets,
-                )
-            }
-            .map { it.toTarget() }
-            .first()
 
     private fun CrashlyticsData.toTarget(): CrashlyticsTarget =
         CrashlyticsTarget(

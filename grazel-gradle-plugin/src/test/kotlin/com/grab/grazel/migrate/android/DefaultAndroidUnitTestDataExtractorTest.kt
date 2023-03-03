@@ -33,6 +33,7 @@ import com.grab.grazel.gradle.dependencies.DefaultDependencyResolutionService
 import com.grab.grazel.gradle.dependencies.GradleDependencyToBazelDependency
 import com.grab.grazel.gradle.variant.DefaultAndroidVariantDataSource
 import com.grab.grazel.gradle.variant.DefaultAndroidVariantsExtractor
+import com.grab.grazel.gradle.variant.MatchedVariant
 import com.grab.grazel.util.doEvaluate
 import org.gradle.api.Project
 import org.gradle.kotlin.dsl.configure
@@ -182,15 +183,15 @@ class DefaultAndroidUnitTestDataExtractorTest : GrazelPluginTest() {
         }
     }
 
-    private fun debugUnitTestVariant(project: Project): MergedVariant {
+    private fun debugUnitTestVariant(project: Project): MatchedVariant {
         val variant = project.the<LibraryExtension>().unitTestVariants.first {
             it.name == "debugUnitTest"
         }
-
-        return MergedVariant(
-            variant.flavorName,
-            variant.buildType.name,
-            variant
+        return MatchedVariant(
+            variant = variant,
+            variantName = variant.name,
+            flavors = variant.productFlavors.map { it.name }.toSet(),
+            buildType = variant.buildType.name
         )
     }
 }

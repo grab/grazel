@@ -85,15 +85,7 @@ grazel {
         multiDexEnabled = true
         incrementalDexing = true
         variantFilter { variant ->
-            if (
-            variant.name != "flavor1Debug" &&
-                variant.name != "flavor2Debug" &&
-                variant.name != "flavor1DebugAndroidTest" &&
-                variant.name != "debug" &&
-                variant.name != "debugUnitTest"
-            ) {
-                // variant.setIgnore(true)
-            }
+            variant.setIgnore(variant.buildType.name != "debug")
         }
         features {
             dataBinding = true
@@ -111,7 +103,7 @@ grazel {
         }
         bazelCommon {
             gitRepository {
-                commit = "07d767f305ee0511f32bcf4df1f669cfa4b3b535"
+                commit = "9abdf2229b56e816d08a91acee2cfaf48098ce06"
                 remote = "https://github.com/grab/grab-bazel-common.git"
             }
             toolchains {

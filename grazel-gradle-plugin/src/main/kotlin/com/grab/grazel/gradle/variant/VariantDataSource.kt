@@ -57,10 +57,9 @@ internal interface AndroidVariantDataSource {
         configurationScope: ConfigurationScope?
     ): Set<BaseVariant>
 
-    fun getFlavorDimensions(
-        project: Project,
-        configurationScope: ConfigurationScope?
-    ): Set<String>
+    fun buildTypeFallbacks(project: Project): Map<String, Set<String>>
+
+    fun flavorFallbacks(project: Project): Map<String, Set<String>>
 }
 
 internal class DefaultAndroidVariantDataSource(
@@ -101,14 +100,29 @@ internal class DefaultAndroidVariantDataSource(
         return project.androidVariants().filterNot(::ignoredVariantFilter)
     }
 
-    override fun getFlavorDimensions(
-        project: Project,
-        configurationScope: ConfigurationScope?
-    ): Set<String> = getMigratableVariants(project, configurationScope)
-        .asSequence()
-        .flatMap { it.productFlavors }
-        .mapNotNull { it.dimension }
-        .toSet()
+    override fun buildTypeFallbacks(project: Project): Map<String, Set<String>> {
+        return androidVariantsExtractor.getBuildTypes(project)
+            .groupBy { it.name }
+            .mapValues { (_, buildTypes) ->
+                buildTypes
+                    .filterIsInstance<com.android.build.gradle.internal.dsl.BuildType>()
+                    .map { it.matchingFallbacks }
+                    .flatten()
+                    .toSet()
+            }
+    }
+
+    override fun flavorFallbacks(project: Project): Map<String, Set<String>> {
+        return androidVariantsExtractor.getFlavors(project)
+            .groupBy { it.name }
+            .mapValues { (_, flavors) ->
+                flavors
+                    .filterIsInstance<com.android.build.gradle.internal.dsl.ProductFlavor>()
+                    .map { it.matchingFallbacks }
+                    .flatten()
+                    .toSet()
+            }
+    }
 
     private fun ignoredVariantFilter(
         variant: BaseVariant

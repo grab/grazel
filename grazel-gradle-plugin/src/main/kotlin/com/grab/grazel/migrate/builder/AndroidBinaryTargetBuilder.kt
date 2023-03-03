@@ -18,11 +18,12 @@ package com.grab.grazel.migrate.builder
 
 import com.grab.grazel.bazel.starlark.BazelDependency
 import com.grab.grazel.gradle.ConfigurationScope
-import com.grab.grazel.gradle.dependencies.variantNameSuffix
 import com.grab.grazel.gradle.hasCrashlytics
 import com.grab.grazel.gradle.hasGooglePlayServicesPlugin
 import com.grab.grazel.gradle.isAndroidApplication
 import com.grab.grazel.gradle.isKotlin
+import com.grab.grazel.gradle.variant.VariantMatcher
+import com.grab.grazel.gradle.variant.nameSuffix
 import com.grab.grazel.migrate.BazelTarget
 import com.grab.grazel.migrate.TargetBuilder
 import com.grab.grazel.migrate.android.AndroidBinaryDataExtractor
@@ -35,7 +36,6 @@ import com.grab.grazel.migrate.android.DefaultManifestValuesBuilder
 import com.grab.grazel.migrate.android.KeyStoreExtractor
 import com.grab.grazel.migrate.android.ManifestValuesBuilder
 import com.grab.grazel.migrate.android.SourceSetType
-import com.grab.grazel.migrate.android.VariantsMerger
 import com.grab.grazel.migrate.toBazelDependency
 import dagger.Binds
 import dagger.Module
@@ -64,7 +64,7 @@ internal interface AndroidBinaryTargetBuilderModule {
 internal class AndroidBinaryTargetBuilder @Inject constructor(
     private val androidLibDataExtractor: AndroidLibraryDataExtractor,
     private val androidBinDataExtractor: AndroidBinaryDataExtractor,
-    private val variantsMerger: VariantsMerger
+    private val variantMatcher: VariantMatcher
 ) : TargetBuilder {
 
     override fun build(project: Project): List<BazelTarget> {
@@ -76,26 +76,28 @@ internal class AndroidBinaryTargetBuilder @Inject constructor(
         project: Project,
         intermediateTargets: List<BazelTarget>
     ): List<BazelTarget> {
-
-        val targets = variantsMerger.merge(project, ConfigurationScope.BUILD)
+        val targets = variantMatcher.matchedVariants(project, ConfigurationScope.BUILD)
             .flatMap { mergedVariant ->
                 var androidLibData = androidLibDataExtractor.extract(project, mergedVariant)
                 val deps = if (project.isKotlin) {
                     // For kotlin project, don't duplicate Maven dependencies
-                    intermediateTargets.filter { it.name.endsWith(mergedVariant.variantName.variantNameSuffix()) }
+                    intermediateTargets.filter { it.name.endsWith(mergedVariant.nameSuffix) }
                         .map { it.toBazelDependency() }
                 } else {
-                    intermediateTargets.filter { it.name.endsWith(mergedVariant.variantName.variantNameSuffix()) }
+                    intermediateTargets.filter { it.name.endsWith(mergedVariant.nameSuffix) }
                         .map { it.toBazelDependency() } + androidLibData.deps
                 }
 
                 androidLibData = androidLibData.copy(deps = deps)
-                val binaryData =
-                    androidBinDataExtractor.extract(project, mergedVariant.variant, androidLibData)
+                val binaryData = androidBinDataExtractor.extract(
+                    project,
+                    mergedVariant.variant,
+                    androidLibData
+                )
 
                 listOf(
                     AndroidBinaryTarget(
-                        name = "${binaryData.name}${mergedVariant.variantName.variantNameSuffix()}",
+                        name = "${binaryData.name}${mergedVariant.nameSuffix}",
                         deps = androidLibData.deps + binaryData.deps + crashlyticsDeps(project),
                         srcs = androidLibData.srcs,
                         multidex = binaryData.multidex,
@@ -128,17 +130,17 @@ internal class AndroidBinaryTargetBuilder @Inject constructor(
 
     private fun buildKtAndroidTargets(project: Project): List<BazelTarget> {
         return buildList {
-            variantsMerger.merge(project, ConfigurationScope.BUILD)
-                .forEach { mergedVariant ->
+            variantMatcher.matchedVariants(project, ConfigurationScope.BUILD)
+                .forEach { matchedVariant ->
                     val androidProjectData = androidLibDataExtractor.extract(
                         project = project,
                         sourceSetType = SourceSetType.JAVA_KOTLIN,
-                        mergedVariant = mergedVariant
+                        matchedVariant = matchedVariant
                     ).copy(name = "${project.name}_lib", hasDatabinding = false)
                     var deps = androidProjectData.deps
 
                     with(androidProjectData) {
-                        toBuildConfigTarget(mergedVariant.variantName.variantNameSuffix()).also {
+                        toBuildConfigTarget(matchedVariant.nameSuffix).also {
                             deps += it.toBazelDependency()
                             add(it)
                         }
@@ -146,7 +148,7 @@ internal class AndroidBinaryTargetBuilder @Inject constructor(
 
                     androidProjectData
                         .copy(
-                            name = "${androidProjectData.name}${mergedVariant.variantName.variantNameSuffix()}",
+                            name = "${androidProjectData.name}${matchedVariant.nameSuffix}",
                             deps = deps,
                             tags = emptyList() // Don't generate classpath reduction tags for final binary target
                         )

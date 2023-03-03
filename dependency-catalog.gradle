@@ -62,6 +62,7 @@ dependencyResolutionManagement {
             library('javapoet', 'com.squareup', 'javapoet').versionRef('javapoet')
             library('junit', 'junit', 'junit').versionRef('junit')
             library('kotlin-gradle-plugin', 'org.jetbrains.kotlin', 'kotlin-gradle-plugin').versionRef('kotlin')
+            library('kotlin-test', 'org.jetbrains.kotlin', 'kotlin-test').versionRef('kotlin')
             library('mockito-kotlin', 'com.nhaarman', 'mockito-kotlin').versionRef('mockito-kotlin')
             library('nexus-gradle-publish-plugin', 'io.github.gradle-nexus', 'publish-plugin').versionRef('nexus')
             library('picnic', 'com.jakewharton.picnic', 'picnic').versionRef('picnic')

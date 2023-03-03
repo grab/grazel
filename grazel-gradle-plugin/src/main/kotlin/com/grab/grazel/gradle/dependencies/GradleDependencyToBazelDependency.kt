@@ -18,22 +18,24 @@ package com.grab.grazel.gradle.dependencies
 
 import com.grab.grazel.bazel.starlark.BazelDependency
 import com.grab.grazel.gradle.isAndroid
-import com.grab.grazel.migrate.android.MergedVariant
+import com.grab.grazel.gradle.variant.MatchedVariant
+import com.grab.grazel.gradle.variant.nameSuffix
 import org.gradle.api.Project
 import javax.inject.Inject
 
-internal class GradleDependencyToBazelDependency @Inject constructor() {
-
+internal class GradleDependencyToBazelDependency
+@Inject
+constructor() {
     /**
-     * [variant] can only be null if and only if the [project] is a Java/Kotlin project
+     * [matchedVariant] can only be null if and only if the [project] is a Java/Kotlin project
      */
     fun map(
         project: Project,
         dependency: Project,
-        mergedVariant: MergedVariant?
+        matchedVariant: MatchedVariant?
     ): BazelDependency.ProjectDependency {
         return if (project.isAndroid) {
-            if (mergedVariant == null) {
+            if (matchedVariant == null) {
                 throw IllegalStateException(
                     "please provide the variant for the android project=${project.name}"
                 )
@@ -41,7 +43,7 @@ internal class GradleDependencyToBazelDependency @Inject constructor() {
             if (dependency.isAndroid) {// project is an android project, dependent is also
                 BazelDependency.ProjectDependency(
                     dependency,
-                    mergedVariant.variantName.variantNameSuffix()
+                    matchedVariant.nameSuffix
                 )
             } else {// project is an android project, dependent is NOT
                 BazelDependency.ProjectDependency(dependency)

@@ -6,5 +6,8 @@ import dagger.Module
 @Module
 internal interface VariantModule {
     @Binds
-    fun DefaultVariantBuilder.bind(): VariantBuilder
+    fun DefaultVariantBuilder.bindBuilder(): VariantBuilder
+
+    @Binds
+    fun DefaultVariantMatcher.bindMatcher(): VariantMatcher
 }

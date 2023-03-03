@@ -36,6 +36,7 @@ import com.grab.grazel.gradle.variant.AndroidVariantsExtractor
 import com.grab.grazel.gradle.variant.DefaultAndroidVariantDataSource
 import com.grab.grazel.gradle.variant.DefaultAndroidVariantsExtractor
 import com.grab.grazel.gradle.variant.VariantBuilder
+import com.grab.grazel.gradle.variant.VariantMatcher
 import com.grab.grazel.gradle.variant.VariantModule
 import com.grab.grazel.migrate.android.AndroidInstrumentationBinaryDataExtractor
 import com.grab.grazel.migrate.builder.AndroidBinaryTargetBuilderModule
@@ -89,6 +90,7 @@ internal interface GrazelComponent {
 
     fun androidInstrumentationBinaryDataExtractor(): Lazy<AndroidInstrumentationBinaryDataExtractor>
     fun variantBuilder(): Lazy<VariantBuilder>
+    fun variantMatcher(): Lazy<VariantMatcher>
 }
 
 @Module(

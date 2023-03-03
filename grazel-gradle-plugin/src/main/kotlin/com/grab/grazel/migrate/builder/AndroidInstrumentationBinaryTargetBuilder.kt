@@ -16,17 +16,16 @@
 
 package com.grab.grazel.migrate.builder
 
-import com.grab.grazel.gradle.ConfigurationScope
+import com.grab.grazel.gradle.ConfigurationScope.ANDROID_TEST
 import com.grab.grazel.gradle.hasTestInstrumentationRunner
 import com.grab.grazel.gradle.isAndroidApplication
-import com.grab.grazel.migrate.BazelTarget
+import com.grab.grazel.gradle.variant.VariantMatcher
 import com.grab.grazel.migrate.TargetBuilder
 import com.grab.grazel.migrate.android.AndroidInstrumentationBinaryData
 import com.grab.grazel.migrate.android.AndroidInstrumentationBinaryDataExtractor
 import com.grab.grazel.migrate.android.AndroidInstrumentationBinaryTarget
 import com.grab.grazel.migrate.android.DefaultAndroidInstrumentationBinaryDataExtractor
 import com.grab.grazel.migrate.android.SourceSetType
-import com.grab.grazel.migrate.android.VariantsMerger
 import dagger.Binds
 import dagger.Module
 import dagger.multibindings.IntoSet
@@ -49,33 +48,27 @@ internal interface AndroidInstrumentationBinaryTargetBuilderModule {
 internal class AndroidInstrumentationBinaryTargetBuilder
 @Inject constructor(
     private val androidInstrumentationBinDataExtractor: AndroidInstrumentationBinaryDataExtractor,
-    private val variantsMerger: VariantsMerger,
+    private val variantMatcher: VariantMatcher,
 ) : TargetBuilder {
 
-    override fun build(project: Project): List<BazelTarget> =
-        project.buildAndroidInstrumentationBinaryTargets()
-
-    override fun canHandle(project: Project): Boolean =
-        project.isAndroidApplication && project.hasTestInstrumentationRunner
-
-    override fun sortOrder(): Int = 3
-
-    private fun Project.buildAndroidInstrumentationBinaryTargets(): List<BazelTarget> {
-        return buildList {
-            variantsMerger.merge(
-                this@buildAndroidInstrumentationBinaryTargets,
-                ConfigurationScope.ANDROID_TEST
-            ).forEach { mergedVariant ->
-                val androidInstrumentationBinData = androidInstrumentationBinDataExtractor.extract(
-                    project = project,
-                    mergedVariant = mergedVariant,
-                    sourceSetType = SourceSetType.JAVA_KOTLIN,
-                )
-
-                add(androidInstrumentationBinData.toTarget())
-            }
+    override fun build(project: Project) = buildList {
+        variantMatcher.matchedVariants(
+            project,
+            ANDROID_TEST
+        ).forEach { matchedVariant ->
+            val androidInstrumentationBinData = androidInstrumentationBinDataExtractor.extract(
+                project = project,
+                matchedVariant = matchedVariant,
+                sourceSetType = SourceSetType.JAVA_KOTLIN,
+            )
+            add(androidInstrumentationBinData.toTarget())
         }
     }
+
+    override fun canHandle(project: Project): Boolean = project.isAndroidApplication
+        && project.hasTestInstrumentationRunner
+
+    override fun sortOrder(): Int = 3
 
     private fun AndroidInstrumentationBinaryData.toTarget(): AndroidInstrumentationBinaryTarget =
         AndroidInstrumentationBinaryTarget(

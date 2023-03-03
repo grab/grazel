@@ -24,9 +24,10 @@ import com.grab.grazel.gradle.dependencies.BuildGraphType
 import com.grab.grazel.gradle.dependencies.DependenciesDataSource
 import com.grab.grazel.gradle.dependencies.DependencyGraphs
 import com.grab.grazel.gradle.dependencies.GradleDependencyToBazelDependency
-import com.grab.grazel.gradle.dependencies.variantNameSuffix
 import com.grab.grazel.gradle.variant.AndroidVariantDataSource
+import com.grab.grazel.gradle.variant.MatchedVariant
 import com.grab.grazel.gradle.variant.getMigratableBuildVariants
+import com.grab.grazel.gradle.variant.nameSuffix
 import dagger.Lazy
 import org.gradle.api.Project
 import org.gradle.kotlin.dsl.getByType
@@ -37,7 +38,7 @@ import javax.inject.Singleton
 internal interface AndroidInstrumentationBinaryDataExtractor {
     fun extract(
         project: Project,
-        mergedVariant: MergedVariant,
+        matchedVariant: MatchedVariant,
         sourceSetType: SourceSetType = SourceSetType.JAVA,
     ): AndroidInstrumentationBinaryData
 }
@@ -56,28 +57,28 @@ internal class DefaultAndroidInstrumentationBinaryDataExtractor
 
     override fun extract(
         project: Project,
-        mergedVariant: MergedVariant,
+        matchedVariant: MatchedVariant,
         sourceSetType: SourceSetType,
     ): AndroidInstrumentationBinaryData {
         val extension = project.extensions.getByType<BaseExtension>()
         val deps = projectDependencyGraphs
             .directDependencies(
                 project,
-                BuildGraphType(ConfigurationScope.ANDROID_TEST, mergedVariant.variant)
+                BuildGraphType(ConfigurationScope.ANDROID_TEST, matchedVariant.variant)
             ).map { dependency ->
-                gradleDependencyToBazelDependency.map(project, dependency, mergedVariant)
+                gradleDependencyToBazelDependency.map(project, dependency, matchedVariant)
             } +
             dependenciesDataSource.collectMavenDeps(
                 project,
-                BuildGraphType(ConfigurationScope.ANDROID_TEST, mergedVariant.variant)
+                BuildGraphType(ConfigurationScope.ANDROID_TEST, matchedVariant.variant)
             ) +
             BazelDependency.ProjectDependency(
                 project,
-                "_lib${mergedVariant.variantName.variantNameSuffix()}"
+                "_lib${matchedVariant.nameSuffix}"
             )
 
         return project.extract(
-            mergedVariant = mergedVariant,
+            matchedVariant = matchedVariant,
             extension = extension,
             deps = deps,
             sourceSetType = sourceSetType,
@@ -85,13 +86,13 @@ internal class DefaultAndroidInstrumentationBinaryDataExtractor
     }
 
     private fun Project.extract(
-        mergedVariant: MergedVariant,
+        matchedVariant: MatchedVariant,
         extension: BaseExtension,
         deps: List<BazelDependency>,
         sourceSetType: SourceSetType,
     ): AndroidInstrumentationBinaryData {
 
-        val migratableSourceSets = mergedVariant.variant.sourceSets
+        val migratableSourceSets = matchedVariant.variant.sourceSets
             .filterIsInstance<AndroidSourceSet>()
             .toList()
 
@@ -107,7 +108,7 @@ internal class DefaultAndroidInstrumentationBinaryDataExtractor
 
         val associate = BazelDependency.ProjectDependency(
             dependencyProject = this,
-            suffix = "_lib${mergedVariant.variantName.variantNameSuffix()}_kt"
+            suffix = "_lib${matchedVariant.nameSuffix}_kt"
         )
 
         val resources = unitTestResources(migratableSourceSets.asSequence()).toList()
@@ -118,13 +119,13 @@ internal class DefaultAndroidInstrumentationBinaryDataExtractor
         val testInstrumentationRunner = extension.extractTestInstrumentationRunner()
 
         return AndroidInstrumentationBinaryData(
-            name = "${name}${mergedVariant.variantName.variantNameSuffix()}-android-test",
+            name = "${name}${matchedVariant.nameSuffix}-android-test",
             associates = listOf(associate),
             customPackage = packageName,
             debugKey = debugKey,
             deps = deps,
             instruments = BazelDependency.StringDependency(
-                ":${name}${mergedVariant.variantName.variantNameSuffix()}"
+                ":${name}${matchedVariant.nameSuffix}"
             ),
             resources = resources,
             resourceStripPrefix = resourceStripPrefix,

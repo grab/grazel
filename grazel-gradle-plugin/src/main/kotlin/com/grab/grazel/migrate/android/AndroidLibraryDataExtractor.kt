@@ -31,7 +31,7 @@ import com.grab.grazel.gradle.dependencies.DependencyGraphs
 import com.grab.grazel.gradle.dependencies.GradleDependencyToBazelDependency
 import com.grab.grazel.gradle.hasDatabinding
 import com.grab.grazel.gradle.isAndroid
-import com.grab.grazel.gradle.variant.AndroidVariantDataSource
+import com.grab.grazel.gradle.variant.MatchedVariant
 import com.grab.grazel.migrate.dependencies.calculateDirectDependencyTags
 import com.grab.grazel.migrate.kotlin.kotlinParcelizeDeps
 import dagger.Lazy
@@ -44,14 +44,13 @@ import javax.inject.Singleton
 internal interface AndroidLibraryDataExtractor {
     fun extract(
         project: Project,
-        mergedVariant: MergedVariant,
+        matchedVariant: MatchedVariant,
         sourceSetType: SourceSetType = SourceSetType.JAVA
     ): AndroidLibraryData
 }
 
 @Singleton
 internal class DefaultAndroidLibraryDataExtractor @Inject constructor(
-    private val variantDataSource: AndroidVariantDataSource,
     private val dependenciesDataSource: DependenciesDataSource,
     private val dependencyGraphsProvider: Lazy<DependencyGraphs>,
     private val androidManifestParser: AndroidManifestParser,
@@ -62,7 +61,7 @@ internal class DefaultAndroidLibraryDataExtractor @Inject constructor(
 
     override fun extract(
         project: Project,
-        mergedVariant: MergedVariant,
+        matchedVariant: MatchedVariant,
         sourceSetType: SourceSetType
     ): AndroidLibraryData {
         if (project.isAndroid) {
@@ -70,30 +69,30 @@ internal class DefaultAndroidLibraryDataExtractor @Inject constructor(
             val deps = projectDependencyGraphs
                 .directDependencies(
                     project,
-                    BuildGraphType(ConfigurationScope.BUILD, mergedVariant.variant)
+                    BuildGraphType(ConfigurationScope.BUILD, matchedVariant.variant)
                 ).map { dependent ->
-                    gradleDependencyToBazelDependency.map(project, dependent, mergedVariant)
+                    gradleDependencyToBazelDependency.map(project, dependent, matchedVariant)
                 } +
                 dependenciesDataSource.collectMavenDeps(
                     project,
-                    BuildGraphType(ConfigurationScope.BUILD, mergedVariant.variant)
+                    BuildGraphType(ConfigurationScope.BUILD, matchedVariant.variant)
                 ) +
                 project.kotlinParcelizeDeps()
 
-            return project.extract(mergedVariant, extension, sourceSetType, deps)
+            return project.extract(matchedVariant, extension, sourceSetType, deps)
         } else {
             throw IllegalArgumentException("${project.name} is not an Android project")
         }
     }
 
     private fun Project.extract(
-        mergedVariant: MergedVariant,
+        matchedVariant: MatchedVariant,
         extension: BaseExtension,
         sourceSetType: SourceSetType = SourceSetType.JAVA,
         deps: List<BazelDependency>
     ): AndroidLibraryData {
         // Only consider source sets from migratable variants
-        val migratableSourceSets = mergedVariant.variant.sourceSets
+        val migratableSourceSets = matchedVariant.variant.sourceSets
             .filterIsInstance<AndroidSourceSet>()
             .toList()
 
@@ -129,7 +128,7 @@ internal class DefaultAndroidLibraryDataExtractor @Inject constructor(
             manifestFile = manifestFile,
             packageName = packageName,
             hasDatabinding = project.hasDatabinding,
-            buildConfigData = extension.extractBuildConfig(this, mergedVariant.variant),
+            buildConfigData = extension.extractBuildConfig(this, matchedVariant.variant),
             resValues = extension.extractResValue(),
             extraRes = extraRes,
             deps = deps,
@@ -202,7 +201,7 @@ internal fun Project.androidSources(
         }
     val dirs = sourceSets.asSequence().flatMap(sourceSetChoosers)
     val dirsKotlin = dirs
-        .map { File(it.path.replace("/java", "/kotlin")) } //TODO(arun) Remove hardcoding
+        .map { File(it.path.replace("/java", "/kotlin")) }
     return filterSourceSetPaths(dirs + dirsKotlin, sourceSetType.patterns)
 }
 
