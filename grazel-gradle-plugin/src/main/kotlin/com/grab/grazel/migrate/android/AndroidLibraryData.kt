@@ -76,9 +76,10 @@ internal fun StatementsBuilder.buildResources(
     customResourceSets: List<ResourceSet>,
     targetName: String
 ): List<Assignee> {
-
-    val localResources = resources.map { glob(array(it.quote())) }
-
+    val localResources = when {
+        resources.isNotEmpty() -> listOf(glob(array(resources.quote)))
+        else -> emptyList()
+    }
     val customResources = if (customResourceSets.isNotEmpty()) {
         loadCustomRes()
         customResourceSets
