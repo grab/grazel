@@ -1,14 +1,52 @@
 load("@grab_bazel_common//tools/build_config:build_config.bzl", "build_config")
 
 build_config(
-    name = "sample-android-flavor-flavor1-free-debug-build-config",
+    name = "sample-android-flavor-flavor1-free-app-debug-build-config",
     package_name = "com.grab.grazel.android.flavor",
 )
 
 load("@grab_bazel_common//tools/databinding:databinding.bzl", "kt_db_android_library")
 
 kt_db_android_library(
-    name = "sample-android-flavor-flavor1-free-debug",
+    name = "sample-android-flavor-flavor1-free-app-debug",
+    srcs = glob([
+        "src/main/java/com/grab/grazel/android/flavor/**/*.kt",
+        "src/flavor1/java/com/grab/grazel/android/flavor/HelloFlavorMessage.kt",
+    ]),
+    custom_package = "com.grab.grazel.android.flavor",
+    manifest = "src/main/AndroidManifest.xml",
+    resource_files = glob([
+        "src/main/res/**",
+    ]) + glob([
+        "src/freeApp/res/**",
+    ]) + glob([
+        "src/flavor1/res/values/strings.xml",
+    ]),
+    visibility = [
+        "//visibility:public",
+    ],
+    deps = [
+        ":sample-android-flavor-flavor1-free-app-debug-build-config",
+        "//:parcelize",
+        "//flavor-libs/sample-library-flavor1",
+        "@maven//:androidx_appcompat_appcompat",
+        "@maven//:androidx_constraintlayout_constraintlayout",
+        "@maven//:androidx_constraintlayout_constraintlayout_core",
+        "@maven//:androidx_core_core",
+    ],
+)
+
+load("@grab_bazel_common//tools/build_config:build_config.bzl", "build_config")
+
+build_config(
+    name = "sample-android-flavor-flavor1-paid-app-debug-build-config",
+    package_name = "com.grab.grazel.android.flavor",
+)
+
+load("@grab_bazel_common//tools/databinding:databinding.bzl", "kt_db_android_library")
+
+kt_db_android_library(
+    name = "sample-android-flavor-flavor1-paid-app-debug",
     srcs = glob([
         "src/main/java/com/grab/grazel/android/flavor/**/*.kt",
         "src/flavor1/java/com/grab/grazel/android/flavor/HelloFlavorMessage.kt",
@@ -24,7 +62,7 @@ kt_db_android_library(
         "//visibility:public",
     ],
     deps = [
-        ":sample-android-flavor-flavor1-free-debug-build-config",
+        ":sample-android-flavor-flavor1-paid-app-debug-build-config",
         "//:parcelize",
         "//flavor-libs/sample-library-flavor1",
         "@maven//:androidx_appcompat_appcompat",
@@ -37,50 +75,14 @@ kt_db_android_library(
 load("@grab_bazel_common//tools/build_config:build_config.bzl", "build_config")
 
 build_config(
-    name = "sample-android-flavor-flavor1-paid-debug-build-config",
+    name = "sample-android-flavor-flavor2-free-app-debug-build-config",
     package_name = "com.grab.grazel.android.flavor",
 )
 
 load("@grab_bazel_common//tools/databinding:databinding.bzl", "kt_db_android_library")
 
 kt_db_android_library(
-    name = "sample-android-flavor-flavor1-paid-debug",
-    srcs = glob([
-        "src/main/java/com/grab/grazel/android/flavor/**/*.kt",
-        "src/flavor1/java/com/grab/grazel/android/flavor/HelloFlavorMessage.kt",
-    ]),
-    custom_package = "com.grab.grazel.android.flavor",
-    manifest = "src/main/AndroidManifest.xml",
-    resource_files = glob([
-        "src/main/res/**",
-    ]) + glob([
-        "src/flavor1/res/values/strings.xml",
-    ]),
-    visibility = [
-        "//visibility:public",
-    ],
-    deps = [
-        ":sample-android-flavor-flavor1-paid-debug-build-config",
-        "//:parcelize",
-        "//flavor-libs/sample-library-flavor1",
-        "@maven//:androidx_appcompat_appcompat",
-        "@maven//:androidx_constraintlayout_constraintlayout",
-        "@maven//:androidx_constraintlayout_constraintlayout_core",
-        "@maven//:androidx_core_core",
-    ],
-)
-
-load("@grab_bazel_common//tools/build_config:build_config.bzl", "build_config")
-
-build_config(
-    name = "sample-android-flavor-flavor2-free-debug-build-config",
-    package_name = "com.grab.grazel.android.flavor",
-)
-
-load("@grab_bazel_common//tools/databinding:databinding.bzl", "kt_db_android_library")
-
-kt_db_android_library(
-    name = "sample-android-flavor-flavor2-free-debug",
+    name = "sample-android-flavor-flavor2-free-app-debug",
     srcs = glob([
         "src/main/java/com/grab/grazel/android/flavor/**/*.kt",
         "src/flavor2/java/com/grab/grazel/android/flavor/HelloFlavorMessage.kt",
@@ -90,13 +92,15 @@ kt_db_android_library(
     resource_files = glob([
         "src/main/res/**",
     ]) + glob([
+        "src/freeApp/res/**",
+    ]) + glob([
         "src/flavor2/res/values/strings.xml",
     ]),
     visibility = [
         "//visibility:public",
     ],
     deps = [
-        ":sample-android-flavor-flavor2-free-debug-build-config",
+        ":sample-android-flavor-flavor2-free-app-debug-build-config",
         "//:parcelize",
         "//flavor-libs/sample-library-flavor2",
         "@maven//:androidx_appcompat_appcompat",
@@ -109,14 +113,14 @@ kt_db_android_library(
 load("@grab_bazel_common//tools/build_config:build_config.bzl", "build_config")
 
 build_config(
-    name = "sample-android-flavor-flavor2-paid-debug-build-config",
+    name = "sample-android-flavor-flavor2-paid-app-debug-build-config",
     package_name = "com.grab.grazel.android.flavor",
 )
 
 load("@grab_bazel_common//tools/databinding:databinding.bzl", "kt_db_android_library")
 
 kt_db_android_library(
-    name = "sample-android-flavor-flavor2-paid-debug",
+    name = "sample-android-flavor-flavor2-paid-app-debug",
     srcs = glob([
         "src/main/java/com/grab/grazel/android/flavor/**/*.kt",
         "src/flavor2/java/com/grab/grazel/android/flavor/HelloFlavorMessage.kt",
@@ -132,7 +136,7 @@ kt_db_android_library(
         "//visibility:public",
     ],
     deps = [
-        ":sample-android-flavor-flavor2-paid-debug-build-config",
+        ":sample-android-flavor-flavor2-paid-app-debug-build-config",
         "//:parcelize",
         "//flavor-libs/sample-library-flavor2",
         "@maven//:androidx_appcompat_appcompat",

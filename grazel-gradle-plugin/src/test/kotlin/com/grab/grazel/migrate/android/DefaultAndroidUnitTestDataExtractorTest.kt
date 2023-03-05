@@ -111,7 +111,6 @@ class DefaultAndroidUnitTestDataExtractorTest : GrazelPluginTest() {
 
         defaultAndroidUnitTestDataExtractor = DefaultAndroidUnitTestDataExtractor(
             dependenciesDataSource = dependenciesDataSource,
-            variantDataSource = variantDataSource,
             dependencyGraphsProvider = { dependencyGraphs },
             androidManifestParser = androidManifestParser,
             grazelExtension = GrazelExtension(rootProject),

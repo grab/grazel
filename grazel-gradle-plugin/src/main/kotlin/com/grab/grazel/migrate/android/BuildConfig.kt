@@ -28,6 +28,7 @@ import com.grab.grazel.util.fieldValue
 import org.gradle.api.Project
 
 internal data class BuildConfigData(
+    val packageName: String? = null,
     val strings: Map<String, String> = emptyMap(),
     val booleans: Map<String, String> = emptyMap(),
     val ints: Map<String, String> = emptyMap(),
@@ -38,9 +39,10 @@ internal fun BaseExtension.extractBuildConfig(
     project: Project,
     variant: BaseVariant
 ): BuildConfigData {
+    val packageName = defaultConfig.applicationId
     val buildConfigFields: Map<String, ClassField> = (
-        variant.buildType?.buildConfigFields
-            ?: emptyMap()) +
+        variant.buildType?.buildConfigFields ?: emptyMap()
+        ) +
         defaultConfig.buildConfigFields.toMap() +
         project.androidBinaryBuildConfigFields(this) +
         variant.extractBuildConfigWithVariantApi()
@@ -53,6 +55,7 @@ internal fun BaseExtension.extractBuildConfig(
         ).mapValues { it.value.toMap() }
         .withDefault { emptyMap() }
     return BuildConfigData(
+        packageName = packageName,
         strings = buildConfigTypeMap.getValue("String"),
         booleans = buildConfigTypeMap.getValue("boolean"),
         ints = buildConfigTypeMap.getValue("int"),
@@ -72,7 +75,6 @@ private fun Project.androidBinaryBuildConfigFields(
 ): Map<String, ClassField> = if (isAndroidApplication) {
     val versionCode = extension.defaultConfig.versionCode
     val versionName = extension.defaultConfig.versionName
-    // TODO Should we check flavors too?
     mapOf(
         VERSION_CODE to ClassFieldImpl("int", VERSION_CODE, versionCode.toString()),
         VERSION_NAME to ClassFieldImpl("String", VERSION_NAME, versionName.toString().quote())

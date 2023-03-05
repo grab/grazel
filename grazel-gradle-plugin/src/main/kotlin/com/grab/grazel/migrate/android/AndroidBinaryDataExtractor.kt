@@ -17,15 +17,14 @@
 package com.grab.grazel.migrate.android
 
 import com.android.build.gradle.BaseExtension
-import com.android.build.gradle.api.BaseVariant
 import com.grab.grazel.GrazelExtension
 import com.grab.grazel.bazel.rules.DATABINDING_ARTIFACTS
 import com.grab.grazel.bazel.rules.Multidex
 import com.grab.grazel.bazel.starlark.BazelDependency
 import com.grab.grazel.gradle.hasCrashlytics
 import com.grab.grazel.gradle.hasDatabinding
-import com.grab.grazel.gradle.hasGooglePlayServicesPlugin
 import com.grab.grazel.gradle.variant.AndroidVariantDataSource
+import com.grab.grazel.gradle.variant.MatchedVariant
 import com.grab.grazel.gradle.variant.getMigratableBuildVariants
 import org.gradle.api.Project
 import org.gradle.api.internal.artifacts.dependencies.DefaultExternalModuleDependency
@@ -37,28 +36,30 @@ import javax.inject.Singleton
 internal interface AndroidBinaryDataExtractor {
     fun extract(
         project: Project,
-        variant: BaseVariant,
+        matchedVariant: MatchedVariant,
         androidLibraryData: AndroidLibraryData
     ): AndroidBinaryData
 }
 
 @Singleton
-internal class DefaultAndroidBinaryDataExtractor @Inject constructor(
+internal class DefaultAndroidBinaryDataExtractor
+@Inject
+constructor(
     private val variantDataSource: AndroidVariantDataSource,
     private val grazelExtension: GrazelExtension,
     private val keyStoreExtractor: KeyStoreExtractor,
-    private val manifestValuesBuilder: ManifestValuesBuilder
+    private val manifestValuesBuilder: ManifestValuesBuilder,
 ) : AndroidBinaryDataExtractor {
 
     override fun extract(
         project: Project,
-        variant: BaseVariant,
+        matchedVariant: MatchedVariant,
         androidLibraryData: AndroidLibraryData
     ): AndroidBinaryData {
         val extension = project.extensions.getByType<BaseExtension>()
         val manifestValues = manifestValuesBuilder.build(
             project,
-            variant,
+            matchedVariant.variant,
             extension.defaultConfig,
             androidLibraryData.packageName
         )
@@ -68,16 +69,6 @@ internal class DefaultAndroidBinaryDataExtractor @Inject constructor(
         val dexShards = if (multidexEnabled) {
             grazelExtension.android.dexShards
         } else null
-
-        val googleServicesJson = if (project.hasGooglePlayServicesPlugin) {
-            findGoogleServicesJson(
-                variants = variantDataSource.getMigratableBuildVariants(project),
-                project = project
-            )
-        } else null
-
-        val buildId = if (project.hasGooglePlayServicesPlugin && project.hasCrashlytics)
-            grazelExtension.rules.googleServices.crashlytics.buildId else null
 
         val deps = if (project.hasDatabinding) databindingDependencies else emptyList()
 
@@ -94,8 +85,6 @@ internal class DefaultAndroidBinaryDataExtractor @Inject constructor(
             dexShards = dexShards,
             incrementalDexing = grazelExtension.android.incrementalDexing,
             debugKey = debugKey,
-            buildId = buildId,
-            googleServicesJson = googleServicesJson,
             hasCrashlytics = project.hasCrashlytics,
             hasDatabinding = project.hasDatabinding
         )

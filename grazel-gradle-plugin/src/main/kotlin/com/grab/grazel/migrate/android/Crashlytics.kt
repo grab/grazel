@@ -16,17 +16,15 @@
 
 package com.grab.grazel.migrate.android
 
-import com.android.build.gradle.BaseExtension
-import com.android.build.gradle.api.AndroidSourceSet
 import com.grab.grazel.GrazelExtension
-import com.grab.grazel.gradle.variant.AndroidVariantDataSource
-import com.grab.grazel.gradle.variant.getMigratableBuildVariants
+import com.grab.grazel.gradle.variant.MatchedVariant
+import com.grab.grazel.gradle.variant.nameSuffix
 import org.gradle.api.Project
-import org.gradle.kotlin.dsl.getByType
 import javax.inject.Inject
 import javax.inject.Singleton
 
 internal data class CrashlyticsData(
+    val name: String,
     val packageName: String?,
     val buildId: String?,
     val googleServicesJson: String?,
@@ -35,39 +33,36 @@ internal data class CrashlyticsData(
 internal interface CrashlyticsDataExtractor {
     fun extract(
         project: Project,
-        androidSourceSets: List<AndroidSourceSet>,
+        matchedVariant: MatchedVariant
     ): CrashlyticsData
 }
 
 @Singleton
-internal class DefaultCrashlyticsDataExtractor @Inject constructor(
-    private val variantDataSource: AndroidVariantDataSource,
+internal class DefaultCrashlyticsDataExtractor
+@Inject
+constructor(
     private val grazelExtension: GrazelExtension,
-    private val androidManifestParser: AndroidManifestParser,
+    private val googleServicesJsonExtractor: GoogleServicesJsonExtractor
 ) : CrashlyticsDataExtractor {
 
     override fun extract(
         project: Project,
-        androidSourceSets: List<AndroidSourceSet>,
+        matchedVariant: MatchedVariant,
     ): CrashlyticsData {
-
-        val googleServicesJson = findGoogleServicesJson(
-            variants = variantDataSource.getMigratableBuildVariants(project),
-            project = project
-        )
-
+        val googleServicesJson = googleServicesJsonExtractor.extract(project, matchedVariant)
         val buildId = grazelExtension.rules.googleServices.crashlytics.buildId
-
-        val extension = project.extensions.getByType<BaseExtension>()
-        val packageName = androidManifestParser.parsePackageName(
-            extension,
-            androidSourceSets,
-        )
-
         return CrashlyticsData(
-            packageName = packageName,
+            name = "crashlytics${matchedVariant.nameSuffix}",
+            packageName = matchedVariant.variant.applicationId,
             buildId = buildId,
             googleServicesJson = googleServicesJson,
         )
     }
 }
+
+internal fun CrashlyticsData.toTarget() = CrashlyticsTarget(
+    name = name,
+    packageName = packageName,
+    buildId = buildId,
+    googleServicesJson = googleServicesJson,
+)

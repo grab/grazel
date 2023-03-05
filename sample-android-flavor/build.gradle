@@ -31,10 +31,10 @@ android {
         flavor2 {
             dimension "service"
         }
-        free {
+        freeApp {
             dimension "release"
         }
-        paid {
+        paidApp {
             dimension "release"
         }
     }

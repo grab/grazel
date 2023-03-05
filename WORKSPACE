@@ -152,13 +152,12 @@ android_ndk_repository(
     api_level = 30,
 )
 
-load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
+load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository")
 
-http_archive(
+git_repository(
     name = "tools_android",
-    sha256 = "a192553d52a42df306437a8166fc6b5ec043282ac4f72e96999ae845ece6812f",
-    strip_prefix = "tools_android-58d67fd54a3b7f5f1e6ddfa865442db23a60e1b6",
-    url = "https://github.com/bazelbuild/tools_android/archive/58d67fd54a3b7f5f1e6ddfa865442db23a60e1b6.tar.gz",
+    commit = "7224f55d7fafe12a72066eb1a2ad1e1526a854c4",
+    remote = "https://github.com/bazelbuild/tools_android.git",
 )
 
 load("@tools_android//tools/googleservices:defs.bzl", "google_services_workspace_dependencies")

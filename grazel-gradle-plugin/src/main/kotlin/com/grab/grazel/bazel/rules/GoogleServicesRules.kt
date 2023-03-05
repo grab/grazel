@@ -23,7 +23,6 @@ import com.grab.grazel.bazel.starlark.add
 import com.grab.grazel.bazel.starlark.function
 import com.grab.grazel.bazel.starlark.load
 import com.grab.grazel.bazel.starlark.quote
-import com.grab.grazel.bazel.starlark.toStatement
 
 
 /**
@@ -51,24 +50,21 @@ internal const val GOOGLE_SERVICES_XML = "GOOGLE_SERVICES_XML"
  * @param packageName The package name for the generated target
  * @param googleServicesJson The path to google_services.json relative
  *     to module.
- * @return `StringStatement` instance containing reference to generated
- *     google_services.xml
+ * @return Assignee representing the rule definition.
  */
 fun StatementsBuilder.googleServicesXml(
     packageName: String?,
     googleServicesJson: String?,
-): Assignee {
-    if (!packageName.isNullOrBlank() && !googleServicesJson.isNullOrBlank()) {
+): Assignee? {
+    return if (!packageName.isNullOrBlank() && !googleServicesJson.isNullOrBlank()) {
         load("@tools_android//tools/googleservices:defs.bzl", "google_services_xml")
-        GOOGLE_SERVICES_XML eq Assignee { // Create new statements scope to not add to current scope
+        Assignee { // Create new statements scope to not add to current scope
             function("google_services_xml") {
                 "package_name" eq packageName.quote()
                 "google_services_json" eq googleServicesJson.quote()
             }
         }
-    }
-
-    return GOOGLE_SERVICES_XML.toStatement()
+    } else null
 }
 
 /**
@@ -86,7 +82,7 @@ fun StatementsBuilder.crashlyticsAndroidLibrary(
     name: String = "crashlytics_lib",
     packageName: String?,
     buildId: String?,
-    resourceFiles: String
+    resourceFiles: Assignee?
 ): BazelDependency {
     if (!packageName.isNullOrBlank() && !buildId.isNullOrBlank()) {
         load("@tools_android//tools/crashlytics:defs.bzl", "crashlytics_android_library")
@@ -94,7 +90,7 @@ fun StatementsBuilder.crashlyticsAndroidLibrary(
             "name" eq name.quote()
             "package_name" eq packageName.quote()
             "build_id" eq buildId.quote()
-            "resource_files" eq resourceFiles
+            resourceFiles?.let { "resource_files" eq resourceFiles }
         }
     }
 

@@ -37,7 +37,6 @@ import com.grab.grazel.migrate.kotlin.kotlinParcelizeDeps
 import dagger.Lazy
 import org.gradle.api.Project
 import org.gradle.kotlin.dsl.getByType
-import java.io.File
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -95,7 +94,6 @@ internal class DefaultAndroidLibraryDataExtractor @Inject constructor(
         val migratableSourceSets = matchedVariant.variant.sourceSets
             .filterIsInstance<AndroidSourceSet>()
             .toList()
-
         val packageName = androidManifestParser.parsePackageName(
             extension,
             migratableSourceSets
@@ -166,43 +164,6 @@ internal class DefaultAndroidLibraryDataExtractor @Inject constructor(
                 .first { assetItem.contains(it) }
         } else null
     }
-}
-
-internal fun Project.androidSources(
-    sourceSets: List<AndroidSourceSet>,
-    sourceSetType: SourceSetType
-): Sequence<String> {
-    val sourceSetChoosers: AndroidSourceSet.() -> Sequence<File> =
-        when (sourceSetType) {
-            SourceSetType.JAVA, SourceSetType.JAVA_KOTLIN, SourceSetType.KOTLIN -> {
-                { java.srcDirs.asSequence() }
-            }
-            SourceSetType.RESOURCES -> {
-                {
-                    res.srcDirs
-                        .asSequence()
-                        .filter { it.endsWith("res") } // Filter all custom resource sets
-                }
-            }
-            SourceSetType.RESOURCES_CUSTOM -> {
-                {
-                    res.srcDirs
-                        .asSequence()
-                        .filter { !it.endsWith("res") } // Filter all standard resource sets
-                }
-            }
-            SourceSetType.ASSETS -> {
-                {
-                    assets.srcDirs
-                        .asSequence()
-                        .filter { it.endsWith("assets") } // Filter all custom resource sets
-                }
-            }
-        }
-    val dirs = sourceSets.asSequence().flatMap(sourceSetChoosers)
-    val dirsKotlin = dirs
-        .map { File(it.path.replace("/java", "/kotlin")) }
-    return filterSourceSetPaths(dirs + dirsKotlin, sourceSetType.patterns)
 }
 
 internal fun DependenciesDataSource.collectMavenDeps(

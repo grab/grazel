@@ -47,15 +47,13 @@ internal interface AndroidUnitTestDataExtractor {
 @Singleton
 internal class DefaultAndroidUnitTestDataExtractor @Inject constructor(
     private val dependenciesDataSource: DependenciesDataSource,
-    private val variantDataSource: AndroidVariantDataSource,
     private val dependencyGraphsProvider: Lazy<DependencyGraphs>,
     private val androidManifestParser: AndroidManifestParser,
     private val grazelExtension: GrazelExtension,
+    private val variantDataSource: AndroidVariantDataSource,
     private val gradleDependencyToBazelDependency: GradleDependencyToBazelDependency
 ) : AndroidUnitTestDataExtractor {
-
     private val projectDependencyGraphs get() = dependencyGraphsProvider.get()
-
     private val kotlinExtension: KotlinExtension get() = grazelExtension.rules.kotlin
 
     override fun extract(project: Project, matchedVariant: MatchedVariant): AndroidUnitTestData {
@@ -68,10 +66,10 @@ internal class DefaultAndroidUnitTestDataExtractor @Inject constructor(
             .filterIsInstance<AndroidSourceSet>()
 
         val srcs = project.unitTestSources(migratableSourceSets).toList()
+        val packageName = extractPackageName(project)
         val additionalSrcSets = project.unitTestNonDefaultSourceSets(migratableSourceSets).toList()
 
         val resources = project.unitTestResources(migratableSourceSets).toList()
-
         val associate = calculateTestAssociate(project, matchedVariant.nameSuffix)
 
         val deps = projectDependencyGraphs
@@ -101,11 +99,26 @@ internal class DefaultAndroidUnitTestDataExtractor @Inject constructor(
             additionalSrcSets = additionalSrcSets,
             deps = deps,
             tags = tags,
-            customPackage = extractPackageName(project),
+            customPackage = packageName,
             associates = buildList { associate?.let(::add) },
             resources = resources,
         )
     }
+
+    private fun extractPackageName(project: Project): String {
+        val migratableSourceSets = variantDataSource
+            .getMigratableBuildVariants(project)
+            .asSequence()
+            .flatMap { it.sourceSets.asSequence() }
+            .filterIsInstance<AndroidSourceSet>()
+            .toList()
+
+        return androidManifestParser.parsePackageName(
+            project.extensions.getByType(),
+            migratableSourceSets
+        ) ?: ""
+    }
+
 
     private fun Project.unitTestSources(
         sourceSets: Sequence<AndroidSourceSet>,
@@ -122,20 +135,6 @@ internal class DefaultAndroidUnitTestDataExtractor @Inject constructor(
         val dirs = sourceSets.flatMap { it.java.srcDirs.asSequence() }
         val dirsKotlin = dirs.map { File(it.path.replace("/java", "/kotlin")) }
         return filterNonDefaultSourceSetDirs(dirs + dirsKotlin)
-    }
-
-    private fun extractPackageName(project: Project): String {
-        val migratableSourceSets = variantDataSource
-            .getMigratableBuildVariants(project)
-            .asSequence()
-            .flatMap { it.sourceSets.asSequence() }
-            .filterIsInstance<AndroidSourceSet>()
-            .toList()
-
-        return androidManifestParser.parsePackageName(
-            project.extensions.getByType(),
-            migratableSourceSets
-        ) ?: ""
     }
 }
 

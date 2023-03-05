@@ -19,25 +19,25 @@ package com.grab.grazel.migrate.android
 import com.grab.grazel.bazel.rules.crashlyticsAndroidLibrary
 import com.grab.grazel.bazel.rules.googleServicesXml
 import com.grab.grazel.bazel.starlark.Statement
-import com.grab.grazel.bazel.starlark.asString
+import com.grab.grazel.bazel.starlark.statements
 import com.grab.grazel.migrate.BazelTarget
 
 class CrashlyticsTarget(
-    override val name: String = "crashlytics_lib",
+    override val name: String,
     val packageName: String? = null,
     private val buildId: String? = null,
     private val googleServicesJson: String? = null,
 ) : BazelTarget {
 
-    override fun statements(): List<Statement> = com.grab.grazel.bazel.starlark.statements {
-        val googleServicesXmlRes = googleServicesXml(
-            packageName = packageName,
-            googleServicesJson = googleServicesJson
-        )
+    override fun statements(): List<Statement> = statements {
         crashlyticsAndroidLibrary(
+            name = name,
             packageName = packageName,
             buildId = buildId,
-            resourceFiles = googleServicesXmlRes.asString()
+            resourceFiles = googleServicesXml(
+                packageName = packageName,
+                googleServicesJson = googleServicesJson
+            )
         )
     }
 }
