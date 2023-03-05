@@ -1,7 +1,7 @@
 load("@grab_bazel_common//tools/custom_res:custom_res.bzl", "custom_res")
 
 android_binary(
-    name = "sample-android-flavor1-free-app-debug",
+    name = "sample-android-flavor1-free-debug",
     assets = glob([
         "src/main/assets/assert-file.png",
     ]),
@@ -30,14 +30,14 @@ android_binary(
         resource_files = glob([
             "src/main/res-debug/values/strings.xml",
         ]),
-        target = "sample-android-flavor1-free-app-debug",
+        target = "sample-android-flavor1-free-debug",
     ),
     visibility = [
         "//visibility:public",
     ],
     deps = [
-        ":crashlytics-flavor1-free-app-debug",
-        ":sample-android_lib-flavor1-free-app-debug",
+        ":crashlytics-flavor1-free-debug",
+        ":sample-android_lib-flavor1-free-debug",
         "@maven//:androidx_annotation_annotation",
         "@maven//:androidx_databinding_databinding_adapters",
         "@maven//:androidx_databinding_databinding_common",
@@ -49,7 +49,7 @@ android_binary(
 load("@grab_bazel_common//tools/build_config:build_config.bzl", "build_config")
 
 build_config(
-    name = "sample-android_lib-flavor1-free-app-debug-build-config",
+    name = "sample-android_lib-flavor1-free-debug-build-config",
     package_name = "com.grab.grazel.android.sample",
     booleans = {
         "SOME_BOOLEAN": "false",
@@ -64,7 +64,7 @@ build_config(
     strings = {
         "SOME_STRING": "Something",
         "VERSION_NAME": "1.0",
-        "VARIANT_NAME": "flavor1FreeAppDebug",
+        "VARIANT_NAME": "flavor1FreeDebug",
     },
 )
 
@@ -73,7 +73,7 @@ load("@grab_bazel_common//tools/res_value:res_value.bzl", "res_value")
 load("@grab_bazel_common//tools/kotlin:android.bzl", "kt_android_library")
 
 kt_android_library(
-    name = "sample-android_lib-flavor1-free-app-debug",
+    name = "sample-android_lib-flavor1-free-debug",
     srcs = glob([
         "src/main/java/com/grab/grazel/android/sample/MainActivity.kt",
     ]),
@@ -90,9 +90,9 @@ kt_android_library(
         resource_files = glob([
             "src/main/res-debug/values/strings.xml",
         ]),
-        target = "sample-android_lib-flavor1-free-app-debug",
+        target = "sample-android_lib-flavor1-free-debug",
     ) + res_value(
-        name = "sample-android_lib-flavor1-free-app-debug-res-value",
+        name = "sample-android_lib-flavor1-free-debug-res-value",
         strings = {
             "generated_value": "important-key",
         },
@@ -101,11 +101,11 @@ kt_android_library(
         "//visibility:public",
     ],
     deps = [
-        ":sample-android_lib-flavor1-free-app-debug-build-config",
+        ":sample-android_lib-flavor1-free-debug-build-config",
         "//:dagger",
         "//:parcelize",
-        "//sample-android-flavor:sample-android-flavor-flavor1-free-app-debug",
-        "//sample-android-library:sample-android-library-flavor1-free-app-debug",
+        "//sample-android-flavor:sample-android-flavor-flavor1-free-debug",
+        "//sample-android-library:sample-android-library-flavor1-free-debug",
         "//sample-kotlin-library",
         "@maven//:androidx_appcompat_appcompat",
         "@maven//:androidx_constraintlayout_constraintlayout",
@@ -117,19 +117,19 @@ load("@tools_android//tools/googleservices:defs.bzl", "google_services_xml")
 load("@tools_android//tools/crashlytics:defs.bzl", "crashlytics_android_library")
 
 crashlytics_android_library(
-    name = "crashlytics-flavor1-free-app-debug",
+    name = "crashlytics-flavor1-free-debug",
     package_name = "com.grab.grazel.android.sample.free",
     build_id = "042cb4d8-56f8-41a0-916a-9da28e94d1ba",
     resource_files = google_services_xml(
         package_name = "com.grab.grazel.android.sample.free",
-        google_services_json = "src/flavor1FreeApp/google-services.json",
+        google_services_json = "src/flavor1Free/google-services.json",
     ),
 )
 
 load("@grab_bazel_common//tools/custom_res:custom_res.bzl", "custom_res")
 
 android_binary(
-    name = "sample-android-flavor1-paid-app-debug",
+    name = "sample-android-flavor1-paid-debug",
     assets = glob([
         "src/main/assets/assert-file.png",
     ]),
@@ -158,14 +158,14 @@ android_binary(
         resource_files = glob([
             "src/main/res-debug/values/strings.xml",
         ]),
-        target = "sample-android-flavor1-paid-app-debug",
+        target = "sample-android-flavor1-paid-debug",
     ),
     visibility = [
         "//visibility:public",
     ],
     deps = [
-        ":crashlytics-flavor1-paid-app-debug",
-        ":sample-android_lib-flavor1-paid-app-debug",
+        ":crashlytics-flavor1-paid-debug",
+        ":sample-android_lib-flavor1-paid-debug",
         "@maven//:androidx_annotation_annotation",
         "@maven//:androidx_databinding_databinding_adapters",
         "@maven//:androidx_databinding_databinding_common",
@@ -177,7 +177,7 @@ android_binary(
 load("@grab_bazel_common//tools/build_config:build_config.bzl", "build_config")
 
 build_config(
-    name = "sample-android_lib-flavor1-paid-app-debug-build-config",
+    name = "sample-android_lib-flavor1-paid-debug-build-config",
     package_name = "com.grab.grazel.android.sample",
     booleans = {
         "SOME_BOOLEAN": "false",
@@ -192,7 +192,7 @@ build_config(
     strings = {
         "SOME_STRING": "Something",
         "VERSION_NAME": "1.0",
-        "VARIANT_NAME": "flavor1PaidAppDebug",
+        "VARIANT_NAME": "flavor1PaidDebug",
     },
 )
 
@@ -201,7 +201,7 @@ load("@grab_bazel_common//tools/res_value:res_value.bzl", "res_value")
 load("@grab_bazel_common//tools/kotlin:android.bzl", "kt_android_library")
 
 kt_android_library(
-    name = "sample-android_lib-flavor1-paid-app-debug",
+    name = "sample-android_lib-flavor1-paid-debug",
     srcs = glob([
         "src/main/java/com/grab/grazel/android/sample/MainActivity.kt",
     ]),
@@ -218,9 +218,9 @@ kt_android_library(
         resource_files = glob([
             "src/main/res-debug/values/strings.xml",
         ]),
-        target = "sample-android_lib-flavor1-paid-app-debug",
+        target = "sample-android_lib-flavor1-paid-debug",
     ) + res_value(
-        name = "sample-android_lib-flavor1-paid-app-debug-res-value",
+        name = "sample-android_lib-flavor1-paid-debug-res-value",
         strings = {
             "generated_value": "important-key",
         },
@@ -229,11 +229,11 @@ kt_android_library(
         "//visibility:public",
     ],
     deps = [
-        ":sample-android_lib-flavor1-paid-app-debug-build-config",
+        ":sample-android_lib-flavor1-paid-debug-build-config",
         "//:dagger",
         "//:parcelize",
-        "//sample-android-flavor:sample-android-flavor-flavor1-paid-app-debug",
-        "//sample-android-library:sample-android-library-flavor1-paid-app-debug",
+        "//sample-android-flavor:sample-android-flavor-flavor1-paid-debug",
+        "//sample-android-library:sample-android-library-flavor1-paid-debug",
         "//sample-kotlin-library",
         "@maven//:androidx_appcompat_appcompat",
         "@maven//:androidx_constraintlayout_constraintlayout",
@@ -245,19 +245,19 @@ load("@tools_android//tools/googleservices:defs.bzl", "google_services_xml")
 load("@tools_android//tools/crashlytics:defs.bzl", "crashlytics_android_library")
 
 crashlytics_android_library(
-    name = "crashlytics-flavor1-paid-app-debug",
+    name = "crashlytics-flavor1-paid-debug",
     package_name = "com.grab.grazel.android.sample.paid",
     build_id = "042cb4d8-56f8-41a0-916a-9da28e94d1ba",
     resource_files = google_services_xml(
         package_name = "com.grab.grazel.android.sample.paid",
-        google_services_json = "src/flavor1PaidApp/google-services.json",
+        google_services_json = "src/flavor1Paid/google-services.json",
     ),
 )
 
 load("@grab_bazel_common//tools/custom_res:custom_res.bzl", "custom_res")
 
 android_binary(
-    name = "sample-android-flavor2-free-app-debug",
+    name = "sample-android-flavor2-free-debug",
     assets = glob([
         "src/main/assets/assert-file.png",
     ]),
@@ -286,14 +286,14 @@ android_binary(
         resource_files = glob([
             "src/main/res-debug/values/strings.xml",
         ]),
-        target = "sample-android-flavor2-free-app-debug",
+        target = "sample-android-flavor2-free-debug",
     ),
     visibility = [
         "//visibility:public",
     ],
     deps = [
-        ":crashlytics-flavor2-free-app-debug",
-        ":sample-android_lib-flavor2-free-app-debug",
+        ":crashlytics-flavor2-free-debug",
+        ":sample-android_lib-flavor2-free-debug",
         "@maven//:androidx_annotation_annotation",
         "@maven//:androidx_databinding_databinding_adapters",
         "@maven//:androidx_databinding_databinding_common",
@@ -305,7 +305,7 @@ android_binary(
 load("@grab_bazel_common//tools/build_config:build_config.bzl", "build_config")
 
 build_config(
-    name = "sample-android_lib-flavor2-free-app-debug-build-config",
+    name = "sample-android_lib-flavor2-free-debug-build-config",
     package_name = "com.grab.grazel.android.sample",
     booleans = {
         "SOME_BOOLEAN": "false",
@@ -320,7 +320,7 @@ build_config(
     strings = {
         "SOME_STRING": "Something",
         "VERSION_NAME": "1.0",
-        "VARIANT_NAME": "flavor2FreeAppDebug",
+        "VARIANT_NAME": "flavor2FreeDebug",
     },
 )
 
@@ -329,7 +329,7 @@ load("@grab_bazel_common//tools/res_value:res_value.bzl", "res_value")
 load("@grab_bazel_common//tools/kotlin:android.bzl", "kt_android_library")
 
 kt_android_library(
-    name = "sample-android_lib-flavor2-free-app-debug",
+    name = "sample-android_lib-flavor2-free-debug",
     srcs = glob([
         "src/main/java/com/grab/grazel/android/sample/MainActivity.kt",
     ]),
@@ -346,9 +346,9 @@ kt_android_library(
         resource_files = glob([
             "src/main/res-debug/values/strings.xml",
         ]),
-        target = "sample-android_lib-flavor2-free-app-debug",
+        target = "sample-android_lib-flavor2-free-debug",
     ) + res_value(
-        name = "sample-android_lib-flavor2-free-app-debug-res-value",
+        name = "sample-android_lib-flavor2-free-debug-res-value",
         strings = {
             "generated_value": "important-key",
         },
@@ -357,11 +357,11 @@ kt_android_library(
         "//visibility:public",
     ],
     deps = [
-        ":sample-android_lib-flavor2-free-app-debug-build-config",
+        ":sample-android_lib-flavor2-free-debug-build-config",
         "//:dagger",
         "//:parcelize",
-        "//sample-android-flavor:sample-android-flavor-flavor2-free-app-debug",
-        "//sample-android-library:sample-android-library-flavor2-free-app-debug",
+        "//sample-android-flavor:sample-android-flavor-flavor2-free-debug",
+        "//sample-android-library:sample-android-library-flavor2-free-debug",
         "//sample-kotlin-library",
         "@maven//:androidx_appcompat_appcompat",
         "@maven//:androidx_constraintlayout_constraintlayout",
@@ -373,19 +373,19 @@ load("@tools_android//tools/googleservices:defs.bzl", "google_services_xml")
 load("@tools_android//tools/crashlytics:defs.bzl", "crashlytics_android_library")
 
 crashlytics_android_library(
-    name = "crashlytics-flavor2-free-app-debug",
+    name = "crashlytics-flavor2-free-debug",
     package_name = "com.grab.grazel.android.sample.free",
     build_id = "042cb4d8-56f8-41a0-916a-9da28e94d1ba",
     resource_files = google_services_xml(
         package_name = "com.grab.grazel.android.sample.free",
-        google_services_json = "src/flavor2FreeApp/google-services.json",
+        google_services_json = "src/flavor2Free/google-services.json",
     ),
 )
 
 load("@grab_bazel_common//tools/custom_res:custom_res.bzl", "custom_res")
 
 android_binary(
-    name = "sample-android-flavor2-paid-app-debug",
+    name = "sample-android-flavor2-paid-debug",
     assets = glob([
         "src/main/assets/assert-file.png",
     ]),
@@ -414,14 +414,14 @@ android_binary(
         resource_files = glob([
             "src/main/res-debug/values/strings.xml",
         ]),
-        target = "sample-android-flavor2-paid-app-debug",
+        target = "sample-android-flavor2-paid-debug",
     ),
     visibility = [
         "//visibility:public",
     ],
     deps = [
-        ":crashlytics-flavor2-paid-app-debug",
-        ":sample-android_lib-flavor2-paid-app-debug",
+        ":crashlytics-flavor2-paid-debug",
+        ":sample-android_lib-flavor2-paid-debug",
         "@maven//:androidx_annotation_annotation",
         "@maven//:androidx_databinding_databinding_adapters",
         "@maven//:androidx_databinding_databinding_common",
@@ -433,7 +433,7 @@ android_binary(
 load("@grab_bazel_common//tools/build_config:build_config.bzl", "build_config")
 
 build_config(
-    name = "sample-android_lib-flavor2-paid-app-debug-build-config",
+    name = "sample-android_lib-flavor2-paid-debug-build-config",
     package_name = "com.grab.grazel.android.sample",
     booleans = {
         "SOME_BOOLEAN": "false",
@@ -448,7 +448,7 @@ build_config(
     strings = {
         "SOME_STRING": "Something",
         "VERSION_NAME": "1.0",
-        "VARIANT_NAME": "flavor2PaidAppDebug",
+        "VARIANT_NAME": "flavor2PaidDebug",
     },
 )
 
@@ -457,7 +457,7 @@ load("@grab_bazel_common//tools/res_value:res_value.bzl", "res_value")
 load("@grab_bazel_common//tools/kotlin:android.bzl", "kt_android_library")
 
 kt_android_library(
-    name = "sample-android_lib-flavor2-paid-app-debug",
+    name = "sample-android_lib-flavor2-paid-debug",
     srcs = glob([
         "src/main/java/com/grab/grazel/android/sample/MainActivity.kt",
     ]),
@@ -474,9 +474,9 @@ kt_android_library(
         resource_files = glob([
             "src/main/res-debug/values/strings.xml",
         ]),
-        target = "sample-android_lib-flavor2-paid-app-debug",
+        target = "sample-android_lib-flavor2-paid-debug",
     ) + res_value(
-        name = "sample-android_lib-flavor2-paid-app-debug-res-value",
+        name = "sample-android_lib-flavor2-paid-debug-res-value",
         strings = {
             "generated_value": "important-key",
         },
@@ -485,11 +485,11 @@ kt_android_library(
         "//visibility:public",
     ],
     deps = [
-        ":sample-android_lib-flavor2-paid-app-debug-build-config",
+        ":sample-android_lib-flavor2-paid-debug-build-config",
         "//:dagger",
         "//:parcelize",
-        "//sample-android-flavor:sample-android-flavor-flavor2-paid-app-debug",
-        "//sample-android-library:sample-android-library-flavor2-paid-app-debug",
+        "//sample-android-flavor:sample-android-flavor-flavor2-paid-debug",
+        "//sample-android-library:sample-android-library-flavor2-paid-debug",
         "//sample-kotlin-library",
         "@maven//:androidx_appcompat_appcompat",
         "@maven//:androidx_constraintlayout_constraintlayout",
@@ -501,29 +501,29 @@ load("@tools_android//tools/googleservices:defs.bzl", "google_services_xml")
 load("@tools_android//tools/crashlytics:defs.bzl", "crashlytics_android_library")
 
 crashlytics_android_library(
-    name = "crashlytics-flavor2-paid-app-debug",
+    name = "crashlytics-flavor2-paid-debug",
     package_name = "com.grab.grazel.android.sample.paid",
     build_id = "042cb4d8-56f8-41a0-916a-9da28e94d1ba",
     resource_files = google_services_xml(
         package_name = "com.grab.grazel.android.sample.paid",
-        google_services_json = "src/flavor2PaidApp/google-services.json",
+        google_services_json = "src/flavor2Paid/google-services.json",
     ),
 )
 
 load("@grab_bazel_common//android/test:instrumentation.bzl", "android_instrumentation_binary")
 
 android_instrumentation_binary(
-    name = "sample-android-flavor1-free-app-debug-android-test",
+    name = "sample-android-flavor1-free-debug-android-test",
     srcs = glob([
         "src/androidTest/java/JavaTest.java",
         "src/androidTest/java/KotlinTest.kt",
     ]),
     associates = [
-        "//sample-android:sample-android_lib-flavor1-free-app-debug_kt",
+        "//sample-android:sample-android_lib-flavor1-free-debug_kt",
     ],
     custom_package = "com.grab.grazel.android.sample",
     debug_key = "//buildsystem:debug-keystore",
-    instruments = ":sample-android-flavor1-free-app-debug",
+    instruments = ":sample-android-flavor1-free-debug",
     resource_strip_prefix = "sample-android/src/androidTest/resources",
     resources = glob([
         "src/androidTest/resources/resource.json",
@@ -531,9 +531,9 @@ android_instrumentation_binary(
     test_instrumentation_runner = "androidx.test.runner.AndroidJUnitRunner",
     deps = [
         "//:dagger",
-        "//sample-android:sample-android_lib-flavor1-free-app-debug",
-        "//sample-android-flavor:sample-android-flavor-flavor1-free-app-debug",
-        "//sample-android-library:sample-android-library-flavor1-free-app-debug",
+        "//sample-android:sample-android_lib-flavor1-free-debug",
+        "//sample-android-flavor:sample-android-flavor-flavor1-free-debug",
+        "//sample-android-library:sample-android-library-flavor1-free-debug",
         "//sample-kotlin-library",
         "@maven//:androidx_appcompat_appcompat",
         "@maven//:androidx_constraintlayout_constraintlayout",
@@ -546,17 +546,17 @@ android_instrumentation_binary(
 load("@grab_bazel_common//android/test:instrumentation.bzl", "android_instrumentation_binary")
 
 android_instrumentation_binary(
-    name = "sample-android-flavor1-paid-app-debug-android-test",
+    name = "sample-android-flavor1-paid-debug-android-test",
     srcs = glob([
         "src/androidTest/java/JavaTest.java",
         "src/androidTest/java/KotlinTest.kt",
     ]),
     associates = [
-        "//sample-android:sample-android_lib-flavor1-paid-app-debug_kt",
+        "//sample-android:sample-android_lib-flavor1-paid-debug_kt",
     ],
     custom_package = "com.grab.grazel.android.sample",
     debug_key = "//buildsystem:debug-keystore",
-    instruments = ":sample-android-flavor1-paid-app-debug",
+    instruments = ":sample-android-flavor1-paid-debug",
     resource_strip_prefix = "sample-android/src/androidTest/resources",
     resources = glob([
         "src/androidTest/resources/resource.json",
@@ -564,9 +564,9 @@ android_instrumentation_binary(
     test_instrumentation_runner = "androidx.test.runner.AndroidJUnitRunner",
     deps = [
         "//:dagger",
-        "//sample-android:sample-android_lib-flavor1-paid-app-debug",
-        "//sample-android-flavor:sample-android-flavor-flavor1-paid-app-debug",
-        "//sample-android-library:sample-android-library-flavor1-paid-app-debug",
+        "//sample-android:sample-android_lib-flavor1-paid-debug",
+        "//sample-android-flavor:sample-android-flavor-flavor1-paid-debug",
+        "//sample-android-library:sample-android-library-flavor1-paid-debug",
         "//sample-kotlin-library",
         "@maven//:androidx_appcompat_appcompat",
         "@maven//:androidx_constraintlayout_constraintlayout",
@@ -579,17 +579,17 @@ android_instrumentation_binary(
 load("@grab_bazel_common//android/test:instrumentation.bzl", "android_instrumentation_binary")
 
 android_instrumentation_binary(
-    name = "sample-android-flavor2-free-app-debug-android-test",
+    name = "sample-android-flavor2-free-debug-android-test",
     srcs = glob([
         "src/androidTest/java/JavaTest.java",
         "src/androidTest/java/KotlinTest.kt",
     ]),
     associates = [
-        "//sample-android:sample-android_lib-flavor2-free-app-debug_kt",
+        "//sample-android:sample-android_lib-flavor2-free-debug_kt",
     ],
     custom_package = "com.grab.grazel.android.sample",
     debug_key = "//buildsystem:debug-keystore",
-    instruments = ":sample-android-flavor2-free-app-debug",
+    instruments = ":sample-android-flavor2-free-debug",
     resource_strip_prefix = "sample-android/src/androidTest/resources",
     resources = glob([
         "src/androidTest/resources/resource.json",
@@ -597,9 +597,9 @@ android_instrumentation_binary(
     test_instrumentation_runner = "androidx.test.runner.AndroidJUnitRunner",
     deps = [
         "//:dagger",
-        "//sample-android:sample-android_lib-flavor2-free-app-debug",
-        "//sample-android-flavor:sample-android-flavor-flavor2-free-app-debug",
-        "//sample-android-library:sample-android-library-flavor2-free-app-debug",
+        "//sample-android:sample-android_lib-flavor2-free-debug",
+        "//sample-android-flavor:sample-android-flavor-flavor2-free-debug",
+        "//sample-android-library:sample-android-library-flavor2-free-debug",
         "//sample-kotlin-library",
         "@maven//:androidx_appcompat_appcompat",
         "@maven//:androidx_constraintlayout_constraintlayout",
@@ -612,17 +612,17 @@ android_instrumentation_binary(
 load("@grab_bazel_common//android/test:instrumentation.bzl", "android_instrumentation_binary")
 
 android_instrumentation_binary(
-    name = "sample-android-flavor2-paid-app-debug-android-test",
+    name = "sample-android-flavor2-paid-debug-android-test",
     srcs = glob([
         "src/androidTest/java/JavaTest.java",
         "src/androidTest/java/KotlinTest.kt",
     ]),
     associates = [
-        "//sample-android:sample-android_lib-flavor2-paid-app-debug_kt",
+        "//sample-android:sample-android_lib-flavor2-paid-debug_kt",
     ],
     custom_package = "com.grab.grazel.android.sample",
     debug_key = "//buildsystem:debug-keystore",
-    instruments = ":sample-android-flavor2-paid-app-debug",
+    instruments = ":sample-android-flavor2-paid-debug",
     resource_strip_prefix = "sample-android/src/androidTest/resources",
     resources = glob([
         "src/androidTest/resources/resource.json",
@@ -630,9 +630,9 @@ android_instrumentation_binary(
     test_instrumentation_runner = "androidx.test.runner.AndroidJUnitRunner",
     deps = [
         "//:dagger",
-        "//sample-android:sample-android_lib-flavor2-paid-app-debug",
-        "//sample-android-flavor:sample-android-flavor-flavor2-paid-app-debug",
-        "//sample-android-library:sample-android-library-flavor2-paid-app-debug",
+        "//sample-android:sample-android_lib-flavor2-paid-debug",
+        "//sample-android-flavor:sample-android-flavor-flavor2-paid-debug",
+        "//sample-android-library:sample-android-library-flavor2-paid-debug",
         "//sample-kotlin-library",
         "@maven//:androidx_appcompat_appcompat",
         "@maven//:androidx_constraintlayout_constraintlayout",

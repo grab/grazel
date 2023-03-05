@@ -68,11 +68,11 @@ android {
         flavor2 {
             dimension "service"
         }
-        freeApp {
+        free {
             dimension "release"
             applicationIdSuffix ".free"
         }
-        paidApp {
+        paid {
             dimension "release"
             applicationIdSuffix ".paid"
         }
