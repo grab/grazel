@@ -35,6 +35,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
 import java.io.File
+import kotlin.test.assertEquals
 
 private const val ANDROID_BINARY_MODULE_NAME = "android-binary"
 
@@ -83,6 +84,21 @@ class AndroidInstrumentationBinaryDataExtractorTest : GrazelPluginTest() {
         }
     }
 
+    @Test
+    fun `assert package name for android instrumentation binary does not contain test suffix`() {
+        androidBinary.doEvaluate()
+        val androidInstrumentationBinaryData = androidInstrumentationBinaryDataExtractor.extract(
+            project = androidBinary,
+            matchedVariant = debugAndroidTestVariant(androidBinary),
+            sourceSetType = SourceSetType.JAVA_KOTLIN,
+        )
+        assertEquals(
+            "com.example.androidlibrary",
+            androidInstrumentationBinaryData.customPackage,
+            "Package name does not have test suffix"
+        )
+    }
+
     private fun buildRootProject(): Project {
         val rootProjectDir = temporaryFolder.newFolder("project")
         val rootProject = buildProject("root", projectDir = rootProjectDir)
@@ -106,6 +122,7 @@ class AndroidInstrumentationBinaryDataExtractorTest : GrazelPluginTest() {
             }
             extensions.configure<AppExtension> {
                 defaultConfig {
+                    applicationId = "com.example.androidlibrary"
                     compileSdkVersion(31)
                 }
             }

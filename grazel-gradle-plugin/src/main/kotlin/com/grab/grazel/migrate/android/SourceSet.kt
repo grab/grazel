@@ -16,6 +16,7 @@
 
 package com.grab.grazel.migrate.android
 
+import com.android.build.gradle.api.AndroidSourceSet
 import com.grab.grazel.util.commonPath
 import org.gradle.api.Project
 import java.io.File
@@ -37,8 +38,8 @@ enum class SourceSetType(val patterns: Sequence<String>) {
 }
 
 /**
- * Given a list of directories specified by `dirs` and list of file patterns specified by `patterns` will return
- * list of `dir/pattern` where `dir`s has at least one file matching the pattern.
+ * Given a list of directories specified by `dirs` and list of file patterns specified by `patterns`
+ * will return list of `dir/pattern` where `dir`s has at least one file matching the pattern.
  */
 internal fun Project.filterSourceSetPaths(
     dirs: Sequence<File>,
@@ -70,3 +71,39 @@ internal fun Project.filterNonDefaultSourceSetDirs(
     .filter { dir ->
         dir != JAVA_DEFAULT_TEST_DIR && dir != KOTLIN_DEFAULT_TEST_DIR
     }
+
+internal fun Project.androidSources(
+    sourceSets: List<AndroidSourceSet>,
+    sourceSetType: SourceSetType
+): Sequence<String> {
+    val sourceSetChoosers: AndroidSourceSet.() -> Sequence<File> =
+        when (sourceSetType) {
+            SourceSetType.JAVA, SourceSetType.JAVA_KOTLIN, SourceSetType.KOTLIN -> {
+                { java.srcDirs.asSequence() }
+            }
+            SourceSetType.RESOURCES -> {
+                {
+                    res.srcDirs
+                        .asSequence()
+                        .filter { it.endsWith("res") } // Filter all custom resource sets
+                }
+            }
+            SourceSetType.RESOURCES_CUSTOM -> {
+                {
+                    res.srcDirs
+                        .asSequence()
+                        .filter { !it.endsWith("res") } // Filter all standard resource sets
+                }
+            }
+            SourceSetType.ASSETS -> {
+                {
+                    assets.srcDirs
+                        .asSequence()
+                        .filter { it.endsWith("assets") } // Filter all custom resource sets
+                }
+            }
+        }
+    val dirs = sourceSets.asSequence().flatMap(sourceSetChoosers)
+    val dirsKotlin = dirs.map { File(it.path.replace("/java", "/kotlin")) }
+    return filterSourceSetPaths(dirs + dirsKotlin, sourceSetType.patterns)
+}

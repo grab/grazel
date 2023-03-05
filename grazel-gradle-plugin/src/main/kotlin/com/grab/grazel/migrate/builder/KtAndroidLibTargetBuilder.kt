@@ -158,7 +158,7 @@ internal fun AndroidLibraryData.toAarResTarget(variantName: String): AndroidLibr
 internal fun AndroidLibraryData.toBuildConfigTarget(variantName: String): BuildConfigTarget {
     return BuildConfigTarget(
         name = "$name$variantName-build-config",
-        packageName = packageName,
+        packageName = buildConfigData.packageName ?: packageName,
         strings = buildConfigData.strings,
         booleans = buildConfigData.booleans,
         ints = buildConfigData.ints,

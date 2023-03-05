@@ -27,8 +27,6 @@ internal data class AndroidBinaryData(
     val dexShards: Int? = null,
     val incrementalDexing: Boolean = true,
     val debugKey: String? = null,
-    val buildId: String? = null,
-    val googleServicesJson: String? = null,
     val hasCrashlytics: Boolean = false,
     val hasDatabinding: Boolean = false
 )

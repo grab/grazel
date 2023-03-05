@@ -42,7 +42,6 @@ import com.grab.grazel.migrate.android.AndroidInstrumentationBinaryDataExtractor
 import com.grab.grazel.migrate.builder.AndroidBinaryTargetBuilderModule
 import com.grab.grazel.migrate.builder.AndroidInstrumentationBinaryTargetBuilderModule
 import com.grab.grazel.migrate.builder.AndroidLibTargetBuilderModule
-import com.grab.grazel.migrate.builder.CrashlyticsTargetBuilderModule
 import com.grab.grazel.migrate.builder.KtAndroidLibTargetBuilderModule
 import com.grab.grazel.migrate.builder.KtLibTargetBuilderModule
 import com.grab.grazel.migrate.dependencies.ArtifactsPinner
@@ -68,7 +67,6 @@ import javax.inject.Singleton
         AndroidLibTargetBuilderModule::class,
         AndroidBinaryTargetBuilderModule::class,
         AndroidInstrumentationBinaryTargetBuilderModule::class,
-        CrashlyticsTargetBuilderModule::class,
     ]
 )
 @Singleton

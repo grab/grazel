@@ -10,7 +10,7 @@
             "client_info": {
                 "mobilesdk_app_id": "empty",
                 "android_client_info": {
-                    "package_name": "com.grab.grazel.android.sample"
+                    "package_name": "com.grab.grazel.android.sample.paid"
                 }
             },
             "oauth_client": [

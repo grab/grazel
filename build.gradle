@@ -118,6 +118,10 @@ grazel {
             crashlytics {
                 buildId = "042cb4d8-56f8-41a0-916a-9da28e94d1ba"
             }
+            gitRepository {
+                commit = "7224f55d7fafe12a72066eb1a2ad1e1526a854c4"
+                remote = "https://github.com/bazelbuild/tools_android.git"
+            }
         }
         mavenInstall {
             httpArchiveRepository {
