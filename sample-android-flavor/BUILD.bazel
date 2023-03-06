@@ -17,7 +17,6 @@ kt_db_android_library(
     manifest = "src/main/AndroidManifest.xml",
     resource_files = glob([
         "src/main/res/**",
-    ]) + glob([
         "src/flavor1/res/values/strings.xml",
     ]),
     visibility = [
@@ -53,7 +52,6 @@ kt_db_android_library(
     manifest = "src/main/AndroidManifest.xml",
     resource_files = glob([
         "src/main/res/**",
-    ]) + glob([
         "src/flavor1/res/values/strings.xml",
     ]),
     visibility = [
@@ -89,7 +87,6 @@ kt_db_android_library(
     manifest = "src/main/AndroidManifest.xml",
     resource_files = glob([
         "src/main/res/**",
-    ]) + glob([
         "src/flavor2/res/values/strings.xml",
     ]),
     visibility = [
@@ -125,7 +122,6 @@ kt_db_android_library(
     manifest = "src/main/AndroidManifest.xml",
     resource_files = glob([
         "src/main/res/**",
-    ]) + glob([
         "src/flavor2/res/values/strings.xml",
     ]),
     visibility = [
