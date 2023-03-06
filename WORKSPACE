@@ -77,7 +77,7 @@ maven_install(
     artifacts = DAGGER_ARTIFACTS + GRAB_BAZEL_COMMON_ARTIFACTS + [
         "androidx.annotation:annotation:1.1.0",
         "androidx.appcompat:appcompat:1.3.1",
-        "androidx.constraintlayout:constraintlayout-core:1.0.1",
+        "androidx.constraintlayout:constraintlayout-core:1.0.4",
         maven.artifact(
             artifact = "constraintlayout",
             exclusions = [
@@ -85,7 +85,7 @@ maven_install(
                 "androidx.core:core",
             ],
             group = "androidx.constraintlayout",
-            version = "1.1.2",
+            version = "2.1.4",
         ),
         "androidx.core:core:1.5.0",
         "androidx.databinding:databinding-adapters:7.2.2",

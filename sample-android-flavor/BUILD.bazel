@@ -16,8 +16,9 @@ kt_db_android_library(
     custom_package = "com.grab.grazel.android.flavor",
     manifest = "src/main/AndroidManifest.xml",
     resource_files = glob([
-        "src/main/res/**",
         "src/flavor1/res/values/strings.xml",
+    ]) + glob([
+        "src/main/res/**",
     ]),
     visibility = [
         "//visibility:public",
@@ -51,8 +52,9 @@ kt_db_android_library(
     custom_package = "com.grab.grazel.android.flavor",
     manifest = "src/main/AndroidManifest.xml",
     resource_files = glob([
-        "src/main/res/**",
         "src/flavor1/res/values/strings.xml",
+    ]) + glob([
+        "src/main/res/**",
     ]),
     visibility = [
         "//visibility:public",
@@ -86,8 +88,9 @@ kt_db_android_library(
     custom_package = "com.grab.grazel.android.flavor",
     manifest = "src/main/AndroidManifest.xml",
     resource_files = glob([
-        "src/main/res/**",
         "src/flavor2/res/values/strings.xml",
+    ]) + glob([
+        "src/main/res/**",
     ]),
     visibility = [
         "//visibility:public",
@@ -121,8 +124,9 @@ kt_db_android_library(
     custom_package = "com.grab.grazel.android.flavor",
     manifest = "src/main/AndroidManifest.xml",
     resource_files = glob([
-        "src/main/res/**",
         "src/flavor2/res/values/strings.xml",
+    ]) + glob([
+        "src/main/res/**",
     ]),
     visibility = [
         "//visibility:public",

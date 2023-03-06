@@ -32,6 +32,7 @@ class FlavorActivity : Activity() {
             )
         findViewById<TextView>(R.id.text).text = HelloFlavorMessage().message(this)
         findViewById<TextView>(R.id.text2).text = "With dep from ${ModuleName().name()}"
+        findViewById<TextView>(R.id.text3).setText(R.string.common_string)
         binding.viewModel = ViewModel("Text set from Binding adapter")
     }
 }
