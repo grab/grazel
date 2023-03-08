@@ -18,6 +18,8 @@ package com.grab.grazel.migrate.android
 
 import com.android.build.gradle.BaseExtension
 import com.android.builder.model.Version.ANDROID_GRADLE_PLUGIN_VERSION
+import com.grab.grazel.gradle.variant.MatchedVariant
+import com.grab.grazel.util.merge
 
 data class ResValues(
     val stringValues: Map<String, String> = emptyMap()
@@ -25,11 +27,18 @@ data class ResValues(
     fun exists() = stringValues.isNotEmpty()
 }
 
-fun BaseExtension.extractResValue(): ResValues =
-    defaultConfig.resValues
-        .mapValues { it.value.value }
-        .mapKeys { getKeyValue(it.key) }
-        .run { ResValues(this) }
+internal fun BaseExtension.extractResValue(
+    matchedVariant: MatchedVariant
+): ResValues {
+    val default = defaultConfig.resValues.mapValues { it.value.value }
+    val buildTypes = matchedVariant.variant.buildType.resValues.mapValues { it.value.value }
+    val flavors = matchedVariant.variant.productFlavors
+        .map { flavor -> flavor.resValues.mapValues { it.value.value } }
+        .merge { prev, next -> prev + next }
+    return ResValues(
+        stringValues = (default + buildTypes + flavors).mapKeys { getKeyValue(it.key) }
+    )
+}
 
 /**
  * Example:
@@ -46,7 +55,7 @@ private fun getKeyValue(key: String): String {
     val majorVersion = agpVersion[0].toInt()
     val minorVersion = agpVersion[1].toInt()
     return if (majorVersion >= 7 && minorVersion >= 2) {
-        key.substring(key.indexOf("/") + 1, key.length)
+        key.split("/").last()
     } else {
         key
     }

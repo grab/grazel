@@ -95,6 +95,8 @@ kt_android_library(
         name = "sample-android_lib-flavor1-free-debug-res-value",
         strings = {
             "generated_value": "important-key",
+            "type": "debug",
+            "flavor": "free",
         },
     ),
     visibility = [
@@ -223,6 +225,8 @@ kt_android_library(
         name = "sample-android_lib-flavor1-paid-debug-res-value",
         strings = {
             "generated_value": "important-key",
+            "type": "debug",
+            "flavor": "paid",
         },
     ),
     visibility = [
@@ -351,6 +355,8 @@ kt_android_library(
         name = "sample-android_lib-flavor2-free-debug-res-value",
         strings = {
             "generated_value": "important-key",
+            "type": "debug",
+            "flavor": "free",
         },
     ),
     visibility = [
@@ -479,6 +485,8 @@ kt_android_library(
         name = "sample-android_lib-flavor2-paid-debug-res-value",
         strings = {
             "generated_value": "important-key",
+            "type": "debug",
+            "flavor": "paid",
         },
     ),
     visibility = [

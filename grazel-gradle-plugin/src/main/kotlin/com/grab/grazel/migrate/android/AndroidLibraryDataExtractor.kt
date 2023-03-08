@@ -127,7 +127,7 @@ internal class DefaultAndroidLibraryDataExtractor @Inject constructor(
             packageName = packageName,
             hasDatabinding = project.hasDatabinding,
             buildConfigData = extension.extractBuildConfig(this, matchedVariant.variant),
-            resValues = extension.extractResValue(),
+            resValues = extension.extractResValue(matchedVariant),
             extraRes = extraRes,
             deps = deps,
             tags = tags

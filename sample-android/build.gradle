@@ -53,9 +53,11 @@ android {
     buildTypes {
         debug {
             buildConfigField("String", "SOME_STRING", "\"Something\"")
+            resValue("string", "type", "debug")
             signingConfig signingConfigs.debug
         }
         staging {
+            resValue("string", "type", "staging")
             matchingFallbacks = ["debug", "release"]
         }
     }
@@ -71,10 +73,12 @@ android {
         free {
             dimension "release"
             applicationIdSuffix ".free"
+            resValue("string", "flavor", "free")
         }
         paid {
             dimension "release"
             applicationIdSuffix ".paid"
+            resValue("string", "flavor", "paid")
         }
     }
 

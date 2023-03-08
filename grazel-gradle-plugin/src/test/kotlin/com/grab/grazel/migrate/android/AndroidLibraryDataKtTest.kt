@@ -17,15 +17,16 @@
 package com.grab.grazel.migrate.android
 
 import com.android.build.gradle.AppExtension
-import com.grab.grazel.GrazelExtension
-import com.grab.grazel.GrazelExtension.Companion.GRAZEL_EXTENSION
 import com.grab.grazel.GrazelPluginTest
 import com.grab.grazel.bazel.starlark.Assignee
 import com.grab.grazel.bazel.starlark.StatementsBuilder
 import com.grab.grazel.bazel.starlark.asString
 import com.grab.grazel.buildProject
 import com.grab.grazel.gradle.ANDROID_APPLICATION_PLUGIN
+import com.grab.grazel.gradle.variant.MatchedVariant
+import com.grab.grazel.util.addGrazelExtension
 import com.grab.grazel.util.doEvaluate
+import com.grab.grazel.util.truth
 import org.gradle.api.Project
 import org.gradle.kotlin.dsl.configure
 import org.gradle.kotlin.dsl.the
@@ -34,6 +35,30 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 class AndroidLibraryDataKtTest : GrazelPluginTest() {
+    private lateinit var rootProject: Project
+    private lateinit var appProject: Project
+
+    private fun buildAndroidBinaryProject(
+        compilerSdkVersion: Int = 30,
+        block: AppExtension.() -> Unit = {}
+    ): Project {
+        rootProject = buildProject("root")
+        rootProject.addGrazelExtension()
+        appProject = buildProject("android-binary", rootProject)
+        appProject.run {
+            plugins.apply {
+                apply(ANDROID_APPLICATION_PLUGIN)
+            }
+            extensions.configure<AppExtension> {
+                defaultConfig {
+                    compileSdkVersion(compilerSdkVersion)
+                }
+                block(this)
+            }
+            doEvaluate()
+        }
+        return appProject
+    }
 
     @Test
     fun `assert compileSdkVersion is parsed correctly for different API levels`() {
@@ -100,21 +125,42 @@ class AndroidLibraryDataKtTest : GrazelPluginTest() {
         }
     }
 
-    private fun buildAndroidBinaryProject(compilerSdkVersion: Int): Project {
-        val rootProject = buildProject("root")
-        rootProject.extensions.add(GRAZEL_EXTENSION, GrazelExtension(rootProject))
-        val androidBinary = buildProject("android-binary", rootProject)
-        androidBinary.run {
-            plugins.apply {
-                apply(ANDROID_APPLICATION_PLUGIN)
-            }
-            extensions.configure<AppExtension> {
-                defaultConfig {
-                    compileSdkVersion(compilerSdkVersion)
+    @Test
+    fun `assert flavor specific res values are extracted`() {
+        buildAndroidBinaryProject {
+            buildTypes {
+                getByName("debug") {
+                    resValue("string", "type", "debug")
                 }
             }
-            doEvaluate()
+            flavorDimensions("dimension")
+            productFlavors {
+                create("free") {
+                    resValue("string", "flavor", "free")
+                    dimension("dimension")
+                }
+                create("paid") {
+                    resValue("string", "flavor", "paid")
+                    dimension("dimension")
+                }
+            }
         }
-        return androidBinary
+        val appExtension = appProject.the<AppExtension>()
+        appExtension.applicationVariants
+            .filter { it.buildType.name == "debug" }
+            .map { variant ->
+                MatchedVariant(
+                    variantName = variant.name,
+                    flavors = variant.productFlavors.map { it.name }.toSet(),
+                    buildType = variant.buildType.name,
+                    variant = variant
+                )
+            }.forEach { matchedVariant ->
+                appExtension.extractResValue(matchedVariant).stringValues.truth {
+                    hasSize(2)
+                    containsEntry("type", "debug")
+                    containsEntry("flavor", matchedVariant.flavors.first())
+                }
+            }
     }
 }
