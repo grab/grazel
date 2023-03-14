@@ -18,7 +18,6 @@ package com.grab.grazel
 
 import com.grab.grazel.GrazelExtension.Companion.GRAZEL_EXTENSION
 import com.grab.grazel.di.DaggerGrazelComponent
-import com.grab.grazel.hybrid.doHybridBuild
 import com.grab.grazel.tasks.internal.TaskManager
 import org.gradle.api.Plugin
 import org.gradle.api.Project
@@ -37,6 +36,7 @@ class GrazelGradlePlugin : Plugin<Project> {
         val grazelComponent = DaggerGrazelComponent.factory().create(project)
 
         TaskManager(project, grazelComponent).configTasks()
-        project.doHybridBuild()
+
+        grazelComponent.hybridBuildExecutor().execute()
     }
 }

@@ -16,35 +16,30 @@
 
 package com.grab.grazel.hybrid
 
-import com.grab.grazel.bazel.starlark.BazelDependency
+import com.grab.grazel.bazel.starlark.BazelDependency.ProjectDependency
+import com.grab.grazel.di.qualifiers.RootProject
 import org.gradle.api.Project
 import java.io.File
+import javax.inject.Inject
+import javax.inject.Singleton
 
 
 interface ArtifactSearcher {
-    val project: Project
-
     val defaultArtifactNames: Collection<String>
 
     fun findArtifacts(artifactNames: Collection<String> = defaultArtifactNames): List<File>
 }
 
-interface ArtifactSearcherFactory {
+@Singleton
+class DefaultArtifactSearcher
+@Inject
+constructor(
+    @param:RootProject val rootProject: Project
+) : ArtifactSearcher {
+    private val androidAar = "${rootProject.name}.aar"
+    private val androidDatabindingAar = "${rootProject.name}-databinding.aar"
 
-    fun newInstance(project: Project): ArtifactSearcher
-}
-
-// TODO Inject with Dagger
-class DefaultArtifactSearcherFactory : ArtifactSearcherFactory {
-    override fun newInstance(project: Project) = DefaultArtifactSearcher(project)
-}
-
-class DefaultArtifactSearcher(override val project: Project) : ArtifactSearcher {
-
-    private val androidAar = "${project.name}.aar"
-    private val androidDatabindingAar = "${project.name}-databinding.aar"
-
-    override val defaultArtifactNames = with(project) {
+    override val defaultArtifactNames = with(rootProject) {
         setOf(
             "${name}_kt.jar",
             "$name.jar",
@@ -55,19 +50,21 @@ class DefaultArtifactSearcher(override val project: Project) : ArtifactSearcher 
     }
 
     private fun artifactOutputDir(): String {
-        fun pathFor(architecture: String) =
-            "${project.rootProject.projectDir}/bazel-out/$architecture-fastbuild/bin"
+        fun pathFor(architecture: String) = "${rootProject.rootProject.projectDir}" +
+            "/bazel-out/$architecture-fastbuild/bin"
 
         val darwinPath = pathFor(architecture = "darwin")
+        val darwinArm64Path = pathFor(architecture = "darwin_arm64")
         val k8Path = pathFor(architecture = "k8")
         return when {
             File(darwinPath).exists() -> darwinPath
             File(k8Path).exists() -> k8Path
+            File(darwinArm64Path).exists() -> darwinArm64Path
             else -> error("Bazel artifact output directory does not exist!")
         }
     }
 
-    private fun artifactRelativeDir(): String = BazelDependency.ProjectDependency(project)
+    private fun artifactRelativeDir(): String = ProjectDependency(rootProject)
         .toString()
         .substring(2)
 
@@ -75,7 +72,7 @@ class DefaultArtifactSearcher(override val project: Project) : ArtifactSearcher 
         val artifactOutputDir = artifactOutputDir()
         val artifactDir = "$artifactOutputDir/${artifactRelativeDir()}"
         val artifactPaths = artifactNames.map { "$artifactDir/$it" }.toSet()
-        val results = project
+        val results = rootProject
             .fileTree(artifactOutputDir)
             .files
             .filter { file -> artifactPaths.contains(file.path) }

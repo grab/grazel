@@ -29,9 +29,10 @@ import com.grab.grazel.migrate.android.buildResources
 
 internal data class KtLibraryTarget(
     override val name: String,
-    override val deps: List<BazelDependency>,
     override val srcs: List<String>,
+    override val deps: List<BazelDependency>,
     override val visibility: Visibility = Visibility.Public,
+    override val tags: List<String> = emptyList(),
     val projectName: String = name,
     val kotlinProjectType: KotlinProjectType = KotlinProjectType.Jvm,
     val packageName: String? = null,
@@ -42,7 +43,6 @@ internal data class KtLibraryTarget(
     val plugins: List<BazelDependency> = emptyList(),
     val assetsGlob: List<String> = emptyList(),
     val assetsDir: String? = null,
-    val tags: List<String> = emptyList(),
 ) : BazelBuildTarget {
 
     override fun statements(): List<Statement> = statements {

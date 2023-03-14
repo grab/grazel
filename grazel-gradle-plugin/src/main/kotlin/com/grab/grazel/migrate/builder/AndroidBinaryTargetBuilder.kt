@@ -177,23 +177,22 @@ constructor(
             project = project,
             sourceSetType = SourceSetType.JAVA_KOTLIN,
             matchedVariant = matchedVariant
-        ).copy(name = "${project.name}_lib", hasDatabinding = false)
+        ).copy(hasDatabinding = false)
 
         val deps = androidProjectData.deps.toMutableList()
 
         with(androidProjectData) {
-            toBuildConfigTarget(matchedVariant.nameSuffix).also {
+            toBuildConfigTarget().also {
                 deps += it.toBazelDependency()
                 add(it)
             }
         }
-        androidProjectData
-            .copy(
-                name = "${androidProjectData.name}${matchedVariant.nameSuffix}",
-                deps = deps,
-                tags = emptyList() // Don't generate classpath reduction tags for final binary target
-            ).toKtLibraryTarget()
-            ?.also { add(it) }
+
+        androidProjectData.copy(
+            name = "${project.name}_lib${matchedVariant.nameSuffix}",
+            deps = deps,
+            tags = emptyList() // Don't generate classpath reduction tags for final binary target
+        ).toKtLibraryTarget()?.let(::add)
     }
 
     override fun canHandle(project: Project) = project.isAndroidApplication

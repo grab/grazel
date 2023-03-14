@@ -22,7 +22,6 @@ import com.grab.grazel.gradle.isAndroid
 import com.grab.grazel.gradle.isAndroidApplication
 import com.grab.grazel.gradle.isKotlin
 import com.grab.grazel.gradle.variant.VariantMatcher
-import com.grab.grazel.gradle.variant.nameSuffix
 import com.grab.grazel.migrate.BazelTarget
 import com.grab.grazel.migrate.TargetBuilder
 import com.grab.grazel.migrate.android.AndroidLibraryData
@@ -46,7 +45,7 @@ internal interface AndroidLibTargetBuilderModule {
 
 @Singleton
 internal class AndroidLibTargetBuilder @Inject constructor(
-    private val projectDataExtractor: AndroidLibraryDataExtractor,
+    private val androidLibraryDataExtractor: AndroidLibraryDataExtractor,
     private val unitTestDataExtractor: AndroidUnitTestDataExtractor,
     private val testExtension: TestExtension,
     private val variantMatcher: VariantMatcher,
@@ -55,9 +54,9 @@ internal class AndroidLibTargetBuilder @Inject constructor(
     override fun build(project: Project): List<BazelTarget> {
         return variantMatcher.matchedVariants(project, ConfigurationScope.BUILD)
             .map { matchedVariant ->
-                projectDataExtractor
+                androidLibraryDataExtractor
                     .extract(project, matchedVariant)
-                    .toAndroidLibTarget(matchedVariant.nameSuffix)
+                    .toAndroidLibTarget()
             } + unitTestsTargets(project)
     }
 
@@ -80,8 +79,8 @@ internal class AndroidLibTargetBuilder @Inject constructor(
     override fun sortOrder(): Int = 2
 }
 
-private fun AndroidLibraryData.toAndroidLibTarget(suffix: String) = AndroidLibraryTarget(
-    name = "$name$suffix",
+private fun AndroidLibraryData.toAndroidLibTarget() = AndroidLibraryTarget(
+    name = name,
     srcs = srcs,
     deps = deps,
     enableDataBinding = hasDatabinding,

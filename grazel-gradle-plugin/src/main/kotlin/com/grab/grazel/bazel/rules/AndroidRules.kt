@@ -181,6 +181,7 @@ fun StatementsBuilder.androidLibrary(
     resourceFiles: List<Assignee> = emptyList(),
     enableDataBinding: Boolean = false,
     deps: List<BazelDependency>,
+    tags: List<String> = emptyList(),
     assetsGlob: List<String> = emptyList(),
     assetsDir: String? = null
 ) {
@@ -203,6 +204,9 @@ fun StatementsBuilder.androidLibrary(
         }
         if (enableDataBinding) {
             "enable_data_binding" eq enableDataBinding.toString().capitalize()
+        }
+        tags.notEmpty {
+            "tags" eq array(tags.map(String::quote))
         }
         assetsDir?.let {
             "assets" eq glob(assetsGlob.quote)

@@ -16,136 +16,16 @@
 
 package com.grab.grazel.hybrid
 
-import com.grab.grazel.gradle.isMigrated
-import com.grab.grazel.util.BAZEL_ENABLED
-import com.grab.grazel.util.KT_INTERMEDIATE_TARGET_SUFFIX
-import com.grab.grazel.util.LogOutputStream
-import com.grab.grazel.util.booleanProperty
-import com.grab.grazel.util.localProperties
-import org.gradle.api.Project
-import org.gradle.api.logging.LogLevel.QUIET
-import org.gradle.process.ExecResult
-import java.io.ByteArrayOutputStream
-import java.io.OutputStream
+import dagger.Binds
 
-internal fun Project.executeCommand(
-    vararg commands: String,
-    ignoreExit: Boolean = true
-): Pair<String, String> {
-    val stdOut = ByteArrayOutputStream()
-    val stdErr = ByteArrayOutputStream()
-    project.exec {
-        standardOutput = stdOut
-        errorOutput = stdErr
-        isIgnoreExitValue = ignoreExit
-        commandLine(*commands)
-    }
-    return stdOut.toString().trim() to stdErr.toString().trim()
-}
+@dagger.Module
+internal interface HybridBuildModule {
+    @Binds
+    fun DefaultHybridBuildExecutor.bindExecutor(): HybridBuildExecutor
 
-/**
- * Given a combined sequence of `android_library` and `kt_android_library` targets will return unique targets i.e
- * `android_library` alone.
- */
-internal fun findUniqueAarTargets(aarTargets: Sequence<String>): List<String> {
-    // Filter out _base target added by kt_android_library
-    val allAarTargets = aarTargets.map {
-        if (it.endsWith(KT_INTERMEDIATE_TARGET_SUFFIX)) {
-            it.split(KT_INTERMEDIATE_TARGET_SUFFIX).first()
-        } else it
-    }
-    // The remaining unique entries are aar targets
-    return mutableMapOf<String, String>()
-        .apply {
-            allAarTargets.forEach { target ->
-                if (containsKey(target))
-                    remove(target)
-                else {
-                    put(target, target)
-                }
-            }
-        }.keys
-        .asSequence()
-        .map { it.trim() }
-        .filter { it.isNotEmpty() }
-        .map { "$it.aar" }
-        .toList()
-}
+    @Binds
+    fun DefaultArtifactSearcher.bindArtifactSearcher(): ArtifactSearcher
 
-
-internal fun collectDatabindingAarTargets(aarTargets: Sequence<String>) = aarTargets
-    .filter { it.isNotEmpty() }
-    .map { "$it.aar" }
-    .toList()
-
-private fun Project.buildAarTargets() {
-    // Query android library targets
-    val (bazelAarOut, _) = executeCommand("bazelisk", "query", "kind(android_library, //...:*)")
-
-    // Query databinding aars
-    val (databindingAar, _) = executeCommand("bazelisk", "query", "kind(databinding_aar, //...:*)")
-
-    val aarTargets = findUniqueAarTargets(bazelAarOut.lineSequence()) +
-        collectDatabindingAarTargets(databindingAar.lineSequence())
-    logger.quiet("Found aar targets : $aarTargets")
-
-    bazelCommand("build", *aarTargets.distinct().toTypedArray(), ignoreExit = true)
-}
-
-internal fun Project.bazelCommand(
-    command: String,
-    vararg args: String,
-    ignoreExit: Boolean = false,
-    outputStream: OutputStream? = null,
-    errorOutputStream: OutputStream? = null,
-): ExecResult {
-    val commands: List<String> = mutableListOf("bazelisk", command).apply {
-        addAll(args)
-    }
-    logger.quiet("Running ${commands.joinToString(separator = " ")}")
-    return exec {
-        commandLine(*commands.toTypedArray())
-        standardOutput = outputStream ?: LogOutputStream(logger, QUIET)
-        // Should be error but bazel wierdly outputs normal stuff to error
-        errorOutput = errorOutputStream ?: LogOutputStream(logger, QUIET)
-        isIgnoreExitValue = ignoreExit
-    }
-}
-
-internal fun Project.dozerCommand(
-    command: String,
-    vararg targets: String,
-    ignoreExit: Boolean = false
-) {
-    val commands: List<String> = mutableListOf("buildozer", command, targets.joinToString(","))
-    exec {
-        commandLine(*commands.toTypedArray())
-        standardOutput = LogOutputStream(logger, QUIET)
-        // Should be error but bazel wierdly outputs normal stuff to error
-        errorOutput = LogOutputStream(logger, QUIET)
-        isIgnoreExitValue = ignoreExit
-    }
-}
-
-/**
- * Performs Bazel build on all targets and aar targets before Gradle build starts during configuration phase.
- *
- * `aar` targets are determined by `android_library` rule.
- */
-internal fun Project.doHybridBuild() {
-    val isHybridBuild = booleanProperty(BAZEL_ENABLED, localProperties())
-    if (!isHybridBuild) {
-        return
-    }
-    // Validate if we can run hybrid build
-    if (isMigrated) {
-        logger.quiet("Running hybrid build")
-        bazelCommand("build", "//...")
-        buildAarTargets()
-        bazelCommand("shutdown")
-
-        registerDependencySubstitutionRules()
-    } else {
-        logger.quiet("Skipping hybrid build due to lack of Bazel files")
-    }
+    @Binds
+    fun DefaultDependencySubstitution.bindDependencySubstitution(): DependencySubstitution
 }

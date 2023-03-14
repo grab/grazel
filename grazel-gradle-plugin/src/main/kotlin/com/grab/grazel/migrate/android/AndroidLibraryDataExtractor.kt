@@ -32,6 +32,7 @@ import com.grab.grazel.gradle.dependencies.GradleDependencyToBazelDependency
 import com.grab.grazel.gradle.hasDatabinding
 import com.grab.grazel.gradle.isAndroid
 import com.grab.grazel.gradle.variant.MatchedVariant
+import com.grab.grazel.gradle.variant.nameSuffix
 import com.grab.grazel.migrate.dependencies.calculateDirectDependencyTags
 import com.grab.grazel.migrate.kotlin.kotlinParcelizeDeps
 import dagger.Lazy
@@ -118,7 +119,7 @@ internal class DefaultAndroidLibraryDataExtractor @Inject constructor(
         } else emptyList()
 
         return AndroidLibraryData(
-            name = name,
+            name = name + matchedVariant.nameSuffix,
             srcs = srcs,
             res = res,
             assets = assets,

@@ -16,10 +16,27 @@
 
 package com.grab.grazel.hybrid
 
+import com.grab.grazel.buildProject
+import com.grab.grazel.util.addGrazelExtension
+import com.grab.grazel.util.createGrazelComponent
+import org.gradle.api.Project
 import org.junit.Assert.assertTrue
+import org.junit.Before
 import org.junit.Test
 
-class HybridKtTest {
+class HybridBuildExecutorTest {
+
+    private lateinit var rootProject: Project
+    private lateinit var hybridBuildExecutor: DefaultHybridBuildExecutor
+
+    @Before
+    fun setup() {
+        rootProject = buildProject("root")
+        rootProject.addGrazelExtension()
+        hybridBuildExecutor = rootProject
+            .createGrazelComponent()
+            .hybridBuildExecutor() as DefaultHybridBuildExecutor
+    }
 
     @Test
     fun `when multiple android library targets are there assert android_library targets are calculated`() {
@@ -29,7 +46,7 @@ class HybridKtTest {
             "//base/another_target_base" // kt_android_library_base
         )
 
-        val uniqueTargets = findUniqueAarTargets(aarTargets = allAarTargets)
+        val uniqueTargets = hybridBuildExecutor.findUniqueAarTargets(aarTargets = allAarTargets)
         assertTrue(uniqueTargets.size == 1)
         assertTrue(uniqueTargets.first() == "//base/target.aar")
     }

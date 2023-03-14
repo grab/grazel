@@ -24,12 +24,12 @@ import com.grab.grazel.migrate.BazelBuildTarget
 
 internal data class AndroidUnitTestTarget(
     override val name: String,
-    override val deps: List<BazelDependency>,
     override val srcs: List<String> = emptyList(),
+    override val deps: List<BazelDependency>,
+    override val tags: List<String> = emptyList(),
     override val visibility: Visibility = Visibility.Public,
     val associates: List<BazelDependency> = emptyList(),
     val customPackage: String,
-    val tags: List<String> = emptyList(),
     val resources: List<String> = emptyList(),
     val additionalSrcSets: List<String> = emptyList(),
 ) : BazelBuildTarget {

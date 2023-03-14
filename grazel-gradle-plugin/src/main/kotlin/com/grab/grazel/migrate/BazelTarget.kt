@@ -35,6 +35,7 @@ interface BazelBuildTarget : BazelTarget {
     val deps: List<BazelDependency>
     val srcs: List<String>
     val visibility: Visibility
+    val tags: List<String>
 }
 
 

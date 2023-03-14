@@ -18,6 +18,7 @@ package com.grab.grazel
 
 import com.grab.grazel.extension.AndroidExtension
 import com.grab.grazel.extension.DependenciesExtension
+import com.grab.grazel.extension.HybridExtension
 import com.grab.grazel.extension.RulesExtension
 import groovy.lang.Closure
 import org.gradle.api.Project
@@ -52,6 +53,8 @@ open class GrazelExtension(
 
     val rules = RulesExtension(rootProject.objects)
 
+    val hybrid = HybridExtension(rootProject.objects)
+
     /**
      * Android specific configuration used to configure parameters for android_binary or other android related
      * rules
@@ -65,6 +68,7 @@ open class GrazelExtension(
      * ```
      *
      * @param block Configuration block with [AndroidExtension] as the receiver
+     * @see AndroidExtension
      */
     fun android(block: AndroidExtension.() -> Unit) {
         block(android)
@@ -82,6 +86,7 @@ open class GrazelExtension(
      * }
      * ```
      * @param closure Closue for configuration with [AndroidExtension] instance as the delegate
+     * @see AndroidExtension
      */
     fun android(closure: Closure<*>) {
         closure.delegate = android
@@ -99,6 +104,7 @@ open class GrazelExtension(
      * ```
      *
      * @param block Configuration block with [DependenciesExtension] as the receiver
+     * @see DependenciesExtension
      */
     fun dependencies(block: DependenciesExtension.() -> Unit) {
         block(dependencies)
@@ -114,6 +120,7 @@ open class GrazelExtension(
      * }
      * ```
      * @param closure Closure for configuration with [DependenciesExtension] instance as delegate
+     * @see DependenciesExtension
      */
     fun dependencies(closure: Closure<*>) {
         closure.delegate = dependencies
@@ -121,8 +128,7 @@ open class GrazelExtension(
     }
 
     /**
-     * Top level rules configuration block to configure various rules. For list of available rule configurations, see
-     * [RulesExtension]
+     * Top level rules configuration block to configure various rules. For list of available rule configurations
      *
      * ```
      * rules {
@@ -131,14 +137,14 @@ open class GrazelExtension(
      * }
      * ```
      * @param block Configuration block with [RulesExtension] as the receiver
+     * @see RulesExtension
      */
     fun rules(block: RulesExtension.() -> Unit) {
         block(rules)
     }
 
     /**
-     * Top level rules configuration block to configure various rules. For list of available rule configurations, see
-     * [RulesExtension]
+     * Top level rules configuration block to configure various rules. For list of available rule configurations
      *
      * ```
      * rules {
@@ -147,9 +153,41 @@ open class GrazelExtension(
      * }
      * ```
      * @param closure Closure block for configuration with [RulesExtension] as the delegate
+     * @see RulesExtension
      */
     fun rules(closure: Closure<*>) {
         closure.delegate = rules
+        closure.call()
+    }
+
+    /**
+     * Extension to configure hybrid build related configurations.
+     *
+     * ```
+     * hybrid {
+     *
+     * }
+     * ```
+     * @see HybridExtension
+     * @param block Configuration block with [HybridExtension] as the receiver
+     */
+    fun hybrid(block: HybridExtension.() -> Unit) {
+        block(hybrid)
+    }
+
+    /**
+     * Extension to configure hybrid build related configurations.
+     *
+     * ```
+     * hybrid {
+     *
+     * }
+     * ```
+     * @see HybridExtension
+     * @param closure Closure block with [HybridExtension] as the delegate
+     */
+    fun hybrid(closure: Closure<*>) {
+        closure.delegate = hybrid
         closure.call()
     }
 }

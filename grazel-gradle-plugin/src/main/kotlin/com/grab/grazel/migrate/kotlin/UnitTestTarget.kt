@@ -24,11 +24,11 @@ import com.grab.grazel.migrate.BazelBuildTarget
 
 internal data class UnitTestTarget(
     override val name: String,
-    override val deps: List<BazelDependency>,
     override val srcs: List<String> = emptyList(),
+    override val deps: List<BazelDependency>,
+    override val tags: List<String> = emptyList(),
     override val visibility: Visibility = Visibility.Public,
     val associates: List<BazelDependency> = emptyList(),
-    val tags: List<String> = emptyList(),
     val additionalSrcSets: List<String> = emptyList(),
 ) : BazelBuildTarget {
     override fun statements() = statements {

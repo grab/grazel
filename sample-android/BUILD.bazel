@@ -49,7 +49,7 @@ android_binary(
 load("@grab_bazel_common//tools/build_config:build_config.bzl", "build_config")
 
 build_config(
-    name = "sample-android_lib-flavor1-free-debug-build-config",
+    name = "sample-android-flavor1-free-debug-build-config",
     package_name = "com.grab.grazel.android.sample",
     booleans = {
         "SOME_BOOLEAN": "false",
@@ -103,7 +103,7 @@ kt_android_library(
         "//visibility:public",
     ],
     deps = [
-        ":sample-android_lib-flavor1-free-debug-build-config",
+        ":sample-android-flavor1-free-debug-build-config",
         "//:dagger",
         "//:parcelize",
         "//sample-android-flavor:sample-android-flavor-flavor1-free-debug",
@@ -179,7 +179,7 @@ android_binary(
 load("@grab_bazel_common//tools/build_config:build_config.bzl", "build_config")
 
 build_config(
-    name = "sample-android_lib-flavor1-paid-debug-build-config",
+    name = "sample-android-flavor1-paid-debug-build-config",
     package_name = "com.grab.grazel.android.sample",
     booleans = {
         "SOME_BOOLEAN": "false",
@@ -233,7 +233,7 @@ kt_android_library(
         "//visibility:public",
     ],
     deps = [
-        ":sample-android_lib-flavor1-paid-debug-build-config",
+        ":sample-android-flavor1-paid-debug-build-config",
         "//:dagger",
         "//:parcelize",
         "//sample-android-flavor:sample-android-flavor-flavor1-paid-debug",
@@ -309,7 +309,7 @@ android_binary(
 load("@grab_bazel_common//tools/build_config:build_config.bzl", "build_config")
 
 build_config(
-    name = "sample-android_lib-flavor2-free-debug-build-config",
+    name = "sample-android-flavor2-free-debug-build-config",
     package_name = "com.grab.grazel.android.sample",
     booleans = {
         "SOME_BOOLEAN": "false",
@@ -363,7 +363,7 @@ kt_android_library(
         "//visibility:public",
     ],
     deps = [
-        ":sample-android_lib-flavor2-free-debug-build-config",
+        ":sample-android-flavor2-free-debug-build-config",
         "//:dagger",
         "//:parcelize",
         "//sample-android-flavor:sample-android-flavor-flavor2-free-debug",
@@ -439,7 +439,7 @@ android_binary(
 load("@grab_bazel_common//tools/build_config:build_config.bzl", "build_config")
 
 build_config(
-    name = "sample-android_lib-flavor2-paid-debug-build-config",
+    name = "sample-android-flavor2-paid-debug-build-config",
     package_name = "com.grab.grazel.android.sample",
     booleans = {
         "SOME_BOOLEAN": "false",
@@ -493,7 +493,7 @@ kt_android_library(
         "//visibility:public",
     ],
     deps = [
-        ":sample-android_lib-flavor2-paid-debug-build-config",
+        ":sample-android-flavor2-paid-debug-build-config",
         "//:dagger",
         "//:parcelize",
         "//sample-android-flavor:sample-android-flavor-flavor2-paid-debug",

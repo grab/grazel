@@ -16,9 +16,9 @@
 
 package com.grab.grazel.migrate.dependencies
 
+import com.grab.grazel.bazel.exec.bazelCommand
 import com.grab.grazel.di.qualifiers.RootProject
 import com.grab.grazel.extension.MavenInstallExtension
-import com.grab.grazel.hybrid.bazelCommand
 import com.grab.grazel.migrate.dependencies.MavenPinningError.InvalidSignature
 import com.grab.grazel.migrate.dependencies.MavenPinningError.JsonCorrupted
 import com.grab.grazel.util.ansiYellow

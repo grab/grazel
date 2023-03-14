@@ -16,9 +16,9 @@
 
 package com.grab.grazel.tasks.internal
 
+import com.grab.grazel.bazel.exec.bazelCommand
 import com.grab.grazel.di.GrazelComponent
 import com.grab.grazel.di.qualifiers.RootProject
-import com.grab.grazel.hybrid.bazelCommand
 import com.grab.grazel.util.BAZEL_BUILD_ALL_TASK_NAME
 import com.grab.grazel.util.BAZEL_CLEAN_TASK_NAME
 import com.grab.grazel.util.BUILD_BAZEL
@@ -36,7 +36,9 @@ internal const val GRAZEL_TASK_GROUP = "bazel"
  *
  * @param rootProject  The root gradle project instance
  */
-internal class TaskManager @Inject constructor(
+internal class TaskManager
+@Inject
+constructor(
     @param:RootProject private val rootProject: Project,
     private val grazelComponent: GrazelComponent
 ) {

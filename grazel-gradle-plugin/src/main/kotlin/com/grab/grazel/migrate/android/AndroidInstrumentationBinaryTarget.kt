@@ -27,6 +27,7 @@ internal data class AndroidInstrumentationBinaryTarget(
     override val name: String,
     override val deps: List<BazelDependency>,
     override val srcs: List<String>,
+    override val tags: List<String> = emptyList(),
     override val visibility: Visibility = Visibility.Public,
     val associates: List<BazelDependency> = emptyList(),
     val customPackage: String,

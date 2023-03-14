@@ -24,8 +24,9 @@ import com.grab.grazel.migrate.BazelBuildTarget
 
 internal data class AndroidLibraryTarget(
     override val name: String,
-    override val deps: List<BazelDependency>,
     override val srcs: List<String> = emptyList(),
+    override val deps: List<BazelDependency>,
+    override val tags: List<String> = emptyList(),
     override val visibility: Visibility = Visibility.Public,
     val enableDataBinding: Boolean = false,
     val projectName: String = name,
@@ -48,6 +49,7 @@ internal data class AndroidLibraryTarget(
             resourceFiles = resourceFiles,
             visibility = visibility,
             deps = deps,
+            tags = tags,
             assetsGlob = assetsGlob,
             assetsDir = assetsDir
         )

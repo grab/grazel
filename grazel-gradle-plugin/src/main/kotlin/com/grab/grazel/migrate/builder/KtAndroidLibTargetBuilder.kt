@@ -17,15 +17,13 @@
 package com.grab.grazel.migrate.builder
 
 import com.grab.grazel.bazel.rules.KotlinProjectType
-import com.grab.grazel.bazel.rules.Visibility
 import com.grab.grazel.extension.TestExtension
 import com.grab.grazel.gradle.ConfigurationScope
 import com.grab.grazel.gradle.isAndroid
 import com.grab.grazel.gradle.isAndroidApplication
 import com.grab.grazel.gradle.isKotlin
 import com.grab.grazel.gradle.variant.VariantMatcher
-import com.grab.grazel.gradle.variant.nameSuffix
-import com.grab.grazel.migrate.BazelTarget
+import com.grab.grazel.migrate.BazelBuildTarget
 import com.grab.grazel.migrate.TargetBuilder
 import com.grab.grazel.migrate.android.AndroidLibraryData
 import com.grab.grazel.migrate.android.AndroidLibraryDataExtractor
@@ -66,47 +64,36 @@ internal interface KtAndroidLibTargetBuilderModule {
 
 @Singleton
 internal class KtAndroidLibTargetBuilder @Inject constructor(
-    private val projectDataExtractor: AndroidLibraryDataExtractor,
+    private val androidLibraryDataExtractor: AndroidLibraryDataExtractor,
     private val unitTestDataExtractor: AndroidUnitTestDataExtractor,
     private val testExtension: TestExtension,
-    private val variantMatcher: VariantMatcher
+    private val variantMatcher: VariantMatcher,
 ) : TargetBuilder {
 
-    override fun build(project: Project): List<BazelTarget> {
-        return mutableListOf<BazelTarget>().apply {
-            variantMatcher.matchedVariants(project, ConfigurationScope.BUILD)
-                .forEach { matchedVariant ->
-                    val projectData = projectDataExtractor.extract(
-                        project,
-                        sourceSetType = SourceSetType.JAVA_KOTLIN,
-                        matchedVariant = matchedVariant
-                    )
-                    var deps = projectData.deps
-                    with(projectData) {
-                        toAarResTarget(matchedVariant.nameSuffix)?.also {
-                            add(it)
-                        }
-                        toBuildConfigTarget(matchedVariant.nameSuffix).also {
-                            deps += it.toBazelDependency()
-                            add(it)
-                        }
+    override fun build(project: Project) = buildList {
+        variantMatcher.matchedVariants(project, ConfigurationScope.BUILD)
+            .forEach { matchedVariant ->
+                val androidLibraryData = androidLibraryDataExtractor.extract(
+                    project = project,
+                    sourceSetType = SourceSetType.JAVA_KOTLIN,
+                    matchedVariant = matchedVariant
+                ).run {
+                    val deps = deps.toMutableList()
+                    toBuildConfigTarget().let { target ->
+                        deps.add(target.toBazelDependency())
+                        add(target)
                     }
-                    projectData
-                        .copy(
-                            name = projectData.name + matchedVariant.nameSuffix,
-                            deps = deps
-                        )
-                        .toKtLibraryTarget()
-                        ?.also {
-                            add(it)
-                        }
+                    copy(deps = deps)
                 }
-            if (testExtension.enableTestMigration) {
-                variantMatcher.matchedVariants(project, ConfigurationScope.TEST)
-                    .forEach { variant ->
-                        add(unitTestDataExtractor.extract(project, variant).toUnitTestTarget())
-                    }
+
+                androidLibraryData.toKtLibraryTarget()?.let(::add)
             }
+
+        if (testExtension.enableTestMigration) {
+            variantMatcher.matchedVariants(project, ConfigurationScope.TEST)
+                .forEach { variant ->
+                    add(unitTestDataExtractor.extract(project, variant).toUnitTestTarget())
+                }
         }
     }
 
@@ -116,48 +103,40 @@ internal class KtAndroidLibTargetBuilder @Inject constructor(
 }
 
 
-internal fun AndroidLibraryData.toKtLibraryTarget(): KtLibraryTarget? =
-    if (srcs.isNotEmpty() || hasDatabinding) {
-        KtLibraryTarget(
-            name = name,
-            kotlinProjectType = KotlinProjectType.Android(hasDatabinding = hasDatabinding),
-            packageName = packageName,
-            srcs = srcs,
-            manifest = manifestFile,
-            res = res,
-            resValues = resValues,
-            customResourceSets = extraRes,
-            deps = deps,
-            plugins = plugins,
-            assetsGlob = assets,
-            assetsDir = assetsDir,
-            tags = tags
-        )
-    } else null
-
-internal fun AndroidLibraryData.toAarResTarget(variantName: String): AndroidLibraryTarget? {
-    return if (res.isNotEmpty() && !hasDatabinding) {
-        // For hybrid builds we need separate AAR for resources
-        // When it is a pure resource module, keep the res target as the main target
-        val targetName = if (srcs.isEmpty()) "$name$variantName" else "${name}-res$variantName"
-        AndroidLibraryTarget(
-            name = targetName,
-            packageName = packageName,
-            manifest = manifestFile,
-            projectName = name,
-            res = res,
-            customResourceSets = extraRes,
-            visibility = Visibility.Public,
-            deps = deps,
-            assetsGlob = assets,
-            assetsDir = assetsDir
-        )
-    } else null
+internal fun AndroidLibraryData.toKtLibraryTarget(): BazelBuildTarget? = when {
+    srcs.isNotEmpty() || hasDatabinding -> KtLibraryTarget(
+        name = name,
+        kotlinProjectType = KotlinProjectType.Android(hasDatabinding = hasDatabinding),
+        packageName = packageName,
+        srcs = srcs,
+        manifest = manifestFile,
+        res = res,
+        resValues = resValues,
+        customResourceSets = extraRes,
+        deps = deps,
+        plugins = plugins,
+        assetsGlob = assets,
+        assetsDir = assetsDir,
+        tags = tags
+    )
+    srcs.isEmpty() && res.isNotEmpty() -> AndroidLibraryTarget(
+        name = name,
+        packageName = packageName,
+        manifest = manifestFile,
+        projectName = name,
+        res = res,
+        customResourceSets = extraRes,
+        deps = deps,
+        assetsGlob = assets,
+        tags = tags,
+        assetsDir = assetsDir
+    )
+    else -> null
 }
 
-internal fun AndroidLibraryData.toBuildConfigTarget(variantName: String): BuildConfigTarget {
+internal fun AndroidLibraryData.toBuildConfigTarget(): BuildConfigTarget {
     return BuildConfigTarget(
-        name = "$name$variantName-build-config",
+        name = "$name-build-config",
         packageName = buildConfigData.packageName ?: packageName,
         strings = buildConfigData.strings,
         booleans = buildConfigData.booleans,

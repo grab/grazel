@@ -38,6 +38,8 @@ import com.grab.grazel.gradle.variant.DefaultAndroidVariantsExtractor
 import com.grab.grazel.gradle.variant.VariantBuilder
 import com.grab.grazel.gradle.variant.VariantMatcher
 import com.grab.grazel.gradle.variant.VariantModule
+import com.grab.grazel.hybrid.HybridBuildExecutor
+import com.grab.grazel.hybrid.HybridBuildModule
 import com.grab.grazel.migrate.android.AndroidInstrumentationBinaryDataExtractor
 import com.grab.grazel.migrate.builder.AndroidBinaryTargetBuilderModule
 import com.grab.grazel.migrate.builder.AndroidInstrumentationBinaryTargetBuilderModule
@@ -74,7 +76,9 @@ internal interface GrazelComponent {
 
     @Component.Factory
     interface Factory {
-        fun create(@BindsInstance @RootProject rootProject: Project): GrazelComponent
+        fun create(
+            @BindsInstance @RootProject rootProject: Project
+        ): GrazelComponent
     }
 
     fun extension(): GrazelExtension
@@ -85,6 +89,7 @@ internal interface GrazelComponent {
     fun artifactsPinner(): Lazy<ArtifactsPinner>
     fun dependenciesDataSource(): Lazy<DependenciesDataSource>
     fun mavenInstallArtifactsCalculator(): Lazy<MavenInstallArtifactsCalculator>
+    fun hybridBuildExecutor(): HybridBuildExecutor
 
     fun androidInstrumentationBinaryDataExtractor(): Lazy<AndroidInstrumentationBinaryDataExtractor>
     fun variantBuilder(): Lazy<VariantBuilder>
@@ -95,7 +100,8 @@ internal interface GrazelComponent {
     includes = [
         MigrationCriteriaModule::class,
         DependenciesModule::class,
-        VariantModule::class
+        HybridBuildModule::class,
+        VariantModule::class,
     ]
 )
 internal interface GrazelModule {

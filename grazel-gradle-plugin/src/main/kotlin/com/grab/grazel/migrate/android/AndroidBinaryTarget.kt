@@ -29,6 +29,7 @@ internal data class AndroidBinaryTarget(
     override val visibility: Visibility = Visibility.Public,
     override val deps: List<BazelDependency>,
     override val srcs: List<String>,
+    override val tags: List<String> = emptyList(),
     val crunchPng: Boolean = false,
     val packageName: String,
     val dexShards: Int? = null,
