@@ -94,7 +94,7 @@ grazel {
         ndkApiLevel = 30
     }
     dependencies {
-        overrideArtifactVersions.add("androidx.constraintlayout:constraintlayout:1.1.2")
+        overrideArtifactVersions.add("androidx.constraintlayout:constraintlayout:2.1.4")
     }
     rules {
         test {

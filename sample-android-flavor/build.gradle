@@ -58,9 +58,9 @@ dependencies {
 
     implementation libs.androidx.appcompat
     implementation libs.androidx.core
-    implementation "androidx.constraintlayout:constraintlayout-core:1.0.1"
+    implementation libs.androidx.constraintlayout.core
 
-    implementation("androidx.constraintlayout:constraintlayout:2.1.1") {
+    implementation(libs.androidx.constraintlayout) {
         // Sample for exclude rules.
         exclude group: "androidx.core", module: "core"
         // Sample for excludeArtifactsDenyList
