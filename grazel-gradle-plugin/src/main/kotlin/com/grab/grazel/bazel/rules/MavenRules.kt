@@ -51,15 +51,23 @@ sealed class MavenRepository : AssigneeBuilder {
  *
  * @param externalVariables The external variables that needs to be inject before given `arrayValues`
  * @param arrayValues The actual array values that needs to be combined with external variables.
+ * @param appendExternal Indicates whether to append or prepend the External variables
  */
 private fun combineExternalVariablesAndArray(
     externalVariables: List<String>,
-    arrayValues: List<String>
+    arrayValues: List<String>,
+    appendExternal: Boolean = false,
 ) = assigneeBuilder {
     val externalRepositoryConversion = externalVariables.joinToString(separator = " + ")
     val extraPlus = if (externalVariables.isEmpty()) "" else "+"
     val repositoryArray = array(arrayValues).asString()
-    StringStatement("$externalRepositoryConversion $extraPlus $repositoryArray")
+
+    if (appendExternal) {
+        StringStatement("$repositoryArray $extraPlus $externalRepositoryConversion")
+    } else {
+        StringStatement("$externalRepositoryConversion $extraPlus $repositoryArray")
+    }
+
 }
 
 fun StatementsBuilder.mavenInstall(
@@ -91,7 +99,8 @@ fun StatementsBuilder.mavenInstall(
 
         "repositories" eq combineExternalVariablesAndArray(
             externalRepositories,
-            mavenRepositories.map { it.build().asString() }
+            mavenRepositories.map { it.build().asString() },
+            true,
         )
 
         if (jetify) {

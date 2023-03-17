@@ -129,10 +129,10 @@ maven_install(
     override_targets = {
         "androidx.appcompat:appcompat": "@//third_party:androidx_appcompat_appcompat",
     },
-    repositories = DAGGER_REPOSITORIES + [
+    repositories = [
         "https://dl.google.com/dl/android/maven2/",
         "https://repo.maven.apache.org/maven2/",
-    ],
+    ] + DAGGER_REPOSITORIES,
     resolve_timeout = 1000,
     version_conflict_policy = "pinned",
 )
