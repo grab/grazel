@@ -59,9 +59,8 @@ constructor(
         val extension = project.extensions.getByType<BaseExtension>()
         val manifestValues = manifestValuesBuilder.build(
             project,
-            matchedVariant.variant,
+            matchedVariant,
             extension.defaultConfig,
-            androidLibraryData.packageName
         )
         val multidexEnabled = extension.defaultConfig.multiDexEnabled == true
             || grazelExtension.android.multiDexEnabled

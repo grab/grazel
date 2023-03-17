@@ -26,6 +26,7 @@ internal interface DependencyGraphs {
     val buildGraphs: Map<BuildGraphType, ImmutableValueGraph<Project, Configuration>>
 
     fun nodes(vararg buildGraphType: BuildGraphType): Set<Project>
+
     fun dependenciesSubGraph(
         project: Project,
         vararg buildGraphTypes: BuildGraphType

@@ -18,22 +18,15 @@ package com.grab.grazel.migrate.android
 
 import com.android.build.gradle.AppExtension
 import com.android.build.gradle.LibraryExtension
-import com.android.build.gradle.internal.dsl.BaseAppModuleExtension
-import com.google.common.truth.Truth
-import com.grab.grazel.GrazelExtension
-import com.grab.grazel.GrazelExtension.Companion.GRAZEL_EXTENSION
 import com.grab.grazel.GrazelPluginTest
 import com.grab.grazel.buildProject
-import com.grab.grazel.fake.DEBUG_FLAVOR1
-import com.grab.grazel.fake.FLAVOR1
-import com.grab.grazel.fake.FakeDependencyGraphs
-import com.grab.grazel.fake.FakeVariant
 import com.grab.grazel.gradle.ANDROID_APPLICATION_PLUGIN
 import com.grab.grazel.gradle.ANDROID_LIBRARY_PLUGIN
-import com.grab.grazel.gradle.variant.AndroidVariantDataSource
-import com.grab.grazel.gradle.variant.DefaultAndroidVariantDataSource
-import com.grab.grazel.gradle.variant.DefaultAndroidVariantsExtractor
+import com.grab.grazel.gradle.variant.MatchedVariant
+import com.grab.grazel.util.addGrazelExtension
+import com.grab.grazel.util.createGrazelComponent
 import com.grab.grazel.util.doEvaluate
+import com.grab.grazel.util.truth
 import org.gradle.api.Project
 import org.gradle.api.artifacts.*
 import org.gradle.kotlin.dsl.configure
@@ -46,13 +39,12 @@ class DefaultManifestValuesBuilderTest : GrazelPluginTest() {
     private lateinit var rootProject: Project
     private lateinit var androidBinary: Project
     private lateinit var androidLibrary: Project
-    private lateinit var defaultManifestValuesBuilder: DefaultManifestValuesBuilder
-    private val fakeVariant = FakeVariant(DEBUG_FLAVOR1, FLAVOR1)
+    private lateinit var defaultManifestValuesBuilder: ManifestValuesBuilder
 
     @Before
     fun setUp() {
         rootProject = buildProject("root")
-        rootProject.extensions.add(GRAZEL_EXTENSION, GrazelExtension(rootProject))
+        rootProject.addGrazelExtension()
 
         androidLibrary = buildProject("android-library", rootProject)
         androidLibrary.run {
@@ -78,10 +70,17 @@ class DefaultManifestValuesBuilderTest : GrazelPluginTest() {
             }
             extensions.configure<AppExtension> {
                 defaultConfig {
+                    applicationId = "com.test.grazel"
                     compileSdkVersion(29)
                     versionCode = 1
                     versionName = "1.0"
                     manifestPlaceholders.putAll(setOf("binaryPlaceholder" to "true"))
+                }
+
+                buildTypes {
+                    getByName("debug") {
+                        applicationIdSuffix = ".debug"
+                    }
                 }
             }
             dependencies {
@@ -89,29 +88,34 @@ class DefaultManifestValuesBuilderTest : GrazelPluginTest() {
             }
         }
 
-        val dependencyGraphs = FakeDependencyGraphs(dependenciesSubGraph = setOf(androidLibrary))
+        androidBinary.doEvaluate()
+        androidLibrary.doEvaluate()
 
-        val variantDataSource: AndroidVariantDataSource = DefaultAndroidVariantDataSource(
-            DefaultAndroidVariantsExtractor()
-        )
-        defaultManifestValuesBuilder = DefaultManifestValuesBuilder(
-            { dependencyGraphs },
-            variantDataSource
-        )
+        defaultManifestValuesBuilder = rootProject
+            .createGrazelComponent()
+            .manifestValuesBuilder()
     }
+
 
     @Test
     fun `assert manifest placeholder are parsed correctly`() {
-        androidBinary.doEvaluate()
-        androidLibrary.doEvaluate()
-        val defaultConfig = androidBinary.the<BaseAppModuleExtension>().defaultConfig
+        val appExtension = androidBinary.the<AppExtension>()
+        val defaultConfig = androidBinary.the<AppExtension>().defaultConfig
+        val debugVariant = appExtension.applicationVariants.first { it.buildType.name == "debug" }
+
+        val matchedVariant = MatchedVariant(
+            variantName = debugVariant.name,
+            flavors = debugVariant.productFlavors.map { it.name }.toSet(),
+            buildType = debugVariant.buildType.name,
+            variant = debugVariant
+        )
+
         val androidBinaryManifestValues = defaultManifestValuesBuilder.build(
             androidBinary,
-            fakeVariant,
+            matchedVariant,
             defaultConfig,
-            "test.packageName"
         )
-        Truth.assertThat(androidBinaryManifestValues).apply {
+        androidBinaryManifestValues.truth {
             hasSize(8)
             containsEntry("versionCode", "1")
             containsEntry("versionName", "1.0")
@@ -120,7 +124,7 @@ class DefaultManifestValuesBuilderTest : GrazelPluginTest() {
             containsEntry("binaryPlaceholder", "true")
             containsEntry("libraryPlaceholder", "true")
             containsEntry("libraryBuildTypePlaceholder", "true")
-            containsEntry("applicationId", "test.packageName")
+            containsEntry("applicationId", "com.test.grazel.debug")
         }
     }
 }
