@@ -55,20 +55,19 @@ internal class DefaultDependencyGraphs(
     override fun dependenciesSubGraph(
         project: Project,
         vararg buildGraphTypes: BuildGraphType
-    ): Set<Project> =
-        if (buildGraphTypes.isEmpty()) {
-            buildGraphs.values.flatMap {
-                if (it.nodes().contains(project)) {
-                    Graphs.reachableNodes(it.asGraph(), project)
-                } else {
-                    emptyList()
-                }
+    ): Set<Project> = if (buildGraphTypes.isEmpty()) {
+        buildGraphs.values.flatMap {
+            if (it.nodes().contains(project)) {
+                Graphs.reachableNodes(it.asGraph(), project)
+            } else {
+                emptyList()
             }
-        } else {
-            buildGraphTypes.flatMap { buildGraphType ->
-                Graphs.reachableNodes(buildGraphs.getValue(buildGraphType).asGraph(), project)
-            }
-        }.toSet()
+        }
+    } else {
+        buildGraphTypes.flatMap { buildGraphType ->
+            Graphs.reachableNodes(buildGraphs.getValue(buildGraphType).asGraph(), project)
+        }
+    }.toSet()
 
     override fun directDependencies(
         project: Project,

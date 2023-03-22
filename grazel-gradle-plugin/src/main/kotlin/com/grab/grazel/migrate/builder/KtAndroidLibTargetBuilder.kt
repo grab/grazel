@@ -16,27 +16,23 @@
 
 package com.grab.grazel.migrate.builder
 
-import com.grab.grazel.bazel.rules.KotlinProjectType
 import com.grab.grazel.extension.TestExtension
 import com.grab.grazel.gradle.ConfigurationScope
 import com.grab.grazel.gradle.isAndroid
 import com.grab.grazel.gradle.isAndroidApplication
 import com.grab.grazel.gradle.isKotlin
 import com.grab.grazel.gradle.variant.VariantMatcher
-import com.grab.grazel.migrate.BazelBuildTarget
 import com.grab.grazel.migrate.TargetBuilder
-import com.grab.grazel.migrate.android.AndroidLibraryData
 import com.grab.grazel.migrate.android.AndroidLibraryDataExtractor
-import com.grab.grazel.migrate.android.AndroidLibraryTarget
 import com.grab.grazel.migrate.android.AndroidManifestParser
 import com.grab.grazel.migrate.android.AndroidUnitTestDataExtractor
-import com.grab.grazel.migrate.android.BuildConfigTarget
 import com.grab.grazel.migrate.android.DefaultAndroidLibraryDataExtractor
 import com.grab.grazel.migrate.android.DefaultAndroidManifestParser
 import com.grab.grazel.migrate.android.DefaultAndroidUnitTestDataExtractor
 import com.grab.grazel.migrate.android.SourceSetType
+import com.grab.grazel.migrate.android.toBuildConfigTarget
+import com.grab.grazel.migrate.android.toKtLibraryTarget
 import com.grab.grazel.migrate.android.toUnitTestTarget
-import com.grab.grazel.migrate.kotlin.KtLibraryTarget
 import com.grab.grazel.migrate.toBazelDependency
 import dagger.Binds
 import dagger.Module
@@ -100,47 +96,4 @@ internal class KtAndroidLibTargetBuilder @Inject constructor(
     override fun canHandle(project: Project): Boolean = with(project) {
         isAndroid && isKotlin && !isAndroidApplication
     }
-}
-
-
-internal fun AndroidLibraryData.toKtLibraryTarget(): BazelBuildTarget? = when {
-    srcs.isNotEmpty() || hasDatabinding -> KtLibraryTarget(
-        name = name,
-        kotlinProjectType = KotlinProjectType.Android(hasDatabinding = hasDatabinding),
-        packageName = packageName,
-        srcs = srcs,
-        manifest = manifestFile,
-        res = res,
-        resValues = resValues,
-        customResourceSets = extraRes,
-        deps = deps,
-        plugins = plugins,
-        assetsGlob = assets,
-        assetsDir = assetsDir,
-        tags = tags
-    )
-    srcs.isEmpty() && res.isNotEmpty() -> AndroidLibraryTarget(
-        name = name,
-        packageName = packageName,
-        manifest = manifestFile,
-        projectName = name,
-        res = res,
-        customResourceSets = extraRes,
-        deps = deps,
-        assetsGlob = assets,
-        tags = tags,
-        assetsDir = assetsDir
-    )
-    else -> null
-}
-
-internal fun AndroidLibraryData.toBuildConfigTarget(): BuildConfigTarget {
-    return BuildConfigTarget(
-        name = "$name-build-config",
-        packageName = buildConfigData.packageName ?: packageName,
-        strings = buildConfigData.strings,
-        booleans = buildConfigData.booleans,
-        ints = buildConfigData.ints,
-        longs = buildConfigData.longs
-    )
 }

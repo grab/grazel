@@ -51,6 +51,7 @@ internal class DefaultAndroidInstrumentationBinaryDataExtractor
     private val dependencyGraphsProvider: Lazy<DependencyGraphs>,
     private val gradleDependencyToBazelDependency: GradleDependencyToBazelDependency,
     private val androidManifestParser: AndroidManifestParser,
+    private val manifestValuesBuilder: ManifestValuesBuilder,
     private val keyStoreExtractor: KeyStoreExtractor,
 ) : AndroidInstrumentationBinaryDataExtractor {
     private val projectDependencyGraphs get() = dependencyGraphsProvider.get()
@@ -96,7 +97,14 @@ internal class DefaultAndroidInstrumentationBinaryDataExtractor
             .filterIsInstance<AndroidSourceSet>()
             .toList()
 
-        val packageName = androidManifestParser.parsePackageName(
+        val manifestValues = manifestValuesBuilder.build(
+            project = project,
+            matchedVariant = matchedVariant,
+            defaultConfig = extension.defaultConfig,
+            configurationScope = ConfigurationScope.ANDROID_TEST
+        )
+
+        val customPackage = androidManifestParser.parsePackageName(
             extension,
             migratableSourceSets
         ) ?: ""
@@ -121,7 +129,8 @@ internal class DefaultAndroidInstrumentationBinaryDataExtractor
         return AndroidInstrumentationBinaryData(
             name = "${name}${matchedVariant.nameSuffix}-android-test",
             associates = listOf(associate),
-            customPackage = packageName,
+            customPackage = customPackage,
+            targetPackage = matchedVariant.variant.applicationId.split(".test").first(),
             debugKey = debugKey,
             deps = deps,
             instruments = BazelDependency.StringDependency(
@@ -132,6 +141,7 @@ internal class DefaultAndroidInstrumentationBinaryDataExtractor
             resourceFiles = resourceFiles,
             srcs = srcs,
             testInstrumentationRunner = testInstrumentationRunner,
+            manifestValues = manifestValues,
         )
     }
 }

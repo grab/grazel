@@ -17,6 +17,7 @@
 package com.grab.grazel.migrate.android
 
 import com.android.builder.core.DefaultApiVersion
+import com.grab.grazel.bazel.rules.KotlinProjectType
 import com.grab.grazel.bazel.rules.customRes
 import com.grab.grazel.bazel.rules.loadCustomRes
 import com.grab.grazel.bazel.rules.loadResValue
@@ -27,9 +28,11 @@ import com.grab.grazel.bazel.starlark.StatementsBuilder
 import com.grab.grazel.bazel.starlark.array
 import com.grab.grazel.bazel.starlark.glob
 import com.grab.grazel.bazel.starlark.quote
+import com.grab.grazel.migrate.BazelBuildTarget
+import com.grab.grazel.migrate.kotlin.KtLibraryTarget
 
 /**
- * Light weight data structure to hold details about custom resource set
+ * Lightweight data structure to hold details about custom resource set
  *
  * @param folderName The root folder name of the custom resource set.
  *     Eg: res-debug.
@@ -49,6 +52,13 @@ internal data class AndroidLibraryData(
     val assets: List<String>,
     val assetsDir: String?,
     val manifestFile: String?,
+    /**
+     * Custom package used for detecting Java/Kotlin sources root
+     */
+    val customPackage: String,
+    /**
+     * Actual application package name of the library
+     */
     val packageName: String,
     val buildConfigData: BuildConfigData = BuildConfigData(),
     val resValues: ResValues,
@@ -57,6 +67,49 @@ internal data class AndroidLibraryData(
     val plugins: List<BazelDependency> = emptyList(),
     val hasDatabinding: Boolean = false,
     val tags: List<String> = emptyList(),
+)
+
+
+internal fun AndroidLibraryData.toKtLibraryTarget(): BazelBuildTarget? = when {
+    srcs.isNotEmpty() || hasDatabinding -> KtLibraryTarget(
+        name = name,
+        kotlinProjectType = KotlinProjectType.Android(hasDatabinding = hasDatabinding),
+        packageName = packageName,
+        srcs = srcs,
+        manifest = manifestFile,
+        res = res,
+        resValues = resValues,
+        customResourceSets = extraRes,
+        deps = deps,
+        plugins = plugins,
+        assetsGlob = assets,
+        assetsDir = assetsDir,
+        tags = tags
+    )
+
+    srcs.isEmpty() && res.isNotEmpty() -> AndroidLibraryTarget(
+        name = name,
+        packageName = packageName,
+        manifest = manifestFile,
+        projectName = name,
+        res = res,
+        customResourceSets = extraRes,
+        deps = deps,
+        assetsGlob = assets,
+        tags = tags,
+        assetsDir = assetsDir
+    )
+
+    else -> null
+}
+
+internal fun AndroidLibraryData.toBuildConfigTarget() = BuildConfigTarget(
+    name = "$name-build-config",
+    packageName = customPackage,
+    strings = buildConfigData.strings,
+    booleans = buildConfigData.booleans,
+    ints = buildConfigData.ints,
+    longs = buildConfigData.longs
 )
 
 

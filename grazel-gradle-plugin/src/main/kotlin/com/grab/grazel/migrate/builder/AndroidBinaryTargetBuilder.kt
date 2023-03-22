@@ -40,6 +40,8 @@ import com.grab.grazel.migrate.android.GoogleServicesJsonExtractor
 import com.grab.grazel.migrate.android.KeyStoreExtractor
 import com.grab.grazel.migrate.android.ManifestValuesBuilder
 import com.grab.grazel.migrate.android.SourceSetType
+import com.grab.grazel.migrate.android.toBuildConfigTarget
+import com.grab.grazel.migrate.android.toKtLibraryTarget
 import com.grab.grazel.migrate.android.toTarget
 import com.grab.grazel.migrate.toBazelDependency
 import dagger.Binds
@@ -95,7 +97,7 @@ constructor(
                     matchedVariant = matchedVariant
                 ).toMutableList()
 
-                val androidLibData = androidLibDataExtractor.extract(
+                val androidLibraryData = androidLibDataExtractor.extract(
                     project = project,
                     matchedVariant = matchedVariant
                 ).let { libData ->
@@ -104,10 +106,10 @@ constructor(
                     )
                 }
 
-                val binaryData = androidBinDataExtractor.extract(
+                val androidBinaryData = androidBinDataExtractor.extract(
                     project,
                     matchedVariant,
-                    androidLibData
+                    androidLibraryData
                 )
 
                 val crashlyticsDeps = crashlyticsDeps(
@@ -118,21 +120,21 @@ constructor(
 
                 listOf(
                     AndroidBinaryTarget(
-                        name = "${binaryData.name}${matchedVariant.nameSuffix}",
-                        deps = androidLibData.deps + binaryData.deps + crashlyticsDeps,
-                        srcs = androidLibData.srcs,
-                        multidex = binaryData.multidex,
-                        debugKey = binaryData.debugKey,
-                        dexShards = binaryData.dexShards,
-                        incrementalDexing = binaryData.incrementalDexing,
-                        enableDataBinding = binaryData.hasDatabinding,
-                        packageName = matchedVariant.variant.applicationId,
-                        manifest = androidLibData.manifestFile,
-                        manifestValues = binaryData.manifestValues,
-                        res = androidLibData.res,
-                        customResourceSets = androidLibData.extraRes,
-                        assetsGlob = androidLibData.assets,
-                        assetsDir = androidLibData.assetsDir,
+                        name = "${androidBinaryData.name}${matchedVariant.nameSuffix}",
+                        deps = androidLibraryData.deps + androidBinaryData.deps + crashlyticsDeps,
+                        srcs = androidLibraryData.srcs,
+                        multidex = androidBinaryData.multidex,
+                        debugKey = androidBinaryData.debugKey,
+                        dexShards = androidBinaryData.dexShards,
+                        incrementalDexing = androidBinaryData.incrementalDexing,
+                        enableDataBinding = androidBinaryData.hasDatabinding,
+                        customPackage = androidBinaryData.customPackage,
+                        manifest = androidLibraryData.manifestFile,
+                        manifestValues = androidBinaryData.manifestValues,
+                        res = androidLibraryData.res,
+                        customResourceSets = androidLibraryData.extraRes,
+                        assetsGlob = androidLibraryData.assets,
+                        assetsDir = androidLibraryData.assetsDir,
                     )
                 ) + intermediateTargets
             }
@@ -164,6 +166,7 @@ constructor(
                 .filter { it.name.endsWith(matchedVariant.nameSuffix) }
                 .map { it.toBazelDependency() }
         }
+
         else -> intermediateTargets
             .filter { it.name.endsWith(matchedVariant.nameSuffix) }
             .map { it.toBazelDependency() } + androidLibData.deps

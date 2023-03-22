@@ -70,21 +70,21 @@ internal class AndroidInstrumentationBinaryTargetBuilder
 
     override fun sortOrder(): Int = 3
 
-    private fun AndroidInstrumentationBinaryData.toTarget(): AndroidInstrumentationBinaryTarget =
-        AndroidInstrumentationBinaryTarget(
-            name = name,
-            associates = associates,
-            customPackage = customPackage,
-            debugKey = debugKey,
-            deps = deps,
-            instruments = instruments,
-            manifestValues = manifestValues,
-            resources = resources,
-            resourceStripPrefix = resourceStripPrefix,
-            resourceFiles = resourceFiles,
-            srcs = srcs,
-            testInstrumentationRunner = testInstrumentationRunner,
-        )
+    private fun AndroidInstrumentationBinaryData.toTarget() = AndroidInstrumentationBinaryTarget(
+        name = name,
+        associates = associates,
+        customPackage = customPackage,
+        targetPackage = targetPackage,
+        debugKey = debugKey,
+        deps = deps,
+        instruments = instruments,
+        manifestValues = manifestValues,
+        resources = resources,
+        resourceStripPrefix = resourceStripPrefix,
+        resourceFiles = resourceFiles,
+        srcs = srcs,
+        testInstrumentationRunner = testInstrumentationRunner,
+    )
 }
 
 

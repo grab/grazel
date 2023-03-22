@@ -26,6 +26,14 @@ internal data class AndroidBinaryData(
     val multidex: Multidex,
     val dexShards: Int? = null,
     val incrementalDexing: Boolean = true,
+    /**
+     * Custom package used for detecting Java/Kotlin sources root
+     */
+    val customPackage: String,
+    /**
+     * Actual application package name of the library
+     */
+    val packageName: String,
     val debugKey: String? = null,
     val hasCrashlytics: Boolean = false,
     val hasDatabinding: Boolean = false

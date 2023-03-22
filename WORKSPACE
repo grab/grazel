@@ -8,9 +8,9 @@ http_archive(
     url = "https://github.com/bazelbuild/rules_kotlin/releases/download/v1.7.0-RC-3/rules_kotlin_release.tgz",
 )
 
-KOTLIN_VERSION = "1.6.10"
+KOTLIN_VERSION = "1.6.21"
 
-KOTLINC_RELEASE_SHA = "432267996d0d6b4b17ca8de0f878e44d4a099b7e9f1587a98edc4d27e76c215a"
+KOTLINC_RELEASE_SHA = "632166fed89f3f430482f5aa07f2e20b923b72ef688c8f5a7df3aa1502c6d8ba"
 
 load("@io_bazel_rules_kotlin//kotlin:repositories.bzl", "kotlin_repositories", "kotlinc_version")
 
@@ -98,7 +98,7 @@ maven_install(
         "com.squareup.leakcanary:leakcanary-android:2.10",
         "junit:junit:4.13.2",
         "org.jacoco:org.jacoco.ant:0.8.7",
-        "org.jetbrains.kotlin:kotlin-annotation-processing-gradle:1.6.10",
+        "org.jetbrains.kotlin:kotlin-annotation-processing-gradle:1.6.21",
         "org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.5.31",
         "org.jetbrains.kotlin:kotlin-stdlib:1.5.31",
     ],

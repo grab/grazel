@@ -120,7 +120,7 @@ enum class Multidex {
 fun StatementsBuilder.androidBinary(
     name: String,
     crunchPng: Boolean = false,
-    packageName: String,
+    customPackage: String,
     dexShards: Int? = null,
     debugKey: String? = null,
     multidex: Multidex = Multidex.Off,
@@ -139,7 +139,7 @@ fun StatementsBuilder.androidBinary(
     rule("android_binary") {
         "name" eq name.quote()
         "crunch_png" eq crunchPng.toString().capitalize()
-        "custom_package" eq packageName.quote()
+        "custom_package" eq customPackage.quote()
         "incremental_dexing" eq incrementalDexing.toString().capitalize()
         dexShards?.let { "dex_shards" eq dexShards }
         debugKey?.let { "debug_key" eq debugKey.quote() }
@@ -294,16 +294,17 @@ fun StatementsBuilder.grabAndroidLocalTest(
 
 fun StatementsBuilder.androidInstrumentationBinary(
     name: String,
+    srcsGlob: List<String> = emptyList(),
+    deps: List<BazelDependency>,
     associates: List<BazelDependency> = emptyList(),
     customPackage: String,
+    targetPackage: String,
     debugKey: String? = null,
-    deps: List<BazelDependency>,
     instruments: BazelDependency,
     manifestValues: Map<String, String?> = mapOf(),
     resources: List<String> = emptyList(),
     resourceStripPrefix: String? = null,
     resourceFiles: List<Assignee> = emptyList(),
-    srcsGlob: List<String> = emptyList(),
     testInstrumentationRunner: String? = null,
 ) {
     load(
@@ -316,6 +317,7 @@ fun StatementsBuilder.androidInstrumentationBinary(
             "associates" eq array(associates.map(BazelDependency::toString).map(String::quote))
         }
         "custom_package" eq customPackage.quote()
+        "target_package" eq targetPackage.quote()
         debugKey?.let { "debug_key" eq debugKey.quote() }
         deps.notEmpty {
             "deps" eq array(deps.map(BazelDependency::toString).map(String::quote))
