@@ -17,6 +17,7 @@
 package com.grab.grazel.migrate.android
 
 import com.android.build.gradle.BaseExtension
+import com.android.build.gradle.api.AndroidSourceSet
 import com.grab.grazel.GrazelExtension
 import com.grab.grazel.bazel.rules.DATABINDING_ARTIFACTS
 import com.grab.grazel.bazel.rules.Multidex
@@ -49,6 +50,7 @@ constructor(
     private val grazelExtension: GrazelExtension,
     private val keyStoreExtractor: KeyStoreExtractor,
     private val manifestValuesBuilder: ManifestValuesBuilder,
+    private val androidManifestParser: AndroidManifestParser,
 ) : AndroidBinaryDataExtractor {
 
     override fun extract(
@@ -59,16 +61,13 @@ constructor(
         val extension = project.extensions.getByType<BaseExtension>()
         val manifestValues = manifestValuesBuilder.build(
             project,
-            matchedVariant.variant,
+            matchedVariant,
             extension.defaultConfig,
-            androidLibraryData.packageName
         )
         val multidexEnabled = extension.defaultConfig.multiDexEnabled == true
             || grazelExtension.android.multiDexEnabled
         val multidex = if (multidexEnabled) Multidex.Native else Multidex.Off
-        val dexShards = if (multidexEnabled) {
-            grazelExtension.android.dexShards
-        } else null
+        val dexShards = if (multidexEnabled) grazelExtension.android.dexShards else null
 
         val deps = if (project.hasDatabinding) databindingDependencies else emptyList()
 
@@ -76,6 +75,13 @@ constructor(
             rootProject = project.rootProject,
             variant = variantDataSource.getMigratableBuildVariants(project).firstOrNull()
         )
+
+        val customPackage = androidManifestParser.parsePackageName(
+            extension = extension,
+            androidSourceSets = matchedVariant.variant.sourceSets
+                .filterIsInstance<AndroidSourceSet>()
+                .toList()
+        ) ?: ""
 
         return AndroidBinaryData(
             name = project.name,
@@ -85,6 +91,8 @@ constructor(
             dexShards = dexShards,
             incrementalDexing = grazelExtension.android.incrementalDexing,
             debugKey = debugKey,
+            customPackage = customPackage,
+            packageName = matchedVariant.variant.applicationId,
             hasCrashlytics = project.hasCrashlytics,
             hasDatabinding = project.hasDatabinding
         )

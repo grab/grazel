@@ -21,6 +21,7 @@ import com.grab.grazel.bazel.starlark.BazelDependency
 internal data class AndroidInstrumentationBinaryData(
     val associates: List<BazelDependency>,
     val customPackage: String,
+    val targetPackage: String,
     val debugKey: String? = null,
     val deps: List<BazelDependency>,
     val instruments: BazelDependency,

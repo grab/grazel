@@ -103,12 +103,12 @@ grazel {
         }
         bazelCommon {
             gitRepository {
-                commit = "9abdf2229b56e816d08a91acee2cfaf48098ce06"
+                commit = "8f08543a037ef297fa521618fb4b591ac9d53dfd"
                 remote = "https://github.com/grab/grab-bazel-common.git"
             }
             toolchains {
                 buildifier {
-                    releaseVersion = "5.1.0"
+                    releaseVersion = "6.0.1"
                     supportedOs = ["linux", "darwin"]
                     supportedArch = ["amd64", "arm64"]
                 }
@@ -148,8 +148,8 @@ grazel {
                 sha256 = "f033fa36f51073eae224f18428d9493966e67c27387728b6be2ebbdae43f140e"
             }
             compiler {
-                tag = "1.6.10"
-                sha = "432267996d0d6b4b17ca8de0f878e44d4a099b7e9f1587a98edc4d27e76c215a"
+                tag = "1.6.21"
+                sha = "632166fed89f3f430482f5aa07f2e20b923b72ef688c8f5a7df3aa1502c6d8ba"
             }
             toolchain {
                 enabled = true

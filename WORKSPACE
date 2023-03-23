@@ -8,9 +8,9 @@ http_archive(
     url = "https://github.com/bazelbuild/rules_kotlin/releases/download/v1.7.0-RC-3/rules_kotlin_release.tgz",
 )
 
-KOTLIN_VERSION = "1.6.10"
+KOTLIN_VERSION = "1.6.21"
 
-KOTLINC_RELEASE_SHA = "432267996d0d6b4b17ca8de0f878e44d4a099b7e9f1587a98edc4d27e76c215a"
+KOTLINC_RELEASE_SHA = "632166fed89f3f430482f5aa07f2e20b923b72ef688c8f5a7df3aa1502c6d8ba"
 
 load("@io_bazel_rules_kotlin//kotlin:repositories.bzl", "kotlin_repositories", "kotlinc_version")
 
@@ -27,7 +27,7 @@ load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository")
 
 git_repository(
     name = "grab_bazel_common",
-    commit = "9abdf2229b56e816d08a91acee2cfaf48098ce06",
+    commit = "8f08543a037ef297fa521618fb4b591ac9d53dfd",
     remote = "https://github.com/grab/grab-bazel-common.git",
 )
 
@@ -38,7 +38,7 @@ bazel_common_dependencies()
 load("@grab_bazel_common//android:initialize.bzl", "bazel_common_initialize")
 
 bazel_common_initialize(
-    buildifier_version = "5.1.0",
+    buildifier_version = "6.0.1",
     patched_android_tools = True,
 )
 
@@ -98,7 +98,7 @@ maven_install(
         "com.squareup.leakcanary:leakcanary-android:2.10",
         "junit:junit:4.13.2",
         "org.jacoco:org.jacoco.ant:0.8.7",
-        "org.jetbrains.kotlin:kotlin-annotation-processing-gradle:1.6.10",
+        "org.jetbrains.kotlin:kotlin-annotation-processing-gradle:1.6.21",
         "org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.5.31",
         "org.jetbrains.kotlin:kotlin-stdlib:1.5.31",
     ],

@@ -31,6 +31,7 @@ internal data class AndroidInstrumentationBinaryTarget(
     override val visibility: Visibility = Visibility.Public,
     val associates: List<BazelDependency> = emptyList(),
     val customPackage: String,
+    val targetPackage: String,
     val debugKey: String? = null,
     val instruments: BazelDependency,
     val manifestValues: Map<String, String?> = mapOf(),
@@ -45,16 +46,17 @@ internal data class AndroidInstrumentationBinaryTarget(
         val resFiles = buildResources(resourceFiles, ResValues(), customResourceSets, name)
         androidInstrumentationBinary(
             name = name,
+            srcsGlob = srcs,
+            deps = deps,
             associates = associates,
             customPackage = customPackage,
+            targetPackage = targetPackage,
             debugKey = debugKey,
-            deps = deps,
             instruments = instruments,
             manifestValues = manifestValues,
             resources = resources,
             resourceStripPrefix = resourceStripPrefix,
             resourceFiles = resFiles,
-            srcsGlob = srcs,
             testInstrumentationRunner = testInstrumentationRunner,
         )
     }

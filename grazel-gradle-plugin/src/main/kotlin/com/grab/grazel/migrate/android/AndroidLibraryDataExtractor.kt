@@ -125,6 +125,7 @@ internal class DefaultAndroidLibraryDataExtractor @Inject constructor(
             assets = assets,
             assetsDir = assetsDir,
             manifestFile = manifestFile,
+            customPackage = packageName,
             packageName = packageName,
             hasDatabinding = project.hasDatabinding,
             buildConfigData = extension.extractBuildConfig(this, matchedVariant.variant),

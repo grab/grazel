@@ -17,14 +17,15 @@
 package com.grab.grazel.migrate.android
 
 import com.android.build.gradle.BaseExtension
-import com.android.build.gradle.api.BaseVariant
 import com.android.build.gradle.internal.dsl.DefaultConfig
 import com.grab.grazel.gradle.ConfigurationScope
+import com.grab.grazel.gradle.ConfigurationScope.BUILD
 import com.grab.grazel.gradle.dependencies.BuildGraphType
 import com.grab.grazel.gradle.dependencies.DependencyGraphs
-import com.grab.grazel.gradle.variant.getMigratableBuildVariants
 import com.grab.grazel.gradle.isAndroid
 import com.grab.grazel.gradle.variant.AndroidVariantDataSource
+import com.grab.grazel.gradle.variant.MatchedVariant
+import com.grab.grazel.gradle.variant.getMigratableBuildVariants
 import dagger.Lazy
 import org.gradle.api.Project
 import org.gradle.kotlin.dsl.the
@@ -33,9 +34,9 @@ import javax.inject.Inject
 internal interface ManifestValuesBuilder {
     fun build(
         project: Project,
-        variant: BaseVariant,
+        matchedVariant: MatchedVariant,
         defaultConfig: DefaultConfig,
-        packageName: String
+        configurationScope: ConfigurationScope = BUILD
     ): Map<String, String?>
 }
 
@@ -43,66 +44,74 @@ internal class DefaultManifestValuesBuilder @Inject constructor(
     private val dependencyGraphsProvider: Lazy<DependencyGraphs>,
     private val variantDataSource: AndroidVariantDataSource
 ) : ManifestValuesBuilder {
+
     private val projectDependencyGraphs get() = dependencyGraphsProvider.get()
+
     override fun build(
         project: Project,
-        variant: BaseVariant,
+        matchedVariant: MatchedVariant,
         defaultConfig: DefaultConfig,
-        packageName: String
+        configurationScope: ConfigurationScope
     ): Map<String, String?> {
         // Collect manifest values for all dependant projects
-        val libraryFlavorManifestPlaceHolders =
-            projectDependencyGraphs.dependenciesSubGraph(
+        val libraryFlavorManifestPlaceHolders = projectDependencyGraphs
+            .dependenciesSubGraph(
                 project,
-                BuildGraphType(ConfigurationScope.BUILD, variant)
-            )
-                .asSequence()
-                .filter(Project::isAndroid)
-                .flatMap { depProject ->
-                    val defaultConfigPlaceHolders = depProject.the<BaseExtension>()
-                        .defaultConfig
-                        .manifestPlaceholders
-                        .mapValues { it.value.toString() }
-                        .map { it.key to it.value }
+                BuildGraphType(configurationScope, matchedVariant.variant)
+            ).asSequence()
+            .filter(Project::isAndroid)
+            .flatMap { depProject ->
+                val defaultConfigPlaceHolders = depProject.the<BaseExtension>()
+                    .defaultConfig
+                    .manifestPlaceholders
+                    .mapValues { it.value.toString() }
+                    .map { it.key to it.value }
 
-                    val migratableVariants = variantDataSource
-                        .getMigratableBuildVariants(depProject)
-                        .asSequence()
+                val migratableVariants = variantDataSource
+                    .getMigratableBuildVariants(depProject)
+                    .asSequence()
 
-                    val buildTypePlaceholders = migratableVariants
-                        .flatMap { baseVariant ->
-                            baseVariant
-                                .buildType
-                                .manifestPlaceholders
-                                .mapValues { it.value.toString() }
-                                .map { it.key to it.value }
-                                .asSequence()
-                        }
+                val buildTypePlaceholders = migratableVariants
+                    .flatMap { baseVariant ->
+                        // TODO This should only include matchedVariant's build type, can be fixed
+                        // after migrating projectDependencyGraphs to variant graphs.
+                        baseVariant
+                            .buildType
+                            .manifestPlaceholders
+                            .mapValues { it.value.toString() }
+                            .map { it.key to it.value }
+                            .asSequence()
+                    }
 
-                    val flavorPlaceHolders: Sequence<Pair<String, String>> = migratableVariants
-                        .flatMap { baseVariant -> baseVariant.productFlavors.asSequence() }
-                        .flatMap { flavor ->
-                            flavor.manifestPlaceholders
-                                .map { it.key to it.value.toString() }
-                                .asSequence()
-                        }
-                    (defaultConfigPlaceHolders + buildTypePlaceholders + flavorPlaceHolders).asSequence()
-                }.toMap()
+                val flavorPlaceHolders: Sequence<Pair<String, String>> = migratableVariants
+                    .flatMap { baseVariant -> baseVariant.productFlavors.asSequence() }
+                    .flatMap { flavor ->
+                        flavor.manifestPlaceholders
+                            .map { it.key to it.value.toString() }
+                            .asSequence()
+                    }
+                (defaultConfigPlaceHolders + buildTypePlaceholders + flavorPlaceHolders).asSequence()
+            }.toMap()
 
         // Collect manifest values from current binary target
         val defautConfigPlaceHolders: Map<String, String?> = defaultConfig
             .manifestPlaceholders
             .mapValues { it.value.toString() }
 
+        val variantPlaceholders = matchedVariant.variant
+            .mergedFlavor
+            .manifestPlaceholders
+            .mapValues { it.value.toString() }
+
         // Android specific values
         val androidManifestValues: Map<String, String?> = mapOf(
             "versionCode" to defaultConfig.versionCode?.toString(),
-            "versionName" to defaultConfig.versionName?.toString(),
+            "versionName" to defaultConfig.versionName,
             "minSdkVersion" to defaultConfig.minSdkVersion?.apiLevel?.toString(),
             "targetSdkVersion" to defaultConfig.targetSdkVersion?.apiLevel?.toString(),
-            "applicationId" to packageName
+            "applicationId" to matchedVariant.variant.applicationId
         )
-        return (androidManifestValues + defautConfigPlaceHolders + libraryFlavorManifestPlaceHolders)
+        return (androidManifestValues + defautConfigPlaceHolders + variantPlaceholders + libraryFlavorManifestPlaceHolders)
     }
 }
 
