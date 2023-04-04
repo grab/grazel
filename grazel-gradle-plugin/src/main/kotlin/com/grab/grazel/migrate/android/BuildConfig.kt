@@ -32,7 +32,25 @@ internal data class BuildConfigData(
     val booleans: Map<String, String> = emptyMap(),
     val ints: Map<String, String> = emptyMap(),
     val longs: Map<String, String> = emptyMap()
-)
+) {
+    val isEmpty = strings.isEmpty() && booleans.isEmpty() && ints.isEmpty() && longs.isEmpty()
+
+    val merged: Map<String, Map<String, String>> by lazy {
+        buildMap {
+            put(STRINGS, strings)
+            put(BOOLEANS, booleans)
+            put(INTS, ints)
+            put(LONGS, longs)
+        }
+    }
+
+    companion object {
+        const val STRINGS = "strings"
+        const val BOOLEANS = "booleans"
+        const val INTS = "ints"
+        const val LONGS = "longs"
+    }
+}
 
 internal fun BaseExtension.extractBuildConfig(
     project: Project,
@@ -48,7 +66,9 @@ internal fun BaseExtension.extractBuildConfig(
         .map { it.value }
         .groupBy(
             keySelector = { it.type },
-            valueTransform = { it.name to it.value }
+            valueTransform = {
+                it.name to if (it.type == "boolean") it.value.quote() else it.value
+            }
         ).mapValues { it.value.toMap() }
         .withDefault { emptyMap() }
     return BuildConfigData(

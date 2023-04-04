@@ -84,7 +84,7 @@ class AndroidLibraryDataKtTest : GrazelPluginTest() {
     @Test
     fun `assert build resources converts all types of resources to statements`() {
         val resources = listOf("src/res/values.xml")
-        val resValues = ResValues(mapOf("value" to "hello"))
+        val resValuesData = ResValuesData(mapOf("value" to "hello"))
         val customResourceSet = listOf(
             ResourceSet(
                 "res-debug",
@@ -95,10 +95,10 @@ class AndroidLibraryDataKtTest : GrazelPluginTest() {
 
         // Setup
         val statements = StatementsBuilder().buildResources(
+            targetName,
             resources,
-            resValues,
             customResourceSet,
-            targetName
+            resValuesData
         ).joinToString(separator = " + ", transform = Assignee::asString)
 
         // Assert
@@ -111,17 +111,6 @@ class AndroidLibraryDataKtTest : GrazelPluginTest() {
     "src/main/res-debug/values/strings.xml",
   ])"""
             )
-        }
-
-        assertTrue("res_value is generated") {
-            statements
-                .contains(
-                    """ + res_value(
-  name = "target-res-value",
-  strings = {
-    "value" : "hello",
-  }"""
-                )
         }
     }
 

@@ -85,7 +85,7 @@ class BuildConfigFieldsTest : GrazelPluginTest() {
             }
             buildConfigData.booleans.truth {
                 hasSize(1)
-                containsEntry("SOME_BOOLEAN", "false")
+                containsEntry("SOME_BOOLEAN", "\"false\"")
             }
             buildConfigData.ints.truth {
                 hasSize(2)

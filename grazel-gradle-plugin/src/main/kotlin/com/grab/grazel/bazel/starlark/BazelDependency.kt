@@ -23,19 +23,24 @@ import org.gradle.api.artifacts.Dependency
 sealed class BazelDependency {
     data class ProjectDependency(
         val dependencyProject: Project,
-        val suffix: String = ""
+        val suffix: String = "",
+        val prefix: String = ""
     ) : BazelDependency() {
 
         override fun toString(): String {
-            val relativeProjectPath =
-                dependencyProject.rootProject.relativePath(dependencyProject.projectDir)
-            return if (relativeProjectPath.contains("/")) {
-                val path = relativeProjectPath.split("/").dropLast(1).joinToString("/")
-                "//" + path + "/" + dependencyProject.buildTargetName() + ":" +
-                    dependencyProject.buildTargetName() + suffix
-            } else {
-                "//" + dependencyProject.buildTargetName() + ":" +
-                    dependencyProject.buildTargetName() + suffix
+            val relativeRootPath = dependencyProject
+                .rootProject
+                .relativePath(dependencyProject.projectDir)
+            val buildTargetName = dependencyProject.buildTargetName()
+            return when {
+                relativeRootPath.contains("/") -> {
+                    val path = relativeRootPath
+                        .split("/")
+                        .dropLast(1)
+                        .joinToString("/")
+                    "//$path/$buildTargetName:$prefix$buildTargetName$suffix"
+                }
+                else -> "//$buildTargetName:$prefix$buildTargetName$suffix"
             }
         }
     }

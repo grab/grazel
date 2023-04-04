@@ -27,6 +27,8 @@ import com.grab.grazel.bazel.starlark.load
 import com.grab.grazel.bazel.starlark.quote
 import com.grab.grazel.bazel.starlark.toObject
 import com.grab.grazel.gradle.dependencies.MavenArtifact
+import com.grab.grazel.migrate.android.BuildConfigData
+import com.grab.grazel.migrate.android.ResValuesData
 
 fun StatementsBuilder.androidSdkRepository(
     name: String = "androidsdk",
@@ -117,7 +119,7 @@ enum class Multidex {
     Off
 }
 
-fun StatementsBuilder.androidBinary(
+internal fun StatementsBuilder.androidBinary(
     name: String,
     crunchPng: Boolean = false,
     customPackage: String,
@@ -131,11 +133,13 @@ fun StatementsBuilder.androidBinary(
     enableDataBinding: Boolean = false,
     visibility: Visibility = Visibility.Public,
     resources: List<Assignee> = emptyList(),
+    resValuesData: ResValuesData,
     deps: List<BazelDependency>,
     assetsGlob: List<String> = emptyList(),
-    assetsDir: String? = null
+    assetsDir: String? = null,
+    buildConfigData: BuildConfigData
 ) {
-
+    load("@grab_bazel_common//rules:defs.bzl", "android_binary")
     rule("android_binary") {
         "name" eq name.quote()
         "crunch_png" eq crunchPng.toString().capitalize()
@@ -145,10 +149,7 @@ fun StatementsBuilder.androidBinary(
         debugKey?.let { "debug_key" eq debugKey.quote() }
         "multidex" eq multidex.name.toLowerCase().quote()
         manifest?.let { "manifest" eq manifest.quote() }
-        "manifest_values" eq manifestValues.toObject(
-            quoteKeys = true,
-            quoteValues = true
-        )
+        "manifest_values" eq manifestValues.toObject(quoteKeys = true, quoteValues = true)
         srcsGlob.notEmpty {
             "srcs" eq glob(srcsGlob.quote)
         }
@@ -169,10 +170,16 @@ fun StatementsBuilder.androidBinary(
             "assets" eq glob(assetsGlob.quote)
             "assets_dir" eq assetsDir.quote()
         }
+        if (!buildConfigData.isEmpty) {
+            "build_config" eq buildConfigData.merged.toObject(quoteKeys = true)
+        }
+        if (!resValuesData.isEmpty) {
+            "res_values" eq resValuesData.merged.toObject(quoteKeys = true, quoteValues = true)
+        }
     }
 }
 
-fun StatementsBuilder.androidLibrary(
+internal fun StatementsBuilder.androidLibrary(
     name: String,
     packageName: String,
     manifest: String? = null,
@@ -183,8 +190,11 @@ fun StatementsBuilder.androidLibrary(
     deps: List<BazelDependency>,
     tags: List<String> = emptyList(),
     assetsGlob: List<String> = emptyList(),
-    assetsDir: String? = null
+    assetsDir: String? = null,
+    resValuesData: ResValuesData,
+    buildConfigData: BuildConfigData
 ) {
+    load("@grab_bazel_common//rules:defs.bzl", "android_library")
     rule("android_library") {
         "name" eq name.quote()
         "custom_package" eq packageName.quote()
@@ -211,6 +221,12 @@ fun StatementsBuilder.androidLibrary(
         assetsDir?.let {
             "assets" eq glob(assetsGlob.quote)
             "assets_dir" eq assetsDir.quote()
+        }
+        if (!buildConfigData.isEmpty) {
+            "build_config" eq buildConfigData.merged.toObject(quoteKeys = true)
+        }
+        if (!resValuesData.isEmpty) {
+            "res_values" eq resValuesData.merged.toObject(quoteKeys = true, quoteValues = true)
         }
     }
 }

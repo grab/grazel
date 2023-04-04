@@ -21,21 +21,30 @@ import com.android.builder.model.Version.ANDROID_GRADLE_PLUGIN_VERSION
 import com.grab.grazel.gradle.variant.MatchedVariant
 import com.grab.grazel.util.merge
 
-data class ResValues(
+data class ResValuesData(
     val stringValues: Map<String, String> = emptyMap()
 ) {
-    fun exists() = stringValues.isNotEmpty()
+    val isEmpty = stringValues.isEmpty()
+    val merged: Map<String, Map<String, String>> by lazy {
+        buildMap {
+            put(STRINGS, stringValues)
+        }
+    }
+
+    companion object {
+        const val STRINGS = "strings"
+    }
 }
 
 internal fun BaseExtension.extractResValue(
     matchedVariant: MatchedVariant
-): ResValues {
+): ResValuesData {
     val default = defaultConfig.resValues.mapValues { it.value.value }
     val buildTypes = matchedVariant.variant.buildType.resValues.mapValues { it.value.value }
     val flavors = matchedVariant.variant.productFlavors
         .map { flavor -> flavor.resValues.mapValues { it.value.value } }
         .merge { prev, next -> prev + next }
-    return ResValues(
+    return ResValuesData(
         stringValues = (default + buildTypes + flavors).mapKeys { getKeyValue(it.key) }
     )
 }

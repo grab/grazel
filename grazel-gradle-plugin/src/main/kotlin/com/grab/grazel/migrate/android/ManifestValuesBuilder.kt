@@ -40,7 +40,9 @@ internal interface ManifestValuesBuilder {
     ): Map<String, String?>
 }
 
-internal class DefaultManifestValuesBuilder @Inject constructor(
+internal class DefaultManifestValuesBuilder
+@Inject
+constructor(
     private val dependencyGraphsProvider: Lazy<DependencyGraphs>,
     private val variantDataSource: AndroidVariantDataSource
 ) : ManifestValuesBuilder {

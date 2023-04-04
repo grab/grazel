@@ -32,8 +32,8 @@ fun BazelTarget.toBazelDependency(): BazelDependency {
 }
 
 interface BazelBuildTarget : BazelTarget {
-    val deps: List<BazelDependency>
     val srcs: List<String>
+    val deps: List<BazelDependency>
     val visibility: Visibility
     val tags: List<String>
 }
