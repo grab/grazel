@@ -23,7 +23,6 @@ import com.grab.grazel.bazel.rules.loadCustomRes
 import com.grab.grazel.bazel.rules.loadResValue
 import com.grab.grazel.bazel.rules.resValue
 import com.grab.grazel.bazel.starlark.Assignee
-import com.grab.grazel.bazel.starlark.BazelDependency
 import com.grab.grazel.bazel.starlark.StatementsBuilder
 import com.grab.grazel.bazel.starlark.array
 import com.grab.grazel.bazel.starlark.glob
@@ -45,40 +44,15 @@ internal data class ResourceSet(
 
 internal fun ResourceSet.entryGlob(builder: StatementsBuilder) = builder.glob(listOf(entry.quote()))
 
-internal data class AndroidLibraryData(
-    val name: String,
-    val srcs: List<String>,
-    val res: List<String>,
-    val assets: List<String>,
-    val assetsDir: String?,
-    val manifestFile: String?,
-    /**
-     * Custom package used for detecting Java/Kotlin sources root
-     */
-    val customPackage: String,
-    /**
-     * Actual application package name of the library
-     */
-    val packageName: String,
-    val buildConfigData: BuildConfigData = BuildConfigData(),
-    val resValues: ResValues,
-    val extraRes: List<ResourceSet> = emptyList(),
-    val deps: List<BazelDependency> = emptyList(),
-    val plugins: List<BazelDependency> = emptyList(),
-    val hasDatabinding: Boolean = false,
-    val tags: List<String> = emptyList(),
-)
-
-
 internal fun AndroidLibraryData.toKtLibraryTarget(): BazelBuildTarget? = when {
-    srcs.isNotEmpty() || hasDatabinding -> KtLibraryTarget(
+    srcs.isNotEmpty() || databinding -> KtLibraryTarget(
         name = name,
-        kotlinProjectType = KotlinProjectType.Android(hasDatabinding = hasDatabinding),
+        kotlinProjectType = KotlinProjectType.Android(hasDatabinding = databinding),
         packageName = packageName,
         srcs = srcs,
         manifest = manifestFile,
         res = res,
-        resValues = resValues,
+        resValuesData = resValuesData,
         customResourceSets = extraRes,
         deps = deps,
         plugins = plugins,
@@ -117,17 +91,17 @@ internal fun AndroidLibraryData.toBuildConfigTarget() = BuildConfigTarget(
  * Calculate resources for Android targets
  *
  * @param resources resource list come from Android project
- * @param resValues Gradle's res_value values
+ * @param resValuesData Gradle's res_value values
  * @param customResourceSets The custom resource folders add as Gradle
  *     resource set
  * @param targetName The name of the target
  * @return List of `Assignee` to be used in `resource_files`
  */
 internal fun StatementsBuilder.buildResources(
+    targetName: String,
     resources: List<String>,
-    resValues: ResValues,
     customResourceSets: List<ResourceSet>,
-    targetName: String
+    resValuesData: ResValuesData = ResValuesData()
 ): List<Assignee> {
 
     val localResources = resources.map { glob(array(it.quote())) }
@@ -140,12 +114,12 @@ internal fun StatementsBuilder.buildResources(
             }
     } else emptyList()
 
-    val generatedResValues = if (resValues.exists()) {
+    if (!resValuesData.isEmpty) {
         loadResValue()
-        listOf(resValue("$targetName-res-value", resValues.stringValues))
+        listOf(resValue("$targetName-res-value", resValuesData.stringValues))
     } else emptyList()
 
-    return localResources + customResources + generatedResValues
+    return localResources + customResources
 }
 
 /**

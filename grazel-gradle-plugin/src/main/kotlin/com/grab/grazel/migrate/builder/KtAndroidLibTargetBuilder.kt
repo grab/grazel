@@ -29,7 +29,6 @@ import com.grab.grazel.migrate.android.AndroidUnitTestDataExtractor
 import com.grab.grazel.migrate.android.DefaultAndroidLibraryDataExtractor
 import com.grab.grazel.migrate.android.DefaultAndroidManifestParser
 import com.grab.grazel.migrate.android.DefaultAndroidUnitTestDataExtractor
-import com.grab.grazel.migrate.android.SourceSetType
 import com.grab.grazel.migrate.android.toBuildConfigTarget
 import com.grab.grazel.migrate.android.toKtLibraryTarget
 import com.grab.grazel.migrate.android.toUnitTestTarget
@@ -71,7 +70,6 @@ internal class KtAndroidLibTargetBuilder @Inject constructor(
             .forEach { matchedVariant ->
                 val androidLibraryData = androidLibraryDataExtractor.extract(
                     project = project,
-                    sourceSetType = SourceSetType.JAVA_KOTLIN,
                     matchedVariant = matchedVariant
                 ).run {
                     val deps = deps.toMutableList()
@@ -94,6 +92,6 @@ internal class KtAndroidLibTargetBuilder @Inject constructor(
     }
 
     override fun canHandle(project: Project): Boolean = with(project) {
-        isAndroid && isKotlin && !isAndroidApplication
+        isAndroid && isKotlin && !isAndroidApplication && false
     }
 }

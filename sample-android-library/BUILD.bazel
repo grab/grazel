@@ -1,13 +1,6 @@
-load("@grab_bazel_common//tools/build_config:build_config.bzl", "build_config")
+load("@grab_bazel_common//rules:defs.bzl", "android_library")
 
-build_config(
-    name = "sample-android-library-flavor1-free-debug-build-config",
-    package_name = "com.grab.grazel.android.sample.lib",
-)
-
-load("@grab_bazel_common//tools/kotlin:android.bzl", "kt_android_library")
-
-kt_android_library(
+android_library(
     name = "sample-android-library-flavor1-free-debug",
     srcs = glob([
         "src/main/java/com/grab/grazel/android/sample/SampleViewModel.kt",
@@ -18,21 +11,13 @@ kt_android_library(
         "//visibility:public",
     ],
     deps = [
-        ":sample-android-library-flavor1-free-debug-build-config",
         "//:parcelize",
     ],
 )
 
-load("@grab_bazel_common//tools/build_config:build_config.bzl", "build_config")
+load("@grab_bazel_common//rules:defs.bzl", "android_library")
 
-build_config(
-    name = "sample-android-library-flavor1-paid-debug-build-config",
-    package_name = "com.grab.grazel.android.sample.lib",
-)
-
-load("@grab_bazel_common//tools/kotlin:android.bzl", "kt_android_library")
-
-kt_android_library(
+android_library(
     name = "sample-android-library-flavor1-paid-debug",
     srcs = glob([
         "src/main/java/com/grab/grazel/android/sample/SampleViewModel.kt",
@@ -43,21 +28,13 @@ kt_android_library(
         "//visibility:public",
     ],
     deps = [
-        ":sample-android-library-flavor1-paid-debug-build-config",
         "//:parcelize",
     ],
 )
 
-load("@grab_bazel_common//tools/build_config:build_config.bzl", "build_config")
+load("@grab_bazel_common//rules:defs.bzl", "android_library")
 
-build_config(
-    name = "sample-android-library-flavor2-free-debug-build-config",
-    package_name = "com.grab.grazel.android.sample.lib",
-)
-
-load("@grab_bazel_common//tools/kotlin:android.bzl", "kt_android_library")
-
-kt_android_library(
+android_library(
     name = "sample-android-library-flavor2-free-debug",
     srcs = glob([
         "src/main/java/com/grab/grazel/android/sample/SampleViewModel.kt",
@@ -68,21 +45,13 @@ kt_android_library(
         "//visibility:public",
     ],
     deps = [
-        ":sample-android-library-flavor2-free-debug-build-config",
         "//:parcelize",
     ],
 )
 
-load("@grab_bazel_common//tools/build_config:build_config.bzl", "build_config")
+load("@grab_bazel_common//rules:defs.bzl", "android_library")
 
-build_config(
-    name = "sample-android-library-flavor2-paid-debug-build-config",
-    package_name = "com.grab.grazel.android.sample.lib",
-)
-
-load("@grab_bazel_common//tools/kotlin:android.bzl", "kt_android_library")
-
-kt_android_library(
+android_library(
     name = "sample-android-library-flavor2-paid-debug",
     srcs = glob([
         "src/main/java/com/grab/grazel/android/sample/SampleViewModel.kt",
@@ -93,7 +62,6 @@ kt_android_library(
         "//visibility:public",
     ],
     deps = [
-        ":sample-android-library-flavor2-paid-debug-build-config",
         "//:parcelize",
     ],
 )

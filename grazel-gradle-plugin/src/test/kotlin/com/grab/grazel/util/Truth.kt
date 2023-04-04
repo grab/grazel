@@ -11,3 +11,5 @@ inline fun Collection<*>.truth(
 inline fun Map<*, *>.truth(
     assertions: MapSubject.() -> Unit = {}
 ): MapSubject = Truth.assertThat(this).apply(assertions)
+
+fun String.truth() = Truth.assertThat(this)

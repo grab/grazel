@@ -43,19 +43,28 @@ fun StatementsBuilder.obj(
 ) = com.grab.grazel.bazel.starlark.obj(assignmentBuilder)
 
 /**
- * Converts the given `Map` to bazel struct
+ * Converts the given `Map` to bazel dict. Also expands nested maps to dict of dicts as needed.
  *
  * @param quoteKeys Whether the keys should be wrapped with quotes in generated code.
  * @param quoteValues Whether the values should be wrapped with quotes in generated code.
  */
-fun Map<String, Any?>.toObject(
+fun Map<*, *>.toObject(
     quoteKeys: Boolean = false,
     quoteValues: Boolean = false
-) = obj {
-    filterValues { it != null }
-        .forEach { (orgKey, orgValue) ->
-            val key = if (quoteKeys) orgKey.quote() else orgKey
-            val value = if (quoteValues) orgValue!!.quote() else orgValue!!
-            key eq value
+): ObjectStatement = obj {
+    filterValues { it != null }.forEach { (orgKey, orgValue) ->
+        val key = if (quoteKeys) orgKey!!.quote() else orgKey.toString()
+
+        when (orgValue) {
+            is Map<*, *> -> {
+                if (orgValue.isNotEmpty()) {
+                    key eq orgValue.toObject(quoteKeys, quoteValues)
+                }
+            }
+            else -> {
+                val value = if (quoteValues) orgValue!!.quote() else orgValue!!
+                key eq value
+            }
         }
+    }
 }

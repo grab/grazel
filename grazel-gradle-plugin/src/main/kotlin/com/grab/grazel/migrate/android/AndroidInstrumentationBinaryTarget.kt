@@ -43,7 +43,7 @@ internal data class AndroidInstrumentationBinaryTarget(
 ) : BazelBuildTarget {
 
     override fun statements(): List<Statement> = statements {
-        val resFiles = buildResources(resourceFiles, ResValues(), customResourceSets, name)
+        val resFiles = buildResources(name, resourceFiles, customResourceSets)
         androidInstrumentationBinary(
             name = name,
             srcsGlob = srcs,

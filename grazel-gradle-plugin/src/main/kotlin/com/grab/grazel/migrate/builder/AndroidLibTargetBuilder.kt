@@ -20,7 +20,6 @@ import com.grab.grazel.extension.TestExtension
 import com.grab.grazel.gradle.ConfigurationScope
 import com.grab.grazel.gradle.isAndroid
 import com.grab.grazel.gradle.isAndroidApplication
-import com.grab.grazel.gradle.isKotlin
 import com.grab.grazel.gradle.variant.VariantMatcher
 import com.grab.grazel.migrate.BazelTarget
 import com.grab.grazel.migrate.TargetBuilder
@@ -60,20 +59,18 @@ internal class AndroidLibTargetBuilder @Inject constructor(
             } + unitTestsTargets(project)
     }
 
-    private fun unitTestsTargets(project: Project) =
-        if (testExtension.enableTestMigration) {
-            variantMatcher.matchedVariants(
-                project,
-                ConfigurationScope.TEST
-            ).map { matchedVariant ->
-                unitTestDataExtractor.extract(project, matchedVariant).toUnitTestTarget()
-            }
-        } else {
-            emptyList()
+    private fun unitTestsTargets(project: Project) = when {
+        testExtension.enableTestMigration -> variantMatcher.matchedVariants(
+            project,
+            ConfigurationScope.TEST
+        ).map { matchedVariant ->
+            unitTestDataExtractor.extract(project, matchedVariant).toUnitTestTarget()
         }
+        else -> emptyList()
+    }
 
     override fun canHandle(project: Project): Boolean = with(project) {
-        isAndroid && !isKotlin && !isAndroidApplication
+        isAndroid && !isAndroidApplication
     }
 
     override fun sortOrder(): Int = 2
@@ -82,14 +79,16 @@ internal class AndroidLibTargetBuilder @Inject constructor(
 private fun AndroidLibraryData.toAndroidLibTarget() = AndroidLibraryTarget(
     name = name,
     srcs = srcs,
-    deps = deps,
-    enableDataBinding = hasDatabinding,
     res = res,
-    resValues = resValues,
+    deps = deps,
+    enableDataBinding = databinding,
+    resValuesData = resValuesData,
+    buildConfigData = buildConfigData,
     customResourceSets = extraRes,
     packageName = packageName,
     manifest = manifestFile,
     assetsGlob = assets,
-    assetsDir = assetsDir
+    assetsDir = assetsDir,
+    tags = tags
 )
 

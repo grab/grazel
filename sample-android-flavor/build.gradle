@@ -23,6 +23,10 @@ android {
     compileSdkVersion 33
     buildToolsVersion "33.0.1"
 
+    defaultConfig {
+        resValue "string", "generated_value", "generated"
+    }
+
     flavorDimensions "service", "release"
     productFlavors {
         flavor1 {

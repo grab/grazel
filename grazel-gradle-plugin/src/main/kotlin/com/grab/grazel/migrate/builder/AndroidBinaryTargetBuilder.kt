@@ -16,11 +16,10 @@
 
 package com.grab.grazel.migrate.builder
 
-import com.grab.grazel.gradle.ConfigurationScope
+import com.grab.grazel.gradle.ConfigurationScope.BUILD
 import com.grab.grazel.gradle.hasCrashlytics
 import com.grab.grazel.gradle.hasGooglePlayServicesPlugin
 import com.grab.grazel.gradle.isAndroidApplication
-import com.grab.grazel.gradle.isKotlin
 import com.grab.grazel.gradle.variant.MatchedVariant
 import com.grab.grazel.gradle.variant.VariantMatcher
 import com.grab.grazel.gradle.variant.nameSuffix
@@ -28,7 +27,6 @@ import com.grab.grazel.migrate.BazelTarget
 import com.grab.grazel.migrate.TargetBuilder
 import com.grab.grazel.migrate.android.AndroidBinaryDataExtractor
 import com.grab.grazel.migrate.android.AndroidBinaryTarget
-import com.grab.grazel.migrate.android.AndroidLibraryData
 import com.grab.grazel.migrate.android.AndroidLibraryDataExtractor
 import com.grab.grazel.migrate.android.CrashlyticsDataExtractor
 import com.grab.grazel.migrate.android.DefaultAndroidBinaryDataExtractor
@@ -39,9 +37,6 @@ import com.grab.grazel.migrate.android.DefaultManifestValuesBuilder
 import com.grab.grazel.migrate.android.GoogleServicesJsonExtractor
 import com.grab.grazel.migrate.android.KeyStoreExtractor
 import com.grab.grazel.migrate.android.ManifestValuesBuilder
-import com.grab.grazel.migrate.android.SourceSetType
-import com.grab.grazel.migrate.android.toBuildConfigTarget
-import com.grab.grazel.migrate.android.toKtLibraryTarget
 import com.grab.grazel.migrate.android.toTarget
 import com.grab.grazel.migrate.toBazelDependency
 import dagger.Binds
@@ -77,8 +72,8 @@ internal interface AndroidBinaryTargetBuilderModule {
 internal class AndroidBinaryTargetBuilder
 @Inject
 constructor(
-    private val androidLibDataExtractor: AndroidLibraryDataExtractor,
-    private val androidBinDataExtractor: AndroidBinaryDataExtractor,
+    private val androidLibraryDataExtractor: AndroidLibraryDataExtractor,
+    private val androidBinaryDataExtractor: AndroidBinaryDataExtractor,
     private val crashlyticsDataExtractor: CrashlyticsDataExtractor,
     private val variantMatcher: VariantMatcher
 ) : TargetBuilder {
@@ -90,54 +85,48 @@ constructor(
     private fun buildAndroidBinaryTargets(
         project: Project
     ): List<BazelTarget> {
-        val targets = variantMatcher.matchedVariants(project, ConfigurationScope.BUILD)
-            .flatMap { matchedVariant ->
-                val intermediateTargets = buildIntermediateTargets(
-                    project = project,
-                    matchedVariant = matchedVariant
-                ).toMutableList()
+        val targets = variantMatcher.matchedVariants(project, BUILD).flatMap { matchedVariant ->
+            val androidLibraryData = androidLibraryDataExtractor.extract(
+                project = project,
+                matchedVariant = matchedVariant
+            )
 
-                val androidLibraryData = androidLibDataExtractor.extract(
-                    project = project,
-                    matchedVariant = matchedVariant
-                ).let { libData ->
-                    libData.copy(
-                        deps = calcDeps(project, intermediateTargets, matchedVariant, libData)
-                    )
-                }
+            val androidBinaryData = androidBinaryDataExtractor.extract(
+                project = project,
+                matchedVariant = matchedVariant,
+            )
 
-                val androidBinaryData = androidBinDataExtractor.extract(
-                    project,
-                    matchedVariant,
-                    androidLibraryData
+            // TODO Implement this via bazel-common
+            val intermediateTargets = mutableListOf<BazelTarget>()
+            val crashlyticsDeps = crashlyticsDeps(
+                project,
+                matchedVariant,
+                intermediateTargets
+            )
+
+            listOf(
+                AndroidBinaryTarget(
+                    name = "${androidBinaryData.name}${matchedVariant.nameSuffix}",
+                    srcs = androidLibraryData.srcs,
+                    deps = androidLibraryData.deps + androidBinaryData.deps + crashlyticsDeps,
+                    multidex = androidBinaryData.multidex,
+                    debugKey = androidBinaryData.debugKey,
+                    dexShards = androidBinaryData.dexShards,
+                    incrementalDexing = androidBinaryData.incrementalDexing,
+                    enableDataBinding = androidBinaryData.databinding,
+                    customPackage = androidBinaryData.customPackage,
+                    packageName = androidBinaryData.packageName,
+                    manifest = androidLibraryData.manifestFile,
+                    manifestValues = androidBinaryData.manifestValues,
+                    res = androidLibraryData.res,
+                    resValuesData = androidLibraryData.resValuesData,
+                    customResourceSets = androidLibraryData.extraRes,
+                    assetsGlob = androidLibraryData.assets,
+                    assetsDir = androidLibraryData.assetsDir,
+                    buildConfigData = androidLibraryData.buildConfigData
                 )
-
-                val crashlyticsDeps = crashlyticsDeps(
-                    project,
-                    matchedVariant,
-                    intermediateTargets
-                )
-
-                listOf(
-                    AndroidBinaryTarget(
-                        name = "${androidBinaryData.name}${matchedVariant.nameSuffix}",
-                        deps = androidLibraryData.deps + androidBinaryData.deps + crashlyticsDeps,
-                        srcs = androidLibraryData.srcs,
-                        multidex = androidBinaryData.multidex,
-                        debugKey = androidBinaryData.debugKey,
-                        dexShards = androidBinaryData.dexShards,
-                        incrementalDexing = androidBinaryData.incrementalDexing,
-                        enableDataBinding = androidBinaryData.hasDatabinding,
-                        customPackage = androidBinaryData.customPackage,
-                        manifest = androidLibraryData.manifestFile,
-                        manifestValues = androidBinaryData.manifestValues,
-                        res = androidLibraryData.res,
-                        customResourceSets = androidLibraryData.extraRes,
-                        assetsGlob = androidLibraryData.assets,
-                        assetsDir = androidLibraryData.assetsDir,
-                    )
-                ) + intermediateTargets
-            }
+            ) + intermediateTargets
+        }
         return targets
     }
 
@@ -153,50 +142,6 @@ constructor(
         intermediateTargets.add(crashlyticsTarget)
         listOf(crashlyticsTarget.toBazelDependency())
     } else emptyList()
-
-    private fun calcDeps(
-        project: Project,
-        intermediateTargets: MutableList<BazelTarget>,
-        matchedVariant: MatchedVariant,
-        androidLibData: AndroidLibraryData
-    ) = when {
-        project.isKotlin -> {
-            // For kotlin project, don't duplicate Maven dependencies
-            intermediateTargets
-                .filter { it.name.endsWith(matchedVariant.nameSuffix) }
-                .map { it.toBazelDependency() }
-        }
-
-        else -> intermediateTargets
-            .filter { it.name.endsWith(matchedVariant.nameSuffix) }
-            .map { it.toBazelDependency() } + androidLibData.deps
-    }
-
-    private fun buildIntermediateTargets(
-        project: Project,
-        matchedVariant: MatchedVariant
-    ): List<BazelTarget> = buildList {
-        val androidProjectData = androidLibDataExtractor.extract(
-            project = project,
-            sourceSetType = SourceSetType.JAVA_KOTLIN,
-            matchedVariant = matchedVariant
-        ).copy(hasDatabinding = false)
-
-        val deps = androidProjectData.deps.toMutableList()
-
-        with(androidProjectData) {
-            toBuildConfigTarget().also {
-                deps += it.toBazelDependency()
-                add(it)
-            }
-        }
-
-        androidProjectData.copy(
-            name = "${project.name}_lib${matchedVariant.nameSuffix}",
-            deps = deps,
-            tags = emptyList() // Don't generate classpath reduction tags for final binary target
-        ).toKtLibraryTarget()?.let(::add)
-    }
 
     override fun canHandle(project: Project) = project.isAndroidApplication
 
