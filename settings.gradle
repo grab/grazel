@@ -26,7 +26,6 @@ plugins {
     id "com.gradle.enterprise"
 }
 rootProject.name = "grazel"
-apply from: "dependency-catalog.gradle"
 
 include(":sample-android")
 include(':sample-android-library')

@@ -1,0 +1,52 @@
+[versions]
+android-gradle-plugin = "7.2.2"
+androidx-appcompat = "1.3.1"
+androidx-constraintlayout = "2.1.4"
+androidx-constraintlayout-core = "1.0.4"
+androidx-core = "1.5.0"
+androidx-espresso = "3.4.0"
+androidx-junit = "1.1.3"
+crashlytics = "2.2.0"
+dagger = "2.37"
+dokka = "1.4.32"
+google-services = "4.3.13"
+gradle-plugin-publish = "0.14.0"
+gradle-wrapper = "7.5.1"
+guava = "30.1-jre"
+javapoet = "1.13.0"
+junit = "4.13.2"
+kotlin = "1.6.21"
+kotlin-dsl = "2.3.3"
+mockito-kotlin = "1.6.0"
+nexus = "1.1.0"
+picnic = "0.4.0"
+truth = "1.0"
+
+[libraries]
+android-gradle-plugin = { module = "com.android.tools.build:gradle", version.ref = "android-gradle-plugin" }
+androidx-appcompat = { module = "androidx.appcompat:appcompat", version.ref = "androidx-appcompat" }
+androidx-constraintlayout = { module = "androidx.constraintlayout:constraintlayout", version.ref = "androidx-constraintlayout" }
+androidx-constraintlayout-core = { module = "androidx.constraintlayout:constraintlayout-core", version.ref = "androidx-constraintlayout-core" }
+androidx-core = { module = "androidx.core:core", version.ref = "androidx-core" }
+androidx-test-espresso-core = { module = "androidx.test.espresso:espresso-core", version.ref = "androidx-espresso" }
+androidx-test-junit = { module = "androidx.test.ext:junit", version.ref = "androidx-junit" }
+databinding-common = { module = "androidx.databinding:databinding-common", version.ref = "android-gradle-plugin" }
+databinding-runtime = { module = "androidx.databinding:databinding-runtime", version.ref = "android-gradle-plugin" }
+dokka-gradle-plugin = { module = "org.jetbrains.dokka:dokka-gradle-plugin", version.ref = "dokka" }
+google-dagger = { module = "com.google.dagger:dagger", version.ref = "dagger" }
+google-dagger-compiler = { module = "com.google.dagger:dagger-compiler", version.ref = "dagger" }
+google-firebase-crashlytics = { module = "com.google.firebase:firebase-crashlytics-gradle", version.ref = "crashlytics" }
+google-guava = { module = "com.google.guava:guava", version.ref = "guava" }
+google-mobile-services = { module = "com.google.gms:google-services", version.ref = "google-services" }
+google-truth = { module = "com.google.truth:truth", version.ref = "truth" }
+javapoet = { module = "com.squareup:javapoet", version.ref = "javapoet" }
+junit = { module = "junit:junit", version.ref = "junit" }
+kotlin-gradle-plugin = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", version.ref = "kotlin" }
+kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
+mockito-kotlin = { module = "com.nhaarman:mockito-kotlin", version.ref = "mockito-kotlin" }
+nexus-gradle-publish-plugin = { module = "io.github.gradle-nexus:publish-plugin", version.ref = "nexus" }
+picnic = { module = "com.jakewharton.picnic:picnic", version.ref = "picnic" }
+
+[plugins]
+kotlin-dsl = { id = "org.gradle.kotlin.kotlin-dsl", version.ref = "kotlin-dsl" }
+gradle-publish = { id = "com.gradle.plugin-publish", version.ref = "gradle-plugin-publish" }
