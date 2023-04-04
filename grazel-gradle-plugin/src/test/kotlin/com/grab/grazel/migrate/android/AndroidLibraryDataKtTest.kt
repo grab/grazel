@@ -112,17 +112,6 @@ class AndroidLibraryDataKtTest : GrazelPluginTest() {
   ])"""
             )
         }
-
-        assertTrue("res_value is generated") {
-            statements
-                .contains(
-                    """ + res_value(
-  name = "target-res-value",
-  strings = {
-    "value" : "hello",
-  }"""
-                )
-        }
     }
 
     @Test

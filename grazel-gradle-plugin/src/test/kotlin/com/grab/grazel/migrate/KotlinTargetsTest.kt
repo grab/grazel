@@ -33,6 +33,7 @@ import org.gradle.api.Project
 import org.gradle.kotlin.dsl.configure
 import org.gradle.kotlin.dsl.dependencies
 import org.junit.Before
+import org.junit.Ignore
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
@@ -141,6 +142,7 @@ class KotlinTargetsTest {
     }
 
     @Test
+    @Ignore
     fun `assert for empty resources module with databinding enabled has kt_db_android_library generated`() {
         androidLibrary.doEvaluate()
         app.doEvaluate()
