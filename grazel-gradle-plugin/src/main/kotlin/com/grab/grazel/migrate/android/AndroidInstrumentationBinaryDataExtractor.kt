@@ -74,8 +74,9 @@ internal class DefaultAndroidInstrumentationBinaryDataExtractor
                 BuildGraphType(ConfigurationScope.ANDROID_TEST, matchedVariant.variant)
             ) +
             BazelDependency.ProjectDependency(
-                project,
-                "_lib${matchedVariant.nameSuffix}"
+                prefix = "lib_",
+                dependencyProject = project,
+                suffix = "${matchedVariant.nameSuffix}"
             )
 
         return project.extract(
@@ -116,7 +117,8 @@ internal class DefaultAndroidInstrumentationBinaryDataExtractor
 
         val associate = BazelDependency.ProjectDependency(
             dependencyProject = this,
-            suffix = "_lib${matchedVariant.nameSuffix}_kt"
+            prefix = "lib_",
+            suffix = "${matchedVariant.nameSuffix}_kt"
         )
 
         val resources = unitTestResources(migratableSourceSets.asSequence()).toList()

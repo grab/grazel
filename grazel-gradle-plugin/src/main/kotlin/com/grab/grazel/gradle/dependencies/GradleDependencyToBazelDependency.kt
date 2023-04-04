@@ -43,7 +43,7 @@ constructor() {
             if (dependency.isAndroid) {// project is an android project, dependent is also
                 BazelDependency.ProjectDependency(
                     dependency,
-                    matchedVariant.nameSuffix
+                    suffix = matchedVariant.nameSuffix
                 )
             } else {// project is an android project, dependent is NOT
                 BazelDependency.ProjectDependency(dependency)

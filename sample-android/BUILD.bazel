@@ -371,7 +371,7 @@ android_instrumentation_binary(
         "src/androidTest/java/KotlinTest.kt",
     ]),
     associates = [
-        "//sample-android:sample-android_lib-flavor1-free-debug_kt",
+        "//sample-android:lib_sample-android-flavor1-free-debug_kt",
     ],
     custom_package = "com.grab.grazel.android.sample",
     debug_key = "//buildsystem:debug-keystore",
@@ -393,7 +393,7 @@ android_instrumentation_binary(
     test_instrumentation_runner = "androidx.test.runner.AndroidJUnitRunner",
     deps = [
         "//:dagger",
-        "//sample-android:sample-android_lib-flavor1-free-debug",
+        "//sample-android:lib_sample-android-flavor1-free-debug",
         "//sample-android-flavor:sample-android-flavor-flavor1-free-debug",
         "//sample-android-library:sample-android-library-flavor1-free-debug",
         "//sample-kotlin-library",
@@ -414,7 +414,7 @@ android_instrumentation_binary(
         "src/androidTest/java/KotlinTest.kt",
     ]),
     associates = [
-        "//sample-android:sample-android_lib-flavor1-paid-debug_kt",
+        "//sample-android:lib_sample-android-flavor1-paid-debug_kt",
     ],
     custom_package = "com.grab.grazel.android.sample",
     debug_key = "//buildsystem:debug-keystore",
@@ -436,7 +436,7 @@ android_instrumentation_binary(
     test_instrumentation_runner = "androidx.test.runner.AndroidJUnitRunner",
     deps = [
         "//:dagger",
-        "//sample-android:sample-android_lib-flavor1-paid-debug",
+        "//sample-android:lib_sample-android-flavor1-paid-debug",
         "//sample-android-flavor:sample-android-flavor-flavor1-paid-debug",
         "//sample-android-library:sample-android-library-flavor1-paid-debug",
         "//sample-kotlin-library",
@@ -457,7 +457,7 @@ android_instrumentation_binary(
         "src/androidTest/java/KotlinTest.kt",
     ]),
     associates = [
-        "//sample-android:sample-android_lib-flavor2-free-debug_kt",
+        "//sample-android:lib_sample-android-flavor2-free-debug_kt",
     ],
     custom_package = "com.grab.grazel.android.sample",
     debug_key = "//buildsystem:debug-keystore",
@@ -479,7 +479,7 @@ android_instrumentation_binary(
     test_instrumentation_runner = "androidx.test.runner.AndroidJUnitRunner",
     deps = [
         "//:dagger",
-        "//sample-android:sample-android_lib-flavor2-free-debug",
+        "//sample-android:lib_sample-android-flavor2-free-debug",
         "//sample-android-flavor:sample-android-flavor-flavor2-free-debug",
         "//sample-android-library:sample-android-library-flavor2-free-debug",
         "//sample-kotlin-library",
@@ -500,7 +500,7 @@ android_instrumentation_binary(
         "src/androidTest/java/KotlinTest.kt",
     ]),
     associates = [
-        "//sample-android:sample-android_lib-flavor2-paid-debug_kt",
+        "//sample-android:lib_sample-android-flavor2-paid-debug_kt",
     ],
     custom_package = "com.grab.grazel.android.sample",
     debug_key = "//buildsystem:debug-keystore",
@@ -522,7 +522,7 @@ android_instrumentation_binary(
     test_instrumentation_runner = "androidx.test.runner.AndroidJUnitRunner",
     deps = [
         "//:dagger",
-        "//sample-android:sample-android_lib-flavor2-paid-debug",
+        "//sample-android:lib_sample-android-flavor2-paid-debug",
         "//sample-android-flavor:sample-android-flavor-flavor2-paid-debug",
         "//sample-android-library:sample-android-library-flavor2-paid-debug",
         "//sample-kotlin-library",
