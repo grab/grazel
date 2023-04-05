@@ -133,10 +133,6 @@ fun StatementsBuilder.rootKotlinSetup(
     }
 }
 
-sealed class KotlinProjectType {
-    object Jvm : KotlinProjectType()
-}
-
 fun StatementsBuilder.ktLibrary(
     name: String,
     srcs: List<String> = emptyList(),

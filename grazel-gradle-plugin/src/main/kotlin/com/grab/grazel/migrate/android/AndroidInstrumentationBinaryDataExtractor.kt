@@ -76,7 +76,7 @@ internal class DefaultAndroidInstrumentationBinaryDataExtractor
             BazelDependency.ProjectDependency(
                 prefix = "lib_",
                 dependencyProject = project,
-                suffix = "${matchedVariant.nameSuffix}"
+                suffix = matchedVariant.nameSuffix
             )
 
         return project.extract(

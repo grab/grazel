@@ -83,14 +83,3 @@ val Project.isMigrated: Boolean
     get() = if (this == rootProject) {
         file(WORKSPACE).exists()
     } else file(BUILD_BAZEL).exists()
-
-/**
- * Builds the Bazel target name from gradle [Project] instance.
- */
-fun Project.buildTargetName(isIntermediate: Boolean = false): String {
-    val suffix = if (isIntermediate) "_lib" else ""
-    return project.name + suffix
-}
-
-fun Project.booleanProperty(name: String): Boolean =
-    findProperty(name)?.toString()?.toBoolean() ?: false

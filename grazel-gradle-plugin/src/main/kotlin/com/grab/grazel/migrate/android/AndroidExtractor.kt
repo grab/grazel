@@ -93,6 +93,7 @@ constructor(
                 ) + project.kotlinParcelizeDeps()
                 return project.extract(matchedVariant, extension, deps)
             }
+
             else -> throw IllegalArgumentException("${project.name} is not an Android project")
         }
     }

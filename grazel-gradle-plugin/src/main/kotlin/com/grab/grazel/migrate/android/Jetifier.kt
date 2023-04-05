@@ -58,7 +58,8 @@ internal class JetifierDataExtractor {
             }
         return JetifierConfig(
             isEnabled = rootProject.isJetifierEnabled,
-            includeList = ((allArtifactCoordinates + includeList.asSequence()) - excludeList.asSequence())
+            includeList = ((allArtifactCoordinates + includeList.asSequence()) - excludeList
+                .toSet())
                 // .filter { artifact -> !artifact.startsWith("androidx.") }  // Filter known artifacts
                 .sorted()
                 .toList()

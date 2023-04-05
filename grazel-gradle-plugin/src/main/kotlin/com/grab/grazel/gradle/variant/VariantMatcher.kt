@@ -277,6 +277,7 @@ constructor(
                             "ensure flavor `matchingFallbacks` are specified in ${appProject.path}"
                     )
                 }
+
                 else -> {
                     // App's flavor and library's flavor should match else error.
                     findMatchingCandidateWithFallbacks(
