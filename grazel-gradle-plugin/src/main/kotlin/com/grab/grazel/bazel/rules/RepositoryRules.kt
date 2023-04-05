@@ -47,8 +47,8 @@ fun StatementsBuilder.gitRepository(
  *
  * @see [https://docs.bazel.build/versions/master/repo/git.html#git_repository]
  */
-class GitRepositoryRule(
-    override var name: String,
+data class GitRepositoryRule(
+    override val name: String,
     var commit: String? = null,
     var remote: String? = null,
     var shallowSince: String? = null
@@ -85,8 +85,8 @@ fun StatementsBuilder.httpArchive(
  *
  * @see [https://docs.bazel.build/versions/master/repo/http.html#http_archive]
  */
-class HttpArchiveRule(
-    override var name: String,
+data class HttpArchiveRule(
+    override val name: String,
     var url: String,
     var sha256: String? = null,
     var type: String? = null,

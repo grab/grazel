@@ -139,7 +139,7 @@ internal fun StatementsBuilder.androidBinary(
     assetsDir: String? = null,
     buildConfigData: BuildConfigData
 ) {
-    load("@grab_bazel_common//rules:defs.bzl", "android_binary")
+    load("@$GRAB_BAZEL_COMMON//rules:defs.bzl", "android_binary")
     rule("android_binary") {
         "name" eq name.quote()
         "crunch_png" eq crunchPng.toString().capitalize()
@@ -194,7 +194,7 @@ internal fun StatementsBuilder.androidLibrary(
     resValuesData: ResValuesData,
     buildConfigData: BuildConfigData
 ) {
-    load("@grab_bazel_common//rules:defs.bzl", "android_library")
+    load("@$GRAB_BAZEL_COMMON//rules:defs.bzl", "android_library")
     rule("android_library") {
         "name" eq name.quote()
         "custom_package" eq packageName.quote()
@@ -247,7 +247,7 @@ internal val DATABINDING_ARTIFACTS by lazy {
 }
 
 fun StatementsBuilder.loadCustomRes() {
-    load("@grab_bazel_common//tools/custom_res:custom_res.bzl", "custom_res")
+    load("@$GRAB_BAZEL_COMMON//tools/custom_res:custom_res.bzl", "custom_res")
 }
 
 fun customRes(
@@ -275,7 +275,7 @@ fun StatementsBuilder.grabAndroidLocalTest(
     tags: List<String> = emptyList(),
     resourcesGlob: List<String> = emptyList(),
 ) {
-    load("@grab_bazel_common//tools/test:test.bzl", "grab_android_local_test")
+    load("@$GRAB_BAZEL_COMMON//tools/test:test.bzl", "grab_android_local_test")
 
     rule("grab_android_local_test") {
         "name" eq name.quote()

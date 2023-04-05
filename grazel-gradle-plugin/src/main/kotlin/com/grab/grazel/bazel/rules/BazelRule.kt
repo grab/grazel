@@ -25,7 +25,7 @@ import com.grab.grazel.bazel.starlark.function
  * Type representing a Starlark Bazel rule.
  */
 interface BazelRule : StarlarkType {
-    var name: String
+    val name: String
 }
 
 fun StatementsBuilder.rule(name: String, assignmentBuilder: AssignmentBuilder.() -> Unit = {}) {
