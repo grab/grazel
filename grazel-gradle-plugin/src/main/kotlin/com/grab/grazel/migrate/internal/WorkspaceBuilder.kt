@@ -119,10 +119,8 @@ internal class WorkspaceBuilder(
             externalRepositories += DAGGER_REPOSITORIES
         }
 
-        if (hasDatabinding) {
-            loadBazelCommonArtifacts(grazelExtension.rules.bazelCommon.repository.name)
-            externalArtifacts += GRAB_BAZEL_COMMON_ARTIFACTS
-        }
+        loadBazelCommonArtifacts(grazelExtension.rules.bazelCommon.repository.name)
+        externalArtifacts += GRAB_BAZEL_COMMON_ARTIFACTS
 
         val mavenArtifacts = dependenciesDataSource
             .resolvedArtifactsFor(

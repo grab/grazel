@@ -145,6 +145,7 @@ fun StatementsBuilder.loadKtRules(
             "@$GRAB_BAZEL_COMMON//tools/databinding:databinding.bzl",
             "kt_db_android_library"
         )
+
         isAndroid -> load("@$GRAB_BAZEL_COMMON//tools/kotlin:android.bzl", "kt_android_library")
         isJvm -> load("@io_bazel_rules_kotlin//kotlin:jvm.bzl", "kt_jvm_library")
     }
@@ -235,7 +236,7 @@ fun StatementsBuilder.grabKtJvmTest(
     plugins: List<BazelDependency> = emptyList(),
     tags: List<String> = emptyList()
 ) {
-    load("@grab_bazel_common//tools/test:test.bzl", "grab_kt_jvm_test")
+    load("@$GRAB_BAZEL_COMMON//tools/test:test.bzl", "grab_kt_jvm_test")
 
     rule("grab_kt_jvm_test") {
         "name" eq name.quote()
