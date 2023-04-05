@@ -16,7 +16,6 @@
 
 package com.grab.grazel.migrate.kotlin
 
-import com.grab.grazel.bazel.rules.KotlinProjectType
 import com.grab.grazel.bazel.rules.Visibility
 import com.grab.grazel.bazel.rules.ktLibrary
 import com.grab.grazel.bazel.starlark.BazelDependency
@@ -27,14 +26,13 @@ import com.grab.grazel.migrate.android.ResValuesData
 import com.grab.grazel.migrate.android.ResourceSet
 import com.grab.grazel.migrate.android.buildResources
 
-internal data class KtLibraryTarget(
+internal data class KotlinLibraryTarget(
     override val name: String,
     override val srcs: List<String>,
     override val deps: List<BazelDependency>,
     override val visibility: Visibility = Visibility.Public,
     override val tags: List<String> = emptyList(),
     val projectName: String = name,
-    val kotlinProjectType: KotlinProjectType = KotlinProjectType.Jvm,
     val packageName: String? = null,
     val res: List<String>,
     val resValuesData: ResValuesData = ResValuesData(),
@@ -49,13 +47,12 @@ internal data class KtLibraryTarget(
         val resourceFiles = buildResources(projectName, res, customResourceSets, resValuesData)
         ktLibrary(
             name = name,
-            kotlinProjectType = kotlinProjectType,
             packageName = packageName,
-            visibility = visibility,
             srcsGlob = srcs,
-            manifest = manifest,
-            resourceFiles = resourceFiles,
+            visibility = visibility,
             deps = deps,
+            resourceFiles = resourceFiles,
+            manifest = manifest,
             plugins = plugins,
             assetsGlob = assetsGlob,
             assetsDir = assetsDir,

@@ -31,10 +31,6 @@ import com.grab.grazel.gradle.dependencies.DependenciesGraphsBuilder
 import com.grab.grazel.gradle.dependencies.DependenciesModule
 import com.grab.grazel.gradle.dependencies.DependencyGraphs
 import com.grab.grazel.gradle.dependencies.MavenInstallArtifactsCalculator
-import com.grab.grazel.gradle.variant.AndroidVariantDataSource
-import com.grab.grazel.gradle.variant.AndroidVariantsExtractor
-import com.grab.grazel.gradle.variant.DefaultAndroidVariantDataSource
-import com.grab.grazel.gradle.variant.DefaultAndroidVariantsExtractor
 import com.grab.grazel.gradle.variant.VariantBuilder
 import com.grab.grazel.gradle.variant.VariantMatcher
 import com.grab.grazel.gradle.variant.VariantModule
@@ -42,16 +38,12 @@ import com.grab.grazel.hybrid.HybridBuildExecutor
 import com.grab.grazel.hybrid.HybridBuildModule
 import com.grab.grazel.migrate.android.AndroidInstrumentationBinaryDataExtractor
 import com.grab.grazel.migrate.android.ManifestValuesBuilder
-import com.grab.grazel.migrate.builder.AndroidBinaryTargetBuilderModule
-import com.grab.grazel.migrate.builder.AndroidInstrumentationBinaryTargetBuilderModule
-import com.grab.grazel.migrate.builder.AndroidLibTargetBuilderModule
-import com.grab.grazel.migrate.builder.KtAndroidLibTargetBuilderModule
-import com.grab.grazel.migrate.builder.KtLibTargetBuilderModule
 import com.grab.grazel.migrate.dependencies.ArtifactsPinner
 import com.grab.grazel.migrate.dependencies.DefaultArtifactsPinner
 import com.grab.grazel.migrate.internal.ProjectBazelFileBuilder
 import com.grab.grazel.migrate.internal.RootBazelFileBuilder
 import com.grab.grazel.migrate.internal.WorkspaceBuilder
+import com.grab.grazel.migrate.target.TargetModule
 import dagger.Binds
 import dagger.BindsInstance
 import dagger.Component
@@ -63,14 +55,7 @@ import org.gradle.kotlin.dsl.the
 import javax.inject.Singleton
 
 @Component(
-    modules = [
-        GrazelModule::class,
-        KtLibTargetBuilderModule::class,
-        KtAndroidLibTargetBuilderModule::class,
-        AndroidLibTargetBuilderModule::class,
-        AndroidBinaryTargetBuilderModule::class,
-        AndroidInstrumentationBinaryTargetBuilderModule::class,
-    ]
+    modules = [GrazelModule::class]
 )
 @Singleton
 internal interface GrazelComponent {
@@ -105,6 +90,7 @@ internal interface GrazelComponent {
         DependenciesModule::class,
         HybridBuildModule::class,
         VariantModule::class,
+        TargetModule::class,
     ]
 )
 internal interface GrazelModule {
@@ -118,9 +104,6 @@ internal interface GrazelModule {
     fun DefaultRepositoryDataSource.bindRepositoryDataSource(): RepositoryDataSource
 
     @Binds
-    fun DefaultAndroidVariantsExtractor.bindAndroidVariantsExtractor(): AndroidVariantsExtractor
-
-    @Binds
     fun DefaultArtifactsPinner.bindArtifactsPinner(): ArtifactsPinner
 
     companion object {
@@ -131,16 +114,6 @@ internal interface GrazelModule {
         @Provides
         @Singleton
         fun DependenciesGraphsBuilder.provideDependencyGraphs(): DependencyGraphs = build()
-
-        @Provides
-        @Singleton
-        fun GrazelExtension.provideAndroidVariantDataSource(
-            androidVariantsExtractor: DefaultAndroidVariantsExtractor,
-            @RootProject rootProject: Project
-        ): AndroidVariantDataSource = DefaultAndroidVariantDataSource(
-            variantFilter = android.variantFilter,
-            androidVariantsExtractor = androidVariantsExtractor
-        )
 
         @Provides
         @Singleton

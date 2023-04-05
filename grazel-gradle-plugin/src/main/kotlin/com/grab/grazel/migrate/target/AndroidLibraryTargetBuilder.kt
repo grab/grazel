@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.grab.grazel.migrate.builder
+package com.grab.grazel.migrate.target
 
 import com.grab.grazel.extension.TestExtension
 import com.grab.grazel.gradle.ConfigurationScope
@@ -26,7 +26,11 @@ import com.grab.grazel.migrate.TargetBuilder
 import com.grab.grazel.migrate.android.AndroidLibraryData
 import com.grab.grazel.migrate.android.AndroidLibraryDataExtractor
 import com.grab.grazel.migrate.android.AndroidLibraryTarget
+import com.grab.grazel.migrate.android.AndroidManifestParser
 import com.grab.grazel.migrate.android.AndroidUnitTestDataExtractor
+import com.grab.grazel.migrate.android.DefaultAndroidLibraryDataExtractor
+import com.grab.grazel.migrate.android.DefaultAndroidManifestParser
+import com.grab.grazel.migrate.android.DefaultAndroidUnitTestDataExtractor
 import com.grab.grazel.migrate.android.toUnitTestTarget
 import dagger.Binds
 import dagger.Module
@@ -38,12 +42,23 @@ import javax.inject.Singleton
 @Module
 internal interface AndroidLibTargetBuilderModule {
     @Binds
+    fun DefaultAndroidManifestParser.bindAndroidManifestParser(): AndroidManifestParser
+
+    @Binds
+    fun DefaultAndroidLibraryDataExtractor.bindAndroidLibraryDataExtractor(): AndroidLibraryDataExtractor
+
+    @Binds
+    fun DefaultAndroidUnitTestDataExtractor.bindAndroidUnitTestDataExtractor(): AndroidUnitTestDataExtractor
+
+    @Binds
     @IntoSet
-    fun AndroidLibTargetBuilder.bindKtLibTargetBuilder(): TargetBuilder
+    fun AndroidLibraryTargetBuilder.bindKtLibTargetBuilder(): TargetBuilder
 }
 
 @Singleton
-internal class AndroidLibTargetBuilder @Inject constructor(
+internal class AndroidLibraryTargetBuilder
+@Inject
+constructor(
     private val androidLibraryDataExtractor: AndroidLibraryDataExtractor,
     private val unitTestDataExtractor: AndroidUnitTestDataExtractor,
     private val testExtension: TestExtension,
@@ -66,6 +81,7 @@ internal class AndroidLibTargetBuilder @Inject constructor(
         ).map { matchedVariant ->
             unitTestDataExtractor.extract(project, matchedVariant).toUnitTestTarget()
         }
+
         else -> emptyList()
     }
 

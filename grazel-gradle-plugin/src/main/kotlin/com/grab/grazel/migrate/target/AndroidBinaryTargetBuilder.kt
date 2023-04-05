@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.grab.grazel.migrate.builder
+package com.grab.grazel.migrate.target
 
 import com.grab.grazel.gradle.ConfigurationScope.BUILD
 import com.grab.grazel.gradle.hasCrashlytics

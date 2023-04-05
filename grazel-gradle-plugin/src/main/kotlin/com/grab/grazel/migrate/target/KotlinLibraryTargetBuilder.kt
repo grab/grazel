@@ -14,9 +14,8 @@
  * limitations under the License.
  */
 
-package com.grab.grazel.migrate.builder
+package com.grab.grazel.migrate.target
 
-import com.grab.grazel.extension.KotlinExtension
 import com.grab.grazel.extension.TestExtension
 import com.grab.grazel.gradle.isAndroid
 import com.grab.grazel.gradle.isKotlin
@@ -24,10 +23,10 @@ import com.grab.grazel.migrate.BazelTarget
 import com.grab.grazel.migrate.TargetBuilder
 import com.grab.grazel.migrate.kotlin.DefaultKotlinProjectDataExtractor
 import com.grab.grazel.migrate.kotlin.DefaultKotlinUnitTestDataExtractor
+import com.grab.grazel.migrate.kotlin.KotlinLibraryTarget
 import com.grab.grazel.migrate.kotlin.KotlinProjectData
 import com.grab.grazel.migrate.kotlin.KotlinProjectDataExtractor
 import com.grab.grazel.migrate.kotlin.KotlinUnitTestDataExtractor
-import com.grab.grazel.migrate.kotlin.KtLibraryTarget
 import com.grab.grazel.migrate.kotlin.toUnitTestTarget
 import dagger.Binds
 import dagger.Module
@@ -37,7 +36,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 @Module
-internal interface KtLibTargetBuilderModule {
+internal interface KotlinLibraryTargetBuilderModule {
     @Binds
     fun DefaultKotlinProjectDataExtractor.bindKotlinProjectDataExtractor(): KotlinProjectDataExtractor
 
@@ -46,37 +45,35 @@ internal interface KtLibTargetBuilderModule {
 
     @Binds
     @IntoSet
-    fun KtLibTargetBuilder.bindKtLibTargetBuilder(): TargetBuilder
+    fun KotlinLibraryTargetBuilder.bindKtLibTargetBuilder(): TargetBuilder
 }
 
 
 @Singleton
-internal class KtLibTargetBuilder @Inject constructor(
+internal class KotlinLibraryTargetBuilder
+@Inject
+constructor(
     private val projectDataExtractor: KotlinProjectDataExtractor,
     private val kotlinUnitTestDataExtractor: KotlinUnitTestDataExtractor,
-    private val kotlinExtension: KotlinExtension,
     private val testExtension: TestExtension
 ) : TargetBuilder {
 
     override fun build(project: Project): List<BazelTarget> {
         val projectData = projectDataExtractor.extract(project)
-        val ktLibTargets = projectData.toKtLibraryTarget(kotlinExtension.enabledTransitiveReduction)
-
+        val ktLibTargets = projectData.toKotlinLibraryTarget()
         return if (testExtension.enableTestMigration) {
-            val unitTestsTargets = kotlinUnitTestDataExtractor.extract(project).toUnitTestTarget()
+            val unitTestsTargets = kotlinUnitTestDataExtractor
+                .extract(project)
+                .toUnitTestTarget()
             listOf(ktLibTargets, unitTestsTargets)
-        } else {
-            listOf(ktLibTargets)
-        }
+        } else listOf(ktLibTargets)
     }
 
     override fun canHandle(project: Project): Boolean = with(project) {
         !isAndroid && isKotlin
     }
-}
 
-private fun KotlinProjectData.toKtLibraryTarget(enabledTransitiveDepsReduction: Boolean = false): KtLibraryTarget {
-    return KtLibraryTarget(
+    private fun KotlinProjectData.toKotlinLibraryTarget() = KotlinLibraryTarget(
         name = name,
         srcs = srcs,
         res = res,
