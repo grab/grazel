@@ -36,12 +36,12 @@ fun StatementsBuilder.androidSdkRepository(
     buildToolsVersion: String? = null
 ) {
     rule("android_sdk_repository") {
-        "name" eq name.quote()
+        "name" `=` name.quote
         apiLevel?.let {
-            "api_level" eq apiLevel
+            "api_level" `=` apiLevel
         }
         buildToolsVersion?.let {
-            "build_tools_version" eq buildToolsVersion.quote()
+            "build_tools_version" `=` buildToolsVersion.quote
         }
     }
 }
@@ -52,12 +52,12 @@ fun StatementsBuilder.androidNdkRepository(
     ndkApiLevel: Int? = null
 ) {
     rule("android_ndk_repository") {
-        "name" eq name.quote()
+        "name" `=` name.quote
         path?.let {
-            "path" eq path.quote()
+            "path" `=` path.quote
         }
         ndkApiLevel?.let {
-            "api_level" eq ndkApiLevel
+            "api_level" `=` ndkApiLevel
         }
     }
 }
@@ -72,26 +72,26 @@ fun StatementsBuilder.buildConfig(
 ) {
     load("@$GRAB_BAZEL_COMMON//tools/build_config:build_config.bzl", "build_config")
     rule("build_config") {
-        "name" eq name.quote()
-        "package_name" eq packageName.quote()
+        "name" `=` name.quote
+        "package_name" `=` packageName.quote
 
         if (strings.isNotEmpty()) {
-            "strings" eq strings.mapKeys { it.key.quote() }.toObject()
+            "strings" `=` strings.mapKeys { it.key.quote }.toObject()
         }
 
         if (booleans.isNotEmpty()) {
-            "booleans" eq booleans
-                .mapKeys { it.key.quote() }
-                .mapValues { it.value.quote() }
+            "booleans" `=` booleans
+                .mapKeys { it.key.quote }
+                .mapValues { it.value.quote }
                 .toObject()
         }
 
         if (ints.isNotEmpty()) {
-            "ints" eq ints.mapKeys { it.key.quote() }.toObject()
+            "ints" `=` ints.mapKeys { it.key.quote }.toObject()
         }
 
         if (longs.isNotEmpty()) {
-            "longs" eq longs.mapKeys { it.key.quote() }.toObject()
+            "longs" `=` longs.mapKeys { it.key.quote }.toObject()
         }
     }
 }
@@ -105,9 +105,9 @@ fun resValue(
     strings: Map<String, String>
 ) = Assignee {
     rule("res_value") {
-        "name" eq name.quote()
-        "strings" eq strings.mapKeys { it.key.quote() }
-            .mapValues { it.value.quote() }
+        "name" `=` name.quote
+        "strings" `=` strings.mapKeys { it.key.quote }
+            .mapValues { it.value.quote }
             .toObject()
     }
 }
@@ -141,40 +141,40 @@ internal fun StatementsBuilder.androidBinary(
 ) {
     load("@$GRAB_BAZEL_COMMON//rules:defs.bzl", "android_binary")
     rule("android_binary") {
-        "name" eq name.quote()
-        "crunch_png" eq crunchPng.toString().capitalize()
-        "custom_package" eq customPackage.quote()
-        "incremental_dexing" eq incrementalDexing.toString().capitalize()
-        dexShards?.let { "dex_shards" eq dexShards }
-        debugKey?.let { "debug_key" eq debugKey.quote() }
-        "multidex" eq multidex.name.toLowerCase().quote()
-        manifest?.let { "manifest" eq manifest.quote() }
-        "manifest_values" eq manifestValues.toObject(quoteKeys = true, quoteValues = true)
+        "name" `=` name.quote
+        "crunch_png" `=` crunchPng.toString().capitalize()
+        "custom_package" `=` customPackage.quote
+        "incremental_dexing" `=` incrementalDexing.toString().capitalize()
+        dexShards?.let { "dex_shards" `=` dexShards }
+        debugKey?.let { "debug_key" `=` debugKey.quote }
+        "multidex" `=` multidex.name.toLowerCase().quote
+        manifest?.let { "manifest" `=` manifest.quote }
+        "manifest_values" `=` manifestValues.toObject(quoteKeys = true, quoteValues = true)
         srcsGlob.notEmpty {
-            "srcs" eq glob(srcsGlob.quote)
+            "srcs" `=` glob(srcsGlob.quote)
         }
-        "visibility" eq array(visibility.rule.quote())
+        "visibility" `=` array(visibility.rule.quote)
         if (enableDataBinding) {
-            "enable_data_binding" eq enableDataBinding.toString().capitalize()
+            "enable_data_binding" `=` enableDataBinding.toString().capitalize()
         }
         resources.notEmpty {
-            "resource_files" eq resources.joinToString(
+            "resource_files" `=` resources.joinToString(
                 separator = " + ",
                 transform = Assignee::asString
             )
         }
         deps.notEmpty {
-            "deps" eq array(deps.map(BazelDependency::toString).quote)
+            "deps" `=` array(deps.map(BazelDependency::toString).quote)
         }
         assetsDir?.let {
-            "assets" eq glob(assetsGlob.quote)
-            "assets_dir" eq assetsDir.quote()
+            "assets" `=` glob(assetsGlob.quote)
+            "assets_dir" `=` assetsDir.quote
         }
         if (!buildConfigData.isEmpty) {
-            "build_config" eq buildConfigData.merged.toObject(quoteKeys = true)
+            "build_config" `=` buildConfigData.merged.toObject(quoteKeys = true)
         }
         if (!resValuesData.isEmpty) {
-            "res_values" eq resValuesData.merged.toObject(quoteKeys = true, quoteValues = true)
+            "res_values" `=` resValuesData.merged.toObject(quoteKeys = true, quoteValues = true)
         }
     }
 }
@@ -196,37 +196,37 @@ internal fun StatementsBuilder.androidLibrary(
 ) {
     load("@$GRAB_BAZEL_COMMON//rules:defs.bzl", "android_library")
     rule("android_library") {
-        "name" eq name.quote()
-        "custom_package" eq packageName.quote()
-        manifest?.let { "manifest" eq manifest.quote() }
+        "name" `=` name.quote
+        "custom_package" `=` packageName.quote
+        manifest?.let { "manifest" `=` manifest.quote }
         srcsGlob.notEmpty {
-            "srcs" eq glob(srcsGlob.map(String::quote))
+            "srcs" `=` glob(srcsGlob.map(String::quote))
         }
-        "visibility" eq array(visibility.rule.quote())
+        "visibility" `=` array(visibility.rule.quote)
         resourceFiles.notEmpty {
-            "resource_files" eq resourceFiles.joinToString(
+            "resource_files" `=` resourceFiles.joinToString(
                 separator = " + ",
                 transform = Assignee::asString
             )
         }
         deps.notEmpty {
-            "deps" eq array(deps.map(BazelDependency::toString).map(String::quote))
+            "deps" `=` array(deps.map(BazelDependency::toString).map(String::quote))
         }
         if (enableDataBinding) {
-            "enable_data_binding" eq enableDataBinding.toString().capitalize()
+            "enable_data_binding" `=` enableDataBinding.toString().capitalize()
         }
         tags.notEmpty {
-            "tags" eq array(tags.map(String::quote))
+            "tags" `=` array(tags.map(String::quote))
         }
         assetsDir?.let {
-            "assets" eq glob(assetsGlob.quote)
-            "assets_dir" eq assetsDir.quote()
+            "assets" `=` glob(assetsGlob.quote)
+            "assets_dir" `=` assetsDir.quote
         }
         if (!buildConfigData.isEmpty) {
-            "build_config" eq buildConfigData.merged.toObject(quoteKeys = true)
+            "build_config" `=` buildConfigData.merged.toObject(quoteKeys = true)
         }
         if (!resValuesData.isEmpty) {
-            "res_values" eq resValuesData.merged.toObject(quoteKeys = true, quoteValues = true)
+            "res_values" `=` resValuesData.merged.toObject(quoteKeys = true, quoteValues = true)
         }
     }
 }
@@ -256,9 +256,9 @@ fun customRes(
     resourceFiles: Assignee
 ): Assignee = Assignee {
     rule("custom_res") {
-        "target" eq target.quote()
-        "dir_name" eq dirName.quote()
-        "resource_files" eq resourceFiles
+        "target" `=` target.quote
+        "dir_name" `=` dirName.quote
+        "resource_files" `=` resourceFiles
     }
 }
 
@@ -278,32 +278,32 @@ fun StatementsBuilder.grabAndroidLocalTest(
     load("@$GRAB_BAZEL_COMMON//tools/test:test.bzl", "grab_android_local_test")
 
     rule("grab_android_local_test") {
-        "name" eq name.quote()
-        "custom_package" eq customPackage.quote()
+        "name" `=` name.quote
+        "custom_package" `=` customPackage.quote
         srcs.notEmpty {
-            "srcs" eq srcs.map(String::quote)
+            "srcs" `=` srcs.map(String::quote)
         }
         additionalSrcSets.notEmpty {
-            "additional_src_sets" eq additionalSrcSets.map(String::quote)
+            "additional_src_sets" `=` additionalSrcSets.map(String::quote)
         }
         srcsGlob.notEmpty {
-            "srcs" eq glob(srcsGlob.map(String::quote))
+            "srcs" `=` glob(srcsGlob.map(String::quote))
         }
-        "visibility" eq array(visibility.rule.quote())
+        "visibility" `=` array(visibility.rule.quote)
         associates.notEmpty {
-            "associates" eq array(associates.map(BazelDependency::toString).map(String::quote))
+            "associates" `=` array(associates.map(BazelDependency::toString).map(String::quote))
         }
         deps.notEmpty {
-            "deps" eq array(deps.map(BazelDependency::toString).map(String::quote))
+            "deps" `=` array(deps.map(BazelDependency::toString).map(String::quote))
         }
         plugins.notEmpty {
-            "plugins" eq array(plugins.map(BazelDependency::toString).map(String::quote))
+            "plugins" `=` array(plugins.map(BazelDependency::toString).map(String::quote))
         }
         tags.notEmpty {
-            "tags" eq array(tags.map(String::quote))
+            "tags" `=` array(tags.map(String::quote))
         }
         resourcesGlob.notEmpty {
-            "resources" eq glob(resourcesGlob.map(String::quote))
+            "resources" `=` glob(resourcesGlob.map(String::quote))
         }
     }
 }
@@ -328,40 +328,40 @@ fun StatementsBuilder.androidInstrumentationBinary(
         "android_instrumentation_binary"
     )
     rule("android_instrumentation_binary") {
-        "name" eq name.quote()
+        "name" `=` name.quote
         associates.notEmpty {
-            "associates" eq array(associates.map(BazelDependency::toString).map(String::quote))
+            "associates" `=` array(associates.map(BazelDependency::toString).map(String::quote))
         }
-        "custom_package" eq customPackage.quote()
-        "target_package" eq targetPackage.quote()
-        debugKey?.let { "debug_key" eq debugKey.quote() }
+        "custom_package" `=` customPackage.quote
+        "target_package" `=` targetPackage.quote
+        debugKey?.let { "debug_key" `=` debugKey.quote }
         deps.notEmpty {
-            "deps" eq array(deps.map(BazelDependency::toString).map(String::quote))
+            "deps" `=` array(deps.map(BazelDependency::toString).map(String::quote))
         }
-        "instruments" eq instruments.toString().quote()
+        "instruments" `=` instruments.toString().quote
         manifestValues.notEmpty {
-            "manifest_values" eq manifestValues.toObject(
+            "manifest_values" `=` manifestValues.toObject(
                 quoteKeys = true,
                 quoteValues = true
             )
         }
         resources.notEmpty {
-            "resources" eq glob(resources.quote)
+            "resources" `=` glob(resources.quote)
         }
         resourceStripPrefix?.let {
-            "resource_strip_prefix" eq it.quote()
+            "resource_strip_prefix" `=` it.quote
         }
         resourceFiles.notEmpty {
-            "resource_files" eq resourceFiles.joinToString(
+            "resource_files" `=` resourceFiles.joinToString(
                 separator = " + ",
                 transform = Assignee::asString
             )
         }
         srcsGlob.notEmpty {
-            "srcs" eq glob(srcsGlob.quote)
+            "srcs" `=` glob(srcsGlob.quote)
         }
         testInstrumentationRunner?.let {
-            "test_instrumentation_runner" eq it.quote()
+            "test_instrumentation_runner" `=` it.quote
         }
     }
 }

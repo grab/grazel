@@ -36,9 +36,9 @@ sealed class MavenRepository : AssigneeBuilder {
         val password: String? = null
     ) : MavenRepository() {
         override fun build() = when {
-            username == null || password == null -> StringStatement(url.quote())
+            username == null || password == null -> StringStatement(url.quote)
             else -> StringStatement(
-                url.split("://").joinToString(separator = "://$username:$password@").quote()
+                url.split("://").joinToString(separator = "://$username:$password@").quote
             )
         }
     }
@@ -90,49 +90,49 @@ fun StatementsBuilder.mavenInstall(
     load("@$rulesJvmExternalName//:specs.bzl", "maven")
 
     rule("maven_install") {
-        name?.let { "name" eq it.quote() }
+        name?.let { "name" `=` it.quote }
 
-        "artifacts" eq combineExternalVariablesAndArray(
+        "artifacts" `=` combineExternalVariablesAndArray(
             externalArtifacts,
             artifacts.map { it.asString() }
         )
 
-        "repositories" eq combineExternalVariablesAndArray(
+        "repositories" `=` combineExternalVariablesAndArray(
             externalRepositories,
             mavenRepositories.map { it.build().asString() },
             true,
         )
 
         if (jetify) {
-            "jetify" eq "True"
+            "jetify" `=` "True"
         }
 
         jetifyIncludeList.notEmpty {
-            "jetify_include_list" eq array(jetifyIncludeList.quote)
+            "jetify_include_list" `=` array(jetifyIncludeList.quote)
         }
 
         if (!failOnMissingChecksum) {
-            "fail_on_missing_checksum" eq "False"
+            "fail_on_missing_checksum" `=` "False"
         }
 
-        "resolve_timeout" eq resolveTimeout
+        "resolve_timeout" `=` resolveTimeout
         excludeArtifacts.notEmpty {
-            "excluded_artifacts" eq excludeArtifacts.quote
+            "excluded_artifacts" `=` excludeArtifacts.quote
         }
 
         if (overrideTargets.isNotEmpty()) {
-            "override_targets" eq obj {
+            "override_targets" `=` obj {
                 overrideTargets.forEach { (mavenArtifact, bazelLabel) ->
-                    mavenArtifact.quote() eq bazelLabel.quote()
+                    mavenArtifact.quote `=` bazelLabel.quote
                 }
             }
         }
         mavenInstallJson?.let {
-            "maven_install_json" eq mavenInstallJson.quote()
+            "maven_install_json" `=` mavenInstallJson.quote
         }
 
         versionConflictPolicy?.let {
-            "version_conflict_policy" eq it.quote()
+            "version_conflict_policy" `=` it.quote
         }
     }
 }
@@ -152,7 +152,7 @@ sealed class MavenInstallArtifact : StarlarkType {
         override val id: String get() = coordinates
 
         override fun StatementsBuilder.statements() {
-            add(coordinates.quote())
+            add(coordinates.quote)
         }
     }
 
@@ -164,7 +164,7 @@ sealed class MavenInstallArtifact : StarlarkType {
             val coordinates: String
         ) : Exclusion() {
             override fun StatementsBuilder.statements() {
-                add(coordinates.quote())
+                add(coordinates.quote)
             }
         }
 
@@ -174,8 +174,8 @@ sealed class MavenInstallArtifact : StarlarkType {
         ) : Exclusion() {
             override fun StatementsBuilder.statements() {
                 rule("maven.exclusion") {
-                    "group" eq group.quote()
-                    "artifact" eq artifact.quote()
+                    "group" `=` group.quote
+                    "artifact" `=` artifact.quote
                 }
             }
         }
@@ -190,10 +190,10 @@ sealed class MavenInstallArtifact : StarlarkType {
         override val id: String = "$group:$artifact:$version"
         override fun StatementsBuilder.statements() {
             rule("maven.artifact") {
-                "group" eq group.quote()
-                "artifact" eq artifact.quote()
-                "version" eq version.quote()
-                "exclusions" eq exclusions.map { it.asString() }
+                "group" `=` group.quote
+                "artifact" `=` artifact.quote
+                "version" `=` version.quote
+                "exclusions" `=` exclusions.map { it.asString() }
             }
         }
     }

@@ -39,17 +39,18 @@ interface IsEmpty {
     fun isEmpty(): Boolean
 }
 
-private fun String.isQuoted() = startsWith("\"") && endsWith("\"")
+private val String.isQuoted get() = startsWith("\"") && endsWith("\"")
 
-fun Any.quote(): String {
-    val stringValue = toString()
-    return if (!stringValue.isQuoted()) "\"" + toString() + "\"" else stringValue
-}
+val Any.quote: String
+    get() {
+        val stringValue = toString()
+        return if (!stringValue.isQuoted) "\"" + toString() + "\"" else stringValue
+    }
 
 /**
  * Quotes each [Iterable]'s items with `quote`.
  */
-val <T : Any> Collection<T>.quote: Collection<String> get() = map { it.quote() }
+val <T : Any> Collection<T>.quote: Collection<String> get() = map { it.quote }
 
 class StatementsBuilder : AssignmentBuilder {
     private val mutableStatements = mutableListOf<Statement>()
@@ -61,7 +62,7 @@ class StatementsBuilder : AssignmentBuilder {
     }
 
     fun add(statements: List<Statement>) {
-        this.mutableStatements.addAll(statements)
+        mutableStatements.addAll(statements)
         addNewLine()
     }
 
@@ -81,19 +82,19 @@ class StatementsBuilder : AssignmentBuilder {
         add(statement.toStatement())
     }
 
-    override fun String.eq(value: String) {
+    override fun String.`=`(value: String) {
         val key = this
-        add(Assignments { key eq value })
+        add(Assignments { key `=` value })
     }
 
-    override fun String.eq(assignee: Assignee) {
+    override fun String.`=`(assignee: Assignee) {
         val key = this
-        add(Assignments { key eq assignee })
+        add(Assignments { key `=` assignee })
     }
 
-    override fun String.eq(strings: List<String>) {
+    override fun String.`=`(strings: List<String>) {
         val key = this
-        add(Assignments { key eq strings })
+        add(Assignments { key `=` strings })
     }
 }
 

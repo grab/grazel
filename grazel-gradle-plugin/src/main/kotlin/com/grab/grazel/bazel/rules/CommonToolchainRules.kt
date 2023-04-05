@@ -36,14 +36,14 @@ fun StatementsBuilder.configureCommonToolchains(
     )
 
     buildifier.targetName?.let {
-        BUILDIFIER_CONFIG eq """{
-            "name": ${it.quote()}
+        BUILDIFIER_CONFIG `=` """{
+            "name": ${it.quote}
         }""".trimIndent()
     }
 
     function("configure_common_toolchains") {
         buildifier.targetName?.let {
-            "buildifier" eq BUILDIFIER_CONFIG
+            "buildifier" `=` BUILDIFIER_CONFIG
         }
     }
 }

@@ -42,7 +42,7 @@ internal data class ResourceSet(
     val entry: String
 )
 
-internal fun ResourceSet.entryGlob(builder: StatementsBuilder) = builder.glob(listOf(entry.quote()))
+internal fun ResourceSet.entryGlob(builder: StatementsBuilder) = builder.glob(listOf(entry.quote))
 
 internal fun AndroidLibraryData.toKtLibraryTarget(): BazelBuildTarget? = when {
     srcs.isNotEmpty() || databinding -> KtLibraryTarget(
@@ -104,7 +104,7 @@ internal fun StatementsBuilder.buildResources(
     resValuesData: ResValuesData = ResValuesData()
 ): List<Assignee> {
 
-    val localResources = resources.map { glob(array(it.quote())) }
+    val localResources = resources.map { glob(array(it.quote)) }
 
     val customResources = if (customResourceSets.isNotEmpty()) {
         loadCustomRes()

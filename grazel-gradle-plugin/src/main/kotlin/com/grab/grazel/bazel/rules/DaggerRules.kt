@@ -29,8 +29,8 @@ fun StatementsBuilder.daggerWorkspaceRules(
     val tag = "DAGGER_TAG"
     val sha256 = "DAGGER_SHA"
 
-    tag eq daggerExt.tag.quote()
-    sha256 eq daggerExt.sha.quote()
+    tag `=` daggerExt.tag.quote
+    sha256 `=` daggerExt.sha.quote
     httpArchive(
         name = "dagger",
         stripPrefix = """"dagger-dagger-%s" % $tag""",

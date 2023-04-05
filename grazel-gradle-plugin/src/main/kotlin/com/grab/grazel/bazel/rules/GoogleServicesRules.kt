@@ -60,8 +60,8 @@ fun StatementsBuilder.googleServicesXml(
         load("@tools_android//tools/googleservices:defs.bzl", "google_services_xml")
         Assignee { // Create new statements scope to not add to current scope
             function("google_services_xml") {
-                "package_name" eq packageName.quote()
-                "google_services_json" eq googleServicesJson.quote()
+                "package_name" `=` packageName.quote
+                "google_services_json" `=` googleServicesJson.quote
             }
         }
     } else null
@@ -87,10 +87,10 @@ fun StatementsBuilder.crashlyticsAndroidLibrary(
     if (!packageName.isNullOrBlank() && !buildId.isNullOrBlank()) {
         load("@tools_android//tools/crashlytics:defs.bzl", "crashlytics_android_library")
         rule("crashlytics_android_library") {
-            "name" eq name.quote()
-            "package_name" eq packageName.quote()
-            "build_id" eq buildId.quote()
-            resourceFiles?.let { "resource_files" eq resourceFiles }
+            "name" `=` name.quote
+            "package_name" `=` packageName.quote
+            "build_id" `=` buildId.quote
+            resourceFiles?.let { "resource_files" `=` resourceFiles }
         }
     }
 

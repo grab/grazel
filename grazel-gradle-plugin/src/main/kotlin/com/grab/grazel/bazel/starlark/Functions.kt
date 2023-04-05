@@ -101,8 +101,8 @@ fun StatementsBuilder.filegroup(
     visibility: Visibility = Visibility.Public
 ) {
     rule("filegroup") {
-        "name" eq name.quote()
-        "srcs" eq array(srcs.quote)
-        "visibility" eq array(visibility.rule.quote())
+        "name" `=` name.quote
+        "srcs" `=` array(srcs.quote)
+        "visibility" `=` array(visibility.rule.quote)
     }
 }
