@@ -119,12 +119,12 @@ fun noArgAssign(
 ) = StringKeyAssignStatement("", StringStatement(value), assignmentOp)
 
 interface AssignmentBuilder {
-    infix fun String.eq(value: String)
-    infix fun String.eq(value: Any) = this eq value.toString()
-    infix fun String.eq(assignee: Assignee)
-    infix fun String.eq(strings: List<String>)
-    infix fun String.eq(assigneeBuilder: AssigneeBuilder) {
-        this eq assigneeBuilder.build()
+    infix fun String.`=`(value: String)
+    infix fun String.`=`(value: Any) = this `=` value.toString()
+    infix fun String.`=`(assignee: Assignee)
+    infix fun String.`=`(strings: List<String>)
+    infix fun String.`=`(assigneeBuilder: AssigneeBuilder) {
+        this `=` assigneeBuilder.build()
     }
 
     /**
@@ -179,16 +179,16 @@ class DefaultAssignmentBuilder(private val assignmentOp: AssignmentOp = EQUAL) :
      */
     val assignments get() = mutableAssignments.toList()
 
-    override infix fun String.eq(value: String) {
+    override infix fun String.`=`(value: String) {
         mutableAssignments += SimpleAssignStatement(this, value, assignmentOp)
     }
 
-    override infix fun String.eq(assignee: Assignee) {
+    override infix fun String.`=`(assignee: Assignee) {
         mutableAssignments += StringKeyAssignStatement(this, assignee, assignmentOp)
     }
 
-    override infix fun String.eq(strings: List<String>) {
-        this eq array(strings)
+    override infix fun String.`=`(strings: List<String>) {
+        this `=` array(strings)
     }
 }
 

@@ -53,17 +53,17 @@ fun Map<*, *>.toObject(
     quoteValues: Boolean = false
 ): ObjectStatement = obj {
     filterValues { it != null }.forEach { (orgKey, orgValue) ->
-        val key = if (quoteKeys) orgKey!!.quote() else orgKey.toString()
+        val key = if (quoteKeys) orgKey!!.quote else orgKey.toString()
 
         when (orgValue) {
             is Map<*, *> -> {
                 if (orgValue.isNotEmpty()) {
-                    key eq orgValue.toObject(quoteKeys, quoteValues)
+                    key `=` orgValue.toObject(quoteKeys, quoteValues)
                 }
             }
             else -> {
-                val value = if (quoteValues) orgValue!!.quote() else orgValue!!
-                key eq value
+                val value = if (quoteValues) orgValue!!.quote else orgValue!!
+                key `=` value
             }
         }
     }

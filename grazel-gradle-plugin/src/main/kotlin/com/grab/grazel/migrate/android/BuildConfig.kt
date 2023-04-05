@@ -67,7 +67,7 @@ internal fun BaseExtension.extractBuildConfig(
         .groupBy(
             keySelector = { it.type },
             valueTransform = {
-                it.name to if (it.type == "boolean") it.value.quote() else it.value
+                it.name to if (it.type == "boolean") it.value.quote else it.value
             }
         ).mapValues { it.value.toMap() }
         .withDefault { emptyMap() }
@@ -93,7 +93,7 @@ private fun Project.androidBinaryBuildConfigFields(
     val versionName = extension.defaultConfig.versionName
     mapOf(
         VERSION_CODE to ClassFieldImpl("int", VERSION_CODE, versionCode.toString()),
-        VERSION_NAME to ClassFieldImpl("String", VERSION_NAME, versionName.toString().quote())
+        VERSION_NAME to ClassFieldImpl("String", VERSION_NAME, versionName.toString().quote)
     )
 } else emptyMap()
 

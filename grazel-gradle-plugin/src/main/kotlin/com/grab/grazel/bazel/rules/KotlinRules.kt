@@ -56,8 +56,8 @@ fun StatementsBuilder.kotlinCompiler(
     kotlinCompilerVersion: String,
     kotlinCompilerReleaseSha: String
 ) {
-    KOTLIN_VERSION eq kotlinCompilerVersion.quote()
-    KOTLINC_RELEASE_SHA eq kotlinCompilerReleaseSha.quote()
+    KOTLIN_VERSION `=` kotlinCompilerVersion.quote
+    KOTLINC_RELEASE_SHA `=` kotlinCompilerReleaseSha.quote
     newLine()
 
     load(
@@ -66,7 +66,7 @@ fun StatementsBuilder.kotlinCompiler(
         "kotlinc_version"
     )
 
-    KOTLINC_RELEASE eq """kotlinc_version(
+    KOTLINC_RELEASE `=` """kotlinc_version(
         release = $KOTLIN_VERSION,
         sha256 = $KOTLINC_RELEASE_SHA
     )
@@ -111,26 +111,26 @@ fun StatementsBuilder.rootKotlinSetup(
             "define_kt_toolchain"
         )
         rule(kotlinCTarget) {
-            "name" eq kotlinCTarget.quote()
+            "name" `=` kotlinCTarget.quote
             if (kotlinCOptions.useIr != null) {
-                "x_use_ir" eq kotlinCOptions.useIr.toString().capitalize()
+                "x_use_ir" `=` kotlinCOptions.useIr.toString().capitalize()
             }
         }
         rule(javaTarget) {
-            "name" eq javaTarget.quote()
+            "name" `=` javaTarget.quote
         }
 
         rule("define_kt_toolchain") {
-            "name" eq toolchain.name.quote()
-            "api_version" eq toolchain.apiVersion.quote()
-            "experimental_use_abi_jars" eq toolchain.abiJars.toString().capitalize()
-            "experimental_multiplex_workers" eq toolchain.multiplexWorkers.toString().capitalize()
-            "javac_options" eq "//:$javaTarget".quote()
-            "jvm_target" eq toolchain.jvmTarget.quote()
-            "kotlinc_options" eq "//:$kotlinCTarget".quote()
-            "language_version" eq toolchain.languageVersion.quote()
-            "experimental_report_unused_deps" eq toolchain.reportUnusedDeps.quote()
-            "experimental_strict_kotlin_deps" eq toolchain.strictKotlinDeps.quote()
+            "name" `=` toolchain.name.quote
+            "api_version" `=` toolchain.apiVersion.quote
+            "experimental_use_abi_jars" `=` toolchain.abiJars.toString().capitalize()
+            "experimental_multiplex_workers" `=` toolchain.multiplexWorkers.toString().capitalize()
+            "javac_options" `=` "//:$javaTarget".quote
+            "jvm_target" `=` toolchain.jvmTarget.quote
+            "kotlinc_options" `=` "//:$kotlinCTarget".quote
+            "language_version" `=` toolchain.languageVersion.quote
+            "experimental_report_unused_deps" `=` toolchain.reportUnusedDeps.quote
+            "experimental_strict_kotlin_deps" `=` toolchain.strictKotlinDeps.quote
         }
     }
 }
@@ -188,38 +188,38 @@ fun StatementsBuilder.ktLibrary(
     }
 
     rule(ruleName) {
-        "name" eq name.quote()
+        "name" `=` name.quote
         srcs.notEmpty {
-            "srcs" eq srcs.map(String::quote)
+            "srcs" `=` srcs.map(String::quote)
         }
         srcsGlob.notEmpty {
-            "srcs" eq glob(srcsGlob.map(String::quote))
+            "srcs" `=` glob(srcsGlob.map(String::quote))
         }
-        "visibility" eq array(visibility.rule.quote())
+        "visibility" `=` array(visibility.rule.quote)
         deps.notEmpty {
-            "deps" eq array(deps.map(BazelDependency::toString).map(String::quote))
+            "deps" `=` array(deps.map(BazelDependency::toString).map(String::quote))
         }
         resourceFiles.notEmpty {
-            "resource_files" eq resourceFiles.joinToString(
+            "resource_files" `=` resourceFiles.joinToString(
                 separator = " + ",
                 transform = Assignee::asString
             )
         }
         resources.notEmpty {
-            "resource_files" eq glob(resources.quote)
+            "resource_files" `=` glob(resources.quote)
         }
-        packageName?.let { "custom_package" eq packageName.quote() }
-        manifest?.let { "manifest" eq manifest.quote() }
+        packageName?.let { "custom_package" `=` packageName.quote }
+        manifest?.let { "manifest" `=` manifest.quote }
         plugins.notEmpty {
-            "plugins" eq array(plugins.map(BazelDependency::toString).map(String::quote))
+            "plugins" `=` array(plugins.map(BazelDependency::toString).map(String::quote))
         }
         assetsDir?.let {
-            "assets" eq glob(assetsGlob.quote)
-            "assets_dir" eq assetsDir.quote()
+            "assets" `=` glob(assetsGlob.quote)
+            "assets_dir" `=` assetsDir.quote
         }
 
         tags.notEmpty {
-            "tags" eq array(tags.map(String::quote))
+            "tags" `=` array(tags.map(String::quote))
         }
     }
 }
@@ -239,28 +239,28 @@ fun StatementsBuilder.grabKtJvmTest(
     load("@$GRAB_BAZEL_COMMON//tools/test:test.bzl", "grab_kt_jvm_test")
 
     rule("grab_kt_jvm_test") {
-        "name" eq name.quote()
+        "name" `=` name.quote
         srcs.notEmpty {
-            "srcs" eq srcs.map(String::quote)
+            "srcs" `=` srcs.map(String::quote)
         }
         srcsGlob.notEmpty {
-            "srcs" eq glob(srcsGlob.map(String::quote))
+            "srcs" `=` glob(srcsGlob.map(String::quote))
         }
         additionalSrcSets.notEmpty {
-            "additional_src_sets" eq additionalSrcSets.map(String::quote)
+            "additional_src_sets" `=` additionalSrcSets.map(String::quote)
         }
-        "visibility" eq array(visibility.rule.quote())
+        "visibility" `=` array(visibility.rule.quote)
         deps.notEmpty {
-            "deps" eq array(deps.map(BazelDependency::toString).map(String::quote))
+            "deps" `=` array(deps.map(BazelDependency::toString).map(String::quote))
         }
         associates.notEmpty {
-            "associates" eq array(associates.map(BazelDependency::toString).map(String::quote))
+            "associates" `=` array(associates.map(BazelDependency::toString).map(String::quote))
         }
         plugins.notEmpty {
-            "plugins" eq array(plugins.map(BazelDependency::toString).map(String::quote))
+            "plugins" `=` array(plugins.map(BazelDependency::toString).map(String::quote))
         }
         tags.notEmpty {
-            "tags" eq array(tags.map(String::quote))
+            "tags" `=` array(tags.map(String::quote))
         }
     }
 }

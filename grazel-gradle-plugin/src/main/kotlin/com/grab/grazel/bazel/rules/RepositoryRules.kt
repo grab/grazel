@@ -35,10 +35,10 @@ fun StatementsBuilder.gitRepository(
 ) {
     load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository")
     rule("git_repository") {
-        "name" eq name.quote()
-        commit?.let { "commit" eq commit.quote() }
-        shallowSince?.let { "shallow_since" eq shallowSince.quote() }
-        remote?.let { "remote" eq remote.quote() }
+        "name" `=` name.quote
+        commit?.let { "commit" `=` commit.quote }
+        shallowSince?.let { "shallow_since" `=` shallowSince.quote }
+        remote?.let { "remote" `=` remote.quote }
     }
 }
 
@@ -72,11 +72,11 @@ fun StatementsBuilder.httpArchive(
 ) {
     load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
     rule("http_archive") {
-        "name" eq name.quote()
-        stripPrefix?.let { "strip_prefix" eq stripPrefix }
-        sha256?.let { "sha256" eq sha256 }
-        "url" eq url
-        type?.let { "type" eq type }
+        "name" `=` name.quote
+        stripPrefix?.let { "strip_prefix" `=` stripPrefix }
+        sha256?.let { "sha256" `=` sha256 }
+        "url" `=` url
+        type?.let { "type" `=` type }
     }
 }
 
@@ -94,11 +94,11 @@ data class HttpArchiveRule(
 ) : BazelRepositoryRule {
     override fun StatementsBuilder.statements() {
         httpArchive(
-            name = name.quote(),
-            url = url.quote(),
-            sha256 = sha256?.quote(),
-            type = type?.quote(),
-            stripPrefix = stripPrefix?.quote()
+            name = name.quote,
+            url = url.quote,
+            sha256 = sha256?.quote,
+            type = type?.quote,
+            stripPrefix = stripPrefix?.quote
         )
     }
 }

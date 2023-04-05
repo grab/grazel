@@ -27,10 +27,10 @@ const val GRAB_BAZEL_COMMON_ARTIFACTS = "GRAB_BAZEL_COMMON_ARTIFACTS"
 
 fun StatementsBuilder.workspace(name: String) {
     function("workspace") {
-        "name" eq name
+        "name" `=` name
             .replace("-", "_")
             .replace(" ", "_")
-            .quote()
+            .quote
     }
 }
 
@@ -43,7 +43,7 @@ fun StatementsBuilder.loadBazelCommonArtifacts(bazelCommonRepoName: String) {
 }
 
 fun StatementsBuilder.registerToolchain(toolchain: String) {
-    function("register_toolchains", toolchain.quote())
+    function("register_toolchains", toolchain.quote)
 }
 
 fun StatementsBuilder.bazelCommonRepository(
@@ -76,7 +76,7 @@ fun StatementsBuilder.bazelCommonInitialize(
 ) {
     load("@${bazelCommonRepoName}//android:initialize.bzl", "bazel_common_initialize")
     function("bazel_common_initialize") {
-        "patched_android_tools" eq "True"
-        "buildifier_version" eq buildifierVersion.quote()
+        "patched_android_tools" `=` "True"
+        "buildifier_version" `=` buildifierVersion.quote
     }
 }
