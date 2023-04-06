@@ -19,7 +19,7 @@ package com.grab.grazel.migrate.kotlin
 import com.grab.grazel.bazel.rules.Visibility
 import com.grab.grazel.bazel.rules.grabKtJvmTest
 import com.grab.grazel.bazel.starlark.BazelDependency
-import com.grab.grazel.bazel.starlark.statements
+import com.grab.grazel.bazel.starlark.StatementsBuilder
 import com.grab.grazel.migrate.BazelBuildTarget
 
 internal data class UnitTestTarget(
@@ -31,17 +31,18 @@ internal data class UnitTestTarget(
     val associates: List<BazelDependency> = emptyList(),
     val additionalSrcSets: List<String> = emptyList(),
 ) : BazelBuildTarget {
-    override fun statements() = statements {
-        if (srcs.isEmpty()) return@statements
-        grabKtJvmTest(
-            name = name,
-            srcsGlob = srcs,
-            additionalSrcSets = additionalSrcSets,
-            deps = deps,
-            visibility = visibility,
-            associates = associates,
-            tags = tags
-        )
+    override fun statements(builder: StatementsBuilder) = builder {
+        if (srcs.isNotEmpty()) {
+            grabKtJvmTest(
+                name = name,
+                srcsGlob = srcs,
+                additionalSrcSets = additionalSrcSets,
+                deps = deps,
+                visibility = visibility,
+                associates = associates,
+                tags = tags
+            )
+        }
     }
 }
 

@@ -19,8 +19,7 @@ package com.grab.grazel.migrate.android
 import com.grab.grazel.bazel.rules.Visibility
 import com.grab.grazel.bazel.rules.androidInstrumentationBinary
 import com.grab.grazel.bazel.starlark.BazelDependency
-import com.grab.grazel.bazel.starlark.Statement
-import com.grab.grazel.bazel.starlark.statements
+import com.grab.grazel.bazel.starlark.StatementsBuilder
 import com.grab.grazel.migrate.BazelBuildTarget
 
 internal data class AndroidInstrumentationBinaryTarget(
@@ -42,7 +41,7 @@ internal data class AndroidInstrumentationBinaryTarget(
     val testInstrumentationRunner: String? = null,
 ) : BazelBuildTarget {
 
-    override fun statements(): List<Statement> = statements {
+    override fun statements(builder: StatementsBuilder) = builder {
         val resFiles = buildResources(name, resourceFiles, customResourceSets)
         androidInstrumentationBinary(
             name = name,

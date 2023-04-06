@@ -67,7 +67,6 @@ private fun combineExternalVariablesAndArray(
     } else {
         StringStatement("$externalRepositoryConversion $extraPlus $repositoryArray")
     }
-
 }
 
 fun StatementsBuilder.mavenInstall(

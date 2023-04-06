@@ -18,8 +18,7 @@ package com.grab.grazel.migrate.android
 
 import com.grab.grazel.bazel.rules.crashlyticsAndroidLibrary
 import com.grab.grazel.bazel.rules.googleServicesXml
-import com.grab.grazel.bazel.starlark.Statement
-import com.grab.grazel.bazel.starlark.statements
+import com.grab.grazel.bazel.starlark.StatementsBuilder
 import com.grab.grazel.migrate.BazelTarget
 
 class CrashlyticsTarget(
@@ -29,7 +28,7 @@ class CrashlyticsTarget(
     private val googleServicesJson: String? = null,
 ) : BazelTarget {
 
-    override fun statements(): List<Statement> = statements {
+    override fun statements(builder: StatementsBuilder) = builder {
         crashlyticsAndroidLibrary(
             name = name,
             packageName = packageName,

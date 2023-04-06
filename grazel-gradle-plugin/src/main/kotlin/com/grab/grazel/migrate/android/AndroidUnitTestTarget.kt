@@ -19,7 +19,7 @@ package com.grab.grazel.migrate.android
 import com.grab.grazel.bazel.rules.Visibility
 import com.grab.grazel.bazel.rules.grabAndroidLocalTest
 import com.grab.grazel.bazel.starlark.BazelDependency
-import com.grab.grazel.bazel.starlark.statements
+import com.grab.grazel.bazel.starlark.StatementsBuilder
 import com.grab.grazel.migrate.BazelBuildTarget
 
 internal data class AndroidUnitTestTarget(
@@ -33,19 +33,20 @@ internal data class AndroidUnitTestTarget(
     val resources: List<String> = emptyList(),
     val additionalSrcSets: List<String> = emptyList(),
 ) : BazelBuildTarget {
-    override fun statements() = statements {
-        if (srcs.isEmpty()) return@statements
-        grabAndroidLocalTest(
-            name = name,
-            deps = deps,
-            visibility = visibility,
-            srcsGlob = srcs,
-            associates = associates,
-            tags = tags,
-            customPackage = customPackage,
-            resourcesGlob = resources,
-            additionalSrcSets = additionalSrcSets,
-        )
+    override fun statements(builder: StatementsBuilder) = builder {
+        if (srcs.isNotEmpty()) {
+            grabAndroidLocalTest(
+                name = name,
+                deps = deps,
+                visibility = visibility,
+                srcsGlob = srcs,
+                associates = associates,
+                tags = tags,
+                customPackage = customPackage,
+                resourcesGlob = resources,
+                additionalSrcSets = additionalSrcSets,
+            )
+        }
     }
 }
 

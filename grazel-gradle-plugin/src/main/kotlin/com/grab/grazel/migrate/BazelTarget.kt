@@ -18,13 +18,13 @@ package com.grab.grazel.migrate
 
 import com.grab.grazel.bazel.rules.Visibility
 import com.grab.grazel.bazel.starlark.BazelDependency
-import com.grab.grazel.bazel.starlark.Statement
+import com.grab.grazel.bazel.starlark.StatementsBuilder
 import org.gradle.api.Project
 
 
 interface BazelTarget {
     val name: String
-    fun statements(): List<Statement>
+    fun statements(builder: StatementsBuilder)
 }
 
 fun BazelTarget.toBazelDependency(): BazelDependency {
