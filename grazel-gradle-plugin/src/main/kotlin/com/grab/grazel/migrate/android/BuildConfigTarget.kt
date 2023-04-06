@@ -17,7 +17,7 @@
 package com.grab.grazel.migrate.android
 
 import com.grab.grazel.bazel.rules.buildConfig
-import com.grab.grazel.bazel.starlark.statements
+import com.grab.grazel.bazel.starlark.StatementsBuilder
 import com.grab.grazel.migrate.BazelTarget
 
 data class BuildConfigTarget(
@@ -28,7 +28,7 @@ data class BuildConfigTarget(
     val ints: Map<String, String> = emptyMap(),
     val longs: Map<String, String> = emptyMap()
 ) : BazelTarget {
-    override fun statements() = statements {
+    override fun statements(builder: StatementsBuilder) = builder {
         buildConfig(
             name = name,
             packageName = packageName,

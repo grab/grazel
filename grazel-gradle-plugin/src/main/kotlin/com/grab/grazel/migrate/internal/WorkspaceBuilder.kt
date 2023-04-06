@@ -37,6 +37,7 @@ import com.grab.grazel.bazel.rules.loadDaggerArtifactsAndRepositories
 import com.grab.grazel.bazel.rules.registerKotlinToolchain
 import com.grab.grazel.bazel.rules.toolAndroidRepository
 import com.grab.grazel.bazel.rules.workspace
+import com.grab.grazel.bazel.starlark.LoadStrategy
 import com.grab.grazel.bazel.starlark.StatementsBuilder
 import com.grab.grazel.bazel.starlark.statements
 import com.grab.grazel.di.qualifiers.RootProject
@@ -91,7 +92,7 @@ internal class WorkspaceBuilder(
     private val mavenInstall get() = grazelExtension.rules.mavenInstall
     private val hasDatabinding = gradleProjectInfo.hasDatabinding
 
-    override fun build() = statements {
+    override fun build() = statements(loadStrategy = LoadStrategy.Inline) {
         workspace(name = rootProject.name)
 
         kotlinRules()

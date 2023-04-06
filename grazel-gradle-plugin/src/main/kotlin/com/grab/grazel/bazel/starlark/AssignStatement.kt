@@ -42,7 +42,9 @@ inline fun assigneeBuilder(
     override fun build(): Assignee = builder()
 }
 
-fun Assignee(builder: StatementsBuilder.() -> Unit): Assignee = statements(builder).asAssignee()
+fun Assignee(
+    builder: StatementsBuilder.() -> Unit
+): Assignee = statements(builder = builder).asAssignee()
 
 enum class AssignmentOp(val op: String) {
     EQUAL("="),

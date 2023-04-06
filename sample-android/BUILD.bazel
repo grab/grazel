@@ -1,5 +1,8 @@
 load("@grab_bazel_common//tools/custom_res:custom_res.bzl", "custom_res")
 load("@grab_bazel_common//rules:defs.bzl", "android_binary")
+load("@tools_android//tools/googleservices:defs.bzl", "google_services_xml")
+load("@tools_android//tools/crashlytics:defs.bzl", "crashlytics_android_library")
+load("@grab_bazel_common//android/test:instrumentation.bzl", "android_instrumentation_binary")
 
 android_binary(
     name = "sample-android-flavor1-free-debug",
@@ -76,9 +79,6 @@ android_binary(
     ],
 )
 
-load("@tools_android//tools/googleservices:defs.bzl", "google_services_xml")
-load("@tools_android//tools/crashlytics:defs.bzl", "crashlytics_android_library")
-
 crashlytics_android_library(
     name = "crashlytics-flavor1-free-debug",
     package_name = "com.grab.grazel.android.sample.free",
@@ -88,9 +88,6 @@ crashlytics_android_library(
         google_services_json = "src/flavor1Free/google-services.json",
     ),
 )
-
-load("@grab_bazel_common//tools/custom_res:custom_res.bzl", "custom_res")
-load("@grab_bazel_common//rules:defs.bzl", "android_binary")
 
 android_binary(
     name = "sample-android-flavor1-paid-debug",
@@ -167,9 +164,6 @@ android_binary(
     ],
 )
 
-load("@tools_android//tools/googleservices:defs.bzl", "google_services_xml")
-load("@tools_android//tools/crashlytics:defs.bzl", "crashlytics_android_library")
-
 crashlytics_android_library(
     name = "crashlytics-flavor1-paid-debug",
     package_name = "com.grab.grazel.android.sample.paid",
@@ -179,9 +173,6 @@ crashlytics_android_library(
         google_services_json = "src/flavor1Paid/google-services.json",
     ),
 )
-
-load("@grab_bazel_common//tools/custom_res:custom_res.bzl", "custom_res")
-load("@grab_bazel_common//rules:defs.bzl", "android_binary")
 
 android_binary(
     name = "sample-android-flavor2-free-debug",
@@ -258,9 +249,6 @@ android_binary(
     ],
 )
 
-load("@tools_android//tools/googleservices:defs.bzl", "google_services_xml")
-load("@tools_android//tools/crashlytics:defs.bzl", "crashlytics_android_library")
-
 crashlytics_android_library(
     name = "crashlytics-flavor2-free-debug",
     package_name = "com.grab.grazel.android.sample.free",
@@ -270,9 +258,6 @@ crashlytics_android_library(
         google_services_json = "src/flavor2Free/google-services.json",
     ),
 )
-
-load("@grab_bazel_common//tools/custom_res:custom_res.bzl", "custom_res")
-load("@grab_bazel_common//rules:defs.bzl", "android_binary")
 
 android_binary(
     name = "sample-android-flavor2-paid-debug",
@@ -349,9 +334,6 @@ android_binary(
     ],
 )
 
-load("@tools_android//tools/googleservices:defs.bzl", "google_services_xml")
-load("@tools_android//tools/crashlytics:defs.bzl", "crashlytics_android_library")
-
 crashlytics_android_library(
     name = "crashlytics-flavor2-paid-debug",
     package_name = "com.grab.grazel.android.sample.paid",
@@ -361,8 +343,6 @@ crashlytics_android_library(
         google_services_json = "src/flavor2Paid/google-services.json",
     ),
 )
-
-load("@grab_bazel_common//android/test:instrumentation.bzl", "android_instrumentation_binary")
 
 android_instrumentation_binary(
     name = "sample-android-flavor1-free-debug-android-test",
@@ -405,8 +385,6 @@ android_instrumentation_binary(
     ],
 )
 
-load("@grab_bazel_common//android/test:instrumentation.bzl", "android_instrumentation_binary")
-
 android_instrumentation_binary(
     name = "sample-android-flavor1-paid-debug-android-test",
     srcs = glob([
@@ -448,8 +426,6 @@ android_instrumentation_binary(
     ],
 )
 
-load("@grab_bazel_common//android/test:instrumentation.bzl", "android_instrumentation_binary")
-
 android_instrumentation_binary(
     name = "sample-android-flavor2-free-debug-android-test",
     srcs = glob([
@@ -490,8 +466,6 @@ android_instrumentation_binary(
         "@maven//:com_squareup_leakcanary_leakcanary_android",
     ],
 )
-
-load("@grab_bazel_common//android/test:instrumentation.bzl", "android_instrumentation_binary")
 
 android_instrumentation_binary(
     name = "sample-android-flavor2-paid-debug-android-test",

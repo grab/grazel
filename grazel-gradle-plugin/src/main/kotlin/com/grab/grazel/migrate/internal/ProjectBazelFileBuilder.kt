@@ -16,7 +16,7 @@
 
 package com.grab.grazel.migrate.internal
 
-import com.grab.grazel.bazel.starlark.Statement
+import com.grab.grazel.bazel.starlark.statements
 import com.grab.grazel.migrate.BazelFileBuilder
 import com.grab.grazel.migrate.TargetBuilder
 import org.gradle.api.Project
@@ -37,11 +37,10 @@ class ProjectBazelFileBuilder(
         fun create(project: Project) = ProjectBazelFileBuilder(project, targetBuilders)
     }
 
-    override fun build(): List<Statement> {
-        return targetBuilders
-            .sortedWith(compareBy(TargetBuilder::sortOrder, TargetBuilder::toString))
+    override fun build() = statements {
+        targetBuilders
             .filter { it.canHandle(project) }
             .flatMap { it.build(project) }
-            .flatMap { it.statements() }
+            .forEach { it.statements(this) }
     }
 }

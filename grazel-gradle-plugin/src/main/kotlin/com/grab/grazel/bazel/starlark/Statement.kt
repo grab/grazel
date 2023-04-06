@@ -52,9 +52,84 @@ val Any.quote: String
  */
 val <T : Any> Collection<T>.quote: Collection<String> get() = map { it.quote }
 
-class StatementsBuilder : AssignmentBuilder {
+private typealias SymbolMap = MutableMap< /*Bzl File*/ String, /*Symbols*/ Set<String>>
+
+/**
+ * Represents various types of symbol loading strategies
+ */
+sealed class LoadStrategy {
+
+    // TODO(arun) migrate to a context receiver on StatementsBuilder
+    abstract fun load(
+        builder: StatementsBuilder,
+        bzlFile: String,
+        vararg symbols: String
+    )
+
+    /**
+     * Allows to query result of loading strategy as list of [Statement]s if applicable.
+     */
+    abstract fun results(): List<Statement>
+
+    /**
+     * Load strategy where symbols are imported as needed eg. WORKSPACE
+     */
+    object Inline : LoadStrategy() {
+
+        override fun load(
+            builder: StatementsBuilder,
+            bzlFile: String,
+            vararg symbols: String
+        ) = builder.function(
+            name = "load",
+            args = buildList {
+                add(bzlFile)
+                addAll(symbols)
+            }.toTypedArray()
+        )
+
+        /**
+         * Nothing to return as load statements are inlined
+         */
+        override fun results(): List<Statement> = emptyList()
+    }
+
+    /**
+     * Load strategy where symbols are preferred to be in top of the file. eg. BUILD.bazel
+     */
+    data class Top(
+        val importedSymbols: SymbolMap = mutableMapOf()
+    ) : LoadStrategy() {
+
+        override fun load(
+            builder: StatementsBuilder,
+            bzlFile: String,
+            vararg symbols: String
+        ) {
+            // Instead of adding `load` statements inline, collect all symbols
+            val prevImportedSymbols = importedSymbols.getOrDefault(bzlFile, emptySet())
+            importedSymbols[bzlFile] = (prevImportedSymbols + symbols).toSet()
+        }
+
+        override fun results() = importedSymbols.map { (bzlFile: String, symbols: Set<String>) ->
+            FunctionStatement(
+                name = "load",
+                params = buildList {
+                    add(bzlFile)
+                    addAll(symbols)
+                }.quote.map(::noArgAssign)
+            )
+        }
+    }
+}
+
+class StatementsBuilder(
+    val loadStrategy: LoadStrategy = LoadStrategy.Top(),
+) : AssignmentBuilder {
     private val mutableStatements = mutableListOf<Statement>()
-    val statements get() = mutableStatements.toList()
+
+    val statements: List<Statement>
+        get() = loadStrategy.results() + mutableStatements.toList()
 
     fun add(statement: Statement) {
         mutableStatements += statement
@@ -66,8 +141,10 @@ class StatementsBuilder : AssignmentBuilder {
         addNewLine()
     }
 
-    fun add(builder: StatementsBuilder.() -> Unit) {
-        add(statements(builder))
+    operator fun invoke(builder: StatementsBuilder.() -> Unit) = builder.invoke(this)
+
+    fun statements(builder: StatementsBuilder.() -> Unit) {
+        builder.invoke(this)
     }
 
     fun newLine() {
@@ -98,8 +175,11 @@ class StatementsBuilder : AssignmentBuilder {
     }
 }
 
-fun statements(builder: StatementsBuilder.() -> Unit): List<Statement> {
-    return StatementsBuilder().apply(builder).statements
+fun statements(
+    loadStrategy: LoadStrategy = LoadStrategy.Top(),
+    builder: StatementsBuilder.() -> Unit
+): List<Statement> {
+    return StatementsBuilder(loadStrategy = loadStrategy).apply(builder).statements
 }
 
 fun List<Statement>.asString(): String {

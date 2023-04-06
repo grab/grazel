@@ -32,8 +32,6 @@ android_library(
     ],
 )
 
-load("@grab_bazel_common//rules:defs.bzl", "android_library")
-
 android_library(
     name = "sample-android-flavor-flavor1-paid-debug",
     srcs = glob([
@@ -66,8 +64,6 @@ android_library(
     ],
 )
 
-load("@grab_bazel_common//rules:defs.bzl", "android_library")
-
 android_library(
     name = "sample-android-flavor-flavor2-free-debug",
     srcs = glob([
@@ -99,8 +95,6 @@ android_library(
         "@maven//:androidx_core_core",
     ],
 )
-
-load("@grab_bazel_common//rules:defs.bzl", "android_library")
 
 android_library(
     name = "sample-android-flavor-flavor2-paid-debug",

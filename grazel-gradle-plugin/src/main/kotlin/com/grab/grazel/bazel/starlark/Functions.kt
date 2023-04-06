@@ -71,15 +71,8 @@ fun StatementsBuilder.function(name: String, vararg args: String) {
     add(FunctionStatement(name = name, params = args.map(String::quote).map { noArgAssign(it) }))
 }
 
-/**
- * //TODO Implement collecting all load statements and adding them to top of the file.
- */
-fun StatementsBuilder.load(vararg args: String) {
-    function("load", *args)
-}
-
-fun StatementsBuilder.load(args: List<String>) {
-    load(*args.toTypedArray())
+fun StatementsBuilder.load(bzlFile: String, vararg symbols: String) {
+    loadStrategy.load(this, bzlFile, *symbols)
 }
 
 @Suppress("unused")
