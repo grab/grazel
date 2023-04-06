@@ -41,10 +41,8 @@ fun StatementsBuilder.toolAndroidRepository(
     add("google_services_workspace_dependencies()")
 }
 
-internal const val GOOGLE_SERVICES_XML = "GOOGLE_SERVICES_XML"
-
 /**
- * Adds a google services XML target required by crashlytics and other
+ * Adds a Google services XML target required by crashlytics and other
  * google services
  *
  * @param packageName The package name for the generated target
@@ -55,17 +53,15 @@ internal const val GOOGLE_SERVICES_XML = "GOOGLE_SERVICES_XML"
 fun StatementsBuilder.googleServicesXml(
     packageName: String?,
     googleServicesJson: String?,
-): Assignee? {
-    return if (!packageName.isNullOrBlank() && !googleServicesJson.isNullOrBlank()) {
-        load("@tools_android//tools/googleservices:defs.bzl", "google_services_xml")
-        Assignee { // Create new statements scope to not add to current scope
-            function("google_services_xml") {
-                "package_name" `=` packageName.quote
-                "google_services_json" `=` googleServicesJson.quote
-            }
+): Assignee? = if (!packageName.isNullOrBlank() && !googleServicesJson.isNullOrBlank()) {
+    load("@tools_android//tools/googleservices:defs.bzl", "google_services_xml")
+    Assignee { // Create new statements scope to not add to current scope
+        function("google_services_xml") {
+            "package_name" `=` packageName.quote
+            "google_services_json" `=` googleServicesJson.quote
         }
-    } else null
-}
+    }
+} else null
 
 /**
  * Add crashlytics_android_library target from tools_android repo.

@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 Grabtaxi Holdings PTE LTD (GRAB)
+ * Copyright 2023 Grabtaxi Holdings PTE LTD (GRAB)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,9 +14,16 @@
  * limitations under the License.
  */
 
-package com.grab.grazel.extension
+package com.grab.grazel.migrate.target
 
-data class DaggerExtension(
-    var tag: String = "2.28.1",
-    var sha: String = "9e69ab2f9a47e0f74e71fe49098bea908c528aa02fa0c5995334447b310d0cdd"
+import dagger.Module
+
+@Module(
+    includes = [
+        KotlinLibraryTargetBuilderModule::class,
+        AndroidLibTargetBuilderModule::class,
+        AndroidBinaryTargetBuilderModule::class,
+        AndroidInstrumentationBinaryTargetBuilderModule::class,
+    ]
 )
+interface TargetModule

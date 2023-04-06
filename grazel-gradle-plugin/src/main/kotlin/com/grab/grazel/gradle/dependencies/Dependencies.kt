@@ -435,7 +435,7 @@ internal class DefaultDependenciesDataSource @Inject constructor(
     private fun collectForcedVersions(
         configurations: Sequence<Configuration>
     ): Sequence<MavenArtifact> = mutableMapOf<MavenArtifact, String>().apply {
-        configurations.asSequence()
+        configurations
             .flatMap { it.resolutionStrategy.forcedModules.asSequence() }
             .forEach { mvSelector ->
                 val key = MavenArtifact(mvSelector.group, mvSelector.name, mvSelector.version)

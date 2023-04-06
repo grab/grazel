@@ -16,7 +16,6 @@
 
 package com.grab.grazel.bazel.starlark
 
-import com.grab.grazel.gradle.buildTargetName
 import org.gradle.api.Project
 import org.gradle.api.artifacts.Dependency
 
@@ -31,7 +30,7 @@ sealed class BazelDependency {
             val relativeRootPath = dependencyProject
                 .rootProject
                 .relativePath(dependencyProject.projectDir)
-            val buildTargetName = dependencyProject.buildTargetName()
+            val buildTargetName = dependencyProject.name
             return when {
                 relativeRootPath.contains("/") -> {
                     val path = relativeRootPath
@@ -40,6 +39,7 @@ sealed class BazelDependency {
                         .joinToString("/")
                     "//$path/$buildTargetName:$prefix$buildTargetName$suffix"
                 }
+
                 else -> "//$buildTargetName:$prefix$buildTargetName$suffix"
             }
         }

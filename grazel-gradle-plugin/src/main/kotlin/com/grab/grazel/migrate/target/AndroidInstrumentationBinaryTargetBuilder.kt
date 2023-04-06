@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.grab.grazel.migrate.builder
+package com.grab.grazel.migrate.target
 
 import com.grab.grazel.gradle.ConfigurationScope.ANDROID_TEST
 import com.grab.grazel.gradle.hasTestInstrumentationRunner

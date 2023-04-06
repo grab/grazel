@@ -16,8 +16,6 @@
 
 package com.grab.grazel.bazel.rules
 
-import com.grab.grazel.bazel.rules.KotlinProjectType.Android
-import com.grab.grazel.bazel.rules.KotlinProjectType.Jvm
 import com.grab.grazel.bazel.rules.Visibility.Public
 import com.grab.grazel.bazel.starlark.Assignee
 import com.grab.grazel.bazel.starlark.BazelDependency
@@ -135,31 +133,8 @@ fun StatementsBuilder.rootKotlinSetup(
     }
 }
 
-fun StatementsBuilder.loadKtRules(
-    isAndroid: Boolean = false,
-    isJvm: Boolean = false,
-    hasDb: Boolean = false
-) {
-    when {
-        hasDb -> load(
-            "@$GRAB_BAZEL_COMMON//tools/databinding:databinding.bzl",
-            "kt_db_android_library"
-        )
-
-        isAndroid -> load("@$GRAB_BAZEL_COMMON//tools/kotlin:android.bzl", "kt_android_library")
-        isJvm -> load("@io_bazel_rules_kotlin//kotlin:jvm.bzl", "kt_jvm_library")
-    }
-}
-
-sealed class KotlinProjectType {
-    object Jvm : KotlinProjectType()
-    data class Android(val hasDatabinding: Boolean = false) : KotlinProjectType()
-}
-
-
 fun StatementsBuilder.ktLibrary(
     name: String,
-    kotlinProjectType: KotlinProjectType = Jvm,
     srcs: List<String> = emptyList(),
     packageName: String? = null,
     srcsGlob: List<String> = emptyList(),
@@ -173,21 +148,9 @@ fun StatementsBuilder.ktLibrary(
     assetsDir: String? = null,
     tags: List<String> = emptyList()
 ) {
-    loadKtRules(
-        isAndroid = kotlinProjectType is Android,
-        isJvm = kotlinProjectType is Jvm,
-        hasDb = (kotlinProjectType as? Android)?.hasDatabinding == true
-    )
-    val ruleName = when (kotlinProjectType) {
-        Jvm -> "kt_jvm_library"
-        is Android -> if (kotlinProjectType.hasDatabinding) {
-            "kt_db_android_library"
-        } else {
-            "kt_android_library"
-        }
-    }
+    load("@io_bazel_rules_kotlin//kotlin:jvm.bzl", "kt_jvm_library")
 
-    rule(ruleName) {
+    rule("kt_jvm_library") {
         "name" `=` name.quote
         srcs.notEmpty {
             "srcs" `=` srcs.map(String::quote)

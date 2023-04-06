@@ -17,7 +17,6 @@
 package com.grab.grazel.migrate.android
 
 import com.android.builder.core.DefaultApiVersion
-import com.grab.grazel.bazel.rules.KotlinProjectType
 import com.grab.grazel.bazel.rules.customRes
 import com.grab.grazel.bazel.rules.loadCustomRes
 import com.grab.grazel.bazel.rules.loadResValue
@@ -27,8 +26,6 @@ import com.grab.grazel.bazel.starlark.StatementsBuilder
 import com.grab.grazel.bazel.starlark.array
 import com.grab.grazel.bazel.starlark.glob
 import com.grab.grazel.bazel.starlark.quote
-import com.grab.grazel.migrate.BazelBuildTarget
-import com.grab.grazel.migrate.kotlin.KtLibraryTarget
 
 /**
  * Lightweight data structure to hold details about custom resource set
@@ -43,49 +40,6 @@ internal data class ResourceSet(
 )
 
 internal fun ResourceSet.entryGlob(builder: StatementsBuilder) = builder.glob(listOf(entry.quote))
-
-internal fun AndroidLibraryData.toKtLibraryTarget(): BazelBuildTarget? = when {
-    srcs.isNotEmpty() || databinding -> KtLibraryTarget(
-        name = name,
-        kotlinProjectType = KotlinProjectType.Android(hasDatabinding = databinding),
-        packageName = packageName,
-        srcs = srcs,
-        manifest = manifestFile,
-        res = res,
-        resValuesData = resValuesData,
-        customResourceSets = extraRes,
-        deps = deps,
-        plugins = plugins,
-        assetsGlob = assets,
-        assetsDir = assetsDir,
-        tags = tags
-    )
-
-    srcs.isEmpty() && res.isNotEmpty() -> AndroidLibraryTarget(
-        name = name,
-        packageName = packageName,
-        manifest = manifestFile,
-        projectName = name,
-        res = res,
-        customResourceSets = extraRes,
-        deps = deps,
-        assetsGlob = assets,
-        tags = tags,
-        assetsDir = assetsDir
-    )
-
-    else -> null
-}
-
-internal fun AndroidLibraryData.toBuildConfigTarget() = BuildConfigTarget(
-    name = "$name-build-config",
-    packageName = customPackage,
-    strings = buildConfigData.strings,
-    booleans = buildConfigData.booleans,
-    ints = buildConfigData.ints,
-    longs = buildConfigData.longs
-)
-
 
 /**
  * Calculate resources for Android targets

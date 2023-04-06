@@ -45,7 +45,9 @@ internal interface KotlinProjectDataExtractor {
 }
 
 @Singleton
-internal class DefaultKotlinProjectDataExtractor @Inject constructor(
+internal class DefaultKotlinProjectDataExtractor
+@Inject
+constructor(
     private val dependenciesDataSource: DependenciesDataSource,
     private val dependencyGraphsProvider: Lazy<DependencyGraphs>,
     private val grazelExtension: GrazelExtension,
@@ -94,9 +96,11 @@ internal class DefaultKotlinProjectDataExtractor @Inject constructor(
             SourceSetType.JAVA, SourceSetType.JAVA_KOTLIN, SourceSetType.KOTLIN -> {
                 { kotlin.srcDirs.asSequence() }
             }
+
             SourceSetType.RESOURCES, SourceSetType.RESOURCES_CUSTOM -> {
                 { resources.srcDirs.asSequence() }
             }
+
             SourceSetType.ASSETS -> {
                 { emptySequence() }
             }
