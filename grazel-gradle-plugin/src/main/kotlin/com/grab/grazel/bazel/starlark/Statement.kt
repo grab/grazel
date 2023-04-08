@@ -19,6 +19,7 @@ package com.grab.grazel.bazel.starlark
 import java.io.File
 import java.io.PrintWriter
 import java.io.StringWriter
+import java.util.TreeMap
 
 internal const val INDENT = 2
 
@@ -98,7 +99,7 @@ sealed class LoadStrategy {
      * Load strategy where symbols are preferred to be in top of the file. eg. BUILD.bazel
      */
     data class Top(
-        val importedSymbols: SymbolMap = mutableMapOf()
+        val importedSymbols: SymbolMap = TreeMap()
     ) : LoadStrategy() {
 
         override fun load(

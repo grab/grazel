@@ -1,8 +1,8 @@
-load("@grab_bazel_common//tools/custom_res:custom_res.bzl", "custom_res")
-load("@grab_bazel_common//rules:defs.bzl", "android_binary")
-load("@tools_android//tools/googleservices:defs.bzl", "google_services_xml")
-load("@tools_android//tools/crashlytics:defs.bzl", "crashlytics_android_library")
 load("@grab_bazel_common//android/test:instrumentation.bzl", "android_instrumentation_binary")
+load("@grab_bazel_common//rules:defs.bzl", "android_binary")
+load("@grab_bazel_common//tools/custom_res:custom_res.bzl", "custom_res")
+load("@tools_android//tools/crashlytics:defs.bzl", "crashlytics_android_library")
+load("@tools_android//tools/googleservices:defs.bzl", "google_services_xml")
 
 android_binary(
     name = "sample-android-flavor1-free-debug",
