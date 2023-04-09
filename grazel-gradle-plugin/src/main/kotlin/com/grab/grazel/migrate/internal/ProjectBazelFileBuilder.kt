@@ -39,6 +39,7 @@ class ProjectBazelFileBuilder(
 
     override fun build() = statements {
         targetBuilders
+            .sortedBy(TargetBuilder::sortOrder)
             .filter { it.canHandle(project) }
             .flatMap { it.build(project) }
             .forEach { it.statements(this) }
