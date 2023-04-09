@@ -15,5 +15,5 @@
   -->
 
 <resources>
-    <string name="overidable_resource">Overridable resource - From free</string>
+    <string name="overridable_resource">Overridable resource - From free</string>
 </resources>
