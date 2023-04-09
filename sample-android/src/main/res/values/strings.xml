@@ -17,4 +17,5 @@
 <resources>
     <string name="app_name">Grazel Sample</string>
     <string name="open_flavor_activity">Open Another Activity</string>
+    <string name="overidable_resource">Overridable resource</string>
 </resources>
