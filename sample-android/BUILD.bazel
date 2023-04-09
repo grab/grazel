@@ -49,13 +49,15 @@ android_binary(
     multidex = "native",
     res_values = {
         "strings": {
-            "generated_value": "important-key",
+            "generated_value": "This string was generated with resValue",
             "type": "debug",
             "flavor": "free",
         },
     },
     resource_files = glob([
         "src/main/res/**",
+    ]) + glob([
+        "src/free/res/values/strings.xml",
     ]) + custom_res(
         dir_name = "res-debug",
         resource_files = glob([
@@ -134,7 +136,7 @@ android_binary(
     multidex = "native",
     res_values = {
         "strings": {
-            "generated_value": "important-key",
+            "generated_value": "This string was generated with resValue",
             "type": "debug",
             "flavor": "paid",
         },
@@ -219,13 +221,15 @@ android_binary(
     multidex = "native",
     res_values = {
         "strings": {
-            "generated_value": "important-key",
+            "generated_value": "This string was generated with resValue",
             "type": "debug",
             "flavor": "free",
         },
     },
     resource_files = glob([
         "src/main/res/**",
+    ]) + glob([
+        "src/free/res/values/strings.xml",
     ]) + custom_res(
         dir_name = "res-debug",
         resource_files = glob([
@@ -304,7 +308,7 @@ android_binary(
     multidex = "native",
     res_values = {
         "strings": {
-            "generated_value": "important-key",
+            "generated_value": "This string was generated with resValue",
             "type": "debug",
             "flavor": "paid",
         },
