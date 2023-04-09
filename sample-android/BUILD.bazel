@@ -143,6 +143,8 @@ android_binary(
     },
     resource_files = glob([
         "src/main/res/**",
+    ]) + glob([
+        "src/paid/res/values/strings.xml",
     ]) + custom_res(
         dir_name = "res-debug",
         resource_files = glob([
@@ -315,6 +317,8 @@ android_binary(
     },
     resource_files = glob([
         "src/main/res/**",
+    ]) + glob([
+        "src/paid/res/values/strings.xml",
     ]) + custom_res(
         dir_name = "res-debug",
         resource_files = glob([
