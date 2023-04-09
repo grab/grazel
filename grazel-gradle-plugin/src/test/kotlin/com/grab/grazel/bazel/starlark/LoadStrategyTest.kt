@@ -59,5 +59,26 @@ class LoadStrategyTest {
             statements.asString().contains("""load(":test.bzl",  "test_lib",  "test_bin")""")
         }
     }
+
+    @Test
+    fun `assert load statements are sorted based on file name`() {
+        val statements = statements {
+            load(":test.bzl", "d")
+            statements {
+                load(":test.bzl", "a", "t")
+                statements {
+                    load(":hello.bzl", "y", "u")
+                }
+            }
+        }
+        assertEquals(
+            expected = statements.asString(),
+            actual = """load(":hello.bzl",  "y",  "u")
+load(":test.bzl",  "d",  "a",  "t")
+
+""".trimIndent(),
+            message = "Load statements are sorted based on file name"
+        )
+    }
 }
 

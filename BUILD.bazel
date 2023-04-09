@@ -1,7 +1,7 @@
-load("@io_bazel_rules_kotlin//kotlin:core.bzl", "define_kt_toolchain", "kt_javac_options", "kt_kotlinc_options")
 load("@dagger//:workspace_defs.bzl", "dagger_rules")
-load("@grab_bazel_common//tools/parcelize:parcelize.bzl", "parcelize_rules")
 load("@grab_bazel_common//toolchains:toolchains.bzl", "configure_common_toolchains")
+load("@grab_bazel_common//tools/parcelize:parcelize.bzl", "parcelize_rules")
+load("@io_bazel_rules_kotlin//kotlin:core.bzl", "define_kt_toolchain", "kt_javac_options", "kt_kotlinc_options")
 
 kt_kotlinc_options(
     name = "kt_kotlinc_options",
