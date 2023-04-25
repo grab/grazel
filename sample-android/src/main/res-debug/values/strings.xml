@@ -16,4 +16,6 @@
 
 <resources>
     <string name="custom_resource_set">Debug</string>
+    <string name="overridable_resource">Overridable resource - From frees</string>
+    <color name="colorPrimary">#000000</color>
 </resources>

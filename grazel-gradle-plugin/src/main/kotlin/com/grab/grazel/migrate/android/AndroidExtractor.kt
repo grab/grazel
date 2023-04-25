@@ -33,10 +33,10 @@ import com.grab.grazel.gradle.variant.AndroidVariantDataSource
 import com.grab.grazel.gradle.variant.MatchedVariant
 import com.grab.grazel.gradle.variant.getMigratableBuildVariants
 import com.grab.grazel.gradle.variant.nameSuffix
+import com.grab.grazel.migrate.android.PathResolveMode.*
 import com.grab.grazel.migrate.android.SourceSetType.ASSETS
 import com.grab.grazel.migrate.android.SourceSetType.JAVA_KOTLIN
 import com.grab.grazel.migrate.android.SourceSetType.RESOURCES
-import com.grab.grazel.migrate.android.SourceSetType.RESOURCES_CUSTOM
 import com.grab.grazel.migrate.dependencies.calculateDirectDependencyTags
 import com.grab.grazel.migrate.kotlin.kotlinParcelizeDeps
 import dagger.Lazy
@@ -113,10 +113,7 @@ constructor(
             migratableSourceSets
         ) ?: ""
         val srcs = androidSources(migratableSourceSets, sourceSetType).toList()
-        val res = androidSources(migratableSourceSets, RESOURCES).toList()
-        // Handle custom Gradle source sets
-        val additionalRes = androidSources(migratableSourceSets, RESOURCES_CUSTOM).toList()
-        val extraRes = extractExtraRes(migratableSourceSets, additionalRes)
+        val res = androidSources(migratableSourceSets, RESOURCES, DIRECTORY).toList().reversed()
 
         val assets = androidSources(migratableSourceSets, ASSETS).toList()
         val assetsDir = assetsDirectory(migratableSourceSets, assets)
@@ -140,28 +137,9 @@ constructor(
             databinding = project.hasDatabinding,
             buildConfigData = extension.extractBuildConfig(this, matchedVariant.variant),
             resValuesData = extension.extractResValue(matchedVariant),
-            extraRes = extraRes,
             deps = deps,
             tags = tags
         )
-    }
-
-    private fun Project.extractExtraRes(
-        migratableSourceSets: List<AndroidSourceSet>,
-        additionalRes: List<String>
-    ): List<ResourceSet> {
-        // Get the raw resource directories as declared in the extension
-        val allResourceDirs = migratableSourceSets.filter { it.res.srcDirs.size > 1 }
-            .flatMap { it.res.srcDirs }
-            .map(::relativePath)
-        return additionalRes.map { additionalResources ->
-            // Find the source set which defines this custom resource set
-            val sourceSet = allResourceDirs.first { additionalResources.contains(it) }
-            ResourceSet(
-                folderName = sourceSet.split("/").last(),
-                entry = additionalResources
-            )
-        }
     }
 
     private fun Project.assetsDirectory(

@@ -14,11 +14,12 @@ android_library(
             "generated_value": "generated",
         },
     },
-    resource_files = glob([
-        "src/main/res/**",
-    ]) + glob([
-        "src/flavor1/res/values/strings.xml",
-    ]),
+    resources = {
+        "src/flavor1/res": {
+        },
+        "src/main/res": {
+        },
+    },
     visibility = [
         "//visibility:public",
     ],
@@ -46,11 +47,12 @@ android_library(
             "generated_value": "generated",
         },
     },
-    resource_files = glob([
-        "src/main/res/**",
-    ]) + glob([
-        "src/flavor1/res/values/strings.xml",
-    ]),
+    resources = {
+        "src/flavor1/res": {
+        },
+        "src/main/res": {
+        },
+    },
     visibility = [
         "//visibility:public",
     ],
@@ -78,11 +80,12 @@ android_library(
             "generated_value": "generated",
         },
     },
-    resource_files = glob([
-        "src/main/res/**",
-    ]) + glob([
-        "src/flavor2/res/values/strings.xml",
-    ]),
+    resources = {
+        "src/flavor2/res": {
+        },
+        "src/main/res": {
+        },
+    },
     visibility = [
         "//visibility:public",
     ],
@@ -110,11 +113,12 @@ android_library(
             "generated_value": "generated",
         },
     },
-    resource_files = glob([
-        "src/main/res/**",
-    ]) + glob([
-        "src/flavor2/res/values/strings.xml",
-    ]),
+    resources = {
+        "src/flavor2/res": {
+        },
+        "src/main/res": {
+        },
+    },
     visibility = [
         "//visibility:public",
     ],

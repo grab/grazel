@@ -22,8 +22,7 @@ import com.grab.grazel.bazel.starlark.BazelDependency
 import com.grab.grazel.bazel.starlark.StatementsBuilder
 import com.grab.grazel.migrate.BazelBuildTarget
 import com.grab.grazel.migrate.android.ResValuesData
-import com.grab.grazel.migrate.android.ResourceSet
-import com.grab.grazel.migrate.android.buildResources
+import com.grab.grazel.migrate.android.buildResFiles
 
 internal data class KotlinLibraryTarget(
     override val name: String,
@@ -35,7 +34,6 @@ internal data class KotlinLibraryTarget(
     val packageName: String? = null,
     val res: List<String>,
     val resValuesData: ResValuesData = ResValuesData(),
-    val customResourceSets: List<ResourceSet> = emptyList(),
     val manifest: String? = null,
     val plugins: List<BazelDependency> = emptyList(),
     val assetsGlob: List<String> = emptyList(),
@@ -43,7 +41,7 @@ internal data class KotlinLibraryTarget(
 ) : BazelBuildTarget {
 
     override fun statements(builder: StatementsBuilder) = builder {
-        val resourceFiles = buildResources(projectName, res, customResourceSets, resValuesData)
+        val resourceFiles = buildResFiles(res)
         ktLibrary(
             name = name,
             packageName = packageName,

@@ -27,9 +27,8 @@ import com.grab.grazel.migrate.BazelBuildTarget
 internal interface AndroidTarget : BazelBuildTarget {
     val enableDataBinding: Boolean
     val projectName: String
-    val res: List<String>
+    val resDirs: List<String>
     val resValuesData: ResValuesData
-    val customResourceSets: List<ResourceSet>
     val buildConfigData: BuildConfigData
     val packageName: String
     val manifest: String?
@@ -45,9 +44,8 @@ internal data class AndroidLibraryTarget(
     override val visibility: Visibility = Visibility.Public,
     override val enableDataBinding: Boolean = false,
     override val projectName: String = name,
-    override val res: List<String>,
+    override val resDirs: List<String>,
     override val resValuesData: ResValuesData = ResValuesData(),
-    override val customResourceSets: List<ResourceSet> = emptyList(),
     override val buildConfigData: BuildConfigData = BuildConfigData(),
     override val packageName: String,
     override val manifest: String? = null,
@@ -55,14 +53,13 @@ internal data class AndroidLibraryTarget(
     override val assetsDir: String? = null
 ) : AndroidTarget {
     override fun statements(builder: StatementsBuilder) = builder {
-        val resourceFiles = buildResources(projectName, res, customResourceSets)
         androidLibrary(
             name = name,
             packageName = packageName,
             manifest = manifest,
             enableDataBinding = enableDataBinding,
             srcsGlob = srcs,
-            resourceFiles = resourceFiles,
+            resources = buildResources(resDirs),
             visibility = visibility,
             deps = deps,
             tags = tags,
@@ -82,9 +79,8 @@ internal data class AndroidBinaryTarget(
     override val visibility: Visibility = Visibility.Public,
     override val enableDataBinding: Boolean = false,
     override val projectName: String = name,
-    override val res: List<String>,
+    override val resDirs: List<String>,
     override val resValuesData: ResValuesData = ResValuesData(),
-    override val customResourceSets: List<ResourceSet> = emptyList(),
     override val buildConfigData: BuildConfigData = BuildConfigData(),
     override val packageName: String,
     override val manifest: String? = null,
@@ -100,8 +96,6 @@ internal data class AndroidBinaryTarget(
     val incrementalDexing: Boolean = false,
 ) : AndroidTarget {
     override fun statements(builder: StatementsBuilder) = builder {
-        val resourceFiles = buildResources(name, res, customResourceSets)
-
         androidBinary(
             name = name,
             crunchPng = crunchPng,
@@ -115,7 +109,7 @@ internal data class AndroidBinaryTarget(
             srcsGlob = srcs,
             manifest = manifest,
             manifestValues = manifestValues,
-            resources = resourceFiles,
+            resources = buildResources(resDirs),
             resValuesData = resValuesData,
             deps = deps,
             assetsGlob = assetsGlob,

@@ -97,7 +97,7 @@ constructor(
                 { kotlin.srcDirs.asSequence() }
             }
 
-            SourceSetType.RESOURCES, SourceSetType.RESOURCES_CUSTOM -> {
+            SourceSetType.RESOURCES -> {
                 { resources.srcDirs.asSequence() }
             }
 

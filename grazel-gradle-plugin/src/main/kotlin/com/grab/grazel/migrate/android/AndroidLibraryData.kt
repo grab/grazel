@@ -17,64 +17,37 @@
 package com.grab.grazel.migrate.android
 
 import com.android.builder.core.DefaultApiVersion
-import com.grab.grazel.bazel.rules.customRes
-import com.grab.grazel.bazel.rules.loadCustomRes
-import com.grab.grazel.bazel.rules.loadResValue
-import com.grab.grazel.bazel.rules.resValue
 import com.grab.grazel.bazel.starlark.Assignee
 import com.grab.grazel.bazel.starlark.StatementsBuilder
 import com.grab.grazel.bazel.starlark.array
 import com.grab.grazel.bazel.starlark.glob
 import com.grab.grazel.bazel.starlark.quote
-
-/**
- * Lightweight data structure to hold details about custom resource set
- *
- * @param folderName The root folder name of the custom resource set.
- *     Eg: res-debug.
- * @param entry The parsed entry in this folder. Eg: `src/main/res/`
- */
-internal data class ResourceSet(
-    val folderName: String,
-    val entry: String
-)
-
-internal fun ResourceSet.entryGlob(builder: StatementsBuilder) = builder.glob(listOf(entry.quote))
+import com.grab.grazel.bazel.starlark.toObject
 
 /**
  * Calculate resources for Android targets
  *
  * @param resources resource list come from Android project
- * @param resValuesData Gradle's res_value values
- * @param customResourceSets The custom resource folders add as Gradle
  *     resource set
- * @param targetName The name of the target
  * @return List of `Assignee` to be used in `resource_files`
  */
-internal fun StatementsBuilder.buildResources(
-    targetName: String,
+internal fun StatementsBuilder.buildResFiles(
     resources: List<String>,
-    customResourceSets: List<ResourceSet>,
-    resValuesData: ResValuesData = ResValuesData()
 ): List<Assignee> {
-
-    val localResources = resources.map { glob(array(it.quote)) }
-
-    val customResources = if (customResourceSets.isNotEmpty()) {
-        loadCustomRes()
-        customResourceSets
-            .map { extraResSet ->
-                customRes(targetName, extraResSet.folderName, extraResSet.entryGlob(this))
-            }
-    } else emptyList()
-
-    if (!resValuesData.isEmpty) {
-        loadResValue()
-        listOf(resValue("$targetName-res-value", resValuesData.stringValues))
-    } else emptyList()
-
-    return localResources + customResources
+    return resources.map { glob(array(it.quote)) }
 }
+
+internal fun buildResources(
+    resDirs: List<String>,
+) = if (resDirs.isEmpty()) null else
+    Assignee {
+        add(
+            statement = resDirs
+                .groupBy { it }
+                .mapValues { emptyMap<String, String>() }
+                .toObject(quoteKeys = true, quoteValues = true, allowEmpty = true)
+        )
+    }
 
 /**
  * Calculate an Android Project's compileSdkVersion from `AppExtension`

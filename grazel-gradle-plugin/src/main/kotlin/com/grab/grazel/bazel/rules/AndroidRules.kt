@@ -132,7 +132,8 @@ internal fun StatementsBuilder.androidBinary(
     manifestValues: Map<String, String?> = mapOf(),
     enableDataBinding: Boolean = false,
     visibility: Visibility = Visibility.Public,
-    resources: List<Assignee> = emptyList(),
+    resourceFiles: List<Assignee> = emptyList(),
+    resources: Assignee? = null,
     resValuesData: ResValuesData,
     deps: List<BazelDependency>,
     assetsGlob: List<String> = emptyList(),
@@ -157,12 +158,13 @@ internal fun StatementsBuilder.androidBinary(
         if (enableDataBinding) {
             "enable_data_binding" `=` enableDataBinding.toString().capitalize()
         }
-        resources.notEmpty {
-            "resource_files" `=` resources.joinToString(
+        resourceFiles.notEmpty {
+            "resource_files" `=` resourceFiles.joinToString(
                 separator = " + ",
                 transform = Assignee::asString
             )
         }
+        resources?.let { "resources" `=` resources }
         deps.notEmpty {
             "deps" `=` array(deps.map(BazelDependency::toString).quote)
         }
@@ -185,6 +187,7 @@ internal fun StatementsBuilder.androidLibrary(
     manifest: String? = null,
     srcsGlob: List<String> = emptyList(),
     visibility: Visibility = Visibility.Public,
+    resources: Assignee? = null,
     resourceFiles: List<Assignee> = emptyList(),
     enableDataBinding: Boolean = false,
     deps: List<BazelDependency>,
@@ -209,6 +212,7 @@ internal fun StatementsBuilder.androidLibrary(
                 transform = Assignee::asString
             )
         }
+        resources?.let { "resources" `=` resources }
         deps.notEmpty {
             "deps" `=` array(deps.map(BazelDependency::toString).map(String::quote))
         }

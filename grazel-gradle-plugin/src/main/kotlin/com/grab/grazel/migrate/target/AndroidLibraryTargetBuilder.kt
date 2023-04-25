@@ -95,12 +95,11 @@ constructor(
 private fun AndroidLibraryData.toAndroidLibTarget() = AndroidLibraryTarget(
     name = name,
     srcs = srcs,
-    res = res,
+    resDirs = res,
     deps = deps,
     enableDataBinding = databinding,
     resValuesData = resValuesData,
     buildConfigData = buildConfigData,
-    customResourceSets = extraRes,
     packageName = packageName,
     manifest = manifestFile,
     assetsGlob = assets,
