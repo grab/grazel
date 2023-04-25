@@ -1,6 +1,5 @@
 load("@grab_bazel_common//android/test:instrumentation.bzl", "android_instrumentation_binary")
 load("@grab_bazel_common//rules:defs.bzl", "android_binary")
-load("@grab_bazel_common//tools/custom_res:custom_res.bzl", "custom_res")
 load("@tools_android//tools/crashlytics:defs.bzl", "crashlytics_android_library")
 load("@tools_android//tools/googleservices:defs.bzl", "google_services_xml")
 
@@ -49,20 +48,19 @@ android_binary(
     multidex = "native",
     res_values = {
         "strings": {
-            "generated_value": "important-key",
+            "generated_value": "This string was generated with resValue",
             "type": "debug",
             "flavor": "free",
         },
     },
-    resource_files = glob([
-        "src/main/res/**",
-    ]) + custom_res(
-        dir_name = "res-debug",
-        resource_files = glob([
-            "src/main/res-debug/values/strings.xml",
-        ]),
-        target = "sample-android-flavor1-free-debug",
-    ),
+    resources = {
+        "src/main/res-debug": {
+        },
+        "src/free/res": {
+        },
+        "src/main/res": {
+        },
+    },
     visibility = [
         "//visibility:public",
     ],
@@ -134,20 +132,19 @@ android_binary(
     multidex = "native",
     res_values = {
         "strings": {
-            "generated_value": "important-key",
+            "generated_value": "This string was generated with resValue",
             "type": "debug",
             "flavor": "paid",
         },
     },
-    resource_files = glob([
-        "src/main/res/**",
-    ]) + custom_res(
-        dir_name = "res-debug",
-        resource_files = glob([
-            "src/main/res-debug/values/strings.xml",
-        ]),
-        target = "sample-android-flavor1-paid-debug",
-    ),
+    resources = {
+        "src/main/res-debug": {
+        },
+        "src/paid/res": {
+        },
+        "src/main/res": {
+        },
+    },
     visibility = [
         "//visibility:public",
     ],
@@ -219,20 +216,19 @@ android_binary(
     multidex = "native",
     res_values = {
         "strings": {
-            "generated_value": "important-key",
+            "generated_value": "This string was generated with resValue",
             "type": "debug",
             "flavor": "free",
         },
     },
-    resource_files = glob([
-        "src/main/res/**",
-    ]) + custom_res(
-        dir_name = "res-debug",
-        resource_files = glob([
-            "src/main/res-debug/values/strings.xml",
-        ]),
-        target = "sample-android-flavor2-free-debug",
-    ),
+    resources = {
+        "src/main/res-debug": {
+        },
+        "src/free/res": {
+        },
+        "src/main/res": {
+        },
+    },
     visibility = [
         "//visibility:public",
     ],
@@ -304,20 +300,19 @@ android_binary(
     multidex = "native",
     res_values = {
         "strings": {
-            "generated_value": "important-key",
+            "generated_value": "This string was generated with resValue",
             "type": "debug",
             "flavor": "paid",
         },
     },
-    resource_files = glob([
-        "src/main/res/**",
-    ]) + custom_res(
-        dir_name = "res-debug",
-        resource_files = glob([
-            "src/main/res-debug/values/strings.xml",
-        ]),
-        target = "sample-android-flavor2-paid-debug",
-    ),
+    resources = {
+        "src/main/res-debug": {
+        },
+        "src/paid/res": {
+        },
+        "src/main/res": {
+        },
+    },
     visibility = [
         "//visibility:public",
     ],

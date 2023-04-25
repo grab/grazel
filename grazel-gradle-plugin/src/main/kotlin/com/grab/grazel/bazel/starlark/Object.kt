@@ -50,17 +50,19 @@ fun StatementsBuilder.obj(
  */
 fun Map<*, *>.toObject(
     quoteKeys: Boolean = false,
-    quoteValues: Boolean = false
+    quoteValues: Boolean = false,
+    allowEmpty: Boolean = false,
 ): ObjectStatement = obj {
     filterValues { it != null }.forEach { (orgKey, orgValue) ->
         val key = if (quoteKeys) orgKey!!.quote else orgKey.toString()
 
         when (orgValue) {
             is Map<*, *> -> {
-                if (orgValue.isNotEmpty()) {
+                if (orgValue.isNotEmpty() || allowEmpty) {
                     key `=` orgValue.toObject(quoteKeys, quoteValues)
                 }
             }
+
             else -> {
                 val value = if (quoteValues) orgValue!!.quote else orgValue!!
                 key `=` value

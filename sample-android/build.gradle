@@ -39,7 +39,7 @@ android {
         buildConfigField("String", "SOME_STRING", "\"Something\"")
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
 
-        resValue "string", "generated_value", "important-key"
+        resValue "string", "generated_value", "This string was generated with resValue"
 
         manifestPlaceholders = [orientation: "portrait"]
     }

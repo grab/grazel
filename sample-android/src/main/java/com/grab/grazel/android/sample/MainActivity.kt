@@ -20,6 +20,7 @@ import android.content.Intent
 import android.os.Bundle
 import android.os.Parcelable
 import android.view.View
+import android.widget.Button
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import com.grab.grazel.android.flavor.FlavorActivity
@@ -55,11 +56,10 @@ class MainActivity : AppCompatActivity() {
             .factory()
             .create()
             .simpleDependency()
-        findViewById<View>(R.id.text).setOnClickListener {
-            val intent = Intent(this, FlavorActivity::class.java)
-            startActivity(intent)
-        }
         findViewById<TextView>(R.id.text).setText(R.string.generated_value)
+        findViewById<Button>(R.id.button).setOnClickListener {
+            startActivity(Intent(this, FlavorActivity::class.java))
+        }
 
         // Assert custom resource set import
         R.string.custom_resource_set

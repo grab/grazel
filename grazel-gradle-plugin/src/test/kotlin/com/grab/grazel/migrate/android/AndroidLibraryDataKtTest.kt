@@ -82,39 +82,6 @@ class AndroidLibraryDataKtTest : GrazelPluginTest() {
     }
 
     @Test
-    fun `assert build resources converts all types of resources to statements`() {
-        val resources = listOf("src/res/values.xml")
-        val resValuesData = ResValuesData(mapOf("value" to "hello"))
-        val customResourceSet = listOf(
-            ResourceSet(
-                "res-debug",
-                "src/main/res-debug/values/strings.xml"
-            )
-        )
-        val targetName = "target"
-
-        // Setup
-        val statements = StatementsBuilder().buildResources(
-            targetName,
-            resources,
-            customResourceSet,
-            resValuesData
-        ).joinToString(separator = " + ", transform = Assignee::asString)
-
-        // Assert
-        assertTrue("custom_res is generated") {
-            statements.contains(
-                """ + custom_res(
-  target = "target",
-  dir_name = "res-debug",
-  resource_files = glob([
-    "src/main/res-debug/values/strings.xml",
-  ])"""
-            )
-        }
-    }
-
-    @Test
     fun `assert flavor specific res values are extracted`() {
         buildAndroidBinaryProject {
             buildTypes {

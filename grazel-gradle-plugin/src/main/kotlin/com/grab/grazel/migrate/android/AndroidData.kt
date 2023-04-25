@@ -24,7 +24,6 @@ internal interface AndroidData {
     val srcs: List<String>
     val res: List<String>
     val resValuesData: ResValuesData
-    val extraRes: List<ResourceSet>
     val assets: List<String>
     val assetsDir: String?
     val manifestFile: String?
@@ -46,7 +45,6 @@ internal data class AndroidLibraryData(
     override val srcs: List<String> = emptyList(),
     override val res: List<String> = emptyList(),
     override val resValuesData: ResValuesData = ResValuesData(),
-    override val extraRes: List<ResourceSet> = emptyList(),
     override val assets: List<String> = emptyList(),
     override val assetsDir: String? = null,
     override val manifestFile: String? = null,
@@ -64,7 +62,6 @@ internal data class AndroidBinaryData(
     override val srcs: List<String> = emptyList(),
     override val res: List<String> = emptyList(),
     override val resValuesData: ResValuesData = ResValuesData(),
-    override val extraRes: List<ResourceSet> = emptyList(),
     override val assets: List<String> = emptyList(),
     override val assetsDir: String? = null,
     override val manifestFile: String? = null,

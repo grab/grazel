@@ -17,6 +17,7 @@
 package com.grab.grazel.migrate.android
 
 import com.android.build.gradle.api.AndroidSourceSet
+import com.grab.grazel.migrate.android.PathResolveMode.*
 import com.grab.grazel.util.commonPath
 import org.gradle.api.Project
 import java.io.File
@@ -33,8 +34,21 @@ enum class SourceSetType(val patterns: Sequence<String>) {
     JAVA_KOTLIN(patterns = sequenceOf(JAVA_PATTERN, KOTLIN_PATTERN)),
     KOTLIN(patterns = sequenceOf(KOTLIN_PATTERN)),
     RESOURCES(patterns = sequenceOf(ALL_PATTERN)),
-    RESOURCES_CUSTOM(patterns = sequenceOf(ALL_PATTERN)),
     ASSETS(patterns = sequenceOf(ALL_PATTERN))
+}
+
+enum class PathResolveMode {
+    /**
+     * If source set directory exists then directly return the directory
+     */
+    DIRECTORY,
+
+    /**
+     * Try to expand the directory based on matching patterns from [SourceSetType] and then
+     * find the most common directory and return the pattern. If only one file is present, return
+     * path to that file alone
+     */
+    FILES
 }
 
 /**
@@ -44,20 +58,23 @@ enum class SourceSetType(val patterns: Sequence<String>) {
 internal fun Project.filterSourceSetPaths(
     dirs: Sequence<File>,
     patterns: Sequence<String>,
+    pathResolveMode: PathResolveMode = FILES
 ): Sequence<String> = dirs.filter(File::exists)
     .map(::relativePath)
     .flatMap { dir ->
-        patterns.flatMap { pattern ->
-            val matchedFiles = fileTree(dir).matching { include(pattern) }.files
-            when {
-                matchedFiles.isEmpty() -> sequenceOf()
-                else -> {
-                    val commonPath = commonPath(*matchedFiles.map { it.path }.toTypedArray())
-                    val relativePath = relativePath(commonPath)
-                    if (matchedFiles.size == 1) {
-                        sequenceOf(relativePath)
-                    } else {
-                        sequenceOf("$relativePath/$pattern")
+        when (pathResolveMode) {
+            DIRECTORY -> sequenceOf(dir)
+            FILES -> patterns.flatMap { pattern ->
+                val matchedFiles = fileTree(dir).matching { include(pattern) }.files
+                when {
+                    matchedFiles.isEmpty() -> sequenceOf()
+                    else -> {
+                        val commonPath = commonPath(*matchedFiles.map { it.path }.toTypedArray())
+                        val relativePath = relativePath(commonPath)
+                        when (matchedFiles.size) {
+                            1 -> sequenceOf(relativePath)
+                            else -> sequenceOf("$relativePath/$pattern")
+                        }
                     }
                 }
             }
@@ -74,27 +91,21 @@ internal fun Project.filterNonDefaultSourceSetDirs(
 
 internal fun Project.androidSources(
     sourceSets: List<AndroidSourceSet>,
-    sourceSetType: SourceSetType
+    sourceSetType: SourceSetType,
+    pathResolveMode: PathResolveMode = FILES
 ): Sequence<String> {
     val sourceSetChoosers: AndroidSourceSet.() -> Sequence<File> =
         when (sourceSetType) {
             SourceSetType.JAVA, SourceSetType.JAVA_KOTLIN, SourceSetType.KOTLIN -> {
                 { java.srcDirs.asSequence() }
             }
+
             SourceSetType.RESOURCES -> {
                 {
-                    res.srcDirs
-                        .asSequence()
-                        .filter { it.endsWith("res") } // Filter all custom resource sets
+                    res.srcDirs.asSequence()
                 }
             }
-            SourceSetType.RESOURCES_CUSTOM -> {
-                {
-                    res.srcDirs
-                        .asSequence()
-                        .filter { !it.endsWith("res") } // Filter all standard resource sets
-                }
-            }
+
             SourceSetType.ASSETS -> {
                 {
                     assets.srcDirs
@@ -105,5 +116,5 @@ internal fun Project.androidSources(
         }
     val dirs = sourceSets.asSequence().flatMap(sourceSetChoosers)
     val dirsKotlin = dirs.map { File(it.path.replace("/java", "/kotlin")) }
-    return filterSourceSetPaths(dirs + dirsKotlin, sourceSetType.patterns)
+    return filterSourceSetPaths(dirs + dirsKotlin, sourceSetType.patterns, pathResolveMode)
 }
