@@ -55,8 +55,7 @@ constructor() : GoogleServicesJsonExtractor {
          * https://github.com/google/play-services-plugins/blob/cce869348a9f4989d4a77bf9595ab6c073a8c441/google-services-plugin/src/main/groovy/com/google/gms/googleservices/GoogleServicesTask.java#L532
          */
         val variantSources = matchedVariant.variant.sourceSets.asSequence()
-            .flatMap { it.javaDirectories.asSequence() }
-            .map { File(it.parent, GOOGLE_SERVICES_JSON) }
+            .map { File(it.manifestFile.parent, GOOGLE_SERVICES_JSON) }
             .toList()
             .reversed()
         val projectDirSource = File(project.projectDir, GOOGLE_SERVICES_JSON)

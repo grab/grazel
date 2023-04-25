@@ -85,7 +85,7 @@ crashlytics_android_library(
     build_id = "042cb4d8-56f8-41a0-916a-9da28e94d1ba",
     resource_files = google_services_xml(
         package_name = "com.grab.grazel.android.sample.free",
-        google_services_json = "src/flavor1Free/google-services.json",
+        google_services_json = "src/flavor1FreeDebug/google-services.json",
     ),
 )
 
