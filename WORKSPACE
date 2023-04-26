@@ -50,8 +50,6 @@ DAGGER_TAG = "2.37"
 
 DAGGER_SHA = "0f001ed38ed4ebc6f5c501c20bd35a68daf01c8dbd7541b33b7591a84fcc7b1c"
 
-load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
-
 http_archive(
     name = "dagger",
     sha256 = DAGGER_SHA,
@@ -61,7 +59,6 @@ http_archive(
 
 load("@dagger//:workspace_defs.bzl", "DAGGER_ARTIFACTS", "DAGGER_REPOSITORIES")
 load("@grab_bazel_common//:workspace_defs.bzl", "GRAB_BAZEL_COMMON_ARTIFACTS")
-load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
 http_archive(
     name = "rules_jvm_external",
@@ -151,8 +148,6 @@ android_ndk_repository(
     name = "androidndk",
     api_level = 30,
 )
-
-load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository")
 
 git_repository(
     name = "tools_android",
