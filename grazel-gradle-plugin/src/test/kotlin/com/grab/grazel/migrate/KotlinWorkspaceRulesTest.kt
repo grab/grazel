@@ -24,6 +24,7 @@ import com.grab.grazel.di.DaggerGrazelComponent
 import com.grab.grazel.gradle.ANDROID_LIBRARY_PLUGIN
 import com.grab.grazel.gradle.KOTLIN_ANDROID_PLUGIN
 import com.grab.grazel.migrate.internal.WorkspaceBuilder
+import com.grab.grazel.util.truth
 import org.gradle.api.Project
 import org.gradle.kotlin.dsl.configure
 import org.gradle.kotlin.dsl.repositories
@@ -70,14 +71,12 @@ class KotlinWorkspaceRulesTest {
             .create(listOf(rootProject, subProject))
             .build()
             .asString()
-        Truth.assertThat(workspaceStatements).apply {
+        workspaceStatements.truth().apply {
             // Default http archive
             contains(
                 """http_archive(
   name = "io_bazel_rules_kotlin","""
             )
-
-            // Compiler
             contains(
                 """
                     KOTLIN_VERSION = "$kotlinTag"

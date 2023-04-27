@@ -22,13 +22,34 @@ class LoadStrategyTest {
 
     @Test
     fun `assert inline load statements are added for INLINE strategy`() {
-        val statements = testStatements(loadStrategy = Inline)
+        val statements = testStatements(loadStrategy = Inline())
         assertEquals(8, statements.size)
         assertTrue("Load statements are added inline") {
             arrayOf(0, 4).all { index ->
                 statements[index].let { it is FunctionStatement && it.name == "load" }
             }
         }
+    }
+
+
+    @Test
+    fun `assert no duplicates are added for INLINE strategy`() {
+        val statements = statements(Inline()) {
+            load(":test.bzl", "test_lib")
+            load(":test.bzl", "test_lib")
+            load(":test.bzl", "test_lib", "test_bin")
+        }
+        assertEquals(
+            """
+                load(":test.bzl",  "test_lib")
+                
+                load(":test.bzl",  "test_bin")
+                
+                
+                """.trimIndent(),
+            statements.asString(),
+            "No duplicates are added for inline strategy"
+        )
     }
 
     @Test

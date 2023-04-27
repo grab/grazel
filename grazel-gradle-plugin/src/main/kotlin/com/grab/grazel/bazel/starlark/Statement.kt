@@ -58,7 +58,9 @@ private typealias SymbolMap = MutableMap< /*Bzl File*/ String, /*Symbols*/ Set<S
 /**
  * Represents various types of symbol loading strategies
  */
-sealed class LoadStrategy {
+sealed class LoadStrategy(
+    open val importedSymbols: SymbolMap
+) {
 
     // TODO(arun) migrate to a context receiver on StatementsBuilder
     abstract fun load(
@@ -75,19 +77,29 @@ sealed class LoadStrategy {
     /**
      * Load strategy where symbols are imported as needed eg. WORKSPACE
      */
-    object Inline : LoadStrategy() {
+    data class Inline(
+        override val importedSymbols: SymbolMap = HashMap()
+    ) : LoadStrategy(importedSymbols) {
 
         override fun load(
             builder: StatementsBuilder,
             bzlFile: String,
             vararg symbols: String
-        ) = builder.function(
-            name = "load",
-            args = buildList {
-                add(bzlFile)
-                addAll(symbols)
-            }.toTypedArray()
-        )
+        ) {
+            val prevImportedSymbols = importedSymbols.getOrDefault(bzlFile, emptySet())
+            symbols.filter { it !in prevImportedSymbols }.let { newSymbols ->
+                if (newSymbols.isNotEmpty()) {
+                    builder.function(
+                        name = "load",
+                        args = buildList {
+                            add(bzlFile)
+                            addAll(newSymbols)
+                        }.toTypedArray()
+                    )
+                }
+            }
+            importedSymbols[bzlFile] = (prevImportedSymbols + symbols).toSet()
+        }
 
         /**
          * Nothing to return as load statements are inlined
@@ -99,8 +111,8 @@ sealed class LoadStrategy {
      * Load strategy where symbols are preferred to be in top of the file. eg. BUILD.bazel
      */
     data class Top(
-        val importedSymbols: SymbolMap = TreeMap()
-    ) : LoadStrategy() {
+        override val importedSymbols: SymbolMap = TreeMap()
+    ) : LoadStrategy(importedSymbols) {
 
         override fun load(
             builder: StatementsBuilder,

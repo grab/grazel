@@ -92,7 +92,7 @@ internal class WorkspaceBuilder(
     private val mavenInstall get() = grazelExtension.rules.mavenInstall
     private val hasDatabinding = gradleProjectInfo.hasDatabinding
 
-    override fun build() = statements(loadStrategy = LoadStrategy.Inline) {
+    override fun build() = statements(loadStrategy = LoadStrategy.Inline()) {
         workspace(name = rootProject.name)
 
         kotlinRules()
