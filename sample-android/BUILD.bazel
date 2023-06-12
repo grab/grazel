@@ -32,7 +32,6 @@ android_binary(
     crunch_png = False,
     custom_package = "com.grab.grazel.android.sample",
     debug_key = "//buildsystem:debug-keystore",
-    dex_shards = 5,
     enable_data_binding = True,
     incremental_dexing = True,
     manifest = "src/debug/AndroidManifest.xml",
@@ -73,7 +72,7 @@ android_binary(
         "//sample-kotlin-library",
         "@maven//:androidx_appcompat_appcompat",
         "@maven//:androidx_constraintlayout_constraintlayout",
-        "@maven//:com_squareup_leakcanary_leakcanary_android",
+        "@maven//:androidx_lifecycle_lifecycle_runtime",
     ],
 )
 
@@ -116,7 +115,6 @@ android_binary(
     crunch_png = False,
     custom_package = "com.grab.grazel.android.sample",
     debug_key = "//buildsystem:debug-keystore",
-    dex_shards = 5,
     enable_data_binding = True,
     incremental_dexing = True,
     manifest = "src/debug/AndroidManifest.xml",
@@ -157,7 +155,7 @@ android_binary(
         "//sample-kotlin-library",
         "@maven//:androidx_appcompat_appcompat",
         "@maven//:androidx_constraintlayout_constraintlayout",
-        "@maven//:com_squareup_leakcanary_leakcanary_android",
+        "@maven//:androidx_lifecycle_lifecycle_runtime",
     ],
 )
 
@@ -200,7 +198,6 @@ android_binary(
     crunch_png = False,
     custom_package = "com.grab.grazel.android.sample",
     debug_key = "//buildsystem:debug-keystore",
-    dex_shards = 5,
     enable_data_binding = True,
     incremental_dexing = True,
     manifest = "src/debug/AndroidManifest.xml",
@@ -241,7 +238,7 @@ android_binary(
         "//sample-kotlin-library",
         "@maven//:androidx_appcompat_appcompat",
         "@maven//:androidx_constraintlayout_constraintlayout",
-        "@maven//:com_squareup_leakcanary_leakcanary_android",
+        "@maven//:androidx_lifecycle_lifecycle_runtime",
     ],
 )
 
@@ -284,7 +281,6 @@ android_binary(
     crunch_png = False,
     custom_package = "com.grab.grazel.android.sample",
     debug_key = "//buildsystem:debug-keystore",
-    dex_shards = 5,
     enable_data_binding = True,
     incremental_dexing = True,
     manifest = "src/debug/AndroidManifest.xml",
@@ -325,7 +321,7 @@ android_binary(
         "//sample-kotlin-library",
         "@maven//:androidx_appcompat_appcompat",
         "@maven//:androidx_constraintlayout_constraintlayout",
-        "@maven//:com_squareup_leakcanary_leakcanary_android",
+        "@maven//:androidx_lifecycle_lifecycle_runtime",
     ],
 )
 
@@ -374,9 +370,10 @@ android_instrumentation_binary(
         "//sample-kotlin-library",
         "@maven//:androidx_appcompat_appcompat",
         "@maven//:androidx_constraintlayout_constraintlayout",
+        "@maven//:androidx_lifecycle_lifecycle_runtime",
         "@maven//:androidx_test_espresso_espresso_core",
         "@maven//:androidx_test_ext_junit",
-        "@maven//:com_squareup_leakcanary_leakcanary_android",
+        "@maven//:androidx_test_monitor",
     ],
 )
 
@@ -415,9 +412,10 @@ android_instrumentation_binary(
         "//sample-kotlin-library",
         "@maven//:androidx_appcompat_appcompat",
         "@maven//:androidx_constraintlayout_constraintlayout",
+        "@maven//:androidx_lifecycle_lifecycle_runtime",
         "@maven//:androidx_test_espresso_espresso_core",
         "@maven//:androidx_test_ext_junit",
-        "@maven//:com_squareup_leakcanary_leakcanary_android",
+        "@maven//:androidx_test_monitor",
     ],
 )
 
@@ -456,9 +454,10 @@ android_instrumentation_binary(
         "//sample-kotlin-library",
         "@maven//:androidx_appcompat_appcompat",
         "@maven//:androidx_constraintlayout_constraintlayout",
+        "@maven//:androidx_lifecycle_lifecycle_runtime",
         "@maven//:androidx_test_espresso_espresso_core",
         "@maven//:androidx_test_ext_junit",
-        "@maven//:com_squareup_leakcanary_leakcanary_android",
+        "@maven//:androidx_test_monitor",
     ],
 )
 
@@ -497,8 +496,9 @@ android_instrumentation_binary(
         "//sample-kotlin-library",
         "@maven//:androidx_appcompat_appcompat",
         "@maven//:androidx_constraintlayout_constraintlayout",
+        "@maven//:androidx_lifecycle_lifecycle_runtime",
         "@maven//:androidx_test_espresso_espresso_core",
         "@maven//:androidx_test_ext_junit",
-        "@maven//:com_squareup_leakcanary_leakcanary_android",
+        "@maven//:androidx_test_monitor",
     ],
 )

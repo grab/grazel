@@ -13,7 +13,7 @@ kt_javac_options(
 
 define_kt_toolchain(
     name = "kotlin_toolchain",
-    api_version = "1.6",
+    api_version = "1.7",
     experimental_multiplex_workers = True,
     experimental_report_unused_deps = "off",
     experimental_strict_kotlin_deps = "off",
@@ -21,7 +21,7 @@ define_kt_toolchain(
     javac_options = "//:kt_javac_options",
     jvm_target = "11",
     kotlinc_options = "//:kt_kotlinc_options",
-    language_version = "1.6",
+    language_version = "1.7",
 )
 
 dagger_rules()

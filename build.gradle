@@ -67,10 +67,8 @@ allprojects {
         task.targetCompatibility = JavaVersion.VERSION_11
     }
 
-    tasks.withType(KotlinJvmCompile).configureEach {
-        kotlinOptions {
-            jvmTarget = "11"
-        }
+    tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompilationTask.class).configureEach {
+        compilerOptions.jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_11)
     }
 }
 
@@ -81,7 +79,7 @@ tasks.named("wrapper") {
 
 grazel {
     android {
-        dexShards = 5
+        // dexShards = 5
         multiDexEnabled = true
         incrementalDexing = true
         variantFilter { variant ->
@@ -94,7 +92,9 @@ grazel {
         ndkApiLevel = 30
     }
     dependencies {
-        overrideArtifactVersions.add("androidx.constraintlayout:constraintlayout:2.1.4")
+        overrideArtifactVersions.addAll(
+            "androidx.constraintlayout:constraintlayout:2.1.4"
+        )
     }
     rules {
         test {
@@ -103,7 +103,7 @@ grazel {
         }
         bazelCommon {
             gitRepository {
-                commit = "fdcec09fbf9f7f700c689e816395e15c5c469bd6"
+                commit = "9a9722caa2c9dd3ae3aed0578c6373ef19882dab"
                 remote = "https://github.com/grab/grab-bazel-common.git"
             }
             toolchains {
@@ -144,27 +144,27 @@ grazel {
         }
         kotlin {
             httpArchiveRepository {
-                url = "https://github.com/bazelbuild/rules_kotlin/releases/download/v1.7.0-RC-3/rules_kotlin_release.tgz"
-                sha256 = "f033fa36f51073eae224f18428d9493966e67c27387728b6be2ebbdae43f140e"
+                url = "https://github.com/bazelbuild/rules_kotlin/releases/download/v1.8/rules_kotlin_release.tgz"
+                sha256 = "01293740a16e474669aba5b5a1fe3d368de5832442f164e4fbfc566815a8bc3a"
             }
             compiler {
-                tag = "1.6.21"
-                sha = "632166fed89f3f430482f5aa07f2e20b923b72ef688c8f5a7df3aa1502c6d8ba"
+                tag = "1.8.10"
+                sha = "4c3fa7bc1bb9ef3058a2319d8bcc3b7196079f88e92fdcd8d304a46f4b6b5787"
             }
             toolchain {
                 enabled = true
-                apiVersion = "1.6"
+                apiVersion = "1.7"
                 reportUnusedDeps = "off"
                 strictKotlinDeps = "off"
                 abiJars = true
                 multiplexWorkers = true
-                languageVersion = "1.6"
+                languageVersion = "1.7"
                 jvmTarget = "11"
             }
         }
         dagger {
-            tag = "2.37"
-            sha = "0f001ed38ed4ebc6f5c501c20bd35a68daf01c8dbd7541b33b7591a84fcc7b1c"
+            tag = "2.46.1"
+            sha = "bbd75275faa3186ebaa08e6779dc5410741a940146d43ef532306eb2682c13f7"
         }
     }
 }

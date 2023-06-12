@@ -44,7 +44,7 @@ class VariantTest {
 
         androidVariant(appExtension.applicationVariants.first()).let { buildVariant ->
             assertEquals(
-                25,
+                28,
                 buildVariant.variantConfigurations.size,
                 "Variant configuration parsed for build variant"
             )
@@ -56,13 +56,13 @@ class VariantTest {
         }
 
         assertEquals(
-            28,
+            31,
             androidVariant(appExtension.testVariants.first()).variantConfigurations.size,
             "Variant configuration parsed for androidTest variant"
         )
 
         assertEquals(
-            28,
+            31,
             androidVariant(appExtension.unitTestVariants.first()).variantConfigurations.size,
             "Variant configuration parsed for unitTest variant"
         )
@@ -197,7 +197,7 @@ class VariantTest {
             variantType = JvmBuild
         ).variantConfigurations.let { configurations ->
             assertEquals(
-                32,
+                31,
                 configurations.size,
                 "Build configurations are parsed correctly for build variant"
             )
@@ -217,7 +217,7 @@ class VariantTest {
             variantType = Test
         ).variantConfigurations.let { configurations ->
             assertEquals(
-                19,
+                18,
                 configurations.size,
                 "Build configurations are parsed correctly for test variant"
             )
