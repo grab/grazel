@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
+
 import com.android.build.gradle.BaseExtension
-import org.jetbrains.kotlin.gradle.dsl.KotlinJvmCompile
 
 buildscript {
     apply from: "constants.gradle"
@@ -86,7 +86,6 @@ grazel {
             variant.setIgnore(variant.buildType.name != "debug")
         }
         features {
-            dataBinding = true
             dataBindingMetaData = true
         }
         ndkApiLevel = 30

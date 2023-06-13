@@ -146,11 +146,6 @@ class AndroidInstrumentationBinaryDataExtractorTest : GrazelPluginTest() {
         val variant = project.the<AppExtension>().testVariants.first {
             it.name == "debugAndroidTest"
         }
-        return MatchedVariant(
-            variantName = variant.name,
-            variant = variant,
-            flavors = variant.productFlavors.map { it.name }.toSet(),
-            buildType = variant.buildType.name
-        )
+        return MatchedVariant.from(variant)
     }
 }

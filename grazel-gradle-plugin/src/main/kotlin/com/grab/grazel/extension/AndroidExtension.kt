@@ -58,14 +58,6 @@ data class AndroidExtension(
  */
 interface AndroidFeatures {
     /**
-     * Migrate modules using dataBinding during migration. Enabling this will use custom databinding macro provided from
-     * Bazel common project.
-     *
-     * Default `false`
-     */
-    var dataBinding: Boolean
-
-    /**
      * Generate a `.bazelrc` compatible metadata file containing metadata about which maven dependencies
      * use databinding.
      * Example:
@@ -81,7 +73,6 @@ interface AndroidFeatures {
 }
 
 data class DefaultAndroidFeatures(
-    override var dataBinding: Boolean = false,
     override var dataBindingMetaData: Boolean = false
 ) : AndroidFeatures
 

@@ -37,6 +37,7 @@ import com.grab.grazel.gradle.variant.VariantModule
 import com.grab.grazel.hybrid.HybridBuildExecutor
 import com.grab.grazel.hybrid.HybridBuildModule
 import com.grab.grazel.migrate.android.AndroidInstrumentationBinaryDataExtractor
+import com.grab.grazel.migrate.android.AndroidLibraryDataExtractor
 import com.grab.grazel.migrate.android.ManifestValuesBuilder
 import com.grab.grazel.migrate.dependencies.ArtifactsPinner
 import com.grab.grazel.migrate.dependencies.DefaultArtifactsPinner
@@ -78,6 +79,8 @@ internal interface GrazelComponent {
     fun hybridBuildExecutor(): HybridBuildExecutor
 
     fun androidInstrumentationBinaryDataExtractor(): Lazy<AndroidInstrumentationBinaryDataExtractor>
+    fun androidLibraryDataExtractor(): Lazy<AndroidLibraryDataExtractor>
+
     fun variantBuilder(): Lazy<VariantBuilder>
     fun variantMatcher(): Lazy<VariantMatcher>
 

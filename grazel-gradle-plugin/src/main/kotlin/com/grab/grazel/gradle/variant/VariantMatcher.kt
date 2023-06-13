@@ -72,7 +72,16 @@ internal data class MatchedVariant(
      * The actual library variant that will be used for migration.
      */
     val variant: BaseVariant,
-)
+) {
+    companion object {
+        fun from(baseVariant: BaseVariant) = MatchedVariant(
+            variantName = baseVariant.name,
+            variant = baseVariant,
+            flavors = baseVariant.productFlavors.map { it.name }.toSet(),
+            buildType = baseVariant.buildType.name
+        )
+    }
+}
 
 private val HUMPS = "(?<=.)(?=\\p{Upper})".toRegex()
 internal val MatchedVariant.nameSuffix get() = "-${variantName.replace(HUMPS, "-").toLowerCase()}"

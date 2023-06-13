@@ -40,7 +40,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 @Module
-internal interface AndroidLibTargetBuilderModule {
+internal interface AndroidLibraryTargetBuilderModule {
     @Binds
     fun DefaultAndroidManifestParser.bindAndroidManifestParser(): AndroidManifestParser
 
@@ -52,7 +52,7 @@ internal interface AndroidLibTargetBuilderModule {
 
     @Binds
     @IntoSet
-    fun AndroidLibraryTargetBuilder.bindKtLibTargetBuilder(): TargetBuilder
+    fun AndroidLibraryTargetBuilder.bindAndroidLibraryTargetBuilder(): TargetBuilder
 }
 
 @Singleton

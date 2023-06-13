@@ -45,11 +45,13 @@ val Project.isAndroid
         || isAndroidDynamicFeature
 
 val Project.hasDatabinding: Boolean
-    get() {
-        val buildFeatures = extensions.findByType<BaseExtension>()?.buildFeatures
-        return (buildFeatures as? LibraryBuildFeatures)?.dataBinding == true ||
-            (buildFeatures as? ApplicationBuildFeatures)?.dataBinding == true
-    }
+    get() = extensions.findByType<BaseExtension>()
+        ?.buildFeatures
+        ?.let { buildFeatures ->
+            (buildFeatures as? LibraryBuildFeatures)?.dataBinding == true ||
+                (buildFeatures as? ApplicationBuildFeatures)?.dataBinding == true ||
+                buildFeatures.viewBinding == true
+        } == true
 
 val Project.hasCrashlytics get() = plugins.hasPlugin(FIREBASE_CRASHLYTICS_PLUGIN)
 val Project.hasGooglePlayServicesPlugin get() = plugins.hasPlugin(GOOGLE_PLAY_SERVICES_PLUGIN)
