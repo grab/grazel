@@ -21,7 +21,7 @@ import dagger.Module
 @Module(
     includes = [
         KotlinLibraryTargetBuilderModule::class,
-        AndroidLibTargetBuilderModule::class,
+        AndroidLibraryTargetBuilderModule::class,
         AndroidBinaryTargetBuilderModule::class,
         AndroidInstrumentationBinaryTargetBuilderModule::class,
     ]

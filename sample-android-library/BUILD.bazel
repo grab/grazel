@@ -7,6 +7,7 @@ android_library(
         "src/main/java/com/grab/grazel/android/sample/SampleViewModel.kt",
     ]),
     custom_package = "com.grab.grazel.android.sample.lib",
+    enable_data_binding = True,
     manifest = "src/main/AndroidManifest.xml",
     visibility = [
         "//visibility:public",
@@ -22,6 +23,7 @@ android_library(
         "src/main/java/com/grab/grazel/android/sample/SampleViewModel.kt",
     ]),
     custom_package = "com.grab.grazel.android.sample.lib",
+    enable_data_binding = True,
     manifest = "src/main/AndroidManifest.xml",
     visibility = [
         "//visibility:public",
@@ -37,6 +39,7 @@ android_library(
         "src/main/java/com/grab/grazel/android/sample/SampleViewModel.kt",
     ]),
     custom_package = "com.grab.grazel.android.sample.lib",
+    enable_data_binding = True,
     manifest = "src/main/AndroidManifest.xml",
     visibility = [
         "//visibility:public",
@@ -52,6 +55,7 @@ android_library(
         "src/main/java/com/grab/grazel/android/sample/SampleViewModel.kt",
     ]),
     custom_package = "com.grab.grazel.android.sample.lib",
+    enable_data_binding = True,
     manifest = "src/main/AndroidManifest.xml",
     visibility = [
         "//visibility:public",
@@ -67,7 +71,7 @@ grab_android_local_test(
         "src/test/java/com/grab/grazel/android/sample/SampleViewModelTest.kt",
     ]),
     associates = [
-        "//sample-android-library:sample-android-library-flavor1-free-debug_kt",
+        "//sample-android-library:sample-android-library-flavor1-free-debug-kotlin",
     ],
     custom_package = "com.grab.grazel.android.sample.lib",
     resources = glob([
@@ -89,7 +93,7 @@ grab_android_local_test(
         "src/test/java/com/grab/grazel/android/sample/SampleViewModelTest.kt",
     ]),
     associates = [
-        "//sample-android-library:sample-android-library-flavor1-paid-debug_kt",
+        "//sample-android-library:sample-android-library-flavor1-paid-debug-kotlin",
     ],
     custom_package = "com.grab.grazel.android.sample.lib",
     resources = glob([
@@ -111,7 +115,7 @@ grab_android_local_test(
         "src/test/java/com/grab/grazel/android/sample/SampleViewModelTest.kt",
     ]),
     associates = [
-        "//sample-android-library:sample-android-library-flavor2-free-debug_kt",
+        "//sample-android-library:sample-android-library-flavor2-free-debug-kotlin",
     ],
     custom_package = "com.grab.grazel.android.sample.lib",
     resources = glob([
@@ -133,7 +137,7 @@ grab_android_local_test(
         "src/test/java/com/grab/grazel/android/sample/SampleViewModelTest.kt",
     ]),
     associates = [
-        "//sample-android-library:sample-android-library-flavor2-paid-debug_kt",
+        "//sample-android-library:sample-android-library-flavor2-paid-debug-kotlin",
     ],
     custom_package = "com.grab.grazel.android.sample.lib",
     resources = glob([

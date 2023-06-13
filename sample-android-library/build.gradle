@@ -21,6 +21,10 @@ apply plugin: "kotlin-parcelize"
 android {
     compileSdkVersion 33
     buildToolsVersion "33.0.1"
+
+    buildFeatures {
+        viewBinding true
+    }
 }
 
 dependencies {

@@ -16,7 +16,6 @@
 
 package com.grab.grazel.gradle
 
-import com.grab.grazel.GrazelExtension
 import com.grab.grazel.gradle.dependencies.DependenciesDataSource
 import com.grab.grazel.gradle.dependencies.DependencyGraphs
 import dagger.Lazy
@@ -38,11 +37,9 @@ internal object MigrationCriteriaModule {
     @Provides
     fun migrationCriteria(
         pluginsMigrationCriteria: PluginsMigrationCriteria,
-        androidMigrationCriteria: AndroidMigrationCriteria,
         dependenciesMigrationCriteria: DependenciesMigrationCriteria
     ): Set<MigrationCriteria> = setOf(
         pluginsMigrationCriteria,
-        androidMigrationCriteria,
         dependenciesMigrationCriteria
     )
 }
@@ -85,23 +82,6 @@ internal class MigrationChecker @Inject constructor(
 internal class PluginsMigrationCriteria @Inject constructor() : MigrationCriteria {
     override fun canMigrate(project: Project): Boolean {
         return project.isAndroid || project.isJava || project.isKotlin
-    }
-}
-
-/**
- * Default migrate criteria for Android Project instances
- * * If project uses databinding, allow migration only if user explicitly enabled it.
- */
-@Singleton
-internal class AndroidMigrationCriteria @Inject constructor(
-    private val grazelExtension: GrazelExtension
-) : MigrationCriteria {
-    override fun canMigrate(project: Project): Boolean {
-        return if (!grazelExtension.android.features.dataBinding) {
-            !project.hasDatabinding
-        } else {
-            true
-        }
     }
 }
 

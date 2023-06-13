@@ -20,8 +20,7 @@ import org.gradle.api.Project
 import org.gradle.testfixtures.ProjectBuilder
 import java.io.File
 
-abstract class GrazelPluginTest {
-}
+abstract class GrazelPluginTest
 
 internal fun buildProject(
     name: String,
