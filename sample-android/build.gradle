@@ -111,6 +111,7 @@ dependencies {
     implementation project(path: ":sample-android-library")
     implementation project(path: ":sample-android-flavor")
     implementation libs.androidx.appcompat
+    implementation libs.androidx.lifecycle.runtime
 
     implementation(libs.androidx.constraintlayout) {
         // Sample for exclude rules.
@@ -120,14 +121,10 @@ dependencies {
     implementation libs.google.dagger
     kapt libs.google.dagger.compiler
 
-    // Added to test per variant maven install resolution
-    implementation "com.squareup.leakcanary:leakcanary-android:2.10"
-    //noinspection GradleDependency
-    flavor1Implementation "com.squareup.leakcanary:leakcanary-android:2.9.1"
-
     testImplementation libs.junit
     androidTestImplementation libs.androidx.test.junit
     androidTestImplementation libs.androidx.test.espresso.core
+    androidTestImplementation libs.androidx.monitor
 }
 
 apply plugin: "com.google.gms.google-services"

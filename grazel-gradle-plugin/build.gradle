@@ -21,6 +21,7 @@ import org.gradle.api.internal.project.ProjectInternal
 buildscript {
     apply from: "../constants.gradle"
     dependencies {
+        classpath libs.kotlin.gradle.plugin
         classpath libs.nexus.gradle.publish.plugin
         classpath libs.dokka.gradle.plugin
     }
@@ -110,16 +111,14 @@ dependencies {
     testRuntimeOnly(files(toolingApiBuildersJar))
 }
 
-tasks.withType(JavaCompile).configureEach { task ->
-    task.sourceCompatibility = JavaVersion.VERSION_11
-    task.targetCompatibility = JavaVersion.VERSION_11
+tasks.withType(JavaCompile).configureEach {
+    sourceCompatibility = JavaVersion.VERSION_11
+    targetCompatibility = JavaVersion.VERSION_11
 }
 
-tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach { task ->
-    task.kotlinOptions {
-        jvmTarget = "11"
-        freeCompilerArgs += "-Xopt-in=kotlin.ExperimentalStdlibApi"
-    }
+tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompilationTask.class).configureEach {
+    compilerOptions.jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_11)
+    compilerOptions.freeCompilerArgs.add("-Xopt-in=kotlin.ExperimentalStdlibApi")
 }
 
 tasks.withType(Test).configureEach {

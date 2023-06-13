@@ -4,13 +4,13 @@ load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
 http_archive(
     name = "io_bazel_rules_kotlin",
-    sha256 = "f033fa36f51073eae224f18428d9493966e67c27387728b6be2ebbdae43f140e",
-    url = "https://github.com/bazelbuild/rules_kotlin/releases/download/v1.7.0-RC-3/rules_kotlin_release.tgz",
+    sha256 = "01293740a16e474669aba5b5a1fe3d368de5832442f164e4fbfc566815a8bc3a",
+    url = "https://github.com/bazelbuild/rules_kotlin/releases/download/v1.8/rules_kotlin_release.tgz",
 )
 
-KOTLIN_VERSION = "1.6.21"
+KOTLIN_VERSION = "1.8.10"
 
-KOTLINC_RELEASE_SHA = "632166fed89f3f430482f5aa07f2e20b923b72ef688c8f5a7df3aa1502c6d8ba"
+KOTLINC_RELEASE_SHA = "4c3fa7bc1bb9ef3058a2319d8bcc3b7196079f88e92fdcd8d304a46f4b6b5787"
 
 load("@io_bazel_rules_kotlin//kotlin:repositories.bzl", "kotlin_repositories", "kotlinc_version")
 
@@ -27,7 +27,7 @@ load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository")
 
 git_repository(
     name = "grab_bazel_common",
-    commit = "fdcec09fbf9f7f700c689e816395e15c5c469bd6",
+    commit = "9a9722caa2c9dd3ae3aed0578c6373ef19882dab",
     remote = "https://github.com/grab/grab-bazel-common.git",
 )
 
@@ -46,9 +46,9 @@ load("@grab_bazel_common//android:maven.bzl", "pin_bazel_common_artifacts")
 
 pin_bazel_common_artifacts()
 
-DAGGER_TAG = "2.37"
+DAGGER_TAG = "2.46.1"
 
-DAGGER_SHA = "0f001ed38ed4ebc6f5c501c20bd35a68daf01c8dbd7541b33b7591a84fcc7b1c"
+DAGGER_SHA = "bbd75275faa3186ebaa08e6779dc5410741a940146d43ef532306eb2682c13f7"
 
 http_archive(
     name = "dagger",
@@ -73,7 +73,7 @@ load("@rules_jvm_external//:specs.bzl", "maven")
 maven_install(
     artifacts = DAGGER_ARTIFACTS + GRAB_BAZEL_COMMON_ARTIFACTS + [
         "androidx.annotation:annotation:1.1.0",
-        "androidx.appcompat:appcompat:1.3.1",
+        "androidx.appcompat:appcompat:1.6.1",
         "androidx.constraintlayout:constraintlayout-core:1.0.4",
         maven.artifact(
             artifact = "constraintlayout",
@@ -84,20 +84,21 @@ maven_install(
             group = "androidx.constraintlayout",
             version = "2.1.4",
         ),
-        "androidx.core:core:1.5.0",
+        "androidx.core:core:1.10.1",
         "androidx.databinding:databinding-adapters:7.2.2",
         "androidx.databinding:databinding-common:7.2.2",
         "androidx.databinding:databinding-compiler:7.2.2",
         "androidx.databinding:databinding-runtime:7.2.2",
         "androidx.databinding:viewbinding:7.2.2",
-        "androidx.test.espresso:espresso-core:3.4.0",
-        "androidx.test.ext:junit:1.1.3",
-        "com.squareup.leakcanary:leakcanary-android:2.10",
+        "androidx.lifecycle:lifecycle-runtime:2.5.1",
+        "androidx.test.espresso:espresso-core:3.5.1",
+        "androidx.test.ext:junit:1.1.5",
+        "androidx.test:monitor:1.6.1",
         "junit:junit:4.13.2",
         "org.jacoco:org.jacoco.ant:0.8.7",
-        "org.jetbrains.kotlin:kotlin-annotation-processing-gradle:1.6.21",
+        "org.jetbrains.kotlin:kotlin-annotation-processing-gradle:1.8.10",
         "org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.5.31",
-        "org.jetbrains.kotlin:kotlin-stdlib:1.5.31",
+        "org.jetbrains.kotlin:kotlin-stdlib:1.7.10",
     ],
     excluded_artifacts = ["androidx.test.espresso:espresso-contrib"],
     fail_on_missing_checksum = False,
@@ -112,10 +113,11 @@ maven_install(
         "androidx.databinding:databinding-compiler",
         "androidx.databinding:databinding-runtime",
         "androidx.databinding:viewbinding",
+        "androidx.lifecycle:lifecycle-runtime",
         "androidx.test.espresso:espresso-core",
         "androidx.test.ext:junit",
+        "androidx.test:monitor",
         "com.android.support:cardview-v7",
-        "com.squareup.leakcanary:leakcanary-android",
         "junit:junit",
         "org.jacoco:org.jacoco.ant",
         "org.jetbrains.kotlin:kotlin-annotation-processing-gradle",
