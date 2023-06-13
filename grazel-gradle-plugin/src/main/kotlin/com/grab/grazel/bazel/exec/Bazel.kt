@@ -17,6 +17,9 @@
 package com.grab.grazel.bazel.exec
 
 import com.grab.grazel.util.LogOutputStream
+import com.grab.grazel.util.ansiGreen
+import com.grab.grazel.util.ansiPurple
+import com.grab.grazel.util.ansiYellow
 import org.gradle.api.Project
 import org.gradle.api.logging.LogLevel
 import org.gradle.process.ExecResult
@@ -34,7 +37,7 @@ internal fun Project.bazelCommand(
     val commands: List<String> = mutableListOf("bazelisk", command).apply {
         addAll(args)
     }
-    logger.quiet("Running ${commands.joinToString(separator = " ")}")
+    logger.quiet("${"Running".ansiGreen} ${commands.joinToString(separator = " ").ansiYellow}")
     return exec {
         commandLine(*commands.toTypedArray())
         standardOutput = outputStream ?: LogOutputStream(logger, LogLevel.QUIET)
