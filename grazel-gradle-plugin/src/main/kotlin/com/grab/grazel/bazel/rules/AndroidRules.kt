@@ -131,6 +131,7 @@ internal fun StatementsBuilder.androidBinary(
     srcsGlob: List<String> = emptyList(),
     manifestValues: Map<String, String?> = mapOf(),
     enableDataBinding: Boolean = false,
+    enableCompose: Boolean = false,
     visibility: Visibility = Visibility.Public,
     resourceFiles: List<Assignee> = emptyList(),
     resources: Assignee? = null,
@@ -157,6 +158,9 @@ internal fun StatementsBuilder.androidBinary(
         "visibility" `=` array(visibility.rule.quote)
         if (enableDataBinding) {
             "enable_data_binding" `=` enableDataBinding.toString().capitalize()
+        }
+        if (enableCompose) {
+            "enable_compose" `=` enableCompose.toString().capitalize()
         }
         resourceFiles.notEmpty {
             "resource_files" `=` resourceFiles.joinToString(
@@ -190,6 +194,7 @@ internal fun StatementsBuilder.androidLibrary(
     resources: Assignee? = null,
     resourceFiles: List<Assignee> = emptyList(),
     enableDataBinding: Boolean = false,
+    enableCompose: Boolean = false,
     deps: List<BazelDependency>,
     tags: List<String> = emptyList(),
     assetsGlob: List<String> = emptyList(),
@@ -218,6 +223,9 @@ internal fun StatementsBuilder.androidLibrary(
         }
         if (enableDataBinding) {
             "enable_data_binding" `=` enableDataBinding.toString().capitalize()
+        }
+        if (enableCompose) {
+            "enable_compose" `=` enableCompose.toString().capitalize()
         }
         tags.notEmpty {
             "tags" `=` array(tags.map(String::quote))

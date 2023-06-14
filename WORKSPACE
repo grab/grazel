@@ -27,7 +27,7 @@ load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository")
 
 git_repository(
     name = "grab_bazel_common",
-    commit = "9a9722caa2c9dd3ae3aed0578c6373ef19882dab",
+    commit = "4a18937b1a30f11996742f34587d50a5aa1f04f4",
     remote = "https://github.com/grab/grab-bazel-common.git",
 )
 
@@ -72,8 +72,16 @@ load("@rules_jvm_external//:specs.bzl", "maven")
 
 maven_install(
     artifacts = DAGGER_ARTIFACTS + GRAB_BAZEL_COMMON_ARTIFACTS + [
+        "androidx.activity:activity-compose:1.7.2",
+        "androidx.activity:activity:1.6.0",
         "androidx.annotation:annotation:1.1.0",
         "androidx.appcompat:appcompat:1.6.1",
+        "androidx.compose.compiler:compiler:1.4.3",
+        "androidx.compose.foundation:foundation-layout:1.4.3",
+        "androidx.compose.foundation:foundation:1.4.3",
+        "androidx.compose.material:material:1.4.3",
+        "androidx.compose.ui:ui-tooling:1.4.3",
+        "androidx.compose.ui:ui:1.4.3",
         "androidx.constraintlayout:constraintlayout-core:1.0.4",
         maven.artifact(
             artifact = "constraintlayout",
@@ -90,7 +98,10 @@ maven_install(
         "androidx.databinding:databinding-compiler:7.2.2",
         "androidx.databinding:databinding-runtime:7.2.2",
         "androidx.databinding:viewbinding:7.2.2",
+        "androidx.emoji2:emoji2:1.3.0",
+        "androidx.lifecycle:lifecycle-common:2.6.1",
         "androidx.lifecycle:lifecycle-runtime:2.5.1",
+        "androidx.lifecycle:lifecycle-viewmodel:2.5.1",
         "androidx.test.espresso:espresso-core:3.5.1",
         "androidx.test.ext:junit:1.1.5",
         "androidx.test:monitor:1.6.1",
@@ -104,7 +115,15 @@ maven_install(
     fail_on_missing_checksum = False,
     jetify = True,
     jetify_include_list = [
+        "androidx.activity:activity",
+        "androidx.activity:activity-compose",
         "androidx.annotation:annotation",
+        "androidx.compose.compiler:compiler",
+        "androidx.compose.foundation:foundation",
+        "androidx.compose.foundation:foundation-layout",
+        "androidx.compose.material:material",
+        "androidx.compose.ui:ui",
+        "androidx.compose.ui:ui-tooling",
         "androidx.constraintlayout:constraintlayout",
         "androidx.constraintlayout:constraintlayout-core",
         "androidx.core:core",
@@ -113,7 +132,10 @@ maven_install(
         "androidx.databinding:databinding-compiler",
         "androidx.databinding:databinding-runtime",
         "androidx.databinding:viewbinding",
+        "androidx.emoji2:emoji2",
+        "androidx.lifecycle:lifecycle-common",
         "androidx.lifecycle:lifecycle-runtime",
+        "androidx.lifecycle:lifecycle-viewmodel",
         "androidx.test.espresso:espresso-core",
         "androidx.test.ext:junit",
         "androidx.test:monitor",

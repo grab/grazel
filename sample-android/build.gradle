@@ -28,8 +28,8 @@ android {
 
     defaultConfig {
         applicationId "com.grab.grazel.android.sample"
-        minSdkVersion 16
-        targetSdkVersion 29
+        minSdkVersion 21
+        targetSdkVersion 31
         versionCode 1
         versionName "1.0"
 
@@ -42,6 +42,9 @@ android {
         resValue "string", "generated_value", "This string was generated with resValue"
 
         manifestPlaceholders = [orientation: "portrait"]
+        vectorDrawables {
+            useSupportLibrary true
+        }
     }
 
     signingConfigs {
@@ -82,12 +85,6 @@ android {
         }
     }
 
-    androidComponents {
-        onVariants(selector().all()) { variant ->
-            variant.buildConfigFields.put("VARIANT_NAME", new BuildConfigField("String", "\"$variant.name\"", null))
-        }
-    }
-
     sourceSets {
         debug {
             res.srcDirs += "src/main/res-debug"
@@ -100,8 +97,31 @@ android {
         }
     }
 
-    dataBinding {
-        enabled = true
+    buildFeatures {
+        compose true
+        dataBinding true
+    }
+
+    composeOptions {
+        kotlinCompilerExtensionVersion libs.versions.androidx.compose.get()
+    }
+
+    androidComponents {
+        onVariants(selector().all()) { variant ->
+            variant.buildConfigFields.put("VARIANT_NAME", new BuildConfigField("String", "\"$variant.name\"", null))
+        }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+    kotlinOptions {
+        jvmTarget = '1.8'
+    }
+    packagingOptions {
+        resources {
+            excludes += '/META-INF/{AL2.0,LGPL2.1}'
+        }
     }
 }
 
@@ -112,11 +132,24 @@ dependencies {
     implementation project(path: ":sample-android-flavor")
     implementation libs.androidx.appcompat
     implementation libs.androidx.lifecycle.runtime
+    implementation libs.androidx.lifecycle.common
+    implementation libs.androidx.activity
+    implementation libs.androidx.core
+    implementation libs.androidx.lifecycle.viewmodel
 
     implementation(libs.androidx.constraintlayout) {
         // Sample for exclude rules.
         exclude group: "androidx.appcompat", module: "appcompat"
     }
+
+    implementation libs.androidx.compose.ui
+    implementation libs.androidx.compose.ui.tooling
+    implementation libs.androidx.compose.material
+    implementation libs.androidx.compose.foundation
+    implementation libs.androidx.compose.foundation.layout
+    implementation libs.androidx.activity.compose
+    implementation libs.androidx.compose.material
+    implementation libs.androidx.emoji2
 
     implementation libs.google.dagger
     kapt libs.google.dagger.compiler

@@ -27,16 +27,15 @@ buildscript {
     dependencies {
         classpath libs.kotlin.gradle.plugin
         classpath libs.android.gradle.plugin
-        classpath "com.grab:grazel:$versionName"
         classpath libs.google.firebase.crashlytics
         classpath libs.google.mobile.services
+        classpath "com.grab:grazel:$versionName"
     }
 }
 
 plugins {
     id "idea"
 }
-
 apply plugin: "com.grab.grazel"
 
 allprojects {
@@ -69,6 +68,7 @@ allprojects {
 
     tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompilationTask.class).configureEach {
         compilerOptions.jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_11)
+        compilerOptions.languageVersion = org.jetbrains.kotlin.gradle.dsl.KotlinVersion.KOTLIN_1_7
     }
 }
 
@@ -102,7 +102,7 @@ grazel {
         }
         bazelCommon {
             gitRepository {
-                commit = "9a9722caa2c9dd3ae3aed0578c6373ef19882dab"
+                commit = "4a18937b1a30f11996742f34587d50a5aa1f04f4"
                 remote = "https://github.com/grab/grab-bazel-common.git"
             }
             toolchains {

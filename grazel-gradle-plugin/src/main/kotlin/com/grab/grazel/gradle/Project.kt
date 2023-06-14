@@ -52,6 +52,8 @@ val Project.hasDatabinding: Boolean
                 (buildFeatures as? ApplicationBuildFeatures)?.dataBinding == true ||
                 buildFeatures.viewBinding == true
         } == true
+val Project.hasCompose: Boolean
+    get() = extensions.findByType<BaseExtension>()?.buildFeatures?.compose == true
 
 val Project.hasCrashlytics get() = plugins.hasPlugin(FIREBASE_CRASHLYTICS_PLUGIN)
 val Project.hasGooglePlayServicesPlugin get() = plugins.hasPlugin(GOOGLE_PLAY_SERVICES_PLUGIN)
