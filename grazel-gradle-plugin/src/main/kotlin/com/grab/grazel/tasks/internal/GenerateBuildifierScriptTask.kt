@@ -43,7 +43,8 @@ abstract class GenerateBuildifierScriptTask : DefaultTask() {
         project.bazelCommand(
             "run",
             "@grab_bazel_common//:buildifier",
-            "--script_path=${buildifierScript.get().asFile.absolutePath}"
+            "--script_path=${buildifierScript.get().asFile.absolutePath}",
+            "--noshow_progress"
         )
     }
 
