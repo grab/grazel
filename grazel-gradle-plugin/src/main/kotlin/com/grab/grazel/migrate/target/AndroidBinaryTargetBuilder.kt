@@ -113,6 +113,7 @@ constructor(
                     debugKey = androidBinaryData.debugKey,
                     dexShards = androidBinaryData.dexShards,
                     incrementalDexing = androidBinaryData.incrementalDexing,
+                    enableCompose = androidBinaryData.compose,
                     enableDataBinding = androidBinaryData.databinding,
                     customPackage = androidBinaryData.customPackage,
                     packageName = androidBinaryData.packageName,

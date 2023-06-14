@@ -36,6 +36,7 @@ internal interface AndroidData {
     val buildConfigData: BuildConfigData
     val deps: List<BazelDependency>
     val plugins: List<BazelDependency>
+    val compose: Boolean
     val databinding: Boolean
     val tags: List<String>
 }
@@ -54,6 +55,7 @@ internal data class AndroidLibraryData(
     override val deps: List<BazelDependency> = emptyList(),
     override val plugins: List<BazelDependency> = emptyList(),
     override val databinding: Boolean = false,
+    override val compose: Boolean = false,
     override val tags: List<String> = emptyList()
 ) : AndroidData
 
@@ -71,6 +73,7 @@ internal data class AndroidBinaryData(
     override val deps: List<BazelDependency> = emptyList(),
     override val plugins: List<BazelDependency> = emptyList(),
     override val databinding: Boolean = false,
+    override val compose: Boolean = false,
     override val tags: List<String> = emptyList(),
     val manifestValues: Map<String, String?> = emptyMap(),
     val multidex: Multidex = Multidex.Native,

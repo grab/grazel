@@ -18,6 +18,8 @@
     package="com.grab.grazel.android.flavor">
 
     <application>
-        <activity android:name=".FlavorActivity" />
+        <activity
+            android:name=".FlavorActivity"
+            android:exported="true" />
     </application>
 </manifest>

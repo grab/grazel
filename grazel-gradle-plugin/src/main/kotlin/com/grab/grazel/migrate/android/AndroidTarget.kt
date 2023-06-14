@@ -26,6 +26,7 @@ import com.grab.grazel.migrate.BazelBuildTarget
 
 internal interface AndroidTarget : BazelBuildTarget {
     val enableDataBinding: Boolean
+    val enableCompose: Boolean
     val projectName: String
     val resDirs: List<String>
     val resValuesData: ResValuesData
@@ -43,6 +44,7 @@ internal data class AndroidLibraryTarget(
     override val tags: List<String> = emptyList(),
     override val visibility: Visibility = Visibility.Public,
     override val enableDataBinding: Boolean = false,
+    override val enableCompose: Boolean = false,
     override val projectName: String = name,
     override val resDirs: List<String>,
     override val resValuesData: ResValuesData = ResValuesData(),
@@ -58,6 +60,7 @@ internal data class AndroidLibraryTarget(
             packageName = packageName,
             manifest = manifest,
             enableDataBinding = enableDataBinding,
+            enableCompose = enableCompose,
             srcsGlob = srcs,
             resources = buildResources(resDirs),
             visibility = visibility,
@@ -78,6 +81,7 @@ internal data class AndroidBinaryTarget(
     override val tags: List<String> = emptyList(),
     override val visibility: Visibility = Visibility.Public,
     override val enableDataBinding: Boolean = false,
+    override val enableCompose: Boolean = false,
     override val projectName: String = name,
     override val resDirs: List<String>,
     override val resValuesData: ResValuesData = ResValuesData(),
@@ -105,6 +109,7 @@ internal data class AndroidBinaryTarget(
             visibility = visibility,
             incrementalDexing = incrementalDexing,
             enableDataBinding = enableDataBinding,
+            enableCompose = enableCompose,
             customPackage = customPackage,
             srcsGlob = srcs,
             manifest = manifest,

@@ -19,10 +19,9 @@ package com.grab.grazel.android.sample
 import android.content.Intent
 import android.os.Bundle
 import android.os.Parcelable
-import android.view.View
 import android.widget.Button
 import android.widget.TextView
-import androidx.appcompat.app.AppCompatActivity
+import androidx.activity.ComponentActivity
 import com.grab.grazel.android.flavor.FlavorActivity
 import com.grab.grazel.sample.HelloWorld
 import dagger.Component
@@ -46,19 +45,26 @@ interface MainActivityComponent {
 @Parcelize
 data class ParcelableClass(val name: String) : Parcelable
 
-class MainActivity : AppCompatActivity() {
+class MainActivity : ComponentActivity() {
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+
         HelloWorld()
         verifyBuildConfigFields()
+
         DaggerMainActivityComponent
             .factory()
             .create()
             .simpleDependency()
+
         findViewById<TextView>(R.id.text).setText(R.string.generated_value)
         findViewById<Button>(R.id.button).setOnClickListener {
             startActivity(Intent(this, FlavorActivity::class.java))
+        }
+        findViewById<Button>(R.id.composeButton).setOnClickListener {
+            startActivity(Intent(this, ComposeActivity::class.java))
         }
 
         // Assert custom resource set import

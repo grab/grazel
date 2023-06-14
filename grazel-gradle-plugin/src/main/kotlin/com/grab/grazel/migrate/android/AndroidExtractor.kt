@@ -26,6 +26,7 @@ import com.grab.grazel.gradle.dependencies.BuildGraphType
 import com.grab.grazel.gradle.dependencies.DependenciesDataSource
 import com.grab.grazel.gradle.dependencies.DependencyGraphs
 import com.grab.grazel.gradle.dependencies.GradleDependencyToBazelDependency
+import com.grab.grazel.gradle.hasCompose
 import com.grab.grazel.gradle.hasCrashlytics
 import com.grab.grazel.gradle.hasDatabinding
 import com.grab.grazel.gradle.isAndroid
@@ -135,6 +136,7 @@ constructor(
             customPackage = packageName,
             packageName = packageName,
             databinding = project.hasDatabinding,
+            compose = project.hasCompose,
             buildConfigData = extension.extractBuildConfig(this, matchedVariant.variant),
             resValuesData = extension.extractResValue(matchedVariant),
             deps = deps,
@@ -204,6 +206,7 @@ constructor(
             customPackage = customPackage,
             packageName = matchedVariant.variant.applicationId,
             hasCrashlytics = project.hasCrashlytics,
+            compose = project.hasCompose,
             databinding = project.hasDatabinding
         )
     }
