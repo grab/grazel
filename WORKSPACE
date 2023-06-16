@@ -38,7 +38,7 @@ bazel_common_dependencies()
 load("@grab_bazel_common//android:initialize.bzl", "bazel_common_initialize")
 
 bazel_common_initialize(
-    buildifier_version = "6.0.1",
+    buildifier_version = "v6.1.2",
     patched_android_tools = True,
 )
 
@@ -62,9 +62,9 @@ load("@grab_bazel_common//:workspace_defs.bzl", "GRAB_BAZEL_COMMON_ARTIFACTS")
 
 http_archive(
     name = "rules_jvm_external",
-    sha256 = "735602f50813eb2ea93ca3f5e43b1959bd80b213b836a07a62a29d757670b77b",
-    strip_prefix = "rules_jvm_external-4.4.2",
-    url = "https://github.com/bazelbuild/rules_jvm_external/archive/4.4.2.zip",
+    sha256 = "f86fd42a809e1871ca0aabe89db0d440451219c3ce46c58da240c7dcdc00125f",
+    strip_prefix = "rules_jvm_external-5.2",
+    url = "https://github.com/bazelbuild/rules_jvm_external/releases/download/5.2/rules_jvm_external-5.2.tar.gz",
 )
 
 load("@rules_jvm_external//:defs.bzl", "maven_install")
