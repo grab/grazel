@@ -128,7 +128,7 @@ grazel {
                 stripPrefix = "rules_jvm_external-5.2"
                 url = "https://github.com/bazelbuild/rules_jvm_external/releases/download/5.2/rules_jvm_external-5.2.tar.gz"
             }
-            credentials = false
+            includeCredentials = false
             resolveTimeout = 1000
             excludeArtifactsDenyList.add("androidx.constraintlayout:constraintlayout-core")
             excludeArtifacts.add("androidx.test.espresso:espresso-contrib")

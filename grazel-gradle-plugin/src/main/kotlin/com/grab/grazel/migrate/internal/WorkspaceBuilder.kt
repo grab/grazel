@@ -140,7 +140,7 @@ internal class WorkspaceBuilder(
 
         val repositories = repositoryDataSource.supportedRepositories
             .map { repo ->
-                val passwordCredentials = if (grazelExtension.rules.mavenInstall.credentials) {
+                val passwordCredentials = if (grazelExtension.rules.mavenInstall.includeCredentials) {
                     try {
                         repo.getCredentials(PasswordCredentials::class.java)
                     } catch (e: Exception) {
