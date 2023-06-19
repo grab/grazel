@@ -140,12 +140,14 @@ internal class WorkspaceBuilder(
 
         val repositories = repositoryDataSource.supportedRepositories
             .map { repo ->
-                val passwordCredentials = try {
-                    repo.getCredentials(PasswordCredentials::class.java)
-                } catch (e: Exception) {
-                    // We only support basic auth now
-                    null
-                }
+                val passwordCredentials = if (grazelExtension.rules.mavenInstall.includeCredentials) {
+                    try {
+                        repo.getCredentials(PasswordCredentials::class.java)
+                    } catch (e: Exception) {
+                        // We only support basic auth now
+                        null
+                    }
+                } else null
                 DefaultMavenRepository(
                     repo.url.toString(),
                     passwordCredentials?.username,

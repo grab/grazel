@@ -107,7 +107,7 @@ grazel {
             }
             toolchains {
                 buildifier {
-                    releaseVersion = "6.0.1"
+                    releaseVersion = "v6.1.2"
                     supportedOs = ["linux", "darwin"]
                     supportedArch = ["amd64", "arm64"]
                 }
@@ -124,10 +124,11 @@ grazel {
         }
         mavenInstall {
             httpArchiveRepository {
-                sha256 = "735602f50813eb2ea93ca3f5e43b1959bd80b213b836a07a62a29d757670b77b"
-                stripPrefix = "rules_jvm_external-4.4.2"
-                url = "https://github.com/bazelbuild/rules_jvm_external/archive/4.4.2.zip"
+                sha256 = "f86fd42a809e1871ca0aabe89db0d440451219c3ce46c58da240c7dcdc00125f"
+                stripPrefix = "rules_jvm_external-5.2"
+                url = "https://github.com/bazelbuild/rules_jvm_external/releases/download/5.2/rules_jvm_external-5.2.tar.gz"
             }
+            includeCredentials = false
             resolveTimeout = 1000
             excludeArtifactsDenyList.add("androidx.constraintlayout:constraintlayout-core")
             excludeArtifacts.add("androidx.test.espresso:espresso-contrib")

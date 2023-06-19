@@ -66,6 +66,7 @@ data class MavenInstallExtension(
     var jetifyIncludeList: ListProperty<String> = objects.listProperty(),
     var jetifyExcludeList: ListProperty<String> = objects.listProperty(),
     var versionConflictPolicy: String? = null,
+    var includeCredentials: Boolean = true,
 ) {
     // TODO GitRepositoryRule
     /**
