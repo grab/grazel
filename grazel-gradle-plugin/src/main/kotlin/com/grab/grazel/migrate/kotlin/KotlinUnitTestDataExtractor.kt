@@ -26,7 +26,6 @@ import com.grab.grazel.gradle.dependencies.DependencyGraphs
 import com.grab.grazel.gradle.dependencies.GradleDependencyToBazelDependency
 import com.grab.grazel.migrate.android.FORMAT_UNIT_TEST_NAME
 import com.grab.grazel.migrate.android.SourceSetType
-import com.grab.grazel.migrate.android.collectMavenDeps
 import com.grab.grazel.migrate.android.filterNonDefaultSourceSetDirs
 import com.grab.grazel.migrate.android.filterSourceSetPaths
 import com.grab.grazel.migrate.common.calculateTestAssociate
@@ -77,7 +76,7 @@ internal class DefaultKotlinUnitTestDataExtractor @Inject constructor(
                 }
             )
             addAll(
-                dependenciesDataSource.collectMavenDeps(
+                dependenciesDataSource.externalDependencies(
                     project,
                     BuildGraphType(ConfigurationScope.TEST)
                 )

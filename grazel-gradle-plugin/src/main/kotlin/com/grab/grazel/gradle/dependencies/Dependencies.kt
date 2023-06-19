@@ -17,14 +17,27 @@
 package com.grab.grazel.gradle.dependencies
 
 import com.grab.grazel.GrazelExtension
-import com.grab.grazel.bazel.rules.MavenInstallArtifact
-import com.grab.grazel.bazel.rules.MavenInstallArtifact.Exclusion.SimpleExclusion
+import com.grab.grazel.bazel.rules.ANDROIDX_GROUP
+import com.grab.grazel.bazel.rules.ANNOTATION_ARTIFACT
+import com.grab.grazel.bazel.rules.DAGGER_GROUP
+import com.grab.grazel.bazel.rules.DATABINDING_GROUP
+import com.grab.grazel.bazel.starlark.BazelDependency
+import com.grab.grazel.bazel.starlark.BazelDependency.StringDependency
 import com.grab.grazel.di.qualifiers.RootProject
 import com.grab.grazel.gradle.ConfigurationDataSource
 import com.grab.grazel.gradle.ConfigurationScope
+import com.grab.grazel.gradle.ConfigurationScope.TEST
 import com.grab.grazel.gradle.RepositoryDataSource
 import com.grab.grazel.gradle.configurationScopes
+import com.grab.grazel.gradle.hasDatabinding
 import com.grab.grazel.gradle.variant.AndroidVariantsExtractor
+import com.grab.grazel.gradle.variant.DEFAULT_VARIANT
+import com.grab.grazel.gradle.variant.TEST_VARIANT
+import com.grab.grazel.gradle.variant.Variant
+import com.grab.grazel.gradle.variant.VariantBuilder
+import com.grab.grazel.gradle.variant.isConfigScope
+import com.grab.grazel.gradle.variant.migratableConfigurations
+import com.grab.grazel.migrate.dependencies.MavenInstallStore
 import com.grab.grazel.util.GradleProvider
 import org.gradle.api.Project
 import org.gradle.api.artifacts.Configuration
@@ -46,17 +59,6 @@ internal val IGNORED_ARTIFACT_GROUPS = listOf(
     "org.jetbrains.kotlin"
 )
 
-@Deprecated(
-    "No longer used, use com.grab.grazel.gradle.dependencies.ExcludeRule instead.",
-    replaceWith = ReplaceWith("ExcludeRule", "com.grab.grazel.gradle.dependencies.ExcludeRule")
-)
-data class ExcludeRuleOld(
-    val group: String,
-    val artifact: String
-) {
-    override fun toString(): String = "$group:$artifact"
-}
-
 /**
  * Simple data holder for a Maven artifact containing its group, name and version.
  */
@@ -64,7 +66,6 @@ internal data class MavenArtifact(
     val group: String?,
     val name: String?,
     val version: String? = null,
-    val excludeRuleOlds: Set<ExcludeRuleOld> = emptySet()
 ) {
     val id get() = "$group:$name"
     override fun toString() = "$group:$name:$version"
@@ -94,20 +95,6 @@ internal interface DependenciesDataSource {
     ): Sequence<Pair<Configuration, ProjectDependency>>
 
     /**
-     * Returns the resolved artifacts dependencies for the given projects in the fully qualified Maven format.
-     *
-     * @param projects The list of projects for which the artifacts need to be resolved
-     * @param overrideArtifactVersions List of fully qualified maven coordinates with versions that used for calculation
-     *                                 instead of the one calculated automatically.
-     *
-     * @return List of artifacts in fully qualified Maven format
-     */
-    fun resolvedArtifactsFor(
-        projects: List<Project>,
-        overrideArtifactVersions: List<String> = emptyList()
-    ): List<MavenInstallArtifact>
-
-    /**
      * @return true if the project has any private dependencies in any configuration
      */
     fun hasDepsFromUnsupportedRepositories(project: Project): Boolean
@@ -132,6 +119,14 @@ internal interface DependenciesDataSource {
         rootProject: Project,
         fileExtension: String? = null
     ): Map<MavenArtifact, File>
+
+    /**
+     * Non project dependencies for the given [buildGraphType]
+     */
+    fun externalDependencies(
+        project: Project,
+        buildGraphType: BuildGraphType
+    ): List<BazelDependency>
 }
 
 @Singleton
@@ -142,37 +137,12 @@ internal class DefaultDependenciesDataSource @Inject constructor(
     private val artifactsConfig: ArtifactsConfig,
     private val repositoryDataSource: RepositoryDataSource,
     private val dependencyResolutionService: GradleProvider<DefaultDependencyResolutionService>,
-    private val androidVariantsExtractor: AndroidVariantsExtractor
+    private val androidVariantsExtractor: AndroidVariantsExtractor,
+    private val variantBuilder: VariantBuilder,
+    private val mavenInstallStore: MavenInstallStore
 ) : DependenciesDataSource {
 
     private val configurationScopes by lazy { grazelExtension.configurationScopes() }
-
-    private val excludeArtifactsDenyList by lazy { grazelExtension.rules.mavenInstall.excludeArtifactsDenyList.get() }
-
-    private val resolvedVersions: Map</* maven coord */ String,/* version */  String> by lazy {
-        rootProject
-            .subprojects
-            .asSequence()
-            .flatMap { it.firstLevelModuleDependencies() }
-            .flatMap { (listOf(it) + it.children).asSequence() }
-            .map { it.moduleGroup + ":" + it.moduleName to it.moduleVersion }
-            .toMap()
-    }
-
-    // TODO Can be moved else where for clarity
-    private val resolvedRepositories: Map</* maven coord */ String,/* repo name */  String> by lazy {
-        rootProject
-            .subprojects
-            .asSequence()
-            .flatMap { it.externalResolvedDependencies().asSequence() }
-            .filter { it.repositoryName != null && it.moduleVersion != null }
-            .map { componentResult ->
-                val moduleVersion = componentResult.moduleVersion
-                val id = moduleVersion!!.group + ":" + moduleVersion.name
-                id to componentResult.repositoryName!!
-            }.distinct()
-            .toMap()
-    }
 
     private fun Project.buildGraphTypes() =
         configurationScopes.flatMap { configurationScope ->
@@ -180,28 +150,6 @@ internal class DefaultDependenciesDataSource @Inject constructor(
                 BuildGraphType(configurationScope, variant)
             }
         }
-
-    /**
-     * Given a group, name and version will update version with following properties
-     * * Overridden version by user
-     * * Resolved version by Gradle
-     * * Declared version in buildscript.
-     */
-    private fun correctArtifactVersion(
-        mavenArtifact: MavenArtifact,
-        overrideArtifactVersions: Map<String, String> = emptyMap()
-    ): MavenArtifact {
-        // To correctly calculate the actual used version, we map the version from resolvedVersions since
-        // resolvedVersions would contain the actual resolved dependency version (respecting resolution strategy)
-        // instead of the ones declared in a project's build file
-        // Additionally we also check if user needs to override the version via overrideArtifactVersions and use
-        // that if found
-        val id = "${mavenArtifact.group}:${mavenArtifact.name}"
-        val newVersion = overrideArtifactVersions[id]
-            ?: resolvedVersions[id]
-            ?: mavenArtifact.version
-        return mavenArtifact.copy(version = newVersion)
-    }
 
     /**
      * @return `true` when the `MavenArtifact` is present is ignored by user.
@@ -213,79 +161,6 @@ internal class DefaultDependenciesDataSource @Inject constructor(
      */
     private val MavenArtifact.isExcluded get() = artifactsConfig.excludedList.contains(id)
 
-    override fun resolvedArtifactsFor(
-        projects: List<Project>,
-        overrideArtifactVersions: List<String>
-    ): List<MavenInstallArtifact> {
-        // Prepare override versions map
-        val overrideArtifactVersionMap = overrideArtifactVersions.associate { mavenCoordinate ->
-            try {
-                val chunks = mavenCoordinate.split(":")
-                chunks.first() + ":" + chunks[1] to chunks[2]
-            } catch (e: IndexOutOfBoundsException) {
-                error("$mavenCoordinate is not a proper maven coordinate, please ensure version is correctly specified")
-            }
-        }
-
-        // Filter out configurations we are interested in.
-        val configurations = projects
-            .asSequence()
-            .flatMap { project ->
-                configurationDataSource.configurations(
-                    project,
-                    *configurationScopes
-                )
-            }
-            .toList()
-
-        // Calculate all the external artifacts
-        val externalArtifacts = configurations.asSequence()
-            .flatMap { it.dependencies.asSequence() }
-            .filter { it.group != null }
-            .filterIsInstance<ExternalDependency>()
-            .map { dependency -> dependency.toMavenArtifact() }
-
-
-        // Collect all forced versions
-        // (Perf fix) - collecting all projects' forced modules is costly, hence take the first sub project
-        // TODO Provide option to consider all forced versions backed by a flag.
-        val forcedVersions = sequenceOf(rootProject.subprojects.first())
-            .flatMap { project ->
-                configurationDataSource.configurations(
-                    project,
-                    *configurationScopes
-                )
-            }
-            .let(::collectForcedVersions)
-
-        return (externalArtifacts + forcedVersions)
-            .groupBy { it.id }
-            .map { (_, mavenArtifacts) ->
-                // Merge all exclude rules so that we have a cumulative set
-                mavenArtifacts
-                    .first()
-                    .copy(
-                        excludeRuleOlds = mavenArtifacts
-                            .flatMap(MavenArtifact::excludeRuleOlds)
-                            .toSet()
-                    )
-            }.asSequence()
-            .filter { mavenArtifact ->
-                // Only allow dependencies from supported repositories
-                mavenArtifact.isFromSupportedRepository(repositoryDataSource)
-            }.filter { mavenArtifact ->
-                // Don't include artifacts that are excluded or included
-                !mavenArtifact.isIgnored && !mavenArtifact.isExcluded
-            }.map { mavenArtifact ->
-                // Fix the artifact version as per resolvedVersions or overrideVersions
-                correctArtifactVersion(
-                    mavenArtifact = mavenArtifact,
-                    overrideArtifactVersions = overrideArtifactVersionMap
-                )
-            }.map(MavenArtifact::toMavenInstallArtifact)
-            .toList()
-    }
-
     override fun hasDepsFromUnsupportedRepositories(project: Project): Boolean {
         return project
             .externalResolvedDependencies()
@@ -296,32 +171,34 @@ internal class DefaultDependenciesDataSource @Inject constructor(
     override fun hasIgnoredArtifacts(project: Project): Boolean {
         return project.firstLevelModuleDependencies()
             .flatMap { (listOf(it) + it.children).asSequence() }
-            .filter { !IGNORED_ARTIFACT_GROUPS.contains(it.moduleGroup) }
+            .filter { it.moduleGroup !in IGNORED_ARTIFACT_GROUPS }
             .any { MavenArtifact(it.moduleGroup, it.moduleName).isIgnored }
     }
 
     override fun mavenDependencies(
         project: Project,
         vararg buildGraphTypes: BuildGraphType
-    ): Sequence<Dependency> =
-        declaredDependencies(project, *buildGraphTypes.map { it.configurationScope }.toTypedArray())
-            .filter { (configuration, _) ->
-                if (buildGraphTypes.isEmpty()) {
-                    true
-                } else {
-                    configurationDataSource.isThisConfigurationBelongsToThisVariants(
-                        project,
-                        *buildGraphTypes.map { it.variant }.toTypedArray(),
-                        configuration = configuration
-                    )
-                }
+    ): Sequence<Dependency> {
+        return declaredDependencies(
+            project,
+            *buildGraphTypes.map { it.configurationScope }.toTypedArray()
+        ).filter { (configuration, _) ->
+            if (buildGraphTypes.isEmpty()) {
+                true
+            } else {
+                configurationDataSource.isThisConfigurationBelongsToThisVariants(
+                    project,
+                    *buildGraphTypes.map { it.variant }.toTypedArray(),
+                    configuration = configuration
+                )
             }
-            .map { it.second }
-            .filter { it.group != null && !IGNORED_ARTIFACT_GROUPS.contains(it.group) }
+        }.map { it.second }
+            .filter { it.group != null && it.group !in IGNORED_ARTIFACT_GROUPS }
             .filter {
                 val artifact = MavenArtifact(it.group, it.name)
                 !artifact.isExcluded && !artifact.isIgnored
             }.filter { it !is ProjectDependency }
+    }
 
     override fun projectDependencies(
         project: Project, vararg scopes: ConfigurationScope
@@ -359,6 +236,57 @@ internal class DefaultDependenciesDataSource @Inject constructor(
         return results
     }
 
+    override fun externalDependencies(
+        project: Project,
+        buildGraphType: BuildGraphType
+    ): List<BazelDependency> {
+        val variants = variantBuilder.build(project).groupBy(Variant<*>::name)
+        val inputVariant = buildGraphType.variant
+        // From input variant map to Grazel variant
+        val grazelVariant: Variant<*> = when {
+            inputVariant != null -> variants[inputVariant.name]!!.first {
+                it.variantType.isConfigScope(project, buildGraphType.configurationScope)
+            }
+            // Input variant is null, probably legacy code path assumes non android project has no
+            // variants. To compensate, map it to `default` or `test` based on
+            // BuildGraphType.configurationScope
+            // This will no longer needed after migrating legacy code path to use variants
+            else -> when (buildGraphType.configurationScope) {
+                TEST -> variants[TEST_VARIANT]!!.first()
+                else -> variants[DEFAULT_VARIANT]!!.first()
+            }
+        }
+
+        return grazelVariant.migratableConfigurations
+            .asSequence()
+            .flatMap { it.allDependencies.filterIsInstance<ExternalDependency>() }
+            .filter { it.group !in IGNORED_ARTIFACT_GROUPS }
+            .filter {
+                val artifact = MavenArtifact(it.group, it.name)
+                !artifact.isExcluded && !artifact.isIgnored
+            }.filter {
+                if (project.hasDatabinding) {
+                    it.group != DATABINDING_GROUP && (it.group != ANDROIDX_GROUP && it.name != ANNOTATION_ARTIFACT)
+                } else true
+            }.map { dependency ->
+                val variantHierarchy = buildSet {
+                    add(grazelVariant.name)
+                    addAll(grazelVariant.extendsFrom.reversed())
+                }
+                when (dependency.group) {
+                    DAGGER_GROUP -> StringDependency("//:dagger")
+                    else -> mavenInstallStore.get(
+                        variants = variantHierarchy,
+                        group = dependency.group!!,
+                        name = dependency.name
+                    ) ?: run {
+                        error("$dependency cant be found for migrating ${project.name}")
+                    }
+                }
+            }.distinct()
+            .toList()
+    }
+
     /**
      * Resolves all the external dependencies for the given project. By resolving all the dependencies, we get accurate
      * dependency information that respects resolution strategy, substitution and any other modification by Gradle apart
@@ -372,15 +300,6 @@ internal class DefaultDependenciesDataSource @Inject constructor(
                 *buildGraphTypes().toTypedArray()
             )
         )
-
-    /**
-     * @return true if the [MavenArtifact] was fetched from a supported repository
-     */
-    private fun MavenArtifact.isFromSupportedRepository(
-        repositoryDataSource: RepositoryDataSource
-    ) = resolvedRepositories.containsKey(id) && !repositoryDataSource
-        .unsupportedRepositoryNames
-        .contains(resolvedRepositories.getValue(id))
 
     /**
      * Collects first level module dependencies from their resolved configuration. Additionally, excludes any artifacts
@@ -401,7 +320,7 @@ internal class DefaultDependenciesDataSource @Inject constructor(
                     sequenceOf<ResolvedDependency>()
                 }
             }.filterIsInstance<DefaultResolvedDependency>()
-            .filter { !IGNORED_ARTIFACT_GROUPS.contains(it.moduleGroup) }
+            .filter { it.moduleGroup !in IGNORED_ARTIFACT_GROUPS }
     }
 
     internal fun firstLevelModuleDependencies(project: Project) =
@@ -427,57 +346,9 @@ internal class DefaultDependenciesDataSource @Inject constructor(
             }
     }
 
-    /**
-     * Collects any custom resolution strategy (particularly forced modules) defined in the given `configurations`
-     *
-     * @return Gradle's forced modules artifacts parsed to `MavenArtifact`.
-     */
-    private fun collectForcedVersions(
-        configurations: Sequence<Configuration>
-    ): Sequence<MavenArtifact> = mutableMapOf<MavenArtifact, String>().apply {
-        configurations
-            .flatMap { it.resolutionStrategy.forcedModules.asSequence() }
-            .forEach { mvSelector ->
-                val key = MavenArtifact(mvSelector.group, mvSelector.name, mvSelector.version)
-                put(key, key.id)
-            }
-    }.keys.asSequence()
-
-    /**
-     * Map [ExternalDependency] to [MavenArtifact] with relevant details like exclude rules.
-     */
-    private fun ExternalDependency.toMavenArtifact(): MavenArtifact {
-        return MavenArtifact(
-            group = group,
-            name = name,
-            version = version,
-            excludeRuleOlds = excludeRules
-                .asSequence()
-                .map {
-                    @Suppress("USELESS_ELVIS") // Gradle lying, module can be null
-                    ExcludeRuleOld(it.group, it.module ?: "")
-                }
-                .filterNot { it.artifact.isNullOrBlank() }
-                .filterNot { excludeArtifactsDenyList.contains(it.toString()) }
-                .toSet()
-        )
-    }
-
     private fun DefaultResolvedDependency.toMavenArtifact() = MavenArtifact(
         group = moduleGroup,
         name = moduleName,
         version = moduleVersion,
     )
-}
-
-internal fun MavenArtifact.toMavenInstallArtifact(): MavenInstallArtifact {
-    return when {
-        excludeRuleOlds.isEmpty() -> MavenInstallArtifact.SimpleArtifact(toString())
-        else -> MavenInstallArtifact.DetailedArtifact(
-            group = group!!,
-            artifact = name!!,
-            version = version!!,
-            exclusions = excludeRuleOlds.map { SimpleExclusion("${it.group}:${it.artifact}") }
-        )
-    }
 }

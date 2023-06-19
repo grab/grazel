@@ -34,7 +34,7 @@ import com.grab.grazel.gradle.variant.AndroidVariantDataSource
 import com.grab.grazel.gradle.variant.MatchedVariant
 import com.grab.grazel.gradle.variant.getMigratableBuildVariants
 import com.grab.grazel.gradle.variant.nameSuffix
-import com.grab.grazel.migrate.android.PathResolveMode.*
+import com.grab.grazel.migrate.android.PathResolveMode.DIRECTORY
 import com.grab.grazel.migrate.android.SourceSetType.ASSETS
 import com.grab.grazel.migrate.android.SourceSetType.JAVA_KOTLIN
 import com.grab.grazel.migrate.android.SourceSetType.RESOURCES
@@ -88,7 +88,7 @@ constructor(
                         dependent,
                         matchedVariant
                     )
-                } + dependenciesDataSource.collectMavenDeps(
+                } + dependenciesDataSource.externalDependencies(
                     project,
                     BuildGraphType(BUILD, matchedVariant.variant)
                 ) + project.kotlinParcelizeDeps()

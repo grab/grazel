@@ -83,7 +83,7 @@ grab_android_local_test(
     deps = [
         "//:parcelize",
         "//sample-android-library:sample-android-library-flavor1-free-debug",
-        "@maven//:junit_junit",
+        "@test_maven//:junit_junit",
     ],
 )
 
@@ -105,7 +105,7 @@ grab_android_local_test(
     deps = [
         "//:parcelize",
         "//sample-android-library:sample-android-library-flavor1-paid-debug",
-        "@maven//:junit_junit",
+        "@test_maven//:junit_junit",
     ],
 )
 
@@ -127,7 +127,7 @@ grab_android_local_test(
     deps = [
         "//:parcelize",
         "//sample-android-library:sample-android-library-flavor2-free-debug",
-        "@maven//:junit_junit",
+        "@test_maven//:junit_junit",
     ],
 )
 
@@ -149,6 +149,6 @@ grab_android_local_test(
     deps = [
         "//:parcelize",
         "//sample-android-library:sample-android-library-flavor2-paid-debug",
-        "@maven//:junit_junit",
+        "@test_maven//:junit_junit",
     ],
 )

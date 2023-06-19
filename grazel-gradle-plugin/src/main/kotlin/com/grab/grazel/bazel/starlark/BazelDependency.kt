@@ -17,7 +17,6 @@
 package com.grab.grazel.bazel.starlark
 
 import org.gradle.api.Project
-import org.gradle.api.artifacts.Dependency
 
 sealed class BazelDependency {
     data class ProjectDependency(
@@ -49,16 +48,20 @@ sealed class BazelDependency {
         override fun toString() = dep
     }
 
-    data class MavenDependency(val dependency: Dependency) : BazelDependency() {
+    data class MavenDependency(
+        val repo: String = "maven",
+        val group: String,
+        val name: String
+    ) : BazelDependency() {
 
         private fun String.toBazelPath(): String {
             return replace(".", "_").replace("-", "_")
         }
 
         override fun toString(): String {
-            val group = dependency.group?.toBazelPath() ?: ""
-            val name = dependency.name.toBazelPath()
-            return "@maven//:${group}_$name"
+            val group = group.toBazelPath()
+            val name = name.toBazelPath()
+            return "@$repo//:${group}_$name"
         }
     }
 }

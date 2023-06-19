@@ -30,7 +30,11 @@ import com.grab.grazel.gradle.dependencies.DependenciesDataSource
 import com.grab.grazel.gradle.dependencies.DependenciesGraphsBuilder
 import com.grab.grazel.gradle.dependencies.DependenciesModule
 import com.grab.grazel.gradle.dependencies.DependencyGraphs
-import com.grab.grazel.gradle.dependencies.MavenInstallArtifactsCalculator
+import com.grab.grazel.gradle.variant.AndroidVariantDataSource
+import com.grab.grazel.gradle.variant.AndroidVariantsExtractor
+import com.grab.grazel.gradle.variant.DefaultAndroidVariantDataSource
+import com.grab.grazel.gradle.variant.DefaultAndroidVariantsExtractor
+import com.grab.grazel.migrate.MigrationModule
 import com.grab.grazel.gradle.variant.VariantBuilder
 import com.grab.grazel.gradle.variant.VariantMatcher
 import com.grab.grazel.gradle.variant.VariantModule
@@ -41,6 +45,7 @@ import com.grab.grazel.migrate.android.AndroidLibraryDataExtractor
 import com.grab.grazel.migrate.android.ManifestValuesBuilder
 import com.grab.grazel.migrate.dependencies.ArtifactsPinner
 import com.grab.grazel.migrate.dependencies.DefaultArtifactsPinner
+import com.grab.grazel.migrate.dependencies.MavenInstallArtifactsCalculator
 import com.grab.grazel.migrate.internal.ProjectBazelFileBuilder
 import com.grab.grazel.migrate.internal.RootBazelFileBuilder
 import com.grab.grazel.migrate.internal.WorkspaceBuilder
@@ -76,6 +81,7 @@ internal interface GrazelComponent {
     fun artifactsPinner(): Lazy<ArtifactsPinner>
     fun dependenciesDataSource(): Lazy<DependenciesDataSource>
     fun mavenInstallArtifactsCalculator(): Lazy<MavenInstallArtifactsCalculator>
+    fun androidVariantDataSource(): Lazy<AndroidVariantDataSource>
     fun hybridBuildExecutor(): HybridBuildExecutor
 
     fun androidInstrumentationBinaryDataExtractor(): Lazy<AndroidInstrumentationBinaryDataExtractor>
@@ -90,6 +96,7 @@ internal interface GrazelComponent {
 @Module(
     includes = [
         MigrationCriteriaModule::class,
+        MigrationModule::class,
         DependenciesModule::class,
         HybridBuildModule::class,
         VariantModule::class,

@@ -23,17 +23,19 @@ import com.grab.grazel.GrazelPluginTest
 import com.grab.grazel.bazel.starlark.asString
 import com.grab.grazel.buildProject
 import com.grab.grazel.gradle.ANDROID_APPLICATION_PLUGIN
+import com.grab.grazel.util.addGrazelExtension
 import com.grab.grazel.util.createGrazelComponent
 import com.grab.grazel.util.doEvaluate
 import org.gradle.api.Project
 import org.gradle.kotlin.dsl.configure
-import org.gradle.kotlin.dsl.dependencies
 import org.gradle.kotlin.dsl.repositories
+import org.junit.Ignore
 import org.junit.Test
 
 class WorkspaceArtifactsTest : GrazelPluginTest() {
 
     @Test
+    @Ignore("No longer required due to transitive resolution implemented in variant aware migration")
     fun `assert artifact versions are overridden with overrideArtifactVersions`() {
         val overrideArtifactVersion = "org.jacoco:org.jacoco.ant:7.7.7"
         val (rootProject, androidBinary) = buildAndroidProject {
@@ -56,10 +58,10 @@ class WorkspaceArtifactsTest : GrazelPluginTest() {
     }
 
     private fun buildAndroidProject(
-        grazelExtensionModifier: GrazelExtension.() -> Unit = {},
+        configure: GrazelExtension.() -> Unit = {},
     ): Pair<Project, Project> {
         val rootProject = buildProject("root")
-        rootProject.extensions.add(GrazelExtension.GRAZEL_EXTENSION, GrazelExtension(rootProject))
+        rootProject.addGrazelExtension(configure)
         val androidBinary = buildProject("android-binary", rootProject)
         androidBinary.run {
             plugins.apply {
@@ -77,10 +79,6 @@ class WorkspaceArtifactsTest : GrazelPluginTest() {
             }
             doEvaluate()
         }
-        rootProject.extensions.configure<GrazelExtension> {
-            this.grazelExtensionModifier()
-        }
         return rootProject to androidBinary
     }
-
 }

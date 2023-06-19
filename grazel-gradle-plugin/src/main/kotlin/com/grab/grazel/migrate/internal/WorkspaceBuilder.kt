@@ -19,40 +19,32 @@ package com.grab.grazel.migrate.internal
 import com.android.build.gradle.BaseExtension
 import com.grab.grazel.GrazelExtension
 import com.grab.grazel.bazel.rules.DAGGER_ARTIFACTS
-import com.grab.grazel.bazel.rules.DAGGER_GROUP
 import com.grab.grazel.bazel.rules.DAGGER_REPOSITORIES
-import com.grab.grazel.bazel.rules.DATABINDING_ARTIFACTS
-import com.grab.grazel.bazel.rules.DATABINDING_GROUP
 import com.grab.grazel.bazel.rules.GRAB_BAZEL_COMMON_ARTIFACTS
-import com.grab.grazel.bazel.rules.MavenRepository.DefaultMavenRepository
 import com.grab.grazel.bazel.rules.androidNdkRepository
 import com.grab.grazel.bazel.rules.androidSdkRepository
 import com.grab.grazel.bazel.rules.bazelCommonRepository
 import com.grab.grazel.bazel.rules.daggerWorkspaceRules
-import com.grab.grazel.bazel.rules.jvmRules
 import com.grab.grazel.bazel.rules.kotlinCompiler
 import com.grab.grazel.bazel.rules.kotlinRepository
 import com.grab.grazel.bazel.rules.loadBazelCommonArtifacts
 import com.grab.grazel.bazel.rules.loadDaggerArtifactsAndRepositories
+import com.grab.grazel.bazel.rules.mavenInstall
 import com.grab.grazel.bazel.rules.registerKotlinToolchain
 import com.grab.grazel.bazel.rules.toolAndroidRepository
 import com.grab.grazel.bazel.rules.workspace
 import com.grab.grazel.bazel.starlark.LoadStrategy
 import com.grab.grazel.bazel.starlark.StatementsBuilder
+import com.grab.grazel.bazel.starlark.add
 import com.grab.grazel.bazel.starlark.statements
 import com.grab.grazel.di.qualifiers.RootProject
 import com.grab.grazel.gradle.GradleProjectInfo
-import com.grab.grazel.gradle.RepositoryDataSource
-import com.grab.grazel.gradle.dependencies.DependenciesDataSource
-import com.grab.grazel.gradle.dependencies.MavenArtifact
-import com.grab.grazel.gradle.dependencies.toMavenInstallArtifact
 import com.grab.grazel.gradle.isAndroidApplication
 import com.grab.grazel.migrate.BazelFileBuilder
-import com.grab.grazel.migrate.android.JetifierDataExtractor
 import com.grab.grazel.migrate.android.parseCompileSdkVersion
 import com.grab.grazel.migrate.dependencies.ArtifactsPinner
+import com.grab.grazel.migrate.dependencies.MavenInstallArtifactsCalculator
 import org.gradle.api.Project
-import org.gradle.api.artifacts.repositories.PasswordCredentials
 import org.gradle.kotlin.dsl.the
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -62,18 +54,16 @@ internal class WorkspaceBuilder(
     private val projectsToMigrate: List<Project>,
     private val grazelExtension: GrazelExtension,
     private val gradleProjectInfo: GradleProjectInfo,
-    private val dependenciesDataSource: DependenciesDataSource,
-    private val repositoryDataSource: RepositoryDataSource,
-    private val artifactsPinner: ArtifactsPinner
+    private val artifactsPinner: ArtifactsPinner,
+    private val mavenInstallArtifactsCalculator: MavenInstallArtifactsCalculator
 ) : BazelFileBuilder {
     @Singleton
     class Factory @Inject constructor(
         @param:RootProject private val rootProject: Project,
         private val grazelExtension: GrazelExtension,
         private val gradleProjectInfo: GradleProjectInfo,
-        private val dependenciesDataSource: DependenciesDataSource,
-        private val repositoryDataSource: RepositoryDataSource,
         private val artifactsPinner: ArtifactsPinner,
+        private val mavenInstallArtifactsCalculator: MavenInstallArtifactsCalculator
     ) {
         fun create(
             projectsToMigrate: List<Project>
@@ -82,15 +72,10 @@ internal class WorkspaceBuilder(
             projectsToMigrate,
             grazelExtension,
             gradleProjectInfo,
-            dependenciesDataSource,
-            repositoryDataSource,
-            artifactsPinner
+            artifactsPinner,
+            mavenInstallArtifactsCalculator
         )
     }
-
-    private val dependenciesExtension get() = grazelExtension.dependencies
-    private val mavenInstall get() = grazelExtension.rules.mavenInstall
-    private val hasDatabinding = gradleProjectInfo.hasDatabinding
 
     override fun build() = statements(loadStrategy = LoadStrategy.Inline()) {
         workspace(name = rootProject.name)
@@ -108,7 +93,6 @@ internal class WorkspaceBuilder(
 
     private fun StatementsBuilder.buildJvmRules() {
         val hasDagger = gradleProjectInfo.hasDagger
-
         val externalArtifacts = mutableListOf<String>()
         val externalRepositories = mutableListOf<String>()
 
@@ -123,63 +107,31 @@ internal class WorkspaceBuilder(
         loadBazelCommonArtifacts(grazelExtension.rules.bazelCommon.repository.name)
         externalArtifacts += GRAB_BAZEL_COMMON_ARTIFACTS
 
-        val mavenArtifacts = dependenciesDataSource
-            .resolvedArtifactsFor(
-                projects = projectsToMigrate,
-                overrideArtifactVersions = dependenciesExtension.overrideArtifactVersions.get()
-            ).asSequence()
-            .filter {
-                val dagger = if (hasDagger) !it.id.contains(DAGGER_GROUP) else true
-                val db = if (hasDatabinding) !it.id.contains(DATABINDING_GROUP) else true
-                dagger && db
-            }
-
-        val databindingArtifacts = if (!hasDatabinding) emptySequence() else {
-            DATABINDING_ARTIFACTS.map(MavenArtifact::toMavenInstallArtifact).asSequence()
+        val mavenInstall = grazelExtension.rules.mavenInstall.apply {
+            add(repository)
         }
-
-        val repositories = repositoryDataSource.supportedRepositories
-            .map { repo ->
-                val passwordCredentials = if (grazelExtension.rules.mavenInstall.includeCredentials) {
-                    try {
-                        repo.getCredentials(PasswordCredentials::class.java)
-                    } catch (e: Exception) {
-                        // We only support basic auth now
-                        null
-                    }
-                } else null
-                DefaultMavenRepository(
-                    repo.url.toString(),
-                    passwordCredentials?.username,
-                    passwordCredentials?.password
-                )
-            }
-
-        val allArtifacts = (mavenArtifacts + databindingArtifacts).sortedBy { it.id }.toSet()
-
-        val jetifierData = JetifierDataExtractor().extract(
-            rootProject = rootProject,
-            includeList = mavenInstall.jetifyIncludeList.get(),
-            excludeList = mavenInstall.jetifyExcludeList.get(),
-            allArtifacts = allArtifacts.map { it.id }
-        )
-
-        jvmRules(
-            rulesJvmExternalRule = mavenInstall.repository,
-            artifacts = allArtifacts,
-            mavenRepositories = (repositories).distinct().toList(),
-            externalArtifacts = externalArtifacts.toList(),
-            externalRepositories = externalRepositories.toList(),
-            jetify = jetifierData.isEnabled,
-            jetifyIncludeList = jetifierData.includeList,
-            failOnMissingChecksum = false,
-            artifactPinning = artifactsPinner.isEnabled,
-            mavenInstallJson = artifactsPinner.mavenInstallJson(),
-            resolveTimeout = mavenInstall.resolveTimeout,
-            excludeArtifacts = mavenInstall.excludeArtifacts.get(),
-            overrideTargets = mavenInstall.overrideTargetLabels.get(),
-            versionConflictPolicy = mavenInstall.versionConflictPolicy,
-        )
+        mavenInstallArtifactsCalculator.get(
+            projectsToMigrate,
+            externalArtifacts.toSortedSet(),
+            externalRepositories.toSortedSet()
+        ).forEach { mavenInstallData ->
+            mavenInstall(
+                name = mavenInstallData.name,
+                rulesJvmExternalName = mavenInstall.repository.name,
+                artifacts = mavenInstallData.artifacts,
+                externalArtifacts = mavenInstallData.externalArtifacts,
+                mavenRepositories = mavenInstallData.repositories,
+                externalRepositories = mavenInstallData.externalRepositories,
+                jetify = mavenInstallData.jetifierData.isEnabled,
+                jetifyIncludeList = mavenInstallData.jetifierData.includeList,
+                failOnMissingChecksum = false,
+                resolveTimeout = mavenInstallData.resolveTimeout,
+                excludeArtifacts = mavenInstallData.excludeArtifacts,
+                overrideTargets = mavenInstallData.overrideTargets,
+                versionConflictPolicy = mavenInstallData.versionConflictPolicy,
+                artifactPinning = artifactsPinner.isEnabled
+            )
+        }
     }
 
 
@@ -201,7 +153,7 @@ internal class WorkspaceBuilder(
         }
     }
 
-    internal fun addAndroidSdkRepositories(statementsBuilder: StatementsBuilder): Unit =
+    internal fun addAndroidSdkRepositories(statementsBuilder: StatementsBuilder) {
         statementsBuilder.run {
             // Find the android application module and extract compileSdk and buildToolsVersion
             rootProject
@@ -222,6 +174,7 @@ internal class WorkspaceBuilder(
                 ndkApiLevel = grazelExtension.android.ndkApiLevel
             )
         }
+    }
 
     private fun validateNdkApiLevel() {
         val ndkApiLevel = grazelExtension.android.ndkApiLevel ?: return

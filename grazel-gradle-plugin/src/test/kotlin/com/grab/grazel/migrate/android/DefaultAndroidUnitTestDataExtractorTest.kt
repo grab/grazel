@@ -25,14 +25,16 @@ import com.grab.grazel.fake.FakeDependencyGraphs
 import com.grab.grazel.gradle.ANDROID_LIBRARY_PLUGIN
 import com.grab.grazel.gradle.DefaultConfigurationDataSource
 import com.grab.grazel.gradle.DefaultRepositoryDataSource
-import com.grab.grazel.gradle.FakeAndroidVariantsExtractor
 import com.grab.grazel.gradle.KOTLIN_ANDROID_PLUGIN
 import com.grab.grazel.gradle.dependencies.ArtifactsConfig
 import com.grab.grazel.gradle.dependencies.DefaultDependenciesDataSource
 import com.grab.grazel.gradle.dependencies.DefaultDependencyResolutionService
 import com.grab.grazel.gradle.dependencies.GradleDependencyToBazelDependency
+import com.grab.grazel.gradle.variant.AndroidVariantsExtractor
 import com.grab.grazel.gradle.variant.DefaultAndroidVariantDataSource
 import com.grab.grazel.gradle.variant.DefaultAndroidVariantsExtractor
+import com.grab.grazel.gradle.variant.DefaultVariantBuilder
+import com.grab.grazel.migrate.dependencies.DefaultMavenInstallStore
 import com.grab.grazel.gradle.variant.MatchedVariant
 import com.grab.grazel.util.doEvaluate
 import org.gradle.api.Project
@@ -52,7 +54,7 @@ class DefaultAndroidUnitTestDataExtractorTest : GrazelPluginTest() {
     private lateinit var subProjectDir: File
 
     private lateinit var defaultAndroidUnitTestDataExtractor: DefaultAndroidUnitTestDataExtractor
-    private lateinit var androidVariantsExtractor: FakeAndroidVariantsExtractor
+    private lateinit var androidVariantsExtractor: AndroidVariantsExtractor
     private lateinit var gradleDependencyToBazelDependency: GradleDependencyToBazelDependency
 
     @get:Rule
@@ -78,7 +80,7 @@ class DefaultAndroidUnitTestDataExtractorTest : GrazelPluginTest() {
                 }
             }
         }
-        androidVariantsExtractor = FakeAndroidVariantsExtractor()
+        androidVariantsExtractor = DefaultAndroidVariantsExtractor()
         gradleDependencyToBazelDependency = GradleDependencyToBazelDependency()
         File(subProjectDir, "src/main/AndroidManifest.xml").apply {
             parentFile.mkdirs()
@@ -103,7 +105,13 @@ class DefaultAndroidUnitTestDataExtractorTest : GrazelPluginTest() {
             repositoryDataSource = repositoryDataSource,
             dependencyResolutionService = DefaultDependencyResolutionService.register(rootProject),
             grazelExtension = GrazelExtension(rootProject),
-            androidVariantsExtractor = androidVariantsExtractor
+            androidVariantsExtractor = androidVariantsExtractor,
+            variantBuilder = DefaultVariantBuilder(
+                DefaultAndroidVariantDataSource(
+                    androidVariantsExtractor
+                )
+            ),
+            mavenInstallStore = DefaultMavenInstallStore()
         )
 
         val dependencyGraphs = FakeDependencyGraphs()

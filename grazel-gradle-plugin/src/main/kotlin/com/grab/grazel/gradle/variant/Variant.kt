@@ -21,7 +21,7 @@ import org.gradle.api.artifacts.Configuration
 
 /**
  * Base marker interface that denotes a variant that needs to be migrated and is used to
- * encapsulate both Android and Jvm variants.
+ * encapsulate both Android and Jvm variants
  *
  * Variants are meant to be the first extracted item from a [Project] instance for migration.
  * @see VariantBuilder
@@ -65,6 +65,9 @@ enum class DefaultVariants(val variantName: String) {
         override fun toString() = variantName
     }
 }
+
+val DEFAULT_VARIANT = DefaultVariants.Default.toString()
+val TEST_VARIANT = DefaultVariants.Test.toString()
 
 enum class VariantType {
     AndroidBuild,
@@ -123,8 +126,8 @@ class JvmVariantData(
     val project: Project,
     val variantType: VariantType,
     val name: String = when (variantType) {
-        JvmBuild -> DefaultVariants.Default.toString()
-        else -> DefaultVariants.Test.toString()
+        JvmBuild -> DEFAULT_VARIANT
+        else -> TEST_VARIANT
     }
 )
 

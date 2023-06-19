@@ -16,10 +16,10 @@
 
 package com.grab.grazel.migrate.dependencies
 
-import com.grab.grazel.gradle.variant.DefaultVariants.Default
+import com.grab.grazel.gradle.variant.DEFAULT_VARIANT
 
 fun String.toMavenRepoName() = when (this) {
-    Default.toString() -> "maven"
+    DEFAULT_VARIANT -> "maven"
     else -> replace("([a-z])([A-Z]+)".toRegex(), "\$1_\$2")
         .toLowerCase() + "_maven"
 }

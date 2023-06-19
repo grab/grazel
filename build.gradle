@@ -135,11 +135,11 @@ grazel {
             jetifyIncludeList.add("com.android.support:cardview-v7")
             jetifyExcludeList.add("androidx.appcompat:appcompat")
             artifactPinning {
-                enabled.set(true)
+                enabled.set(false)
             }
-            overrideTargetLabels.putAll(
-                ["androidx.appcompat:appcompat": "@//third_party:androidx_appcompat_appcompat"]
-            )
+//            overrideTargetLabels.putAll(
+//                ["androidx.appcompat:appcompat": "@//third_party:androidx_appcompat_appcompat"]
+//            )
             versionConflictPolicy = "pinned"
         }
         kotlin {

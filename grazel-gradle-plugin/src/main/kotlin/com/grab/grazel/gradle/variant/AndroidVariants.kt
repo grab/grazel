@@ -7,7 +7,6 @@ import com.android.builder.model.ProductFlavor
 import com.google.common.base.MoreObjects
 import com.grab.grazel.gradle.variant.Classpath.Compile
 import com.grab.grazel.gradle.variant.Classpath.Runtime
-import com.grab.grazel.gradle.variant.DefaultVariants.Default
 import com.grab.grazel.gradle.variant.VariantType.AndroidBuild
 import com.grab.grazel.gradle.variant.VariantType.AndroidTest
 import com.grab.grazel.gradle.variant.VariantType.JvmBuild
@@ -41,7 +40,7 @@ class AndroidVariant(
 
     override val extendsFrom: Set<String> by lazy {
         buildList {
-            add(Default.toString())
+            add(DEFAULT_VARIANT)
             addAll(backingVariant.productFlavors.map { it.name })
             add(backingVariant.buildType.name)
             if (variantType.isTest) {
@@ -151,7 +150,7 @@ class AndroidBuildType(
     toIgnoreKeywords = flavors
 ) {
     override val extendsFrom: Set<String> = buildList {
-        add(Default.toString())
+        add(DEFAULT_VARIANT)
         if (variantType.isTest) add(backingVariant.name)
         if (variantType == Test) add(DefaultVariants.Test.toString())
     }.toSet()
@@ -179,7 +178,7 @@ class AndroidFlavor(
     toIgnoreKeywords = buildTypes
 ) {
     override val extendsFrom: Set<String> = buildList {
-        add(Default.toString())
+        add(DEFAULT_VARIANT)
         if (variantType.isTest) add(backingVariant.name)
         if (variantType == Test) add(DefaultVariants.Test.toString())
     }.toSet()
@@ -190,7 +189,7 @@ data class DefaultVariantData(
     val variantType: VariantType,
     val ignoreKeywords: Set<String>,
     val name: String = when (variantType) {
-        AndroidBuild -> Default.toString()
+        AndroidBuild -> DEFAULT_VARIANT
         else -> DefaultVariants.Test.toString()
     },
 )
@@ -213,7 +212,7 @@ class AndroidDefaultVariant(
     override val backingVariant: DefaultVariantData get() = defaultVariantData
     override val project: Project get() = defaultVariantData.project
     override val variantType: VariantType get() = defaultVariantData.variantType
-    override val extendsFrom: Set<String> = setOf(Default.toString())
+    override val extendsFrom: Set<String> = setOf(DEFAULT_VARIANT)
 
     private val ignoreKeywords get() = defaultVariantData.ignoreKeywords
 

@@ -20,7 +20,6 @@ import com.grab.grazel.bazel.starlark.AssigneeBuilder
 import com.grab.grazel.bazel.starlark.StarlarkType
 import com.grab.grazel.bazel.starlark.StatementsBuilder
 import com.grab.grazel.bazel.starlark.StringStatement
-import com.grab.grazel.bazel.starlark.add
 import com.grab.grazel.bazel.starlark.array
 import com.grab.grazel.bazel.starlark.asString
 import com.grab.grazel.bazel.starlark.assigneeBuilder
@@ -29,7 +28,6 @@ import com.grab.grazel.bazel.starlark.obj
 import com.grab.grazel.bazel.starlark.quote
 
 sealed class MavenRepository : AssigneeBuilder {
-
     data class DefaultMavenRepository(
         val url: String,
         val username: String? = null,
@@ -54,7 +52,7 @@ sealed class MavenRepository : AssigneeBuilder {
  * @param appendExternal Indicates whether to append or prepend the External variables
  */
 private fun combineExternalVariablesAndArray(
-    externalVariables: List<String>,
+    externalVariables: Set<String>,
     arrayValues: List<String>,
     appendExternal: Boolean = false,
 ) = assigneeBuilder {
@@ -73,17 +71,18 @@ fun StatementsBuilder.mavenInstall(
     name: String? = null,
     rulesJvmExternalName: String,
     artifacts: Set<MavenInstallArtifact> = emptySet(),
-    mavenRepositories: List<MavenRepository> = emptyList(),
-    externalArtifacts: List<String> = emptyList(),
-    externalRepositories: List<String> = emptyList(),
+    mavenRepositories: Set<MavenRepository> = emptySet(),
+    externalArtifacts: Set<String> = emptySet(),
+    externalRepositories: Set<String> = emptySet(),
     jetify: Boolean = false,
     mavenInstallJson: String? = null,
     jetifyIncludeList: List<String> = emptyList(),
     failOnMissingChecksum: Boolean = true,
     resolveTimeout: Int = 600,
-    excludeArtifacts: List<String> = emptyList(),
+    excludeArtifacts: Set<String> = emptySet(),
     overrideTargets: Map<String, String> = emptyMap(),
     versionConflictPolicy: String? = null,
+    artifactPinning: Boolean,
 ) {
     load("@$rulesJvmExternalName//:defs.bzl", "maven_install")
     load("@$rulesJvmExternalName//:specs.bzl", "maven")
@@ -98,7 +97,7 @@ fun StatementsBuilder.mavenInstall(
 
         "repositories" `=` combineExternalVariablesAndArray(
             externalRepositories,
-            mavenRepositories.map { it.build().asString() },
+            mavenRepositories.map { it.build().asString() }.sorted(),
             true,
         )
 
@@ -133,6 +132,13 @@ fun StatementsBuilder.mavenInstall(
         versionConflictPolicy?.let {
             "version_conflict_policy" `=` it.quote
         }
+    }
+
+    if (artifactPinning) {
+        load("@$name//:defs.bzl") {
+            "${name}_pinned_maven_install" `=` "pinned_maven_install".quote
+        }
+        add("${name}_pinned_maven_install()")
     }
 }
 
@@ -195,47 +201,5 @@ sealed class MavenInstallArtifact : StarlarkType {
                 "exclusions" `=` exclusions.map { it.asString() }
             }
         }
-    }
-}
-
-fun StatementsBuilder.jvmRules(
-    rulesJvmExternalRule: BazelRepositoryRule,
-    resolveTimeout: Int = 600,
-    artifacts: Set<MavenInstallArtifact> = emptySet(),
-    artifactPinning: Boolean,
-    mavenInstallJson: String? = null,
-    mavenRepositories: List<MavenRepository> = emptyList(),
-    externalArtifacts: List<String> = emptyList(),
-    externalRepositories: List<String> = emptyList(),
-    excludeArtifacts: List<String> = emptyList(),
-    overrideTargets: Map<String, String> = emptyMap(),
-    jetify: Boolean = false,
-    jetifyIncludeList: List<String> = emptyList(),
-    failOnMissingChecksum: Boolean = true,
-    versionConflictPolicy: String? = null,
-) {
-    add(rulesJvmExternalRule)
-
-    newLine()
-
-    mavenInstall(
-        rulesJvmExternalName = rulesJvmExternalRule.name,
-        artifacts = artifacts,
-        mavenRepositories = mavenRepositories,
-        externalArtifacts = externalArtifacts,
-        externalRepositories = externalRepositories,
-        overrideTargets = overrideTargets,
-        mavenInstallJson = mavenInstallJson,
-        jetify = jetify,
-        jetifyIncludeList = jetifyIncludeList,
-        failOnMissingChecksum = failOnMissingChecksum,
-        resolveTimeout = resolveTimeout,
-        excludeArtifacts = excludeArtifacts,
-        versionConflictPolicy = versionConflictPolicy,
-    )
-
-    if (artifactPinning) {
-        load("@maven//:defs.bzl", "pinned_maven_install")
-        add("pinned_maven_install()")
     }
 }

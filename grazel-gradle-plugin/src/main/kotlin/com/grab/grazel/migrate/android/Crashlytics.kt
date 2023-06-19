@@ -17,6 +17,8 @@
 package com.grab.grazel.migrate.android
 
 import com.grab.grazel.GrazelExtension
+import com.grab.grazel.gradle.variant.AndroidVariantDataSource
+import com.grab.grazel.gradle.variant.getMigratableBuildVariants
 import com.grab.grazel.gradle.variant.MatchedVariant
 import com.grab.grazel.gradle.variant.nameSuffix
 import org.gradle.api.Project

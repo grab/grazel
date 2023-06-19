@@ -69,7 +69,7 @@ internal class DefaultAndroidInstrumentationBinaryDataExtractor
             ).map { dependency ->
                 gradleDependencyToBazelDependency.map(project, dependency, matchedVariant)
             } +
-            dependenciesDataSource.collectMavenDeps(
+            dependenciesDataSource.externalDependencies(
                 project,
                 BuildGraphType(ConfigurationScope.ANDROID_TEST, matchedVariant.variant)
             ) +
