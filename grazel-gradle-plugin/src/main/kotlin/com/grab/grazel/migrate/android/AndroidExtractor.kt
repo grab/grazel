@@ -88,7 +88,7 @@ constructor(
                         dependent,
                         matchedVariant
                     )
-                } + dependenciesDataSource.collectMavenDeps(
+                } + dependenciesDataSource.externalDependencies(
                     project,
                     BuildGraphType(BUILD, matchedVariant.variant)
                 ) + project.kotlinParcelizeDeps()

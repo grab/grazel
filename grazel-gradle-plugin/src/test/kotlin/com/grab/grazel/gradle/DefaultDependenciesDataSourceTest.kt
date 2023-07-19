@@ -25,7 +25,10 @@ import com.grab.grazel.fake.FLAVOR2
 import com.grab.grazel.fake.FakeAndroidVariantDataSource
 import com.grab.grazel.gradle.dependencies.*
 import com.grab.grazel.gradle.variant.AndroidVariantsExtractor
+import com.grab.grazel.gradle.variant.DefaultAndroidVariantDataSource
 import com.grab.grazel.gradle.variant.DefaultAndroidVariantsExtractor
+import com.grab.grazel.gradle.variant.DefaultVariantBuilder
+import com.grab.grazel.migrate.dependencies.DefaultMavenInstallStore
 import org.gradle.api.Project
 import org.gradle.kotlin.dsl.add
 import org.gradle.kotlin.dsl.configure
@@ -91,6 +94,12 @@ class DefaultDependenciesDataSourceTest : GrazelPluginTest() {
             dependencyResolutionService = DefaultDependencyResolutionService.register(rootProject),
             grazelExtension = GrazelExtension(rootProject),
             androidVariantsExtractor = androidVariantsExtractor,
+            variantBuilder = DefaultVariantBuilder(
+                DefaultAndroidVariantDataSource(
+                    androidVariantsExtractor
+                )
+            ),
+            mavenInstallStore = DefaultMavenInstallStore()
         )
     }
 
@@ -154,6 +163,12 @@ class DefaultDependenciesDataSourceTest : GrazelPluginTest() {
             dependencyResolutionService = DefaultDependencyResolutionService.register(rootProject),
             grazelExtension = GrazelExtension(rootProject),
             androidVariantsExtractor = androidVariantsExtractor,
+            variantBuilder = DefaultVariantBuilder(
+                DefaultAndroidVariantDataSource(
+                    androidVariantsExtractor
+                )
+            ),
+            mavenInstallStore = DefaultMavenInstallStore()
         )
         assertTrue(
             "hasIgnoredArtifacts returns true when project contains any ignored artifacts",
@@ -181,6 +196,12 @@ class DefaultDependenciesDataSourceTest : GrazelPluginTest() {
             dependencyResolutionService = DefaultDependencyResolutionService.register(rootProject),
             grazelExtension = GrazelExtension(rootProject),
             androidVariantsExtractor = DefaultAndroidVariantsExtractor(),
+            variantBuilder = DefaultVariantBuilder(
+                DefaultAndroidVariantDataSource(
+                    androidVariantsExtractor
+                )
+            ),
+            mavenInstallStore = DefaultMavenInstallStore()
         )
         val dependencyArtifactMap = dependenciesDataSource.dependencyArtifactMap(
             rootProject,

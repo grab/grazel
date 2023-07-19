@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 Grabtaxi Holdings PTE LTD (GRAB)
+ * Copyright 2023 Grabtaxi Holdings PTE LTD (GRAB)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,9 +14,12 @@
  * limitations under the License.
  */
 
-package com.grab.grazel.migrate.dependencies.model
+package com.grab.grazel.gradle.dependencies.model
 
-internal data class ExcludeRule(
+import java.io.Serializable
+
+@kotlinx.serialization.Serializable
+data class ExcludeRule(
     val group: String,
     val artifact: String
-)
+) : Serializable

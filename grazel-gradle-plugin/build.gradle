@@ -31,6 +31,7 @@ plugins {
     id "java-gradle-plugin"
     alias(libs.plugins.kotlin.dsl)
     alias(libs.plugins.gradle.publish)
+    alias(libs.plugins.kotlin.serialization)
     id "maven-publish"
     id "idea"
 }
@@ -87,6 +88,9 @@ dependencies {
 
     implementation libs.google.dagger
     kapt libs.google.dagger.compiler
+
+    implementation libs.kotlin.serialization
+    implementation libs.kotlinx.coroutines.core.jvm
 
     testImplementation "org.jetbrains.kotlin:kotlin-test"
     testImplementation "org.jetbrains.kotlin:kotlin-test-junit"

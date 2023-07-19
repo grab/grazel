@@ -17,10 +17,12 @@
 package com.grab.grazel.migrate.dependencies.model
 
 import com.grab.grazel.bazel.starlark.BazelDependency.MavenDependency
+import com.grab.grazel.gradle.dependencies.model.ExcludeRule
 import org.gradle.api.internal.artifacts.ivyservice.ivyresolve.Versioned
 import org.gradle.api.internal.artifacts.ivyservice.ivyresolve.strategy.DefaultVersionComparator
 import org.gradle.api.internal.artifacts.ivyservice.ivyresolve.strategy.Version
 import org.gradle.api.internal.artifacts.ivyservice.ivyresolve.strategy.VersionParser
+import org.gradle.api.internal.artifacts.repositories.DefaultMavenArtifactRepository
 import org.gradle.api.internal.artifacts.result.DefaultResolvedComponentResult
 
 internal data class MavenExternalArtifact(
@@ -62,4 +64,34 @@ internal fun MavenExternalArtifact.mergeWith(others: List<MavenExternalArtifact>
     ).apply {
         componentResult = current.componentResult
     }
+}
+
+internal fun DefaultResolvedComponentResult.toMavenArtifact(
+    repositories: Map<String, DefaultMavenArtifactRepository>,
+    excludeRules: List<ExcludeRule> = emptyList(),
+    defaultClasspath: Map<String, MavenExternalArtifact> = emptyMap()
+): MavenExternalArtifact {
+    val version = moduleVersion!!
+    val shortId = version.group + ":" + version.name
+    val overrideTarget = if (defaultClasspath.isEmpty()) null else {
+        when (shortId) {
+            in defaultClasspath -> OverrideTarget(
+                artifactShortId = shortId,
+                label = MavenDependency(group = version.group, name = version.name)
+            )
+
+            else -> null
+        }
+    }
+    return MavenExternalArtifact(
+        group = version.group,
+        version = version.version,
+        name = version.name,
+        repository = Repository(
+            name = repositoryName!!,
+            repository = repositories[repositoryName!!]!!
+        ),
+        excludeRules = excludeRules,
+        overrideTarget = overrideTarget
+    ).also { it.componentResult = this }
 }

@@ -27,7 +27,6 @@ import com.grab.grazel.gradle.dependencies.DependencyGraphs
 import com.grab.grazel.gradle.dependencies.GradleDependencyToBazelDependency
 import com.grab.grazel.gradle.hasKotlinAndroidExtensions
 import com.grab.grazel.migrate.android.SourceSetType
-import com.grab.grazel.migrate.android.collectMavenDeps
 import com.grab.grazel.migrate.android.filterSourceSetPaths
 import com.grab.grazel.migrate.dependencies.calculateDirectDependencyTags
 import dagger.Lazy
@@ -71,7 +70,10 @@ constructor(
             ).map { dependent ->
                 gradleDependencyToBazelDependency.map(project, dependent, null)
             } +
-            dependenciesDataSource.collectMavenDeps(project) +
+            dependenciesDataSource.externalDependencies(
+                project,
+                BuildGraphType(ConfigurationScope.BUILD)
+            ) +
             project.androidJarDeps() +
             project.kotlinParcelizeDeps()
 

@@ -123,6 +123,10 @@ android {
             excludes += '/META-INF/{AL2.0,LGPL2.1}'
         }
     }
+
+    buildFeatures {
+        compose = false
+    }
 }
 
 dependencies {
@@ -141,6 +145,10 @@ dependencies {
         // Sample for exclude rules.
         exclude group: "androidx.appcompat", module: "appcompat"
     }
+
+    // Test for variant classpath
+    debugImplementation libs.androidx.paging.runtime
+    debugImplementation libs.leakcanary.android
 
     implementation libs.androidx.compose.ui
     implementation libs.androidx.compose.ui.tooling

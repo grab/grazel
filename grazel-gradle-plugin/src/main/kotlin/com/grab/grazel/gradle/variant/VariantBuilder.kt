@@ -14,7 +14,7 @@ import javax.inject.Singleton
 /**
  * [VariantBuilder] is used to construct unified [Set] of [Variant] types for Android/Jvm [Project]
  *
- * [VariantBuilder.build] caches constructed Variants and can be called multiple times for a project.
+ * [VariantBuilder.onVariants] caches constructed Variants and can be called multiple times for a project.
  *
  * For lazy construction and safe to call during configuration phase use [VariantBuilder.onVariants]
  *
@@ -144,20 +144,41 @@ constructor(
                     action(AndroidVariant(project, variant))
                 }
 
-                // Special case, if this module does not have flavors declared then variants
-                // will be just buildTypes. Since we already would have passed buildType variants
-                // above we don't need to pass it again here.
+
                 if (flavors.isNotEmpty()) {
-                    buildTypes.flatMap { buildType ->
-                        VariantType.values().filter { it != JvmBuild }.map { variantType ->
-                            AndroidBuildType(
-                                project = project,
-                                backingVariant = buildType,
-                                variantType = variantType,
-                                flavors = flavorNames
-                            )
-                        }
-                    }.distinctBy { it.name + it.variantType }.forEach { variant -> action(variant) }
+                    // Special case, if this module does not have flavors declared then variants
+                    // will be just buildTypes. Since we already would have passed buildType variants
+                    // above we don't need to pass it again here.
+                    buildTypes
+                        .asSequence()
+                        .flatMap { buildType ->
+                            VariantType.values()
+                                .filter { it != JvmBuild }
+                                .map { variantType ->
+                                    AndroidBuildType(
+                                        project = project,
+                                        backingVariant = buildType,
+                                        variantType = variantType,
+                                        flavors = flavorNames
+                                    )
+                                }
+                        }.distinctBy { it.name + it.variantType }
+                        .forEach(action)
+
+                    VariantType
+                        .values()
+                        .asSequence()
+                        .filter { it != JvmBuild }
+                        .flatMap { variantType ->
+                            flavors.map { flavor ->
+                                AndroidFlavor(
+                                    project,
+                                    flavor,
+                                    variantType,
+                                    buildTypeNames
+                                )
+                            }
+                        }.forEach(action)
                 }
             } else if (project.isJvm) {
                 action(JvmVariant(project = project, variantType = JvmBuild))

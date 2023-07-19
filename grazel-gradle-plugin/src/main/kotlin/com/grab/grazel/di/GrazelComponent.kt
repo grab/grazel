@@ -30,7 +30,6 @@ import com.grab.grazel.gradle.dependencies.DependenciesDataSource
 import com.grab.grazel.gradle.dependencies.DependenciesGraphsBuilder
 import com.grab.grazel.gradle.dependencies.DependenciesModule
 import com.grab.grazel.gradle.dependencies.DependencyGraphs
-import com.grab.grazel.gradle.dependencies.MavenInstallArtifactsCalculator
 import com.grab.grazel.gradle.variant.AndroidVariantDataSource
 import com.grab.grazel.gradle.variant.VariantBuilder
 import com.grab.grazel.gradle.variant.VariantMatcher
@@ -43,6 +42,7 @@ import com.grab.grazel.migrate.android.AndroidLibraryDataExtractor
 import com.grab.grazel.migrate.android.ManifestValuesBuilder
 import com.grab.grazel.migrate.dependencies.ArtifactsPinner
 import com.grab.grazel.migrate.dependencies.DefaultArtifactsPinner
+import com.grab.grazel.migrate.dependencies.MavenInstallArtifactsCalculator
 import com.grab.grazel.migrate.internal.ProjectBazelFileBuilder
 import com.grab.grazel.migrate.internal.RootBazelFileBuilder
 import com.grab.grazel.migrate.internal.WorkspaceBuilder
