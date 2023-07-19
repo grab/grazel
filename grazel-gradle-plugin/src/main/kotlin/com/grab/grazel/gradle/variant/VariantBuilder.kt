@@ -14,7 +14,9 @@ import javax.inject.Singleton
 /**
  * [VariantBuilder] is used to construct unified [Set] of [Variant] types for Android/Jvm [Project]
  *
- * [VariantBuilder.onVariants] caches constructed Variants and can be called multiple times for a project.
+ * [VariantBuilder.build] caches constructed Variants and can be called multiple times for a project.
+ *
+ * For lazy construction and safe to call during configuration phase use [VariantBuilder.onVariants]
  *
  * @see Variant
  */
