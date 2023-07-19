@@ -53,6 +53,8 @@ class MavenExternalArtifact(
     override fun toString() = id
 }
 
+
+@Deprecated("Use task based dependency resolution instead")
 internal class MavenInstallArtifactsCalculator
 @Inject
 constructor(
