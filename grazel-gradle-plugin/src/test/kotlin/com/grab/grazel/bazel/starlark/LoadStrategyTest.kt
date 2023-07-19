@@ -101,5 +101,25 @@ load(":test.bzl",  "d",  "a",  "t")
             message = "Load statements are sorted based on file name"
         )
     }
+
+    @Test
+    fun `assert aliases load statements are handled with load stategy`() {
+        val statements = statements {
+            load(":test.bzl") {
+                "pinned_maven_install" `=` "pinned_maven_install".quote
+            }
+            statements {
+                load(":test.bzl") {
+                    "pinned_maven_install" `=` "pinned_maven_install".quote
+                }
+            }
+        }
+        assertEquals(
+            expected = statements.asString(),
+            actual = """load(":test.bzl",  "pinned_maven_install = "pinned_maven_install"")
+""",
+            message = "Load statement aliases are handled with load strategy"
+        )
+    }
 }
 

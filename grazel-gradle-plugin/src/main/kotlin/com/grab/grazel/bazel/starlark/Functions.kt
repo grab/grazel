@@ -83,14 +83,9 @@ fun StatementsBuilder.load(bzlFile: String, vararg symbols: String) {
  * load("@maven//:defs.bzl", default_pinned_maven_install = "pinned_maven_install")
  * ```
  */
-fun StatementsBuilder.load(path: String, assignmentBuilder: AssignmentBuilder.() -> Unit = {}) {
+fun StatementsBuilder.load(bzlFile: String, assignmentBuilder: AssignmentBuilder.() -> Unit = {}) {
     val symbolImports = Assignments(assignmentBuilder = assignmentBuilder)
-    add(
-        FunctionStatement(
-            name = "load",
-            params = listOf(path.quote.toStatement()) + symbolImports
-        )
-    )
+    loadStrategy.load(this, bzlFile, symbolImports.asString())
 }
 
 
