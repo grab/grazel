@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 Grabtaxi Holdings PTE LTD (GRAB)
+ * Copyright 2023 Grabtaxi Holdings PTE LTD (GRAB)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,21 +14,7 @@
  * limitations under the License.
  */
 
-package com.grab.grazel.gradle
+package com.grab.grazel.migrate
 
-import com.android.build.gradle.api.BaseVariant
-
-
-sealed class VariantInfo {
-    object Default : VariantInfo() {
-        override fun toString() = "default"
-    }
-
-    data class AndroidFlavor(val flavorName: String) : VariantInfo() {
-        override fun toString() = flavorName
-    }
-
-    data class AndroidVariant(val baseVariant: BaseVariant) : VariantInfo() {
-        override fun toString(): String = baseVariant.name
-    }
-}
+@dagger.Module
+internal interface MigrationModule

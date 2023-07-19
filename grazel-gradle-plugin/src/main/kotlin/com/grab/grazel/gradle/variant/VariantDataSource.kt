@@ -19,8 +19,8 @@ package com.grab.grazel.gradle.variant
 import com.android.build.gradle.api.BaseVariant
 import com.android.build.gradle.api.TestVariant
 import com.android.build.gradle.api.UnitTestVariant
+import com.android.builder.model.BuildType
 import com.android.builder.model.ProductFlavor
-import com.grab.grazel.extension.DefaultVariantFilter
 import com.grab.grazel.extension.VariantFilter
 import com.grab.grazel.gradle.ConfigurationScope
 import org.gradle.api.Action
@@ -49,6 +49,9 @@ internal interface AndroidVariantDataSource {
      */
     fun getMigratableVariants(project: Project): List<BaseVariant>
 
+
+    fun migratableVariants(project: Project, variants: (BaseVariant) -> Unit)
+
     /**
      * @return all variants minus the ones that declared in filtered variants
      */
@@ -60,6 +63,23 @@ internal interface AndroidVariantDataSource {
     fun buildTypeFallbacks(project: Project): Map<String, Set<String>>
 
     fun flavorFallbacks(project: Project): Map<String, Set<String>>
+
+    fun getFlavors(project: Project): Set<ProductFlavor>
+    fun getBuildTypes(project: Project): Set<BuildType>
+}
+
+/**
+ * Filter that operates on [BaseVariant]
+ */
+internal class DefaultVariantFilter(variant: BaseVariant) : VariantFilter {
+    var ignored: Boolean = false
+    override fun setIgnore(ignore: Boolean) {
+        ignored = ignore
+    }
+
+    override val buildType: BuildType = variant.buildType
+    override val flavors: List<ProductFlavor> = variant.productFlavors
+    override val name: String = variant.name
 }
 
 internal class DefaultAndroidVariantDataSource(
@@ -81,6 +101,14 @@ internal class DefaultAndroidVariantDataSource(
             ConfigurationScope.ANDROID_TEST -> androidVariantsExtractor.getTestVariants(project)
             else -> androidVariantsExtractor.getVariants(project)
         }.filterNot(::ignoredVariantFilter).toSet()
+    }
+
+    override fun migratableVariants(project: Project, variantAction: (BaseVariant) -> Unit) {
+        androidVariantsExtractor.allVariants(project) { variant ->
+            if (!ignoredVariantFilter(variant)) {
+                variantAction(variant)
+            }
+        }
     }
 
     override fun getIgnoredFlavors(project: Project): List<ProductFlavor> {
@@ -123,6 +151,10 @@ internal class DefaultAndroidVariantDataSource(
                     .toSet()
             }
     }
+
+    override fun getFlavors(project: Project) = androidVariantsExtractor.getFlavors(project)
+
+    override fun getBuildTypes(project: Project) = androidVariantsExtractor.getBuildTypes(project)
 
     private fun ignoredVariantFilter(
         variant: BaseVariant

@@ -7,7 +7,6 @@ import com.android.builder.model.ProductFlavor
 import com.google.common.base.MoreObjects
 import com.grab.grazel.gradle.variant.Classpath.Compile
 import com.grab.grazel.gradle.variant.Classpath.Runtime
-import com.grab.grazel.gradle.variant.DefaultVariants.Default
 import com.grab.grazel.gradle.variant.VariantType.AndroidBuild
 import com.grab.grazel.gradle.variant.VariantType.AndroidTest
 import com.grab.grazel.gradle.variant.VariantType.JvmBuild
@@ -41,11 +40,12 @@ class AndroidVariant(
 
     override val extendsFrom: Set<String> by lazy {
         buildList {
-            add(Default.toString())
+            add(DEFAULT_VARIANT)
             addAll(backingVariant.productFlavors.map { it.name })
             add(backingVariant.buildType.name)
             if (variantType.isTest) {
-                add(DefaultVariants.Test.toString())
+                add(TEST_VARIANT)
+                if (variantType.isAndroidTest) add(ANDROID_TEST_VARIANT)
                 add(backingVariant.buildType.name + variantType.testSuffix)
             }
         }.filter { it != name }.toSet()
@@ -151,9 +151,9 @@ class AndroidBuildType(
     toIgnoreKeywords = flavors
 ) {
     override val extendsFrom: Set<String> = buildList {
-        add(Default.toString())
+        add(DEFAULT_VARIANT)
         if (variantType.isTest) add(backingVariant.name)
-        if (variantType == Test) add(DefaultVariants.Test.toString())
+        if (variantType == Test) add(TEST_VARIANT)
     }.toSet()
 }
 
@@ -179,9 +179,9 @@ class AndroidFlavor(
     toIgnoreKeywords = buildTypes
 ) {
     override val extendsFrom: Set<String> = buildList {
-        add(Default.toString())
+        add(DEFAULT_VARIANT)
         if (variantType.isTest) add(backingVariant.name)
-        if (variantType == Test) add(DefaultVariants.Test.toString())
+        if (variantType == Test) add(TEST_VARIANT)
     }.toSet()
 }
 
@@ -190,8 +190,9 @@ data class DefaultVariantData(
     val variantType: VariantType,
     val ignoreKeywords: Set<String>,
     val name: String = when (variantType) {
-        AndroidBuild -> Default.toString()
-        else -> DefaultVariants.Test.toString()
+        AndroidBuild -> DEFAULT_VARIANT
+        AndroidTest -> ANDROID_TEST_VARIANT
+        else -> TEST_VARIANT
     },
 )
 
@@ -213,7 +214,10 @@ class AndroidDefaultVariant(
     override val backingVariant: DefaultVariantData get() = defaultVariantData
     override val project: Project get() = defaultVariantData.project
     override val variantType: VariantType get() = defaultVariantData.variantType
-    override val extendsFrom: Set<String> = setOf(Default.toString())
+    override val extendsFrom: Set<String> = buildSet {
+        if (variantType.isTest) add(DEFAULT_VARIANT)
+        if (variantType.isAndroidTest) add(TEST_VARIANT)
+    }
 
     private val ignoreKeywords get() = defaultVariantData.ignoreKeywords
 

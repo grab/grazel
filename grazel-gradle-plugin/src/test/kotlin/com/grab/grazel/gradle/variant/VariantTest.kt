@@ -98,6 +98,7 @@ class VariantTest {
                 "debug",
                 "paid",
                 "test",
+                "androidTest",
                 "debugAndroidTest"
             )
         }

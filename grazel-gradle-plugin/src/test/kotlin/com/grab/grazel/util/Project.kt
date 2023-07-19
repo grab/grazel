@@ -20,8 +20,8 @@ import com.grab.grazel.GrazelExtension
 import com.grab.grazel.di.DaggerGrazelComponent
 import com.grab.grazel.di.GrazelComponent
 import org.gradle.api.Project
-import org.gradle.api.Task
 import org.gradle.api.internal.project.DefaultProject
+import org.gradle.kotlin.dsl.the
 
 /**
  * Forces an evaluation of the project thereby running all configurations
@@ -35,7 +35,8 @@ internal fun Project.createGrazelComponent(): GrazelComponent {
     return DaggerGrazelComponent.factory().create(this)
 }
 
-internal fun Project.addGrazelExtension() {
+internal fun Project.addGrazelExtension(configure: GrazelExtension.() -> Unit = {}) {
     val grazelGradlePluginExtension = GrazelExtension(rootProject)
     rootProject.extensions.add(GrazelExtension.GRAZEL_EXTENSION, grazelGradlePluginExtension)
+    the<GrazelExtension>().apply(configure)
 }

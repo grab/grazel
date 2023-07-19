@@ -63,8 +63,6 @@ constructor(
      * See [Task Graph](https://grab.github.io/Grazel/gradle_tasks/#task-graph)
      */
     fun configTasks() {
-        ResolveDependenciesTask.register(rootProject, grazelComponent)
-
         // Root bazel file generation task that should run at the start of migration
         val rootGenerateBazelScriptsTasks = GenerateRootBazelScriptsTask.register(
             rootProject,

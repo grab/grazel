@@ -18,8 +18,6 @@ package com.grab.grazel.gradle
 
 import com.android.build.gradle.api.BaseVariant
 import com.grab.grazel.GrazelExtension
-import com.grab.grazel.gradle.VariantInfo.AndroidFlavor
-import com.grab.grazel.gradle.VariantInfo.AndroidVariant
 import com.grab.grazel.gradle.dependencies.BuildGraphType
 import com.grab.grazel.gradle.variant.AndroidVariantDataSource
 import org.gradle.api.Project
@@ -70,11 +68,6 @@ internal interface ConfigurationDataSource {
         vararg variants: BaseVariant?,
         configuration: Configuration
     ): Boolean
-
-    fun configurationByVariant(
-        project: Project,
-        vararg scopes: ConfigurationScope
-    ): Map<VariantInfo, List<Configuration>>
 }
 
 @Singleton
@@ -114,6 +107,8 @@ internal class DefaultConfigurationDataSource @Inject constructor(
             .filter { !it.name.contains("coreLibraryDesugaring") }
             .filter { !it.name.startsWith("_") }
             .filter { !it.name.contains("archives") }
+            .filter { !it.name.contains("KaptWorker") }
+            .filter { !it.name.contains("androidJacocoAnt") }
             .filter { !it.isDynamicConfiguration() } // Remove when Grazel support dynamic-feature plugin
             .filter { configuration ->
                 when {
@@ -155,44 +150,6 @@ internal class DefaultConfigurationDataSource @Inject constructor(
             project,
             *buildGraphTypes.map { it.configurationScope }.toTypedArray()
         ).filter { it.isCanBeResolved }
-    }
-
-    override fun configurationByVariant(
-        project: Project,
-        vararg scopes: ConfigurationScope
-    ): Map<VariantInfo, List<Configuration>> {
-        return if (project.isAndroid) {
-            val availableConfigurations = configurations(project)
-            val availableVariants = androidVariantDataSource.getMigratableVariants(project)
-            return availableConfigurations
-                .groupBy { configuration -> calculateVariantKey(availableVariants, configuration) }
-        } else {
-            mapOf(VariantInfo.Default to configurations(project).toList())
-        }
-    }
-
-    /** Return the grouping key that will be used to split the configurations,
-     *  first checks a matching variant, then flavor, then build type and fallback to `VariantInfo.Default`.
-     *  We could ideally just group by variant name but that is not sufficient since
-     *  there can be configurations like `debugImplementation` etc that might not
-     *  have been caught by variant name check but will be caught by buildType check.
-     */
-    private fun calculateVariantKey(
-        availableVariants: List<BaseVariant>,
-        configuration: Configuration
-    ): VariantInfo {
-        val matchingVariant = availableVariants
-            .firstOrNull() { variant -> configuration.name.startsWith(variant.name) }
-        val matchingFlavor = availableVariants
-            .firstOrNull() { variant -> configuration.name.startsWith(variant.flavorName) }
-        val matchingBuildType = availableVariants
-            .firstOrNull() { variant -> configuration.name.startsWith(variant.buildType.name) }
-        return when {
-            matchingVariant != null -> AndroidVariant(matchingVariant)
-            matchingFlavor?.flavorName?.isNotEmpty() == true -> AndroidFlavor(matchingFlavor.flavorName)
-            matchingBuildType != null -> AndroidFlavor(matchingBuildType.name)
-            else -> VariantInfo.Default
-        }
     }
 }
 

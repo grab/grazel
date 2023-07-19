@@ -16,104 +16,81 @@
 
 package com.grab.grazel.gradle
 
-import com.android.build.gradle.api.BaseVariant
-import com.android.builder.model.BuildType
-import com.android.builder.model.ProductFlavor
 import com.grab.grazel.GrazelExtension
 import com.grab.grazel.GrazelPluginTest
 import com.grab.grazel.buildProject
-import com.grab.grazel.fake.DEBUG_FLAVOR1
-import com.grab.grazel.fake.DEBUG_FLAVOR2
-import com.grab.grazel.fake.FLAVOR1
-import com.grab.grazel.fake.FLAVOR2
-import com.grab.grazel.fake.FakeProductFlavor
-import com.grab.grazel.fake.FakeVariant
-import com.grab.grazel.fake.RELEASE_FLAVOR1
-import com.grab.grazel.fake.RELEASE_FLAVOR2
-import com.grab.grazel.gradle.variant.AndroidVariantsExtractor
-import com.grab.grazel.gradle.variant.DefaultAndroidVariantDataSource
+import com.grab.grazel.gradle.variant.AndroidVariantDataSource
+import com.grab.grazel.gradle.variant.TEST_FLAVOR_PAID
+import com.grab.grazel.gradle.variant.setupAndroidVariantProject
+import com.grab.grazel.util.addGrazelExtension
+import com.grab.grazel.util.createGrazelComponent
+import com.grab.grazel.util.doEvaluate
 import org.gradle.api.Project
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertTrue
 import org.junit.Test
+import kotlin.test.assertTrue
 
 class DefaultAndroidVariantDataSourceTest : GrazelPluginTest() {
-    private val project = buildProject("App")
-    private val extension = GrazelExtension(project)
-    private val fakeVariantsExtractor = FakeAndroidVariantsExtractor()
-    private val buildVariantDataSource = DefaultAndroidVariantDataSource(fakeVariantsExtractor)
+    private lateinit var rootProject: Project
+    private lateinit var androidProject: Project
+    private lateinit var androidVariantDataSource: AndroidVariantDataSource
+
+    fun setup(configure: GrazelExtension.() -> Unit = {}) {
+        rootProject = buildProject("root")
+        rootProject.addGrazelExtension(configure)
+        androidProject = buildProject("android", rootProject)
+        setupAndroidVariantProject(androidProject)
+        val grazelComponent = rootProject.createGrazelComponent()
+        androidVariantDataSource = grazelComponent.androidVariantDataSource().get()
+        androidProject.doEvaluate()
+    }
 
     @Test
     fun `when config to ignore variant, assert the related flavors also be ignored`() {
-        val ignoreVariants = listOf(DEBUG_FLAVOR1, DEBUG_FLAVOR1, RELEASE_FLAVOR1)
-        extension.android.variantFilter {
-            if (name in ignoreVariants) setIgnore(true)
+        setup {
+            android {
+                variantFilter {
+                    if (name.startsWith(TEST_FLAVOR_PAID)) {
+                        setIgnore(true)
+                    }
+                }
+            }
         }
-        val ignoreFlavors = DefaultAndroidVariantDataSource(
-            fakeVariantsExtractor,
-            extension.android.variantFilter
-        ).getIgnoredFlavors(project)
+        val ignoreFlavors = androidVariantDataSource.getIgnoredFlavors(androidProject)
         assertEquals(1, ignoreFlavors.size)
-        assertEquals(FLAVOR1, ignoreFlavors[0].name)
+        assertEquals(TEST_FLAVOR_PAID, ignoreFlavors.first().name)
     }
 
     @Test
     fun `when no filter applied, assert ignore flavor return empty list`() {
-        val ignoreFlavors = buildVariantDataSource.getIgnoredFlavors(project)
+        setup()
+        val ignoreFlavors = androidVariantDataSource.getIgnoredFlavors(androidProject)
         assertEquals(0, ignoreFlavors.size)
     }
 
     @Test
-    fun `when no variants filter applied, assert ignored variants should return emtpy list`() {
-        val ignoreVariants = buildVariantDataSource.getIgnoredVariants(project)
+    fun `when no variants filter applied, assert ignored variants should return empty list`() {
+        setup()
+        val ignoreVariants = androidVariantDataSource.getIgnoredVariants(androidProject)
         assertEquals(0, ignoreVariants.size)
     }
 
 
     @Test
     fun `when variants filter applied, assert ignored variants should be returned`() {
-        val ignoreVariants = listOf(DEBUG_FLAVOR1, DEBUG_FLAVOR1, RELEASE_FLAVOR1)
-        extension.android.variantFilter {
-            if (name in ignoreVariants) setIgnore(true)
+        setup {
+            android {
+                variantFilter {
+                    if (name.startsWith(TEST_FLAVOR_PAID)) {
+                        setIgnore(true)
+                    }
+                }
+            }
         }
-        DefaultAndroidVariantDataSource(
-            fakeVariantsExtractor,
-            extension.android.variantFilter
-        ).getIgnoredVariants(project).forEach {
-            assertTrue(it.name in ignoreVariants)
+        val ignoreVariants = androidVariantDataSource.getIgnoredVariants(androidProject)
+        assertTrue("Ignored variants are returned") {
+            ignoreVariants.all { it.name.startsWith(TEST_FLAVOR_PAID) }
         }
     }
 }
-
-class FakeAndroidVariantsExtractor : AndroidVariantsExtractor {
-    override fun getVariants(
-        project: Project
-    ): Set<BaseVariant> = setOf(
-        FakeVariant(DEBUG_FLAVOR1, FLAVOR1),
-        FakeVariant(DEBUG_FLAVOR2, FLAVOR2),
-        FakeVariant(RELEASE_FLAVOR1, FLAVOR1),
-        FakeVariant(RELEASE_FLAVOR2, FLAVOR2)
-    )
-
-    override fun getFlavors(project: Project): Set<ProductFlavor> =
-        listOf(FLAVOR1, FLAVOR2).map { FakeProductFlavor(it) }.toSet()
-
-    override fun getBuildTypes(project: Project): Set<BuildType> {
-        return getVariants(project).map { it.buildType }.toSet()
-    }
-
-    override fun allVariants(project: Project): Set<BaseVariant> {
-        return setOf(
-            FakeVariant(DEBUG_FLAVOR1, FLAVOR1),
-            FakeVariant(DEBUG_FLAVOR2, FLAVOR2),
-            FakeVariant(RELEASE_FLAVOR1, FLAVOR1),
-            FakeVariant(RELEASE_FLAVOR2, FLAVOR2)
-        )
-    }
-
-    override fun getUnitTestVariants(project: Project): Set<BaseVariant> = emptySet()
-
-    override fun getTestVariants(project: Project): Set<BaseVariant> = emptySet()
-}
-
 

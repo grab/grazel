@@ -16,13 +16,10 @@
 
 package com.grab.grazel.gradle.dependencies
 
-import com.android.build.gradle.internal.utils.toImmutableMap
 import com.grab.grazel.GrazelExtension
 import com.grab.grazel.di.qualifiers.RootProject
 import com.grab.grazel.gradle.ConfigurationDataSource
 import com.grab.grazel.gradle.RepositoryDataSource
-import com.grab.grazel.gradle.VariantInfo.Default
-import com.grab.grazel.util.merge
 import org.gradle.api.Project
 import org.gradle.api.artifacts.Configuration
 import org.gradle.api.artifacts.ExternalDependency
@@ -70,11 +67,7 @@ constructor(
     }
 
     fun calculate(): Map<String, List<MavenExternalArtifact>> {
-        val variantConfigs = calculateVariantConfigurations()
-        // Resolve the dependencies in each variant bucket from the configuration
-        val variantDependencies = resolveVariantDependencies(variantConfigs)
-        // Remove all dependencies from flavors which are already present in default.
-        return filterDependencies(variantDependencies)
+        return emptyMap()
     }
 
     /**
@@ -154,49 +147,6 @@ constructor(
             .mapValues { (_, artifacts) ->
                 artifacts.flatMap { it.extractExcludeRules() }.distinct()
             }.filterValues { it.isNotEmpty() }
-    }
-
-    /**
-     * Calculate a `Map` of `Variant` and its `Configuration`s for the whole project.
-     */
-    private fun calculateVariantConfigurations(): Map<String, List<Configuration>> {
-        return rootProject
-            .subprojects
-            .map { project ->
-                configurationDataSource
-                    .configurationByVariant(project = project)
-                    .mapKeys { it.key.toString() }
-            }.merge { prev, next -> (prev + next) }
-            .toImmutableMap()
-    }
-
-    /**
-     * `variantDependencies` should contain all dependencies per flavor/variant but they might be
-     * duplicated across all the buckets due to Gradle's configuration hierarchy. For example,
-     * `flavor1DebugImplementation` will contain all dependencies from `default`. To find the
-     * dependencies that only belong to `flavor1DebugImplementation` we filter all by looking against
-     * dependencies in `default` configuration.
-     */
-    private fun filterDependencies(
-        variantDependencies: Map<String, List<MavenExternalArtifact>>
-    ): Map<String, List<MavenExternalArtifact>> {
-        val defaultDependencies = variantDependencies.getOrDefault(Default.toString(), emptyList())
-        val defaultDependenciesMap = defaultDependencies.groupBy { it.id }
-
-        val filteredDependencies = mutableMapOf<String, List<MavenExternalArtifact>>().apply {
-            put(Default.toString(), defaultDependencies)
-        }
-        variantDependencies
-            .asSequence()
-            .filter { it.key != Default.toString() }
-            .forEach { (variantName, dependencies) ->
-                filteredDependencies[variantName] = dependencies
-                    .filter { !defaultDependenciesMap.contains(it.id) }
-                    .sortedBy { it.id }
-            }
-        return filteredDependencies
-            .filterValues { it.isNotEmpty() }
-            .toImmutableMap()
     }
 
     private fun ExternalDependency.extractExcludeRules(): Set<ExcludeRule> {

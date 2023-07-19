@@ -16,7 +16,6 @@
 
 package com.grab.grazel.extension
 
-import com.android.build.gradle.api.BaseVariant
 import com.android.builder.model.BuildType
 import com.android.builder.model.ProductFlavor
 import groovy.lang.Closure
@@ -81,15 +80,4 @@ interface VariantFilter {
     val buildType: BuildType
     val flavors: List<ProductFlavor>
     val name: String
-}
-
-internal class DefaultVariantFilter(variant: BaseVariant) : VariantFilter {
-    var ignored: Boolean = false
-    override fun setIgnore(ignore: Boolean) {
-        ignored = ignore
-    }
-
-    override val buildType: BuildType = variant.buildType
-    override val flavors: List<ProductFlavor> = variant.productFlavors
-    override val name: String = variant.name
 }

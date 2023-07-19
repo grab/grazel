@@ -18,6 +18,7 @@ package com.grab.grazel.fake
 
 import com.android.build.gradle.api.BaseVariant
 import com.android.builder.model.ApiVersion
+import com.android.builder.model.BuildType
 import com.android.builder.model.ClassField
 import com.android.builder.model.ProductFlavor
 import com.android.builder.model.VectorDrawablesOptions
@@ -50,11 +51,23 @@ class FakeAndroidVariantDataSource(
         return emptySet()
     }
 
+    override fun migratableVariants(project: Project, variants: (BaseVariant) -> Unit) {
+        TODO("Not yet implemented")
+    }
+
     override fun buildTypeFallbacks(project: Project): Map<String, Set<String>> {
         TODO("Not yet implemented")
     }
 
     override fun flavorFallbacks(project: Project): Map<String, Set<String>> {
+        TODO("Not yet implemented")
+    }
+
+    override fun getFlavors(project: Project): Set<ProductFlavor> {
+        TODO("Not yet implemented")
+    }
+
+    override fun getBuildTypes(project: Project): Set<BuildType> {
         TODO("Not yet implemented")
     }
 }

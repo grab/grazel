@@ -21,7 +21,7 @@ import org.gradle.api.artifacts.Configuration
 
 /**
  * Base marker interface that denotes a variant that needs to be migrated and is used to
- * encapsulate both Android and Jvm variants.
+ * encapsulate both Android and Jvm variants
  *
  * Variants are meant to be the first extracted item from a [Project] instance for migration.
  * @see VariantBuilder
@@ -63,8 +63,15 @@ enum class DefaultVariants(val variantName: String) {
     },
     Test("test") {
         override fun toString() = variantName
+    },
+    AndroidTest("androidTest") {
+        override fun toString() = variantName
     }
 }
+
+val DEFAULT_VARIANT = DefaultVariants.Default.toString()
+val TEST_VARIANT = DefaultVariants.Test.toString()
+val ANDROID_TEST_VARIANT = DefaultVariants.AndroidTest.toString()
 
 enum class VariantType {
     AndroidBuild,
@@ -79,6 +86,8 @@ fun BaseVariant.toVariantType(): VariantType = when (this) {
     is UnitTestVariant -> Test
     else -> error("Cannot parse $name to VariantType")
 }
+
+val Variant<*>.isBase get() = name == DEFAULT_VARIANT
 
 /**
  * Bridge function to map [ConfigurationScope] to [VariantType]
@@ -95,7 +104,8 @@ fun VariantType.isConfigScope(
     ANDROID_TEST -> this == AndroidTest
 }
 
-val VariantType.isTest get() = this == Test || this == AndroidTest
+val VariantType.isAndroidTest get() = this == AndroidTest
+val VariantType.isTest get() = this == Test || isAndroidTest
 
 val VariantType.testSuffix
     get() = when {
@@ -123,8 +133,8 @@ class JvmVariantData(
     val project: Project,
     val variantType: VariantType,
     val name: String = when (variantType) {
-        JvmBuild -> DefaultVariants.Default.toString()
-        else -> DefaultVariants.Test.toString()
+        JvmBuild -> DEFAULT_VARIANT
+        else -> TEST_VARIANT
     }
 )
 
