@@ -140,14 +140,15 @@ internal class WorkspaceBuilder(
 
         val repositories = repositoryDataSource.supportedRepositories
             .map { repo ->
-                val passwordCredentials = if (grazelExtension.rules.mavenInstall.includeCredentials) {
-                    try {
-                        repo.getCredentials(PasswordCredentials::class.java)
-                    } catch (e: Exception) {
-                        // We only support basic auth now
-                        null
-                    }
-                } else null
+                val passwordCredentials =
+                    if (grazelExtension.rules.mavenInstall.includeCredentials) {
+                        try {
+                            repo.getCredentials(PasswordCredentials::class.java)
+                        } catch (e: Exception) {
+                            // We only support basic auth now
+                            null
+                        }
+                    } else null
                 DefaultMavenRepository(
                     repo.url.toString(),
                     passwordCredentials?.username,
@@ -167,16 +168,16 @@ internal class WorkspaceBuilder(
         jvmRules(
             rulesJvmExternalRule = mavenInstall.repository,
             artifacts = allArtifacts,
-            mavenRepositories = (repositories).distinct().toList(),
-            externalArtifacts = externalArtifacts.toList(),
-            externalRepositories = externalRepositories.toList(),
+            mavenRepositories = repositories.toSet(),
+            externalArtifacts = externalArtifacts.toSet(),
+            externalRepositories = externalRepositories.toSet(),
             jetify = jetifierData.isEnabled,
             jetifyIncludeList = jetifierData.includeList,
             failOnMissingChecksum = false,
             artifactPinning = artifactsPinner.isEnabled,
             mavenInstallJson = artifactsPinner.mavenInstallJson(),
             resolveTimeout = mavenInstall.resolveTimeout,
-            excludeArtifacts = mavenInstall.excludeArtifacts.get(),
+            excludeArtifacts = mavenInstall.excludeArtifacts.get().toSet(),
             overrideTargets = mavenInstall.overrideTargetLabels.get(),
             versionConflictPolicy = mavenInstall.versionConflictPolicy,
         )

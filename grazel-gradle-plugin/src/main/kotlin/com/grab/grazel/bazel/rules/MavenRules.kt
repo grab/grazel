@@ -29,7 +29,6 @@ import com.grab.grazel.bazel.starlark.obj
 import com.grab.grazel.bazel.starlark.quote
 
 sealed class MavenRepository : AssigneeBuilder {
-
     data class DefaultMavenRepository(
         val url: String,
         val username: String? = null,
@@ -54,7 +53,7 @@ sealed class MavenRepository : AssigneeBuilder {
  * @param appendExternal Indicates whether to append or prepend the External variables
  */
 private fun combineExternalVariablesAndArray(
-    externalVariables: List<String>,
+    externalVariables: Set<String>,
     arrayValues: List<String>,
     appendExternal: Boolean = false,
 ) = assigneeBuilder {
@@ -73,17 +72,18 @@ fun StatementsBuilder.mavenInstall(
     name: String? = null,
     rulesJvmExternalName: String,
     artifacts: Set<MavenInstallArtifact> = emptySet(),
-    mavenRepositories: List<MavenRepository> = emptyList(),
-    externalArtifacts: List<String> = emptyList(),
-    externalRepositories: List<String> = emptyList(),
+    mavenRepositories: Set<MavenRepository> = emptySet(),
+    externalArtifacts: Set<String> = emptySet(),
+    externalRepositories: Set<String> = emptySet(),
     jetify: Boolean = false,
     mavenInstallJson: String? = null,
     jetifyIncludeList: List<String> = emptyList(),
     failOnMissingChecksum: Boolean = true,
     resolveTimeout: Int = 600,
-    excludeArtifacts: List<String> = emptyList(),
+    excludeArtifacts: Set<String> = emptySet(),
     overrideTargets: Map<String, String> = emptyMap(),
     versionConflictPolicy: String? = null,
+    artifactPinning: Boolean = false,
 ) {
     load("@$rulesJvmExternalName//:defs.bzl", "maven_install")
     load("@$rulesJvmExternalName//:specs.bzl", "maven")
@@ -98,7 +98,7 @@ fun StatementsBuilder.mavenInstall(
 
         "repositories" `=` combineExternalVariablesAndArray(
             externalRepositories,
-            mavenRepositories.map { it.build().asString() },
+            mavenRepositories.map { it.build().asString() }.sorted(),
             true,
         )
 
@@ -133,6 +133,13 @@ fun StatementsBuilder.mavenInstall(
         versionConflictPolicy?.let {
             "version_conflict_policy" `=` it.quote
         }
+    }
+
+    if (artifactPinning) {
+        load("@$name//:defs.bzl") {
+            "${name}_pinned_maven_install" `=` "pinned_maven_install".quote
+        }
+        add("${name}_pinned_maven_install()")
     }
 }
 
@@ -204,10 +211,10 @@ fun StatementsBuilder.jvmRules(
     artifacts: Set<MavenInstallArtifact> = emptySet(),
     artifactPinning: Boolean,
     mavenInstallJson: String? = null,
-    mavenRepositories: List<MavenRepository> = emptyList(),
-    externalArtifacts: List<String> = emptyList(),
-    externalRepositories: List<String> = emptyList(),
-    excludeArtifacts: List<String> = emptyList(),
+    mavenRepositories: Set<MavenRepository> = emptySet(),
+    externalArtifacts: Set<String> = emptySet(),
+    externalRepositories: Set<String> = emptySet(),
+    excludeArtifacts: Set<String> = emptySet(),
     overrideTargets: Map<String, String> = emptyMap(),
     jetify: Boolean = false,
     jetifyIncludeList: List<String> = emptyList(),

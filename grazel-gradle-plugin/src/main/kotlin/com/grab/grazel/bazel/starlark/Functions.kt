@@ -22,7 +22,7 @@ import java.io.PrintWriter
 
 data class FunctionStatement(
     val name: String,
-    private val params: List<AssignStatement>,
+    private val params: List<Assignee>,
     private val multilineParams: Boolean = false
 ) : Assignee {
     override fun write(level: Int, writer: PrintWriter) {
@@ -74,6 +74,25 @@ fun StatementsBuilder.function(name: String, vararg args: String) {
 fun StatementsBuilder.load(bzlFile: String, vararg symbols: String) {
     loadStrategy.load(this, bzlFile, *symbols)
 }
+
+/**
+ * Load statement with option to alias imported symbol via `assignmentBuilder`
+ *
+ * Eg:
+ * ```
+ * load("@maven//:defs.bzl", default_pinned_maven_install = "pinned_maven_install")
+ * ```
+ */
+fun StatementsBuilder.load(path: String, assignmentBuilder: AssignmentBuilder.() -> Unit = {}) {
+    val symbolImports = Assignments(assignmentBuilder = assignmentBuilder)
+    add(
+        FunctionStatement(
+            name = "load",
+            params = listOf(path.quote.toStatement()) + symbolImports
+        )
+    )
+}
+
 
 @Suppress("unused")
 fun StatementsBuilder.glob(include: ArrayStatement): FunctionStatement {
