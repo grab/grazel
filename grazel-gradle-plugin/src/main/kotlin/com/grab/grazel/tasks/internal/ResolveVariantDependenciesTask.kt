@@ -23,10 +23,10 @@ import com.grab.grazel.gradle.dependencies.model.ResolvedDependency
 import com.grab.grazel.gradle.variant.Variant
 import com.grab.grazel.gradle.variant.VariantBuilder
 import com.grab.grazel.gradle.variant.isBase
+import com.grab.grazel.util.Json
 import com.grab.grazel.util.dependsOn
 import dagger.Lazy
 import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.Json
 import org.gradle.api.DefaultTask
 import org.gradle.api.Project
 import org.gradle.api.Task
@@ -118,7 +118,7 @@ abstract class ResolveVariantDependenciesTask : DefaultTask() {
         val baseDependenciesMap = buildMap<String, String> {
             if (!base.get()) {
                 // For non baseVariant tasks, every dependency that appears in the base task's json output
-                // is consider direct dependencies, hence parse it add to [directDependenciesMap]
+                // is considered direct dependencies, hence parse it add to [directDependenciesMap]
                 baseDependenciesJsons.get()
                     .stream()
                     .parallel()
@@ -143,7 +143,7 @@ abstract class ResolveVariantDependenciesTask : DefaultTask() {
                         directDependenciesMap = compileDirectDependencies.get(),
                         baseDependenciesMap = baseDependenciesMap,
                         excludeRulesMap = compileExcludeRules.get(),
-                        removeTransitives = !base.get()
+                        removeTransitives = /*!base.get()*/ true,
                     )
                 )
                 /*put(
