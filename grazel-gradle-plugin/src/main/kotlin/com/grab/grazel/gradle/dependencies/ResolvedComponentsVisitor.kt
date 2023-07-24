@@ -49,7 +49,7 @@ internal class ResolvedComponentsVisitor {
 
     private val Node.isProject get() = toString().startsWith("project :")
     private val Node.repository
-        get() = (this as DefaultResolvedComponentResult).repositoryName ?: ""
+        get() = (this as? DefaultResolvedComponentResult)?.repositoryName ?: ""
 
     /**
      * Visit all external dependency nodes in the graph and map them to [T] using the [transform]

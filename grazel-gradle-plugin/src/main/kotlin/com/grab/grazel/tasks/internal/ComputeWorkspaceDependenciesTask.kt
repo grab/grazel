@@ -178,7 +178,7 @@ abstract class ComputeWorkspaceDependenciesTask : DefaultTask() {
 
     /**
      * A reducing collector that picks the [ResolvedDependency] with higher [ResolvedDependency.version]
-     * by simpler comparison.
+     * by simple comparison.
      */
     private fun maxVersionReducer(): Collector<ResolvedDependency, *, ResolvedDependency> {
         return Collectors.reducing(null) { old, new ->
