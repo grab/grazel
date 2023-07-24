@@ -16,6 +16,7 @@
 
 package com.grab.grazel.bazel.starlark
 
+import kotlinx.serialization.Serializable
 import org.gradle.api.Project
 
 sealed class BazelDependency : Comparable<BazelDependency> {
@@ -51,6 +52,7 @@ sealed class BazelDependency : Comparable<BazelDependency> {
         override fun toString() = dep
     }
 
+    @Serializable
     data class MavenDependency(
         val repo: String = "maven",
         val group: String,

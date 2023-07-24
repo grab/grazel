@@ -16,6 +16,7 @@
 
 package com.grab.grazel.gradle.dependencies.model
 
+import com.grab.grazel.bazel.starlark.BazelDependency
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.decodeFromStream
@@ -27,7 +28,7 @@ import org.gradle.api.internal.artifacts.ivyservice.ivyresolve.strategy.VersionP
 import java.io.File
 
 @Serializable
-data class ResolveDependenciesResult(
+internal data class ResolveDependenciesResult(
     val variantName: String,
     val dependencies: Map<String, Set<ResolvedDependency>> = HashMap()
 ) {
@@ -40,14 +41,15 @@ data class ResolveDependenciesResult(
 }
 
 @Serializable
-data class ResolvedDependency(
+internal data class ResolvedDependency(
     val id: String,
     val version: String,
     val shortId: String,
     val direct: Boolean,
     val dependencies: Set<String>,
     val excludeRules: Set<ExcludeRule>,
-    val repository: String
+    val repository: String,
+    val overrideTarget: OverrideTarget? = null
 ) : Comparable<ResolvedDependency> {
     override fun compareTo(other: ResolvedDependency) = id.compareTo(other.id)
 
@@ -68,22 +70,28 @@ data class ResolvedDependency(
     }
 }
 
+@Serializable
+internal data class OverrideTarget(
+    val artifactShortId: String,
+    val label: BazelDependency.MavenDependency,
+)
+
 /**
  * Unwrap [ResolvedDependency] such that it contains all its dependencies in the form of
  * [ResolvedDependency]
  */
-val ResolvedDependency.allDependencies: Set<ResolvedDependency>
+internal val ResolvedDependency.allDependencies: Set<ResolvedDependency>
     get() = buildSet {
         add(this@allDependencies.copy(dependencies = emptySet()))
         addAll(dependencies.map { dependency -> ResolvedDependency.from(dependency) })
     }
 
 
-class VersionInfo(val version: String) : Versioned, Comparable<VersionInfo> {
+internal class VersionInfo(val version: String) : Versioned, Comparable<VersionInfo> {
     private val parsedVersion = VersionParser().transform(version)
     override fun getVersion(): Version = parsedVersion
     private val comparator = DefaultVersionComparator()
     override fun compareTo(other: VersionInfo) = comparator.compare(this, other)
 }
 
-val ResolvedDependency.versionInfo get() = VersionInfo(version = version)
+internal val ResolvedDependency.versionInfo get() = VersionInfo(version = version)

@@ -16,6 +16,8 @@
 
 package com.grab.grazel.tasks.internal
 
+import com.grab.grazel.bazel.starlark.BazelDependency
+import com.grab.grazel.gradle.dependencies.model.OverrideTarget
 import com.grab.grazel.gradle.dependencies.model.ResolveDependenciesResult
 import com.grab.grazel.gradle.dependencies.model.ResolvedDependency
 import com.grab.grazel.gradle.dependencies.model.allDependencies
@@ -41,7 +43,6 @@ import java.io.File
 import java.util.stream.Collectors
 import java.util.stream.Collectors.flatMapping
 import java.util.stream.Collectors.groupingByConcurrent
-import kotlin.streams.toList
 
 @CacheableTask
 abstract class ComputeWorkspaceDependenciesTask : DefaultTask() {
@@ -59,66 +60,113 @@ abstract class ComputeWorkspaceDependenciesTask : DefaultTask() {
 
     @TaskAction
     fun action() {
-        val flattenClasspath = compileDependenciesJsons.get()
+        // Parse all jsons parallely and compute the classpaths among all variants
+        val classPaths = compileDependenciesJsons.get()
             .parallelStream()
-            .map(ResolveDependenciesResult::fromJson)
+            .map(ResolveDependenciesResult.Companion::fromJson)
             .collect(
-                // Group variantName to dependencies
                 groupingByConcurrent(
                     ResolveDependenciesResult::variantName,
-                    // Extract compile classpath and flatten it by including the transitive closure
                     flatMapping(
                         { resolvedDependency ->
                             resolvedDependency
                                 .dependencies
                                 .getValue("compile")
-                                .stream()
-                                .flatMap { it.allDependencies.stream() }
-                                .parallel()
+                                .parallelStream()
                         },
-                        // To find the max version, need to group by their shortID
-                        groupingByConcurrent(
-                            ResolvedDependency::shortId,
-                            // Once grouped, reduce it and only pick the highest version
-                            Collectors.reducing(null) { old, new ->
-                                when {
-                                    old == null -> new
-                                    new == null -> old
-                                    else -> if (old.versionInfo > new.versionInfo) old else new
-                                }
-                            }
-                        )
+                        groupingByConcurrent(ResolvedDependency::id, Collectors.toSet())
                     )
                 )
             )
 
-        val defaultClasspath = flattenClasspath.getValue(DEFAULT_VARIANT)
+        // Even though [ResolveVariantDependenciesTask] does classpath reduction per module, the
+        // final classpath here will not be accurate. For example, a dependency may appear twice in
+        // both `release` and `default`. In order to correct this, we remove duplicates in non default
+        // classPaths assuming the default classpath is the base classpath.
+        val defaultClasspath = classPaths.getValue(DEFAULT_VARIANT)
 
-        val finalClasspath = flattenClasspath
+        // Reduce non default classpath entries to contain only artifacts unique to them
+        val reducedClasspath = classPaths
             .entries
             .parallelStream()
             .filter { it.key != DEFAULT_VARIANT }
+            .filter { it.value.isNotEmpty() }
+            .collect(
+                Collectors.toConcurrentMap({ it.key }, { (_, dependencies) ->
+                    dependencies.entries
+                        .parallelStream()
+                        .filter { it.key !in defaultClasspath }
+                        .collect(Collectors.toMap({ it.key }, { it.value }))
+                })
+            ).apply { put(DEFAULT_VARIANT, defaultClasspath) }
+
+        val flattenClasspath = reducedClasspath
+            .entries
+            .parallelStream()
             .collect(
                 Collectors.toConcurrentMap(
                     { it.key },
-                    { (variantName, dependencies) ->
-                        dependencies
-                            .values
-                            .stream()
-                            .map { dependency ->
-                                if (dependency!!.shortId in defaultClasspath) {
-                                    // TODO(arun) Add override target and check for all parent classpaths
-                                    println(dependency.shortId)
-                                }
-                                dependency
-                            }.toList()
-                    }
-                )
-            ).apply {
-                put(DEFAULT_VARIANT, defaultClasspath.values.toList())
-            }.filterValues { it.isNotEmpty() }
+                    { (_, dependencyMap) ->
+                        dependencyMap
+                            .entries
+                            .parallelStream()
+                            .collect(
+                                flatMapping(
+                                    { it.value.first().allDependencies.stream() },
+                                    groupingByConcurrent(
+                                        ResolvedDependency::shortId,
+                                        // Once grouped, reduce it and only pick the highest version
+                                        Collectors.reducing(null) { old, new ->
+                                            when {
+                                                old == null -> new
+                                                new == null -> old
+                                                else -> if (old.versionInfo > new.versionInfo) old else new
+                                            }
+                                        }
+                                    )
+                                )
+                            )
+                    })
+            )
 
-        mergedDependencies.asFile.get().writeText(Json.encodeToString(finalClasspath.toMap()))
+        val defaultFlatClasspath = flattenClasspath.getValue(DEFAULT_VARIANT)
+
+        val reducedFinalClasspath = flattenClasspath
+            .entries
+            .parallelStream()
+            .filter { it.key != DEFAULT_VARIANT }
+            .filter { it.value.isNotEmpty() }
+            .collect(
+                Collectors.toConcurrentMap(
+                    { (shortId, _) -> shortId },
+                    { (_, dependencies) ->
+                        dependencies.entries
+                            .parallelStream()
+                            .collect(
+                                Collectors.toMap(
+                                    { (shortId, _) -> shortId },
+                                    { (shortId, dependency) ->
+                                        // If this dependency is already in default classpath,
+                                        // then we override it
+                                        if (shortId in defaultFlatClasspath) {
+                                            val (group, name, _, _) = dependency!!.id.split(":")
+                                            dependency.copy(
+                                                overrideTarget = OverrideTarget(
+                                                    shortId,
+                                                    BazelDependency.MavenDependency(
+                                                        group = group,
+                                                        name = name
+                                                    )
+                                                )
+                                            )
+                                        } else dependency
+                                    })
+                            )
+                    })
+            ).apply { put(DEFAULT_VARIANT, defaultFlatClasspath) }
+            .mapValues { it.value.values }
+
+        mergedDependencies.asFile.get().writeText(Json.encodeToString(reducedFinalClasspath))
     }
 
     companion object {
