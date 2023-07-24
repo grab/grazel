@@ -25,6 +25,7 @@ import com.grab.grazel.gradle.variant.VariantBuilder
 import com.grab.grazel.gradle.variant.isBase
 import com.grab.grazel.util.Json
 import com.grab.grazel.util.dependsOn
+import com.grab.grazel.util.fromJson
 import dagger.Lazy
 import kotlinx.serialization.encodeToString
 import org.gradle.api.DefaultTask
@@ -122,7 +123,7 @@ abstract class ResolveVariantDependenciesTask : DefaultTask() {
                 baseDependenciesJsons.get()
                     .stream()
                     .parallel()
-                    .map(ResolveDependenciesResult.Companion::fromJson)
+                    .map<ResolveDependenciesResult>(::fromJson)
                     .sequential()
                     .asSequence()
                     .flatMap { it.dependencies.getValue("compile") } // Make this configurable

@@ -20,11 +20,13 @@ import com.grab.grazel.bazel.starlark.BazelDependency
 import com.grab.grazel.gradle.dependencies.model.OverrideTarget
 import com.grab.grazel.gradle.dependencies.model.ResolveDependenciesResult
 import com.grab.grazel.gradle.dependencies.model.ResolvedDependency
+import com.grab.grazel.gradle.dependencies.model.WorkspaceDependencies
 import com.grab.grazel.gradle.dependencies.model.allDependencies
 import com.grab.grazel.gradle.dependencies.model.versionInfo
 import com.grab.grazel.gradle.variant.DEFAULT_VARIANT
 import com.grab.grazel.gradle.variant.VariantBuilder
 import com.grab.grazel.util.Json
+import com.grab.grazel.util.fromJson
 import dagger.Lazy
 import kotlinx.serialization.encodeToString
 import org.gradle.api.DefaultTask
@@ -67,7 +69,7 @@ abstract class ComputeWorkspaceDependenciesTask : DefaultTask() {
         // same dependency.
         val classPaths = compileDependenciesJsons.get()
             .parallelStream()
-            .map(ResolveDependenciesResult.Companion::fromJson)
+            .map<ResolveDependenciesResult>(::fromJson)
             .collect(
                 groupingByConcurrent(
                     ResolveDependenciesResult::variantName,
@@ -137,7 +139,7 @@ abstract class ComputeWorkspaceDependenciesTask : DefaultTask() {
         // If they do establish a [OverrideTarget] to default classpath
         val defaultFlatClasspath = flattenClasspath.getValue(DEFAULT_VARIANT)
 
-        val reducedFinalClasspath = flattenClasspath
+        val reducedFinalClasspath: Map<String, List<ResolvedDependency>> = flattenClasspath
             .entries
             .parallelStream()
             .filter { it.key != DEFAULT_VARIANT }
@@ -172,7 +174,9 @@ abstract class ComputeWorkspaceDependenciesTask : DefaultTask() {
             ).apply { put(DEFAULT_VARIANT, defaultFlatClasspath) }
             .mapValues { it.value.values.sortedBy(ResolvedDependency::id) }
 
-        mergedDependencies.asFile.get().writeText(Json.encodeToString(reducedFinalClasspath))
+        val result = WorkspaceDependencies(result = reducedFinalClasspath)
+
+        mergedDependencies.asFile.get().writeText(Json.encodeToString(result))
     }
 
 

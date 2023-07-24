@@ -18,27 +18,16 @@ package com.grab.grazel.gradle.dependencies.model
 
 import com.grab.grazel.bazel.starlark.BazelDependency
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.decodeFromStream
-import org.gradle.api.file.RegularFile
 import org.gradle.api.internal.artifacts.ivyservice.ivyresolve.Versioned
 import org.gradle.api.internal.artifacts.ivyservice.ivyresolve.strategy.DefaultVersionComparator
 import org.gradle.api.internal.artifacts.ivyservice.ivyresolve.strategy.Version
 import org.gradle.api.internal.artifacts.ivyservice.ivyresolve.strategy.VersionParser
-import java.io.File
 
 @Serializable
 internal data class ResolveDependenciesResult(
     val variantName: String,
     val dependencies: Map<String, Set<ResolvedDependency>> = HashMap()
-) {
-    companion object {
-        fun fromJson(json: RegularFile) = fromJson(json.asFile)
-        fun fromJson(json: File) = json
-            .inputStream()
-            .buffered().use { stream -> Json.decodeFromStream<ResolveDependenciesResult>(stream) }
-    }
-}
+)
 
 @Serializable
 internal data class ResolvedDependency(
@@ -74,6 +63,11 @@ internal data class ResolvedDependency(
 internal data class OverrideTarget(
     val artifactShortId: String,
     val label: BazelDependency.MavenDependency,
+)
+
+@Serializable
+internal data class WorkspaceDependencies(
+    val result: Map<String, List<ResolvedDependency>>
 )
 
 /**
