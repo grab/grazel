@@ -170,7 +170,7 @@ abstract class ComputeWorkspaceDependenciesTask : DefaultTask() {
                             )
                     })
             ).apply { put(DEFAULT_VARIANT, defaultFlatClasspath) }
-            .mapValues { it.value.values }
+            .mapValues { it.value.values.sortedBy(ResolvedDependency::id) }
 
         mergedDependencies.asFile.get().writeText(Json.encodeToString(reducedFinalClasspath))
     }
