@@ -100,8 +100,6 @@ internal class ResolvedComponentsVisitor {
     }
 
     companion object {
-        private val IGNORED_ARTIFACTS = listOf(
-            "org.jetbrains.kotlin:kotlin-parcelize-runtime"
-        )
+        private val IGNORED_ARTIFACTS = emptyList<String>()
     }
 }
