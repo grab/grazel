@@ -39,6 +39,7 @@ import com.grab.grazel.bazel.starlark.add
 import com.grab.grazel.bazel.starlark.statements
 import com.grab.grazel.di.qualifiers.RootProject
 import com.grab.grazel.gradle.GradleProjectInfo
+import com.grab.grazel.gradle.dependencies.model.WorkspaceDependencies
 import com.grab.grazel.gradle.isAndroidApplication
 import com.grab.grazel.migrate.BazelFileBuilder
 import com.grab.grazel.migrate.android.parseCompileSdkVersion
@@ -55,6 +56,7 @@ internal class WorkspaceBuilder(
     private val grazelExtension: GrazelExtension,
     private val gradleProjectInfo: GradleProjectInfo,
     private val artifactsPinner: ArtifactsPinner,
+    private val workspaceDependencies: WorkspaceDependencies,
     private val mavenInstallArtifactsCalculator: MavenInstallArtifactsCalculator
 ) : BazelFileBuilder {
     @Singleton
@@ -66,13 +68,15 @@ internal class WorkspaceBuilder(
         private val mavenInstallArtifactsCalculator: MavenInstallArtifactsCalculator
     ) {
         fun create(
-            projectsToMigrate: List<Project>
+            projectsToMigrate: List<Project>,
+            workspaceDependencies: WorkspaceDependencies,
         ) = WorkspaceBuilder(
             rootProject,
             projectsToMigrate,
             grazelExtension,
             gradleProjectInfo,
             artifactsPinner,
+            workspaceDependencies,
             mavenInstallArtifactsCalculator
         )
     }
@@ -111,9 +115,9 @@ internal class WorkspaceBuilder(
             add(repository)
         }
         mavenInstallArtifactsCalculator.get(
-            projectsToMigrate,
+            workspaceDependencies,
             externalArtifacts.toSortedSet(),
-            externalRepositories.toSortedSet()
+            externalRepositories.toSortedSet(),
         ).forEach { mavenInstallData ->
             mavenInstall(
                 name = mavenInstallData.name,

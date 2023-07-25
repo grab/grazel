@@ -20,12 +20,14 @@ import com.grab.grazel.bazel.starlark.writeToFile
 import com.grab.grazel.di.GrazelComponent
 import com.grab.grazel.di.qualifiers.RootProject
 import com.grab.grazel.gradle.MigrationChecker
+import com.grab.grazel.gradle.dependencies.model.WorkspaceDependencies
 import com.grab.grazel.migrate.internal.RootBazelFileBuilder
 import com.grab.grazel.migrate.internal.WorkspaceBuilder
 import com.grab.grazel.util.BUILD_BAZEL
 import com.grab.grazel.util.BUILD_BAZEL_IGNORE
 import com.grab.grazel.util.WORKSPACE_IGNORE
 import com.grab.grazel.util.ansiGreen
+import com.grab.grazel.util.fromJson
 import dagger.Lazy
 import org.gradle.api.DefaultTask
 import org.gradle.api.Project
@@ -72,8 +74,10 @@ constructor(
             .subprojects
             .filter { migrationChecker.get().canMigrate(it) }
 
+        val workspaceDependencies = fromJson<WorkspaceDependencies>(mergedDependencies.get().asFile)
+
         workspaceBuilderFactory.get()
-            .create(projectsToMigrate)
+            .create(projectsToMigrate, workspaceDependencies)
             .build()
             .writeToFile(workspaceFile.get().asFile)
         logger.quiet("Generated WORKSPACE".ansiGreen)

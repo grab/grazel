@@ -25,6 +25,8 @@ import com.grab.grazel.di.qualifiers.RootProject
 import com.grab.grazel.gradle.RepositoryDataSource
 import com.grab.grazel.gradle.dependencies.IGNORED_ARTIFACT_GROUPS
 import com.grab.grazel.gradle.dependencies.model.ExcludeRule
+import com.grab.grazel.gradle.dependencies.model.ResolvedDependency
+import com.grab.grazel.gradle.dependencies.model.WorkspaceDependencies
 import com.grab.grazel.gradle.variant.DEFAULT_VARIANT
 import com.grab.grazel.gradle.variant.Variant
 import com.grab.grazel.gradle.variant.VariantBuilder
@@ -65,6 +67,7 @@ constructor(
      * Calculates `MavenInstallData` with exclude rules, dependency resolution, and repositories for
      * the given `projectsToMigrate`.
      */
+    @Deprecated("No longer accurate")
     fun get(
         projectsToMigrate: List<Project>,
         externalArtifacts: Set<String>,
@@ -88,7 +91,6 @@ constructor(
             }.sortedBy { it.id }.toSet().also { if (it.isEmpty()) return@mapNotNull null }
 
             val mavenRepositories = artifacts
-                .asSequence()
                 .map { it.repository.repository }
                 .distinct()
                 .map { repo -> repo.toMavenRepository() }
@@ -125,6 +127,74 @@ constructor(
         }.sortedBy { it.name }.toSet()
     }
 
+
+    fun get(
+        workspaceDependencies: WorkspaceDependencies,
+        externalArtifacts: Set<String>,
+        externalRepositories: Set<String>
+    ): Set<MavenInstallData> {
+        val dependencies = workspaceDependencies.result
+        return dependencies.mapNotNull { (variantName, artifacts) ->
+            val mavenInstallName = variantName.toMavenRepoName()
+            val mavenInstallArtifacts = artifacts
+                .mapTo(TreeSet(compareBy(MavenInstallArtifact::id))) { dependency ->
+                    val (group, name, version) = dependency.id.split(":")
+                    when {
+                        dependency.excludeRules.isEmpty() -> SimpleArtifact(dependency.id)
+                        else -> DetailedArtifact(
+                            group = group,
+                            artifact = name,
+                            version = version,
+                            exclusions = dependency.excludeRules.map(::toExclusion)
+                        )
+                    }
+                }.also { if (it.isEmpty()) return@mapNotNull null }
+
+            // Repositories
+            val repositories = artifacts
+                .mapTo(TreeSet(), ResolvedDependency::repository)
+                .mapTo(mutableSetOf()) {
+                    repositoryDataSource.allRepositoriesByName
+                        .getValue(it)
+                        .toMavenRepository()
+                }
+
+            // Overrides
+            val overridesFromExtension = mavenInstallExtension.overrideTargetLabels.get().toList()
+            val overridesFromArtifacts = artifacts
+                .mapNotNull(ResolvedDependency::overrideTarget)
+                .map { it.artifactShortId to it.label.toString() }
+                .toList()
+            val overrideTargets = (overridesFromArtifacts + overridesFromExtension)
+                .sortedWith(
+                    compareBy(Pair<String, String>::second)
+                        .thenBy(Pair<String, String>::first)
+                ).toMap()
+            MavenInstallData(
+                name = mavenInstallName,
+                artifacts = mavenInstallArtifacts,
+                externalArtifacts = if (variantName == DEFAULT_VARIANT) externalArtifacts else emptySet(),
+                repositories = repositories,
+                externalRepositories = if (variantName == DEFAULT_VARIANT) externalRepositories else emptySet(),
+                jetifierData = JetifierDataExtractor().extract(
+                    rootProject = rootProject,
+                    includeList = mavenInstallExtension.jetifyIncludeList.get(),
+                    excludeList = mavenInstallExtension.jetifyExcludeList.get(),
+                    allArtifacts = mavenInstallArtifacts.map(MavenInstallArtifact::id)
+                ),
+                failOnMissingChecksum = false,
+                excludeArtifacts = mavenInstallExtension.excludeArtifacts.get().toSet(),
+                overrideTargets = overrideTargets,
+                resolveTimeout = mavenInstallExtension.resolveTimeout,
+                artifactPinning = mavenInstallExtension.artifactPinning.enabled.get(),
+                versionConflictPolicy = mavenInstallExtension.versionConflictPolicy
+            )
+        }.sortedBy { it.name }.toSet()
+    }
+
+    private fun toExclusion(excludeRule: ExcludeRule) = SimpleExclusion(
+        "${excludeRule.group}:${excludeRule.artifact}"
+    )
 
     /**
      * Calculate a map of `variantName` and their [MavenExternalArtifact] instances from each project's
@@ -409,9 +479,9 @@ constructor(
             .map {
                 @Suppress("USELESS_ELVIS") // Gradle lying, module can be null
                 (ExcludeRule(
-        it.group,
-        it.module ?: ""
-    ))
+                    it.group,
+                    it.module ?: ""
+                ))
             }
             .filterNot { it.artifact.isNullOrBlank() }
             .filterNot { it.toString() in excludeArtifactsDenyList }
