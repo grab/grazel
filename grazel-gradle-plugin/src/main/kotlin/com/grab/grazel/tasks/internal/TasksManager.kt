@@ -46,29 +46,22 @@ constructor(
     /**
      * Register and configure task dependencies for generation, formatting and `migrateToBazel`.
      *
-     * A <-- B means B depends on A
-     *
-     * * Root Scripts generation <-- Project level generation
-     * * Root Scripts generation <-- Buildifier Script generation
-     * * Root Scripts generation <-- Android data binding metadata generation (if enabled)
-     * * Project level generation <-- Project level formatting
-     * * Project level generation <-- Post script generate task
-     * * Buildifier Script generation <-- Root formatting
-     * * Buildifier Script generation <-- Project level formatting
-     * * Root formatting <-- Formatting
-     * * Project level formatting <-- Formatting
-     * * Formatting <-- Migrate To Bazel
-     * * Post script generate task <-- Migrate To Bazel
-     *
      * See [Task Graph](https://grab.github.io/Grazel/gradle_tasks/#task-graph)
      */
     fun configTasks() {
-        ComputeWorkspaceDependenciesTask.register(rootProject, grazelComponent.variantBuilder())
+        val computeTask = ComputeWorkspaceDependenciesTask.register(
+            rootProject,
+            grazelComponent.variantBuilder()
+        )
         // Root bazel file generation task that should run at the start of migration
         val rootGenerateBazelScriptsTasks = GenerateRootBazelScriptsTask.register(
             rootProject,
             grazelComponent
         )
+
+        rootGenerateBazelScriptsTasks.configure {
+            mergedDependencies.set(computeTask.flatMap { it.mergedDependencies })
+        }
 
         val dataBindingMetaDataTask = AndroidDatabindingMetaDataTask
             .register(rootProject, grazelComponent) {

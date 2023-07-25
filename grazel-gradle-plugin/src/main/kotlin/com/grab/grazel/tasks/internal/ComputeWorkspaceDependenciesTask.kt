@@ -40,6 +40,7 @@ import org.gradle.api.tasks.OutputFile
 import org.gradle.api.tasks.PathSensitive
 import org.gradle.api.tasks.PathSensitivity
 import org.gradle.api.tasks.TaskAction
+import org.gradle.api.tasks.TaskProvider
 import org.gradle.kotlin.dsl.register
 import java.io.File
 import java.util.stream.Collector
@@ -197,7 +198,10 @@ abstract class ComputeWorkspaceDependenciesTask : DefaultTask() {
 
     companion object {
         private const val TASK_NAME = "computeWorkspaceDependencies"
-        internal fun register(rootProject: Project, variantBuilderProvider: Lazy<VariantBuilder>) {
+        internal fun register(
+            rootProject: Project,
+            variantBuilderProvider: Lazy<VariantBuilder>
+        ): TaskProvider<ComputeWorkspaceDependenciesTask> {
             val computeTask = rootProject.tasks
                 .register<ComputeWorkspaceDependenciesTask>(TASK_NAME) {
                     mergedDependencies.set(
@@ -215,6 +219,7 @@ abstract class ComputeWorkspaceDependenciesTask : DefaultTask() {
                     compileDependenciesJsons.add(taskProvider.flatMap { it.resolvedDependencies })
                 }
             }
+            return computeTask
         }
     }
 }

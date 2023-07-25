@@ -29,6 +29,7 @@ import com.grab.grazel.util.ansiGreen
 import dagger.Lazy
 import org.gradle.api.DefaultTask
 import org.gradle.api.Project
+import org.gradle.api.tasks.InputFile
 import org.gradle.api.file.ProjectLayout
 import org.gradle.api.file.RegularFileProperty
 import org.gradle.api.model.ObjectFactory
@@ -60,6 +61,9 @@ constructor(
     val buildBazel: RegularFileProperty = objectFactory
         .fileProperty()
         .convention(layout.buildDirectory.file("grazel/$BUILD_BAZEL_IGNORE"))
+
+    @get:InputFile
+    val mergedDependencies: RegularFileProperty = project.objects.fileProperty()
 
     @TaskAction
     fun action() {
