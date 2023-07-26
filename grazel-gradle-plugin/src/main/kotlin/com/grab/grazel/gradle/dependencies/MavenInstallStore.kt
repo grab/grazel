@@ -14,17 +14,17 @@
  * limitations under the License.
  */
 
-package com.grab.grazel.migrate.dependencies
+package com.grab.grazel.gradle.dependencies
 
 import com.grab.grazel.bazel.starlark.BazelDependency.MavenDependency
+import com.grab.grazel.gradle.variant.DEFAULT_VARIANT
+import com.grab.grazel.migrate.dependencies.toMavenRepoName
 import java.util.concurrent.ConcurrentHashMap
-import javax.inject.Inject
-import javax.inject.Singleton
 
 /**
  * Data structure to hold information about generated maven repositories in `WORKSPACE`
  */
-internal interface MavenInstallStore {
+internal interface MavenInstallStore : AutoCloseable {
     /**
      * For a given variant hierarchy and `group` and `name`, the function will try to look
      * for the dependency in each of the variant hierarchy and return the first one found.
@@ -36,14 +36,9 @@ internal interface MavenInstallStore {
     operator fun get(variants: Set<String>, group: String, name: String): MavenDependency?
 
     operator fun set(variantRepoName: String, group: String, name: String)
-
-    val size: Int
 }
 
-@Singleton
-class DefaultMavenInstallStore
-@Inject
-constructor() : MavenInstallStore {
+class DefaultMavenInstallStore : MavenInstallStore {
 
     private data class ArtifactKey(
         val variant: String,
@@ -51,27 +46,26 @@ constructor() : MavenInstallStore {
         val name: String,
     )
 
-    private val map = ConcurrentHashMap<ArtifactKey, String>()
-
-    override val size: Int get() = map.size
+    private val cache = ConcurrentHashMap<ArtifactKey, String>()
 
     override fun get(variants: Set<String>, group: String, name: String): MavenDependency {
-        fun get(repo: String): MavenDependency? =
-            if (map.containsKey(ArtifactKey(repo, group, name))) {
-                MavenDependency(repo, group, name)
+        fun get(variant: String): MavenDependency? =
+            if (cache.containsKey(ArtifactKey(variant, group, name))) {
+                MavenDependency(variant.toMavenRepoName(), group, name)
             } else null
 
-        return variants.asSequence().mapNotNull { variant ->
-            val repoName = variant.toMavenRepoName()
-            get(repoName)
-        }.firstOrNull() ?: get("maven") ?: run {
-            // When no dependency is found in the index, assume @maven. This could be incorrect
-            // but makes for easier testing
-            MavenDependency(group = group, name = name)
-        }
+        return variants.asSequence().mapNotNull(::get).firstOrNull()
+            ?: get(DEFAULT_VARIANT)
+            ?: run {
+                // When no dependency is found in the index, assume @maven. This could be incorrect
+                // but makes for easier testing
+                MavenDependency(group = group, name = name)
+            }
     }
 
     override fun set(variantRepoName: String, group: String, name: String) {
-        map[ArtifactKey(variantRepoName, group, name)] = variantRepoName
+        cache[ArtifactKey(variantRepoName, group, name)] = variantRepoName
     }
+
+    override fun close() = cache.clear()
 }

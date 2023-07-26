@@ -28,7 +28,7 @@ import com.grab.grazel.gradle.variant.AndroidVariantsExtractor
 import com.grab.grazel.gradle.variant.DefaultAndroidVariantDataSource
 import com.grab.grazel.gradle.variant.DefaultAndroidVariantsExtractor
 import com.grab.grazel.gradle.variant.DefaultVariantBuilder
-import com.grab.grazel.migrate.dependencies.DefaultMavenInstallStore
+import com.grab.grazel.gradle.dependencies.DefaultMavenInstallStore
 import org.gradle.api.Project
 import org.gradle.kotlin.dsl.add
 import org.gradle.kotlin.dsl.configure

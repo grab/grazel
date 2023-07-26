@@ -16,12 +16,5 @@
 
 package com.grab.grazel.migrate
 
-import com.grab.grazel.migrate.dependencies.DefaultMavenInstallStore
-import com.grab.grazel.migrate.dependencies.MavenInstallStore
-import dagger.Binds
-
 @dagger.Module
-internal interface MigrationModule {
-    @Binds
-    fun DefaultMavenInstallStore.binds(): MavenInstallStore
-}
+internal interface MigrationModule

@@ -65,7 +65,7 @@ constructor(
         .convention(layout.buildDirectory.file("grazel/$BUILD_BAZEL_IGNORE"))
 
     @get:InputFile
-    val mergedDependencies: RegularFileProperty = project.objects.fileProperty()
+    val workspaceDependencies: RegularFileProperty = project.objects.fileProperty()
 
     @TaskAction
     fun action() {
@@ -74,7 +74,9 @@ constructor(
             .subprojects
             .filter { migrationChecker.get().canMigrate(it) }
 
-        val workspaceDependencies = fromJson<WorkspaceDependencies>(mergedDependencies.get().asFile)
+        val workspaceDependencies = fromJson<WorkspaceDependencies>(
+            workspaceDependencies.get().asFile
+        )
 
         workspaceBuilderFactory.get()
             .create(projectsToMigrate, workspaceDependencies)

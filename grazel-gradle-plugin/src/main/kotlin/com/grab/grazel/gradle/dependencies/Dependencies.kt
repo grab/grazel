@@ -27,7 +27,6 @@ import com.grab.grazel.di.qualifiers.RootProject
 import com.grab.grazel.gradle.ConfigurationDataSource
 import com.grab.grazel.gradle.ConfigurationScope
 import com.grab.grazel.gradle.ConfigurationScope.TEST
-import com.grab.grazel.gradle.RepositoryDataSource
 import com.grab.grazel.gradle.configurationScopes
 import com.grab.grazel.gradle.hasDatabinding
 import com.grab.grazel.gradle.variant.AndroidVariantsExtractor
@@ -37,7 +36,6 @@ import com.grab.grazel.gradle.variant.Variant
 import com.grab.grazel.gradle.variant.VariantBuilder
 import com.grab.grazel.gradle.variant.isConfigScope
 import com.grab.grazel.gradle.variant.migratableConfigurations
-import com.grab.grazel.migrate.dependencies.MavenInstallStore
 import com.grab.grazel.util.GradleProvider
 import org.gradle.api.Project
 import org.gradle.api.artifacts.Configuration
@@ -46,7 +44,6 @@ import org.gradle.api.artifacts.ExternalDependency
 import org.gradle.api.artifacts.ProjectDependency
 import org.gradle.api.artifacts.ResolvedDependency
 import org.gradle.api.internal.artifacts.DefaultResolvedDependency
-import org.gradle.api.internal.artifacts.result.ResolvedComponentResultInternal
 import java.io.File
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -135,11 +132,9 @@ internal class DefaultDependenciesDataSource @Inject constructor(
     private val grazelExtension: GrazelExtension,
     private val configurationDataSource: ConfigurationDataSource,
     private val artifactsConfig: ArtifactsConfig,
-    private val repositoryDataSource: RepositoryDataSource,
     private val dependencyResolutionService: GradleProvider<DefaultDependencyResolutionService>,
     private val androidVariantsExtractor: AndroidVariantsExtractor,
     private val variantBuilder: VariantBuilder,
-    private val mavenInstallStore: MavenInstallStore
 ) : DependenciesDataSource {
 
     private val configurationScopes by lazy { grazelExtension.configurationScopes() }
@@ -162,10 +157,7 @@ internal class DefaultDependenciesDataSource @Inject constructor(
     private val MavenArtifact.isExcluded get() = artifactsConfig.excludedList.contains(id)
 
     override fun hasDepsFromUnsupportedRepositories(project: Project): Boolean {
-        return project
-            .externalResolvedDependencies()
-            .mapNotNull(ResolvedComponentResultInternal::getRepositoryName)
-            .any { repoName -> repositoryDataSource.unsupportedRepositoryNames.contains(repoName) }
+        return false
     }
 
     override fun hasIgnoredArtifacts(project: Project): Boolean {
@@ -275,9 +267,9 @@ internal class DefaultDependenciesDataSource @Inject constructor(
                 }
                 when (dependency.group) {
                     DAGGER_GROUP -> StringDependency("//:dagger")
-                    else -> mavenInstallStore.get(
+                    else -> dependencyResolutionService.get().get(
                         variants = variantHierarchy,
-                        group = dependency.group!!,
+                        group = dependency.group,
                         name = dependency.name
                     ) ?: run {
                         error("$dependency cant be found for migrating ${project.name}")
@@ -286,20 +278,6 @@ internal class DefaultDependenciesDataSource @Inject constructor(
             }.distinct()
             .toList()
     }
-
-    /**
-     * Resolves all the external dependencies for the given project. By resolving all the dependencies, we get accurate
-     * dependency information that respects resolution strategy, substitution and any other modification by Gradle apart
-     * from `build.gradle` definition aka first level module dependencies.
-     */
-    private fun Project.externalResolvedDependencies() = dependencyResolutionService.get()
-        .resolve(
-            project = this,
-            configurations = configurationDataSource.resolvedConfigurations(
-                this,
-                *buildGraphTypes().toTypedArray()
-            )
-        )
 
     /**
      * Collects first level module dependencies from their resolved configuration. Additionally, excludes any artifacts

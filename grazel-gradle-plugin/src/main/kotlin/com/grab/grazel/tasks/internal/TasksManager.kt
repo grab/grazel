@@ -60,7 +60,7 @@ constructor(
         )
 
         rootGenerateBazelScriptsTasks.configure {
-            mergedDependencies.set(computeTask.flatMap { it.mergedDependencies })
+            workspaceDependencies.set(computeTask.flatMap { it.mergedDependencies })
         }
 
         val dataBindingMetaDataTask = AndroidDatabindingMetaDataTask
@@ -92,10 +92,13 @@ constructor(
         // Project level Bazel file formatting tasks
         val projectBazelFormattingTasks = rootProject.subprojects.map { project ->
             // Project level Bazel generation tasks
-            val generateBazelScriptsTasks = GenerateBazelScriptsTask
-                .register(project, grazelComponent) {
-                    dependsOn(rootGenerateBazelScriptsTasks)
-                }
+            val generateBazelScriptsTasks = GenerateBazelScriptsTask.register(
+                project,
+                grazelComponent
+            ) {
+                dependencyResolutionService.set(grazelComponent.dependencyResolutionService())
+                workspaceDependencies.set(computeTask.flatMap { it.mergedDependencies })
+            }
 
             // Post script generate task must run after project level tasks are generated
             postScriptGenerateTask.dependsOn(generateBazelScriptsTasks)

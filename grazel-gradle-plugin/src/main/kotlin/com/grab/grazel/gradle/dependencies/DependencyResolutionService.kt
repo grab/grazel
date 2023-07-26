@@ -16,39 +16,42 @@
 
 package com.grab.grazel.gradle.dependencies
 
+import com.grab.grazel.bazel.starlark.BazelDependency.MavenDependency
 import com.grab.grazel.di.qualifiers.RootProject
 import com.grab.grazel.gradle.dependencies.DependencyResolutionService.Companion.SERVICE_NAME
+import com.grab.grazel.gradle.dependencies.model.WorkspaceDependencies
+import com.grab.grazel.tasks.internal.ComputeWorkspaceDependenciesTask
+import com.grab.grazel.tasks.internal.GenerateBazelScriptsTask
 import org.gradle.api.Project
-import org.gradle.api.artifacts.Configuration
-import org.gradle.api.artifacts.result.ResolvedComponentResult
-import org.gradle.api.internal.artifacts.result.DefaultResolvedComponentResult
-import org.gradle.api.internal.artifacts.result.ResolvedComponentResultInternal
 import org.gradle.api.services.BuildService
 import org.gradle.api.services.BuildServiceParameters
-import java.util.concurrent.ConcurrentSkipListMap
 
 /**
- * A [BuildService] to cache and maintain a project's resolved dependency resolution graph obtained
- * after dependency resolution.
- * This cache lazily resolves dependencies the first time and caches result thereafter. Thread safe and
- * can be queried from multiple threads.
+ * A [BuildService] to cache and store dependencies computed for `WORKSPACE` by
+ * [ComputeWorkspaceDependenciesTask] and later used by [GenerateBazelScriptsTask]
  */
 internal interface DependencyResolutionService : BuildService<DependencyResolutionService.Params>,
     AutoCloseable {
     /**
-     * Return the resolution result of dependencies (skips internal dependencies) from supported configurations.
-     * Caches the result on first access and thread safe to access on multiple threads.
+     * For a given variant hierarchy and `group` and `name`, the function will try to look
+     * for the dependency in each of the variant hierarchy and return the first one found.
      *
-     * @param project The project to resolve dependencies for. `project.path` is used as cache key.
-     * @param configurations The list of [Configuration] that should be resolved.
-     * @param skipCache Currently project path is used as cache key and repeat calls with different @param configurations
-     *                  may result in cached result. `skipCache` may be used to force resolution again.
+     * For example, if `androidx.activity:activity` is given and it was categorized
+     * under `@maven` repository then will return `@maven//:androidx_activity_activity`
+     * in form of [MavenDependency]
+     *
+     * @param workspaceDependencies [WorkspaceDependencies] data computed by [ComputeWorkspaceDependenciesTask]
+     * @param variants Variant hierarchy sorted by priority
+     * @param group Maven group name
+     * @param name Maven artifact name
      */
-    fun resolve(
-        project: Project,
-        configurations: Sequence<Configuration>,
-        skipCache: Boolean = false
-    ): List<ResolvedComponentResultInternal>
+    fun get(
+        variants: Set<String>,
+        group: String,
+        name: String
+    ): MavenDependency?
+
+    fun populateCache(workspaceDependencies: WorkspaceDependencies)
 
     companion object {
         internal const val SERVICE_NAME = "DependencyResolutionCache"
@@ -58,45 +61,33 @@ internal interface DependencyResolutionService : BuildService<DependencyResoluti
 }
 
 internal abstract class DefaultDependencyResolutionService : DependencyResolutionService {
-    /**
-     * Thread safe lock-free map to hold resolution result of a project.
-     *
-     * Key: Project path
-     */
-    private val projectResolutionCache =
-        ConcurrentSkipListMap<String, List<ResolvedComponentResultInternal>>()
 
-    override fun resolve(
-        project: Project,
-        configurations: Sequence<Configuration>,
-        skipCache: Boolean
-    ): List<ResolvedComponentResultInternal> {
-        fun resolveInternal(
-            configurations: Sequence<Configuration>
-        ) = configurations
-            .map(Configuration::getIncoming)
-            .flatMap { resolvableDependencies ->
-                try {
-                    resolvableDependencies
-                        .resolutionResult
-                        .allComponents
-                        .asSequence()
-                } catch (e: Exception) {
-                    emptySequence<ResolvedComponentResult>()
+    private var mavenInstallStore: MavenInstallStore? = null
+
+    override fun get(
+        variants: Set<String>,
+        group: String,
+        name: String
+    ): MavenDependency? {
+        return mavenInstallStore?.get(variants, group, name)
+    }
+
+    override fun populateCache(workspaceDependencies: WorkspaceDependencies) {
+        if (mavenInstallStore == null) {
+            mavenInstallStore = DefaultMavenInstallStore().apply {
+                workspaceDependencies.result.forEach { (variantName, dependencies) ->
+                    dependencies.forEach { dependency ->
+                        val (group, name, _) = dependency.id.split(":")
+                        set(variantName, group, name)
+                    }
                 }
-            }.filterIsInstance<DefaultResolvedComponentResult>()
-            .filter { !it.toString().startsWith("project :") } // Exclude project dependencies
-            .distinctBy(DefaultResolvedComponentResult::toString)
-            .toList()
-        return if (skipCache) {
-            resolveInternal(configurations)
-        } else {
-            projectResolutionCache.getOrPut(project.path) { resolveInternal(configurations) }
+            }
         }
     }
 
     override fun close() {
-        projectResolutionCache.clear()
+        mavenInstallStore?.close()
+        mavenInstallStore = null
     }
 
     companion object {

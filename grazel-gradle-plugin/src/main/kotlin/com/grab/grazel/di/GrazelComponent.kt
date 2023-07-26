@@ -26,6 +26,7 @@ import com.grab.grazel.gradle.GradleProjectInfo
 import com.grab.grazel.gradle.MigrationChecker
 import com.grab.grazel.gradle.MigrationCriteriaModule
 import com.grab.grazel.gradle.RepositoryDataSource
+import com.grab.grazel.gradle.dependencies.DefaultDependencyResolutionService
 import com.grab.grazel.gradle.dependencies.DependenciesDataSource
 import com.grab.grazel.gradle.dependencies.DependenciesGraphsBuilder
 import com.grab.grazel.gradle.dependencies.DependenciesModule
@@ -47,6 +48,7 @@ import com.grab.grazel.migrate.internal.ProjectBazelFileBuilder
 import com.grab.grazel.migrate.internal.RootBazelFileBuilder
 import com.grab.grazel.migrate.internal.WorkspaceBuilder
 import com.grab.grazel.migrate.target.TargetModule
+import com.grab.grazel.util.GradleProvider
 import dagger.Binds
 import dagger.BindsInstance
 import dagger.Component
@@ -93,6 +95,8 @@ internal interface GrazelComponent {
     fun variantMatcher(): Lazy<VariantMatcher>
 
     fun manifestValuesBuilder(): ManifestValuesBuilder
+
+    fun dependencyResolutionService(): GradleProvider<DefaultDependencyResolutionService>
 }
 
 @Module(
