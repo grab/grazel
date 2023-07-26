@@ -79,7 +79,7 @@ internal class DefaultAndroidUnitTestDataExtractor @Inject constructor(
             ).map { dependent ->
                 gradleDependencyToBazelDependency.map(project, dependent, matchedVariant)
             } +
-            dependenciesDataSource.externalDependencies(
+            dependenciesDataSource.collectMavenDeps(
                 project,
                 BuildGraphType(ConfigurationScope.TEST, matchedVariant.variant)
             ) +

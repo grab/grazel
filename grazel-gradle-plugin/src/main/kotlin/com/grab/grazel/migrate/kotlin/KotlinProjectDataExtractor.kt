@@ -70,7 +70,7 @@ constructor(
             ).map { dependent ->
                 gradleDependencyToBazelDependency.map(project, dependent, null)
             } +
-            dependenciesDataSource.externalDependencies(
+            dependenciesDataSource.collectMavenDeps(
                 project,
                 BuildGraphType(ConfigurationScope.BUILD)
             ) +

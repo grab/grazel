@@ -123,7 +123,7 @@ internal interface DependenciesDataSource {
     /**
      * Non project dependencies for the given [buildGraphType]
      */
-    fun externalDependencies(
+    fun collectMavenDeps(
         project: Project,
         buildGraphType: BuildGraphType
     ): List<BazelDependency>
@@ -236,7 +236,7 @@ internal class DefaultDependenciesDataSource @Inject constructor(
         return results
     }
 
-    override fun externalDependencies(
+    override fun collectMavenDeps(
         project: Project,
         buildGraphType: BuildGraphType
     ): List<BazelDependency> {

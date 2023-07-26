@@ -76,7 +76,7 @@ internal class DefaultKotlinUnitTestDataExtractor @Inject constructor(
                 }
             )
             addAll(
-                dependenciesDataSource.externalDependencies(
+                dependenciesDataSource.collectMavenDeps(
                     project,
                     BuildGraphType(ConfigurationScope.TEST)
                 )
