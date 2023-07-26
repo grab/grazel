@@ -49,8 +49,8 @@ allprojects {
     configurations.configureEach {
         resolutionStrategy {
             // Force a dependency to test if Grazel picks it up correctly.
-            force "com.google.dagger:dagger:2.29"
-            force "com.google.dagger:dagger-compiler:2.29"
+            force "com.google.dagger:dagger:2.47"
+            force "com.google.dagger:dagger-compiler:2.47"
         }
     }
 
@@ -137,9 +137,10 @@ grazel {
             artifactPinning {
                 enabled.set(false)
             }
-//            overrideTargetLabels.putAll(
-//                ["androidx.appcompat:appcompat": "@//third_party:androidx_appcompat_appcompat"]
-//            )
+            overrideTargetLabels.putAll(
+                // Workaround for https://issuetracker.google.com/issues/285353844
+                ["androidx.annotation:annotation": "@maven//:androidx_annotation_annotation_jvm"]
+            )
             versionConflictPolicy = "pinned"
         }
         kotlin {
@@ -163,8 +164,8 @@ grazel {
             }
         }
         dagger {
-            tag = "2.46.1"
-            sha = "bbd75275faa3186ebaa08e6779dc5410741a940146d43ef532306eb2682c13f7"
+            tag = "2.47"
+            sha = "154cdfa4f6f552a9873e2b4448f7a80415cb3427c4c771a50c6a8a8b434ffd0a"
         }
     }
 }

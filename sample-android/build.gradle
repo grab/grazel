@@ -140,6 +140,7 @@ dependencies {
     implementation libs.androidx.activity
     implementation libs.androidx.core
     implementation libs.androidx.lifecycle.viewmodel
+    implementation libs.androidx.annotation.jvm
 
     implementation(libs.androidx.constraintlayout) {
         // Sample for exclude rules.
@@ -148,7 +149,6 @@ dependencies {
 
     // Test for variant classpath
     debugImplementation libs.androidx.paging.runtime
-    debugImplementation libs.leakcanary.android
 
     implementation libs.androidx.compose.ui
     implementation libs.androidx.compose.ui.tooling

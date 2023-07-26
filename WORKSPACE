@@ -46,9 +46,9 @@ load("@grab_bazel_common//android:maven.bzl", "pin_bazel_common_artifacts")
 
 pin_bazel_common_artifacts()
 
-DAGGER_TAG = "2.46.1"
+DAGGER_TAG = "2.47"
 
-DAGGER_SHA = "bbd75275faa3186ebaa08e6779dc5410741a940146d43ef532306eb2682c13f7"
+DAGGER_SHA = "154cdfa4f6f552a9873e2b4448f7a80415cb3427c4c771a50c6a8a8b434ffd0a"
 
 http_archive(
     name = "dagger",
@@ -129,7 +129,7 @@ maven_install(
         "org.jetbrains:annotations",
     ],
     override_targets = {
-        "androidx.annotation:annotation": "@maven//:androidx_annotation_annotation",
+        "androidx.annotation:annotation": "@maven//:androidx_annotation_annotation_jvm",
         "androidx.annotation:annotation-experimental": "@maven//:androidx_annotation_annotation_experimental",
         "androidx.lifecycle:lifecycle-common": "@maven//:androidx_lifecycle_lifecycle_common",
         "javax.inject:javax.inject": "@maven//:javax_inject_javax_inject",
@@ -168,19 +168,6 @@ maven_install(
         "androidx.paging:paging-runtime:3.1.1",
         "androidx.recyclerview:recyclerview:1.2.0",
         "androidx.versionedparcelable:versionedparcelable:1.1.0",
-        "com.squareup.leakcanary:leakcanary-android-core:2.12",
-        "com.squareup.leakcanary:leakcanary-android-utils:2.12",
-        "com.squareup.leakcanary:leakcanary-android:2.12",
-        "com.squareup.leakcanary:leakcanary-object-watcher-android-androidx:2.12",
-        "com.squareup.leakcanary:leakcanary-object-watcher-android-core:2.12",
-        "com.squareup.leakcanary:leakcanary-object-watcher-android-support-fragments:2.12",
-        "com.squareup.leakcanary:leakcanary-object-watcher-android:2.12",
-        "com.squareup.leakcanary:leakcanary-object-watcher:2.12",
-        "com.squareup.leakcanary:shark-android:2.12",
-        "com.squareup.leakcanary:shark-graph:2.12",
-        "com.squareup.leakcanary:shark-hprof:2.12",
-        "com.squareup.leakcanary:shark-log:2.12",
-        "com.squareup.leakcanary:shark:2.12",
         "org.jetbrains.kotlin:kotlin-stdlib-common:1.5.31",
         "org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.5.30",
         "org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.5.30",
@@ -215,19 +202,6 @@ maven_install(
         "androidx.recyclerview:recyclerview",
         "androidx.versionedparcelable:versionedparcelable",
         "com.android.support:cardview-v7",
-        "com.squareup.leakcanary:leakcanary-android",
-        "com.squareup.leakcanary:leakcanary-android-core",
-        "com.squareup.leakcanary:leakcanary-android-utils",
-        "com.squareup.leakcanary:leakcanary-object-watcher",
-        "com.squareup.leakcanary:leakcanary-object-watcher-android",
-        "com.squareup.leakcanary:leakcanary-object-watcher-android-androidx",
-        "com.squareup.leakcanary:leakcanary-object-watcher-android-core",
-        "com.squareup.leakcanary:leakcanary-object-watcher-android-support-fragments",
-        "com.squareup.leakcanary:shark",
-        "com.squareup.leakcanary:shark-android",
-        "com.squareup.leakcanary:shark-graph",
-        "com.squareup.leakcanary:shark-hprof",
-        "com.squareup.leakcanary:shark-log",
         "org.jetbrains.kotlin:kotlin-stdlib",
         "org.jetbrains.kotlin:kotlin-stdlib-common",
         "org.jetbrains.kotlin:kotlin-stdlib-jdk7",
@@ -238,7 +212,7 @@ maven_install(
         "org.jetbrains:annotations",
     ],
     override_targets = {
-        "androidx.annotation:annotation": "@maven//:androidx_annotation_annotation",
+        "androidx.annotation:annotation": "@maven//:androidx_annotation_annotation_jvm",
         "androidx.arch.core:core-common": "@maven//:androidx_arch_core_core_common",
         "androidx.arch.core:core-runtime": "@maven//:androidx_arch_core_core_runtime",
         "androidx.collection:collection": "@maven//:androidx_collection_collection",
@@ -276,6 +250,7 @@ maven_install(
         "androidx.activity:activity-ktx:1.7.2",
         "androidx.activity:activity:1.7.2",
         "androidx.annotation:annotation-experimental:1.3.0",
+        "androidx.annotation:annotation-jvm:1.6.0",
         "androidx.annotation:annotation:1.6.0",
         "androidx.appcompat:appcompat-resources:1.6.1",
         "androidx.appcompat:appcompat:1.6.1",
@@ -339,7 +314,7 @@ maven_install(
         "androidx.vectordrawable:vectordrawable:1.1.0",
         "androidx.versionedparcelable:versionedparcelable:1.1.1",
         "androidx.viewpager:viewpager:1.0.0",
-        "com.google.dagger:dagger:2.29",
+        "com.google.dagger:dagger:2.47",
         "javax.inject:javax.inject:1",
         "org.jetbrains.kotlin:kotlin-stdlib-common:1.8.10",
         "org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.8.10",
@@ -360,6 +335,7 @@ maven_install(
         "androidx.activity:activity-ktx",
         "androidx.annotation:annotation",
         "androidx.annotation:annotation-experimental",
+        "androidx.annotation:annotation-jvm",
         "androidx.appcompat:appcompat-resources",
         "androidx.arch.core:core-common",
         "androidx.arch.core:core-runtime",
@@ -427,6 +403,9 @@ maven_install(
         "org.jetbrains.kotlinx:kotlinx-coroutines-core",
         "org.jetbrains:annotations",
     ],
+    override_targets = {
+        "androidx.annotation:annotation": "@maven//:androidx_annotation_annotation_jvm",
+    },
     repositories = [
         "https://dl.google.com/dl/android/maven2/",
         "https://repo.maven.apache.org/maven2/",
@@ -449,6 +428,9 @@ maven_install(
         "junit:junit",
         "org.hamcrest:hamcrest-core",
     ],
+    override_targets = {
+        "androidx.annotation:annotation": "@maven//:androidx_annotation_annotation_jvm",
+    },
     repositories = [
         "https://repo.maven.apache.org/maven2/",
     ],
