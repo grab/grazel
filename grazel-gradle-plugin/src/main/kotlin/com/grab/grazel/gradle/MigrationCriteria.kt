@@ -37,10 +37,8 @@ internal object MigrationCriteriaModule {
     @Provides
     fun migrationCriteria(
         pluginsMigrationCriteria: PluginsMigrationCriteria,
-        dependenciesMigrationCriteria: DependenciesMigrationCriteria
     ): Set<MigrationCriteria> = setOf(
         pluginsMigrationCriteria,
-        dependenciesMigrationCriteria
     )
 }
 
