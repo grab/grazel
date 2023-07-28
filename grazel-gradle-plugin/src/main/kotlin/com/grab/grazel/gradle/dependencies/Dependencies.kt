@@ -26,6 +26,7 @@ import com.grab.grazel.bazel.starlark.BazelDependency.StringDependency
 import com.grab.grazel.di.qualifiers.RootProject
 import com.grab.grazel.gradle.ConfigurationDataSource
 import com.grab.grazel.gradle.ConfigurationScope
+import com.grab.grazel.gradle.ConfigurationScope.BUILD
 import com.grab.grazel.gradle.ConfigurationScope.TEST
 import com.grab.grazel.gradle.configurationScopes
 import com.grab.grazel.gradle.hasDatabinding
@@ -205,18 +206,20 @@ internal class DefaultDependenciesDataSource @Inject constructor(
         val results = mutableMapOf<MavenArtifact, File>()
 
         fun add(defaultResolvedDependency: DefaultResolvedDependency) {
-            defaultResolvedDependency.moduleArtifacts
-                .firstOrNull()
-                ?.file
-                ?.let { file ->
-                    if (fileExtension == null || file.extension == fileExtension) {
-                        results.getOrPut(defaultResolvedDependency.toMavenArtifact()) { file }
-                    }
+            defaultResolvedDependency.moduleArtifacts.firstOrNull()?.file?.let { file ->
+                if (fileExtension == null || file.extension == fileExtension) {
+                    results.getOrPut(defaultResolvedDependency.toMavenArtifact()) { file }
                 }
+            }
         }
+
         rootProject.subprojects
-            .flatMap { it.firstLevelModuleDependencies() }
-            .onEach(::add)
+            .flatMap { project ->
+                project.firstLevelModuleDependencies(
+                    buildGraphTypes = androidVariantsExtractor.getVariants(project)
+                        .map { variant -> BuildGraphType(BUILD, variant) }
+                )
+            }.onEach(::add)
             // It would be easier to just flatMapTo(set) but we are dealing with graphs and we need
             // to avoid unnecessary recalculation
             .forEach { defaultResolvedDependency ->
@@ -285,12 +288,14 @@ internal class DefaultDependenciesDataSource @Inject constructor(
      *
      * @return Sequence of [DefaultResolvedDependency] in the first level
      */
-    private fun Project.firstLevelModuleDependencies(): Sequence<DefaultResolvedDependency> {
-        return configurationDataSource.resolvedConfigurations(
-            this,
-            *buildGraphTypes().toTypedArray()
-        )
-            .map { it.resolvedConfiguration.lenientConfiguration }
+    private fun Project.firstLevelModuleDependencies(
+        buildGraphTypes: List<BuildGraphType> = buildGraphTypes()
+    ): Sequence<DefaultResolvedDependency> {
+        return configurationDataSource
+            .resolvedConfigurations(
+                project = this,
+                buildGraphTypes = buildGraphTypes.toTypedArray()
+            ).map { it.resolvedConfiguration.lenientConfiguration }
             .flatMap {
                 try {
                     it.firstLevelModuleDependencies.asSequence()

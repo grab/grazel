@@ -57,13 +57,14 @@ constructor(
             val mavenInstallArtifacts = artifacts
                 .mapTo(TreeSet(compareBy(MavenInstallArtifact::id))) { dependency ->
                     val (group, name, version) = dependency.id.split(":")
+                    val exclusions = dependency.excludeRules.mapNotNull(::toExclusion)
                     when {
-                        dependency.excludeRules.isEmpty() -> SimpleArtifact(dependency.id)
+                        exclusions.isEmpty() -> SimpleArtifact(dependency.id)
                         else -> DetailedArtifact(
                             group = group,
                             artifact = name,
                             version = version,
-                            exclusions = dependency.excludeRules.mapNotNull(::toExclusion)
+                            exclusions = exclusions
                         )
                     }
                 }.also { if (it.isEmpty()) return@mapNotNullTo null }

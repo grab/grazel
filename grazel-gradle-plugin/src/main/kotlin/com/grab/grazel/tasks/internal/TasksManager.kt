@@ -65,7 +65,7 @@ constructor(
 
         val dataBindingMetaDataTask = AndroidDatabindingMetaDataTask
             .register(rootProject, grazelComponent) {
-                dependsOn(rootGenerateBazelScriptsTasks)
+                dependsOn(computeTask)
             }
 
         val generateBuildifierScriptTask = GenerateBuildifierScriptTask.register(rootProject) {

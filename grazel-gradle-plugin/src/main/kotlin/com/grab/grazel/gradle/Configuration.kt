@@ -108,7 +108,8 @@ internal class DefaultConfigurationDataSource @Inject constructor(
             .filter { !it.name.startsWith("_") }
             .filter { !it.name.contains("archives") }
             .filter { !it.name.contains("KaptWorker") }
-            .filter { !it.name.contains("androidJacocoAnt") }
+            .filter { !it.name.contains("Jacoco", true) }
+            .filter { !it.name.contains("androidSdkImage") }
             .filter { !it.isDynamicConfiguration() } // Remove when Grazel support dynamic-feature plugin
             .filter { configuration ->
                 when {
