@@ -67,6 +67,9 @@ internal class ResolvedComponentsVisitor {
         val visited = mutableSetOf<Node>()
         val result = TreeSet<T>(compareBy { it })
 
+        /**
+         * Do a depth-first visit to collect all transitive dependencies
+         */
         fun dfs(node: Node, level: Int = 0) {
             if (node in visited) return
             visited.add(node)

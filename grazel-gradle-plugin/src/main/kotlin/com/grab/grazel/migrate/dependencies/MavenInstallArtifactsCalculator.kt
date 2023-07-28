@@ -34,6 +34,10 @@ import org.gradle.api.internal.artifacts.repositories.DefaultMavenArtifactReposi
 import java.util.*
 import javax.inject.Inject
 
+/**
+ * Utility class to convert [WorkspaceDependencies] to [MavenInstallData] accounting for various
+ * user preferences provided via [grazelExtension]
+ */
 internal class MavenInstallArtifactsCalculator
 @Inject
 constructor(
@@ -79,8 +83,7 @@ constructor(
                 }
 
             // Overrides
-            val overridesFromExtension =
-                mavenInstallExtension.overrideTargetLabels.get().toList()
+            val overridesFromExtension = mavenInstallExtension.overrideTargetLabels.get().toList()
             val overridesFromArtifacts = artifacts
                 .mapNotNull(ResolvedDependency::overrideTarget)
                 .map { it.artifactShortId to it.label.toString() }
@@ -125,10 +128,13 @@ constructor(
             // We only support basic auth now
             null
         }
+        val includeCredentials = mavenInstallExtension.includeCredentials
+        val username = if (includeCredentials) passwordCredentials?.username else null
+        val password = if (includeCredentials) passwordCredentials?.password else null
         return DefaultMavenRepository(
             url.toString(),
-            passwordCredentials?.username,
-            passwordCredentials?.password
+            username,
+            password
         )
     }
 }

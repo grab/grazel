@@ -120,7 +120,7 @@ abstract class ComputeWorkspaceDependenciesTask : DefaultTask() {
                             .parallelStream()
                             .collect(
                                 flatMapping(
-                                    // Flatten the map
+                                    // Flatten the transitive dependencies
                                     { it.value.allDependencies.stream() },
                                     groupingByConcurrent(
                                         // Group by short id to ignore version in keys

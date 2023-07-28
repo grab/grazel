@@ -80,7 +80,9 @@ internal val ResolvedDependency.allDependencies: Set<ResolvedDependency>
         addAll(dependencies.map { dependency -> ResolvedDependency.from(dependency) })
     }
 
-
+/**
+ * Proxy class to use [Versioned] so that we can use [DefaultVersionComparator]
+ */
 internal class VersionInfo(val version: String) : Versioned, Comparable<VersionInfo> {
     private val parsedVersion = VersionParser().transform(version)
     override fun getVersion(): Version = parsedVersion
