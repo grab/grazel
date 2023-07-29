@@ -23,11 +23,16 @@ import com.grab.grazel.gradle.MigrationChecker
 import com.grab.grazel.migrate.internal.RootBazelFileBuilder
 import com.grab.grazel.migrate.internal.WorkspaceBuilder
 import com.grab.grazel.util.BUILD_BAZEL
-import com.grab.grazel.util.WORKSPACE
+import com.grab.grazel.util.BUILD_BAZEL_IGNORE
+import com.grab.grazel.util.WORKSPACE_IGNORE
 import com.grab.grazel.util.ansiGreen
 import dagger.Lazy
 import org.gradle.api.DefaultTask
 import org.gradle.api.Project
+import org.gradle.api.file.ProjectLayout
+import org.gradle.api.file.RegularFileProperty
+import org.gradle.api.model.ObjectFactory
+import org.gradle.api.tasks.OutputFile
 import org.gradle.api.tasks.TaskAction
 import org.gradle.kotlin.dsl.register
 import javax.inject.Inject
@@ -38,11 +43,23 @@ constructor(
     private val migrationChecker: Lazy<MigrationChecker>,
     private val workspaceBuilderFactory: Lazy<WorkspaceBuilder.Factory>,
     private val rootBazelBuilder: Lazy<RootBazelFileBuilder>,
+    objectFactory: ObjectFactory,
+    layout: ProjectLayout
 ) : DefaultTask() {
 
     init {
         outputs.upToDateWhen { false } // This task is supposed to run always until we figure out up-to-date checks
     }
+
+    @get:OutputFile
+    val workspaceFile: RegularFileProperty = objectFactory
+        .fileProperty()
+        .convention(layout.buildDirectory.file("grazel/$WORKSPACE_IGNORE"))
+
+    @get:OutputFile
+    val buildBazel: RegularFileProperty = objectFactory
+        .fileProperty()
+        .convention(layout.buildDirectory.file("grazel/$BUILD_BAZEL_IGNORE"))
 
     @TaskAction
     fun action() {
@@ -54,12 +71,12 @@ constructor(
         workspaceBuilderFactory.get()
             .create(projectsToMigrate)
             .build()
-            .writeToFile(rootProject.file(WORKSPACE))
+            .writeToFile(workspaceFile.get().asFile)
         logger.quiet("Generated WORKSPACE".ansiGreen)
 
         val rootBuildBazelContents = rootBazelBuilder.get().build()
         if (rootBuildBazelContents.isNotEmpty()) {
-            rootBuildBazelContents.writeToFile(rootProject.file(BUILD_BAZEL))
+            rootBuildBazelContents.writeToFile(buildBazel.get().asFile)
             logger.quiet("Generated $BUILD_BAZEL".ansiGreen)
         }
     }
@@ -75,6 +92,8 @@ constructor(
             grazelComponent.migrationChecker(),
             grazelComponent.workspaceBuilderFactory(),
             grazelComponent.rootBazelFileBuilder(),
+            rootProject.objects,
+            rootProject.layout
         ).apply {
             configure {
                 group = GRAZEL_TASK_GROUP

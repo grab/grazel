@@ -134,7 +134,7 @@ internal class DefaultAndroidInstrumentationBinaryDataExtractor
             customPackage = customPackage,
             targetPackage = matchedVariant.variant.applicationId.split(".test").first(),
             debugKey = debugKey,
-            deps = deps,
+            deps = deps.sorted(),
             instruments = BazelDependency.StringDependency(
                 ":${name}${matchedVariant.nameSuffix}"
             ),

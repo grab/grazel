@@ -74,21 +74,23 @@ constructor(
                 dependsOn(rootGenerateBazelScriptsTasks)
             }
 
-        val generateBuildifierScriptTask = GenerateBuildifierScriptTask.register(
-            rootProject
-        ) {
+        val generateBuildifierScriptTask = GenerateBuildifierScriptTask.register(rootProject) {
             dependsOn(rootGenerateBazelScriptsTasks)
         }
 
         val buildifierScriptProvider = generateBuildifierScriptTask.flatMap { it.buildifierScript }
 
-        // Root formatting task depends on sub project formatting and root generation task
-        val formatBazelFilesTask = FormatBazelFileTask.register(
-            project = rootProject,
-            buildifierScriptProvider = buildifierScriptProvider,
-        ) {
-            dependsOn(rootGenerateBazelScriptsTasks)
-        }
+        // Root formatting tasks with generated workspace and build bazel files
+        val rootFormattingTasks = FormatBazelFileTask.registerRootFormattingTasks(
+            rootProject,
+            buildifierScriptProvider,
+            workspaceFormattingTask = {
+                inputFile.set(rootGenerateBazelScriptsTasks.flatMap { it.workspaceFile })
+            },
+            rootBuildBazelTask = {
+                inputFile.set(rootGenerateBazelScriptsTasks.flatMap { it.buildBazel })
+            }
+        )
 
         // Post script generate task must run after scripts are generated
         val postScriptGenerateTask = PostScriptGenerateTask.register(rootProject, grazelComponent)
@@ -109,14 +111,15 @@ constructor(
                 project = project,
                 buildifierScriptProvider = buildifierScriptProvider,
             ) {
-                dependsOn(generateBazelScriptsTasks)
+                inputFile.set(generateBazelScriptsTasks.flatMap { it.buildBazel })
             }
         }
 
-        formatBazelFilesTask.dependsOn(projectBazelFormattingTasks)
 
         val migrateTask = migrateToBazelTask().apply {
-            dependsOn(formatBazelFilesTask, postScriptGenerateTask)
+            dependsOn(postScriptGenerateTask)
+            dependsOn(rootFormattingTasks)
+            dependsOn(projectBazelFormattingTasks)
             configure {
                 // Inside a configure block since GrazelExtension won't be configured yet if
                 // we write it as part of plugin application and all extension value would

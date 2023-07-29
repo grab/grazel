@@ -28,6 +28,10 @@ import com.grab.grazel.util.ansiYellow
 import dagger.Lazy
 import org.gradle.api.DefaultTask
 import org.gradle.api.Project
+import org.gradle.api.file.ProjectLayout
+import org.gradle.api.file.RegularFileProperty
+import org.gradle.api.model.ObjectFactory
+import org.gradle.api.tasks.OutputFile
 import org.gradle.api.tasks.TaskAction
 import org.gradle.api.tasks.TaskProvider
 import org.gradle.kotlin.dsl.register
@@ -37,7 +41,9 @@ internal open class GenerateBazelScriptsTask
 @Inject
 constructor(
     private val migrationChecker: Lazy<MigrationChecker>,
-    private val bazelFileBuilder: Lazy<ProjectBazelFileBuilder.Factory>
+    private val bazelFileBuilder: Lazy<ProjectBazelFileBuilder.Factory>,
+    objectFactory: ObjectFactory,
+    private val layout: ProjectLayout
 ) : DefaultTask() {
 
     private val rootProject get() = project.rootProject
@@ -46,9 +52,14 @@ constructor(
         outputs.upToDateWhen { false } // This task is supposed to run always until we figure out up-to-date checks
     }
 
+    @get:OutputFile
+    val buildBazel: RegularFileProperty = objectFactory.fileProperty().apply {
+        set(layout.buildDirectory.file("grazel/$BUILD_BAZEL_IGNORE"))
+    }
+
     @TaskAction
     fun action() {
-        val buildBazelFile = project.file(BUILD_BAZEL)
+        val buildBazelFile = buildBazel.get().asFile
         val bazelIgnoreFile = project.file(BUILD_BAZEL_IGNORE)
 
         // Check if current project can be migrated
@@ -56,17 +67,9 @@ constructor(
             // If yes, proceed to generate build.bazel
             val projectBazelFileBuilder = bazelFileBuilder.get().create(project)
             val content = projectBazelFileBuilder.build()
-            if (content.isNotEmpty()) {
-                content.writeToFile(buildBazelFile)
-                val generatedMessage = "Generated ${rootProject.relativePath(buildBazelFile)}"
-                logger.quiet(generatedMessage.ansiGreen)
-                bazelIgnoreFile.delete()
-            } else {
-                // No content was generated, delete the file
-                buildBazelFile.delete()
-                val deletedMessage = "Deleted ${rootProject.relativePath(buildBazelFile)}"
-                logger.quiet(deletedMessage.ansiGreen)
-            }
+            content.writeToFile(buildBazelFile)
+            val generatedMessage = "Generated ${rootProject.relativePath(buildBazelFile)}"
+            logger.quiet(generatedMessage.ansiGreen)
         } else {
             // If not migrateable but was already migrated, rename build.bazel to build.bazelignore if it exists
             bazelIgnoreFile.delete()

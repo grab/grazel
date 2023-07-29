@@ -19,7 +19,10 @@ package com.grab.grazel.bazel.starlark
 import org.gradle.api.Project
 import org.gradle.api.artifacts.Dependency
 
-sealed class BazelDependency {
+sealed class BazelDependency : Comparable<BazelDependency> {
+
+    override fun compareTo(other: BazelDependency) = toString().compareTo(other.toString())
+
     data class ProjectDependency(
         val dependencyProject: Project,
         val suffix: String = "",

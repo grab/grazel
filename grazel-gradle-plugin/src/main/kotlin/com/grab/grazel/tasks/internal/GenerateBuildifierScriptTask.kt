@@ -16,8 +16,8 @@
 
 package com.grab.grazel.tasks.internal
 
-import com.grab.grazel.di.qualifiers.RootProject
 import com.grab.grazel.bazel.exec.bazelCommand
+import com.grab.grazel.di.qualifiers.RootProject
 import com.grab.grazel.util.BUILDIFIER
 import org.gradle.api.DefaultTask
 import org.gradle.api.Project
