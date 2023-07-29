@@ -18,10 +18,9 @@ package com.grab.grazel.migrate.dependencies
 
 import com.grab.grazel.bazel.starlark.BazelDependency
 
-fun List<BazelDependency>.calculateDirectDependencyTags(self: String): List<String> =
-    filterIsInstance<BazelDependency.ProjectDependency>()
-        .map { "@direct${it}" }
-        .toMutableList()
-        .also {
-            it.add("@self//$self")
-        }
+fun List<BazelDependency>.calculateDirectDependencyTags(self: String) = asSequence()
+    .filterIsInstance<BazelDependency.ProjectDependency>()
+    .map { "@direct${it}" }
+    .toMutableList()
+    .also { it.add("@self//$self") }
+    .sorted()
