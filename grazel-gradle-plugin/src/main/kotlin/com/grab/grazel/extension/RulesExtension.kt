@@ -32,8 +32,8 @@ import org.gradle.kotlin.dsl.listProperty
  */
 data class DependenciesExtension(
     private val objects: ObjectFactory,
-    var ignoreArtifacts: ListProperty<String> = objects.listProperty(),
-    var overrideArtifactVersions: ListProperty<String> = objects.listProperty()
+    val ignoreArtifacts: ListProperty<String> = objects.listProperty(),
+    val overrideArtifactVersions: ListProperty<String> = objects.listProperty()
 )
 
 /**

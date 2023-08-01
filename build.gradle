@@ -92,7 +92,8 @@ grazel {
     }
     dependencies {
         overrideArtifactVersions.addAll(
-            "androidx.constraintlayout:constraintlayout:2.1.4"
+            "androidx.constraintlayout:constraintlayout:2.1.4",
+            "androidx.annotation:annotation:1.7.0-alpha03"
         )
     }
     rules {

@@ -74,7 +74,7 @@ maven_install(
     name = "android_test_maven",
     artifacts = [
         "androidx.annotation:annotation-experimental:1.1.0",
-        "androidx.annotation:annotation:1.2.0",
+        "androidx.annotation:annotation:1.7.0-alpha03",
         "androidx.concurrent:concurrent-futures:1.1.0",
         "androidx.lifecycle:lifecycle-common:2.3.1",
         "androidx.test.espresso:espresso-core:3.5.1",
@@ -148,7 +148,7 @@ maven_install(
 maven_install(
     name = "debug_maven",
     artifacts = [
-        "androidx.annotation:annotation:1.1.0",
+        "androidx.annotation:annotation:1.7.0-alpha03",
         "androidx.arch.core:core-common:2.1.0",
         "androidx.arch.core:core-runtime:2.1.0",
         "androidx.collection:collection:1.0.0",
@@ -251,7 +251,7 @@ maven_install(
         "androidx.activity:activity:1.7.2",
         "androidx.annotation:annotation-experimental:1.3.0",
         "androidx.annotation:annotation-jvm:1.6.0",
-        "androidx.annotation:annotation:1.6.0",
+        "androidx.annotation:annotation:1.7.0-alpha03",
         "androidx.appcompat:appcompat-resources:1.6.1",
         "androidx.appcompat:appcompat:1.6.1",
         "androidx.arch.core:core-common:2.2.0",

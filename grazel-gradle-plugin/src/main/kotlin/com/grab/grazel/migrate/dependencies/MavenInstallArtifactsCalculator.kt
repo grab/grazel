@@ -51,6 +51,20 @@ constructor(
 
     private val mavenInstallExtension get() = grazelExtension.rules.mavenInstall
 
+    /**
+     * Map of user configured overrides for artifact versions.
+     */
+    private val overrideVersionsMap: Map< /*shortId*/ String, /*version*/ String> by lazy {
+        grazelExtension
+            .dependencies
+            .overrideArtifactVersions
+            .get()
+            .associateBy(
+                { it.substringBeforeLast(":") },
+                { it.split(":").last() }
+            )
+    }
+
     fun get(
         workspaceDependencies: WorkspaceDependencies,
         externalArtifacts: Set<String>,
@@ -59,19 +73,8 @@ constructor(
         .mapNotNullTo(TreeSet(compareBy(MavenInstallData::name))) { (variantName, artifacts) ->
             val mavenInstallName = variantName.toMavenRepoName()
             val mavenInstallArtifacts = artifacts
-                .mapTo(TreeSet(compareBy(MavenInstallArtifact::id))) { dependency ->
-                    val (group, name, version) = dependency.id.split(":")
-                    val exclusions = dependency.excludeRules.mapNotNull(::toExclusion)
-                    when {
-                        exclusions.isEmpty() -> SimpleArtifact(dependency.id)
-                        else -> DetailedArtifact(
-                            group = group,
-                            artifact = name,
-                            version = version,
-                            exclusions = exclusions
-                        )
-                    }
-                }.also { if (it.isEmpty()) return@mapNotNullTo null }
+                .mapTo(TreeSet(compareBy(MavenInstallArtifact::id)), ::toMavenInstallArtifact)
+                .also { if (it.isEmpty()) return@mapNotNullTo null }
 
             // Repositories
             val repositories = artifacts
@@ -113,6 +116,23 @@ constructor(
                 versionConflictPolicy = mavenInstallExtension.versionConflictPolicy
             )
         }
+
+    private fun toMavenInstallArtifact(dependency: ResolvedDependency): MavenInstallArtifact {
+        val (group, name, version) = dependency.id.split(":")
+        val shortId = "${group}:${name}"
+        val overrideVersion = overrideVersionsMap[shortId] ?: version
+        val artifactId = "$group:$name:$overrideVersion"
+        val exclusions = dependency.excludeRules.mapNotNull(::toExclusion)
+        return when {
+            exclusions.isEmpty() -> SimpleArtifact(artifactId)
+            else -> DetailedArtifact(
+                group = group,
+                artifact = name,
+                version = overrideVersion,
+                exclusions = exclusions
+            )
+        }
+    }
 
     private fun toExclusion(excludeRule: ExcludeRule): SimpleExclusion? {
         return when (val id = "${excludeRule.group}:${excludeRule.artifact}") {
