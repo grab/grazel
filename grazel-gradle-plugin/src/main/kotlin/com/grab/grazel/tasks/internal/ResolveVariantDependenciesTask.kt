@@ -64,10 +64,10 @@ abstract class ResolveVariantDependenciesTask : DefaultTask() {
     abstract val compileConfiguration: ListProperty<ResolvedComponentResult>
 
     @get:Input
-    abstract val compileDirectDependencies: MapProperty<String, String>
+    abstract val compileDirectDependencies: MapProperty</*shortId*/ String, String>
 
     @get:Input
-    abstract val compileExcludeRules: MapProperty<String, Set<ExcludeRule>>
+    abstract val compileExcludeRules: MapProperty</*shortId*/ String, Set<ExcludeRule>>
 
     @get:Input
     abstract val annotationProcessorConfiguration: ListProperty<ResolvedComponentResult>
