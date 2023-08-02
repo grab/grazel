@@ -59,6 +59,15 @@ internal data class ResolvedDependency(
     }
 }
 
+internal fun ResolvedDependency.merge(other: ResolvedDependency): ResolvedDependency {
+    return copy(
+        direct = direct || other.direct,
+        excludeRules = (excludeRules + other.excludeRules)
+            .toList()
+            .toSortedSet(compareBy(ExcludeRule::toString)),
+    )
+}
+
 @Serializable
 internal data class OverrideTarget(
     val artifactShortId: String,

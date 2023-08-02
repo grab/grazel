@@ -22,6 +22,7 @@ import com.grab.grazel.gradle.dependencies.model.ResolveDependenciesResult
 import com.grab.grazel.gradle.dependencies.model.ResolvedDependency
 import com.grab.grazel.gradle.dependencies.model.WorkspaceDependencies
 import com.grab.grazel.gradle.dependencies.model.allDependencies
+import com.grab.grazel.gradle.dependencies.model.merge
 import com.grab.grazel.gradle.dependencies.model.versionInfo
 import com.grab.grazel.gradle.variant.DEFAULT_VARIANT
 import com.grab.grazel.gradle.variant.VariantBuilder
@@ -183,7 +184,7 @@ abstract class ComputeWorkspaceDependenciesTask : DefaultTask() {
 
     /**
      * A reducing collector that picks the [ResolvedDependency] with higher [ResolvedDependency.version]
-     * by simple comparison.
+     * by simple comparison and merges metadata like exclude rules and override targets.
      */
     private fun maxVersionReducer(): Collector<ResolvedDependency, *, ResolvedDependency> {
         return Collectors.reducing(null) { old, new ->
@@ -191,7 +192,7 @@ abstract class ComputeWorkspaceDependenciesTask : DefaultTask() {
                 old == null -> new
                 new == null -> old
                 // Pick the max version
-                else -> if (old.versionInfo > new.versionInfo) old else new
+                else -> if (old.versionInfo > new.versionInfo) old.merge(new) else new.merge(old)
             }
         }
     }
