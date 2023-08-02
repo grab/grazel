@@ -156,9 +156,9 @@ abstract class ComputeWorkspaceDependenciesTask : DefaultTask() {
                                 Collectors.toMap(
                                     { (shortId, _) -> shortId },
                                     { (shortId, dependency) ->
-                                        // If this dependency is already in default classpath,
-                                        // then we override it
-                                        if (shortId in defaultFlatClasspath) {
+                                        // If a transitive dependency is already in default classpath,
+                                        // then we override it to point to default classpath instead
+                                        if (shortId in defaultFlatClasspath && !dependency.direct) {
                                             val (group, name, _, _) = dependency!!.id.split(":")
                                             dependency.copy(
                                                 overrideTarget = OverrideTarget(
