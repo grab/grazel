@@ -26,16 +26,17 @@ import com.grab.grazel.bazel.starlark.BazelDependency.StringDependency
 import com.grab.grazel.di.qualifiers.RootProject
 import com.grab.grazel.gradle.ConfigurationDataSource
 import com.grab.grazel.gradle.ConfigurationScope
-import com.grab.grazel.gradle.ConfigurationScope.BUILD
 import com.grab.grazel.gradle.ConfigurationScope.TEST
 import com.grab.grazel.gradle.configurationScopes
 import com.grab.grazel.gradle.hasDatabinding
+import com.grab.grazel.gradle.variant.AndroidVariant
 import com.grab.grazel.gradle.variant.AndroidVariantsExtractor
 import com.grab.grazel.gradle.variant.DEFAULT_VARIANT
 import com.grab.grazel.gradle.variant.TEST_VARIANT
 import com.grab.grazel.gradle.variant.Variant
 import com.grab.grazel.gradle.variant.VariantBuilder
 import com.grab.grazel.gradle.variant.isConfigScope
+import com.grab.grazel.gradle.variant.isTest
 import com.grab.grazel.gradle.variant.migratableConfigurations
 import com.grab.grazel.util.GradleProvider
 import org.gradle.api.Project
@@ -44,8 +45,10 @@ import org.gradle.api.artifacts.Dependency
 import org.gradle.api.artifacts.ExternalDependency
 import org.gradle.api.artifacts.ProjectDependency
 import org.gradle.api.artifacts.ResolvedDependency
+import org.gradle.api.artifacts.component.ModuleComponentIdentifier
 import org.gradle.api.internal.artifacts.DefaultResolvedDependency
 import java.io.File
+import java.util.TreeSet
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -204,29 +207,31 @@ internal class DefaultDependenciesDataSource @Inject constructor(
         fileExtension: String?
     ): Map<MavenArtifact, File> {
         val results = mutableMapOf<MavenArtifact, File>()
-
-        fun add(defaultResolvedDependency: DefaultResolvedDependency) {
-            defaultResolvedDependency.moduleArtifacts.firstOrNull()?.file?.let { file ->
-                if (fileExtension == null || file.extension == fileExtension) {
-                    results.getOrPut(defaultResolvedDependency.toMavenArtifact()) { file }
-                }
-            }
-        }
-
         rootProject.subprojects
+            .asSequence()
             .flatMap { project ->
-                project.firstLevelModuleDependencies(
-                    buildGraphTypes = androidVariantsExtractor.getVariants(project)
-                        .map { variant -> BuildGraphType(BUILD, variant) }
-                )
-            }.onEach(::add)
-            // It would be easier to just flatMapTo(set) but we are dealing with graphs and we need
-            // to avoid unnecessary recalculation
-            .forEach { defaultResolvedDependency ->
-                defaultResolvedDependency
-                    .outgoingEdges // will get all transitives of this artifact
-                    .filterIsInstance<DefaultResolvedDependency>()
-                    .forEach(::add)
+                variantBuilder.build(project)
+                    .asSequence()
+                    .filterIsInstance<AndroidVariant>()
+                    .filter { !it.variantType.isTest }
+            }.flatMap { it.compileConfiguration }
+            .flatMapTo(TreeSet(compareBy { it.id.toString() })) { configuration ->
+                configuration
+                    .incoming
+                    .artifactView {
+                        isLenient = true
+                        componentFilter { identifier -> identifier is ModuleComponentIdentifier }
+                    }.artifacts
+            }.filter { it.file.extension == fileExtension }
+            .forEach { artifactResult ->
+                val artifact = artifactResult.id.componentIdentifier as ModuleComponentIdentifier
+                results.getOrPut(
+                    MavenArtifact(
+                        group = artifact.group,
+                        name = artifact.module,
+                        version = artifact.version,
+                    )
+                ) { artifactResult.file }
             }
         return results
     }
