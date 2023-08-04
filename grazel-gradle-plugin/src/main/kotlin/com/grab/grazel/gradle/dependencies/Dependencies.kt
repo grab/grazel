@@ -23,7 +23,6 @@ import com.grab.grazel.bazel.rules.DAGGER_GROUP
 import com.grab.grazel.bazel.rules.DATABINDING_GROUP
 import com.grab.grazel.bazel.starlark.BazelDependency
 import com.grab.grazel.bazel.starlark.BazelDependency.StringDependency
-import com.grab.grazel.di.qualifiers.RootProject
 import com.grab.grazel.gradle.ConfigurationDataSource
 import com.grab.grazel.gradle.ConfigurationScope
 import com.grab.grazel.gradle.ConfigurationScope.TEST
@@ -132,7 +131,6 @@ internal interface DependenciesDataSource {
 
 @Singleton
 internal class DefaultDependenciesDataSource @Inject constructor(
-    @param:RootProject private val rootProject: Project,
     private val grazelExtension: GrazelExtension,
     private val configurationDataSource: ConfigurationDataSource,
     private val artifactsConfig: ArtifactsConfig,
@@ -222,7 +220,8 @@ internal class DefaultDependenciesDataSource @Inject constructor(
                         isLenient = true
                         componentFilter { identifier -> identifier is ModuleComponentIdentifier }
                     }.artifacts
-            }.filter { it.file.extension == fileExtension }
+            }.asSequence()
+            .filter { it.file.extension == fileExtension }
             .forEach { artifactResult ->
                 val artifact = artifactResult.id.componentIdentifier as ModuleComponentIdentifier
                 results.getOrPut(
@@ -333,10 +332,4 @@ internal class DefaultDependenciesDataSource @Inject constructor(
                     .map { dependency -> configuration to dependency }
             }
     }
-
-    private fun DefaultResolvedDependency.toMavenArtifact() = MavenArtifact(
-        group = moduleGroup,
-        name = moduleName,
-        version = moduleVersion,
-    )
 }

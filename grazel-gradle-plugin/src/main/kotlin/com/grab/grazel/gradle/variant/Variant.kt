@@ -121,8 +121,8 @@ val VariantType.testSuffix
 val Variant<*>.migratableConfigurations
     get() = (compileConfiguration
         + runtimeConfiguration
-        + annotationProcessorConfiguration
-        + kotlinCompilerPluginConfiguration).toSet()
+        /*+ annotationProcessorConfiguration
+        + kotlinCompilerPluginConfiguration*/).toSet()
 
 enum class Classpath {
     Runtime,

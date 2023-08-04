@@ -7,11 +7,15 @@ import com.grab.grazel.gradle.ANDROID_APPLICATION_PLUGIN
 import com.grab.grazel.gradle.ANDROID_LIBRARY_PLUGIN
 import com.grab.grazel.gradle.KOTLIN_ANDROID_PLUGIN
 import com.grab.grazel.gradle.KOTLIN_KAPT
+import com.grab.grazel.gradle.dependencies.DefaultDependencyResolutionService
+import com.grab.grazel.gradle.dependencies.model.ResolvedDependency.Companion.from
+import com.grab.grazel.gradle.dependencies.model.WorkspaceDependencies
 import com.grab.grazel.gradle.variant.MatchedVariant
 import com.grab.grazel.util.addGrazelExtension
 import com.grab.grazel.util.createGrazelComponent
 import com.grab.grazel.util.doEvaluate
 import org.gradle.api.Project
+import org.gradle.api.provider.Provider
 import org.gradle.kotlin.dsl.configure
 import org.gradle.kotlin.dsl.dependencies
 import org.gradle.kotlin.dsl.the
@@ -22,6 +26,7 @@ class DefaultAndroidLibraryDataExtractorTest {
     private lateinit var rootProject: Project
     private lateinit var appProject: Project
     private lateinit var libraryProject: Project
+    private lateinit var dependencyResolutionService: Provider<DefaultDependencyResolutionService>
     private lateinit var androidLibraryDataExtractor: AndroidLibraryDataExtractor
 
     private fun configure(
@@ -66,7 +71,20 @@ class DefaultAndroidLibraryDataExtractorTest {
         libraryProject.doEvaluate()
         appProject.doEvaluate()
         val grazelComponent = rootProject.createGrazelComponent()
+        dependencyResolutionService = grazelComponent.dependencyResolutionService()
         androidLibraryDataExtractor = grazelComponent.androidLibraryDataExtractor().get()
+
+        dependencyResolutionService.get().populateCache(
+            workspaceDependencies = WorkspaceDependencies(
+                result = buildMap {
+                    put(
+                        "maven", listOf(
+                            from("com.android.databinding:viewbinding:1.0.0:maven"),
+                            from("com.android.databinding:baseLibrary:1.0.0:maven")
+                        )
+                    )
+                }
+            ))
     }
 
     private fun debugVariant(): MatchedVariant {

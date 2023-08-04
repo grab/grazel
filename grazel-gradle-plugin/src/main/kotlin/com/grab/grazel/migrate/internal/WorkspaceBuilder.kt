@@ -69,7 +69,7 @@ internal class WorkspaceBuilder(
     ) {
         fun create(
             projectsToMigrate: List<Project>,
-            workspaceDependencies: WorkspaceDependencies,
+            workspaceDependencies: WorkspaceDependencies = WorkspaceDependencies(emptyMap()),
         ) = WorkspaceBuilder(
             rootProject,
             projectsToMigrate,

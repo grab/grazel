@@ -16,308 +16,200 @@
 
 package com.grab.grazel.gradle
 
-import com.android.build.gradle.LibraryExtension
+import com.android.build.gradle.AppExtension
 import com.grab.grazel.GrazelExtension
-import com.grab.grazel.GrazelPluginTest
+import com.grab.grazel.bazel.starlark.BazelDependency
 import com.grab.grazel.buildProject
-import com.grab.grazel.fake.FLAVOR1
-import com.grab.grazel.fake.FLAVOR2
-import com.grab.grazel.fake.FakeAndroidVariantDataSource
-import com.grab.grazel.gradle.dependencies.*
-import com.grab.grazel.gradle.variant.AndroidVariantsExtractor
-import com.grab.grazel.gradle.variant.DefaultAndroidVariantDataSource
-import com.grab.grazel.gradle.variant.DefaultAndroidVariantsExtractor
-import com.grab.grazel.gradle.variant.DefaultVariantBuilder
-import com.grab.grazel.gradle.dependencies.DefaultMavenInstallStore
+import com.grab.grazel.gradle.ConfigurationScope.BUILD
+import com.grab.grazel.gradle.dependencies.BuildGraphType
+import com.grab.grazel.gradle.dependencies.DefaultDependenciesDataSource
+import com.grab.grazel.gradle.dependencies.DependencyResolutionService
+import com.grab.grazel.gradle.dependencies.IGNORED_ARTIFACT_GROUPS
+import com.grab.grazel.gradle.dependencies.MavenArtifact
+import com.grab.grazel.gradle.dependencies.model.ResolvedDependency.Companion.from
+import com.grab.grazel.gradle.dependencies.model.WorkspaceDependencies
+import com.grab.grazel.util.addGrazelExtension
+import com.grab.grazel.util.createGrazelComponent
+import com.grab.grazel.util.doEvaluate
 import org.gradle.api.Project
-import org.gradle.kotlin.dsl.add
 import org.gradle.kotlin.dsl.configure
 import org.gradle.kotlin.dsl.dependencies
-import org.gradle.kotlin.dsl.exclude
-import org.gradle.kotlin.dsl.project
 import org.gradle.kotlin.dsl.repositories
-import org.junit.Assert.assertFalse
+import org.gradle.kotlin.dsl.the
 import org.junit.Assert.assertTrue
-import org.junit.Before
+import org.junit.Rule
 import org.junit.Test
+import org.junit.rules.TemporaryFolder
+import java.io.File
+import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
-private const val IMPLEMENTATION = "implementation"
-
-private const val APP_COMPAT = "androidx.appcompat:appcompat:%s"
-private const val CONSTRAINT_LAYOUT = "androidx.constraintlayout:constraintlayout:%s"
-private const val DAGGER = "com.google.dagger:dagger:%s"
-private const val KOTLIN_STDLIB = "org.jetbrains.kotlin:kotlin-stdlib"
-
-private const val APP_COMPAT_VERSION = "1.1.0"
-private const val CL_VERSION = "2.0.2"
-private const val DAGGER_VERSION = "2.28"
-
-private const val APP_COMPAT_FORCE_VERSION = "1.1.0"
-private const val CL_FORCE_VERSION = "1.1.3"
-private const val DAGGER_FORCE_VERSION = "2.29"
-
-private const val ROOT_PROJECT_NAME = "root"
-private const val FLAVOR1_PROJECT_NAME = "flavor1"
-private const val FLAVOR2_PROJECT_NAME = "flavor2"
-private const val SUB_PROJECT_NAME = "subproject"
-
-class DefaultDependenciesDataSourceTest : GrazelPluginTest() {
-
+class DefaultDependenciesDataSourceTest {
     private lateinit var rootProject: Project
-    private lateinit var subProject: Project
-    private lateinit var flavor1Project: Project
-    private lateinit var flavor2Project: Project
+    private lateinit var androidProject: Project
     private lateinit var dependenciesDataSource: DefaultDependenciesDataSource
-    private lateinit var repositoryDataSource: RepositoryDataSource
-    private lateinit var fakeVariantDataSource: FakeAndroidVariantDataSource
-    private lateinit var configurationDataSource: DefaultConfigurationDataSource
-    private lateinit var androidVariantsExtractor: AndroidVariantsExtractor
+    private lateinit var dependencyResolutionService: DependencyResolutionService
 
-    @Before
-    fun setUp() {
-        rootProject = buildProject(ROOT_PROJECT_NAME)
-        subProject = buildProject(SUB_PROJECT_NAME, rootProject)
+    @get:Rule
+    val temporaryFolder = TemporaryFolder()
+    private lateinit var projectDir: File
 
-        flavor1Project = buildProject(FLAVOR1_PROJECT_NAME, rootProject)
-        flavor2Project = buildProject(FLAVOR2_PROJECT_NAME, rootProject)
+    fun configure(
+        configureProject: Project.() -> Unit = {},
+        grazelExtension: GrazelExtension.() -> Unit = {}
+    ) {
+        projectDir = temporaryFolder.newFolder("projecs")
+        rootProject = buildProject("root", projectDir = projectDir).also { root ->
+            root.addGrazelExtension(grazelExtension)
+        }
+        androidProject = buildProject("android", rootProject)
+        with(androidProject) {
+            with(plugins) {
+                apply(ANDROID_APPLICATION_PLUGIN)
+            }
+            repositories {
+                google()
+                mavenCentral()
+            }
+            configure<AppExtension> {
+                compileSdkVersion(30)
+            }
+            configureProject(this)
 
-        fakeVariantDataSource = FakeAndroidVariantDataSource()
-        configurationDataSource = DefaultConfigurationDataSource(fakeVariantDataSource)
-        repositoryDataSource = DefaultRepositoryDataSource(rootProject)
-        androidVariantsExtractor = DefaultAndroidVariantsExtractor()
-
-        dependenciesDataSource = DefaultDependenciesDataSource(
-            rootProject = rootProject,
-            configurationDataSource = configurationDataSource,
-            artifactsConfig = ArtifactsConfig(ignoredList = listOf(KOTLIN_STDLIB)),
-            repositoryDataSource = repositoryDataSource,
-            dependencyResolutionService = DefaultDependencyResolutionService.register(rootProject),
-            grazelExtension = GrazelExtension(rootProject),
-            androidVariantsExtractor = androidVariantsExtractor,
-            variantBuilder = DefaultVariantBuilder(
-                DefaultAndroidVariantDataSource(
-                    androidVariantsExtractor
+            dependencies {
+                add(
+                    "debugImplementation",
+                    "com.android.support:appcompat-v7:28.0.0"
                 )
-            ),
-            mavenInstallStore = DefaultMavenInstallStore()
-        )
+                add(
+                    "debugImplementation",
+                    "com.android.support:animated-vector-drawable:28.0.0'"
+                )
+                add(
+                    "implementation",
+                    "com.google.dagger:dagger:2.37"
+                )
+            }
+        }
+        androidProject.doEvaluate()
+        rootProject.createGrazelComponent().let { grazelComponent ->
+            dependenciesDataSource = grazelComponent
+                .dependenciesDataSource()
+                .get() as DefaultDependenciesDataSource
+            dependencyResolutionService = grazelComponent
+                .dependencyResolutionService()
+                .get().apply {
+                    populateCache(
+                        workspaceDependencies = WorkspaceDependencies(
+                            result = buildMap {
+                                put(
+                                    "debug", listOf(
+                                        from("com.android.support:appcompat-v7:28.0.0:debug"),
+                                    )
+                                )
+                            }
+                        )
+                    )
+                }
+        }
     }
 
-    @Test
-    fun `when no filter applied, assert all project deps should be returned`() {
-        setUpFlavorModulesDep()
-        val deps = dependenciesDataSource.projectDependencies(subProject)
-        assertTrue(deps.any { it.second.name == FLAVOR1_PROJECT_NAME })
-        assertTrue(deps.any { it.second.name == FLAVOR2_PROJECT_NAME })
-    }
-
-    @Test
-    fun `when filter variants applied, assert ignored variants project deps should not returned`() {
-        setUpFlavorModulesDep()
-        fakeVariantDataSource.ignoreFlavorsName = listOf(FLAVOR1)
-        val deps = dependenciesDataSource.projectDependencies(subProject)
-        assertFalse(deps.any { it.second.name == FLAVOR1_PROJECT_NAME })
-        assertTrue(deps.any { it.second.name == FLAVOR2_PROJECT_NAME })
-    }
-
-    @Test
-    fun `when filter variants applied, assert ignored variants maven deps should not returned`() {
-        setUpFlavorModulesDep()
-        fakeVariantDataSource.ignoreFlavorsName = listOf(FLAVOR2)
-        fakeVariantDataSource.ignoreVariantName = listOf("release" to null)
-        val deps = dependenciesDataSource.mavenDependencies(subProject)
-        assertTrue(deps.toList().size == 2)
-        assertTrue(deps.any { APP_COMPAT.contains(it.name) })
-        assertTrue(deps.any { DAGGER.contains(it.name) })
-        assertFalse(deps.any { CONSTRAINT_LAYOUT.contains(it.name) })
-    }
-
-
-    @Test
-    fun `when no filter applied, assert all maven deps should be returned`() {
-        setUpFlavorModulesDep()
-        val deps = dependenciesDataSource.mavenDependencies(subProject)
-        assertTrue(deps.toList().size == 3)
-        assertTrue(deps.any { APP_COMPAT.contains(it.name) })
-        assertTrue(deps.any { CONSTRAINT_LAYOUT.contains(it.name) })
-        assertTrue(deps.any { DAGGER.contains(it.name) })
-    }
 
     @Test
     fun `assert first level module dependencies have default embedded artifacts excluded from them`() {
-        setUpDepsWithResolutionStrategy()
+        configure()
         assertTrue(
             "First level module dependencies does not contain embedded artifacts",
-            dependenciesDataSource.firstLevelModuleDependencies(subProject)
+            dependenciesDataSource
+                .firstLevelModuleDependencies(androidProject)
                 .none { it.moduleGroup in IGNORED_ARTIFACT_GROUPS })
     }
 
     @Test
-    fun `assert hasIgnoredArtifacts returns true when a project has ignored artifacts`() {
-        setUpDepsWithResolutionStrategy()
-        dependenciesDataSource = DefaultDependenciesDataSource(
-            rootProject = rootProject,
-            configurationDataSource = configurationDataSource,
-            artifactsConfig = ArtifactsConfig(ignoredList = listOf(DAGGER.split(":%s").first())),
-            repositoryDataSource = repositoryDataSource,
-            dependencyResolutionService = DefaultDependencyResolutionService.register(rootProject),
-            grazelExtension = GrazelExtension(rootProject),
-            androidVariantsExtractor = androidVariantsExtractor,
-            variantBuilder = DefaultVariantBuilder(
-                DefaultAndroidVariantDataSource(
-                    androidVariantsExtractor
-                )
-            ),
-            mavenInstallStore = DefaultMavenInstallStore()
-        )
-        assertTrue(
-            "hasIgnoredArtifacts returns true when project contains any ignored artifacts",
-            dependenciesDataSource.hasIgnoredArtifacts(subProject)
-        )
-    }
-
-    @Test
-    fun `assert hasIgnoredArtifacts does not consider embedded artifacts as ignored artifacts`() {
-        setUpDepsWithResolutionStrategy()
-        assertFalse(
-            "hasIgnoredArtifacts does not consider embedded artifacts for calculation ",
-            dependenciesDataSource.hasIgnoredArtifacts(subProject)
-        )
-    }
-
-    @Test
     fun `assert dependencyArtifactMap returns artifact and corresponding artifact file`() {
-        setUpDepsWithResolutionStrategy()
-        dependenciesDataSource = DefaultDependenciesDataSource(
-            rootProject = rootProject,
-            configurationDataSource = configurationDataSource,
-            artifactsConfig = ArtifactsConfig(excludedList = listOf()),
-            repositoryDataSource = repositoryDataSource,
-            dependencyResolutionService = DefaultDependencyResolutionService.register(rootProject),
-            grazelExtension = GrazelExtension(rootProject),
-            androidVariantsExtractor = DefaultAndroidVariantsExtractor(),
-            variantBuilder = DefaultVariantBuilder(
-                DefaultAndroidVariantDataSource(
-                    androidVariantsExtractor
-                )
-            ),
-            mavenInstallStore = DefaultMavenInstallStore()
-        )
+        configure()
         val dependencyArtifactMap = dependenciesDataSource.dependencyArtifactMap(
             rootProject,
             "aar"
         )
         // assert only valid files are returned
-        kotlin.test.assertTrue("Only valid files are returned") {
+        assertTrue("Only valid files are returned") {
             dependencyArtifactMap.values.all {
                 it.extension == "aar" && it.exists()
             }
         }
         // assert valid maven coordinates
-        kotlin.test.assertTrue("Valid maven artifact ids are returned") {
+        assertTrue("Valid maven artifact ids are returned") {
             listOf(
                 // We expect force version since dependency resolution happens
-                APP_COMPAT.format(APP_COMPAT_FORCE_VERSION),
-                CONSTRAINT_LAYOUT.format(CL_FORCE_VERSION)
-            ).all { dep -> dependencyArtifactMap.keys.map { it.toString() }.contains(dep) }
+                "com.android.support:appcompat-v7:28.0.0",
+                "com.android.support:cursoradapter:28.0.0"
+            ).all { dep -> dep in dependencyArtifactMap.keys.map(MavenArtifact::toString) }
         }
     }
 
-
-    private fun setUpFlavorModulesDep() {
-        // sub -> flavor1
-        //  | -> flavor2
-        subProject.run {
-            plugins.apply {
-                apply(ANDROID_LIBRARY_PLUGIN)
-            }
-
-            extensions.configure<LibraryExtension> {
-                flavorDimensions("service")
-                productFlavors {
-                    create(FLAVOR1) {
-                        dimension = "service"
-                    }
-                    create(FLAVOR2) {
-                        dimension = "service"
-                    }
-                }
-            }
-            repositories {
-                mavenCentral()
-                google()
-            }
-            dependencies {
-                add("$FLAVOR1${IMPLEMENTATION.capitalize()}", project(":$FLAVOR1_PROJECT_NAME"))
-                add("$FLAVOR2${IMPLEMENTATION.capitalize()}", project(":$FLAVOR2_PROJECT_NAME"))
-                add(IMPLEMENTATION, DAGGER.format(DAGGER_FORCE_VERSION))
-                add(
-                    "$FLAVOR1${IMPLEMENTATION.capitalize()}",
-                    APP_COMPAT.format(APP_COMPAT_FORCE_VERSION)
-                )
-                add(
-                    "release${IMPLEMENTATION.capitalize()}",
-                    CONSTRAINT_LAYOUT.format(CL_FORCE_VERSION)
-                )
-            }
-        }
+    @Test
+    fun `assert collectMavenDeps returns variant specific classpath`() {
+        configure()
+        val debugVariant = androidProject.the<AppExtension>()
+            .applicationVariants
+            .first { it.name == "debug" }!!
+        val deps = dependenciesDataSource.collectMavenDeps(
+            androidProject,
+            BuildGraphType(BUILD, debugVariant)
+        )
+        assertTrue(deps.size == 3, "collectMavenDeps returns variant specific classpath")
     }
 
-    private fun setUpDepsWithResolutionStrategy() {
-        subProject.run {
-            plugins.apply {
-                apply(KOTLIN_PLUGIN)
-            }
-            repositories {
-                google()
-                mavenCentral()
-            }
-            configurations.configureEach {
-                resolutionStrategy {
-                    setForcedModules(
-                        arrayOf(
-                            APP_COMPAT.format(APP_COMPAT_FORCE_VERSION),
-                            CONSTRAINT_LAYOUT.format(CL_FORCE_VERSION),
-                            DAGGER.format(DAGGER_FORCE_VERSION)
-                        )
-                    )
-                }
-            }
-            dependencies {
-                add(IMPLEMENTATION, APP_COMPAT.format(APP_COMPAT_VERSION))
-                add(IMPLEMENTATION, CONSTRAINT_LAYOUT.format(CL_VERSION))
-                add(IMPLEMENTATION, DAGGER.format(DAGGER_VERSION))
-                add(IMPLEMENTATION, "$KOTLIN_STDLIB:1.3.72")
-            }
-        }
+    private fun assertCollectMavenDeps(
+        grazel: GrazelExtension.() -> Unit = {},
+        assertions: (List<BazelDependency>) -> Unit = {}
+    ) {
+        configure(grazelExtension = grazel)
+        val debugVariant = androidProject.the<AppExtension>()
+            .applicationVariants
+            .first { it.name == "debug" }!!
+        val deps = dependenciesDataSource.collectMavenDeps(
+            androidProject,
+            BuildGraphType(BUILD, debugVariant)
+        )
+        assertEquals(2, deps.size, "collectMavenDeps respects ignore list")
+        assertEquals(
+            "@maven//:com_android_support_animated_vector_drawable", deps.first().toString()
+        )
+        assertions(deps)
     }
 
-    private fun setupExclusions() {
-        setUpDepsWithResolutionStrategy()
-        subProject.run {
+    @Test
+    fun `assert collectMavenDeps respects ignore list`() {
+        assertCollectMavenDeps(grazel = {
             dependencies {
-                add(IMPLEMENTATION, CONSTRAINT_LAYOUT.format(CL_VERSION)) {
-                    exclude(group = "androidx.appcompat", module = "appcompat")
+                ignoreArtifacts.add("com.android.support:appcompat-v7")
+            }
+        })
+    }
+
+    @Test
+    fun `assert collectMavenDeps respects exclude list`() {
+        assertCollectMavenDeps(grazel = {
+            rules {
+                mavenInstall {
+                    excludeArtifacts.add("com.android.support:appcompat-v7")
                 }
             }
-        }
-        flavor1Project.run {
-            plugins.apply {
-                apply(KOTLIN_PLUGIN)
-            }
-            repositories {
-                google()
-                mavenCentral()
-            }
-            dependencies {
-                add(IMPLEMENTATION, CONSTRAINT_LAYOUT.format(CL_VERSION)) {
-                    exclude(group = "androidx.core", module = "core")
-                    exclude(
-                        group = "androidx.navigation",
-                        module = ""
-                    ) // Case where module is not given
+        })
+    }
+
+    @Test
+    fun `assert Dagger deps are replaced with target`() {
+        assertCollectMavenDeps(
+            grazel = {
+                dependencies {
+                    ignoreArtifacts.add("com.android.support:appcompat-v7")
                 }
-            }
-        }
+            }, assertions = { deps ->
+                assertTrue(deps.any { it.toString() == "//:dagger" })
+                assertTrue(deps.none { "com.google.dagger" in it.toString() })
+            })
     }
 }
