@@ -27,7 +27,7 @@ load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository")
 
 git_repository(
     name = "grab_bazel_common",
-    commit = "120019c5290cceda3c795d9ddb2a3253b9b32b3e",
+    commit = "7415aab81c8cfec7ea05bb9bcb2b16d595bbc88e",
     remote = "https://github.com/grab/grab-bazel-common.git",
 )
 
