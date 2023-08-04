@@ -97,6 +97,7 @@ internal interface DependenciesDataSource {
     /**
      * @return true if the project has any private dependencies in any configuration
      */
+    @Deprecated("No longer supported")
     fun hasDepsFromUnsupportedRepositories(project: Project): Boolean
 
     /**
@@ -105,6 +106,7 @@ internal interface DependenciesDataSource {
      *
      * @param project the project to check against.
      */
+    @Deprecated("No longer supported")
     fun hasIgnoredArtifacts(project: Project): Boolean
 
     /**
