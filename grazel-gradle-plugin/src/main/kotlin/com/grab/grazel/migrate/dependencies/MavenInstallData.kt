@@ -16,5 +16,11 @@ internal data class MavenInstallData(
     val overrideTargets: Map<String, String>,
     val excludeArtifacts: Set<String>,
     val artifactPinning: Boolean,
+    val mavenInstallJson: String?,
+    /**
+     * Flag to denote if maven_install_json is enabled, if disabled
+     * then in generated code maven_install_json will be commented out
+     */
+    val isMavenInstallJsonEnabled: Boolean,
     val versionConflictPolicy: String?
 )

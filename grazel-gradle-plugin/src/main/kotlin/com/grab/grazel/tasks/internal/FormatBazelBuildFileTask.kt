@@ -102,21 +102,26 @@ constructor(
             buildifierScript.set(buildifierScriptProvider)
         }
 
+        data class RootFormattingTasks(
+            val workspace: TaskProvider<FormatBazelFileTask>,
+            val buildBazel: TaskProvider<FormatBazelFileTask>,
+            val all: List<TaskProvider<out Task>> = listOf(workspace, buildBazel)
+        )
+
         fun registerRootFormattingTasks(
             project: Project,
             buildifierScriptProvider: Provider<RegularFile>,
             workspaceFormattingTask: FormatBazelFileTask.() -> Unit,
             rootBuildBazelTask: FormatBazelFileTask.() -> Unit,
-        ): List<TaskProvider<out Task>> {
+        ): RootFormattingTasks {
             require(project == project.rootProject) {
                 "Can only register root formatting tasks on root project"
             }
-            val result = mutableListOf<TaskProvider<out Task>>()
             val objects = project.serviceOf<ObjectFactory>()
             val exec = project.serviceOf<ExecOperations>()
             val fileSystem = project.serviceOf<FileSystemOperations>()
             val layout = project.serviceOf<ProjectLayout>()
-            project.tasks.register<FormatBazelFileTask>(
+            val workspace = project.tasks.register<FormatBazelFileTask>(
                 FORMAT_WORK_SPACE_FILE_TASK,
                 objects, exec, fileSystem, layout
             ).apply {
@@ -131,9 +136,9 @@ constructor(
                     )
                     workspaceFormattingTask(this)
                 }
-            }.let(result::add)
+            }
 
-            project.tasks.register<FormatBazelFileTask>(
+            val buildBazel = project.tasks.register<FormatBazelFileTask>(
                 FORMAT_BUILD_BAZEL_FILE_TASK,
                 objects, exec, fileSystem, layout
             ).apply {
@@ -148,9 +153,9 @@ constructor(
                     )
                     rootBuildBazelTask(this)
                 }
-            }.let(result::add)
+            }
 
-            return result
+            return RootFormattingTasks(workspace, buildBazel)
         }
 
         /**

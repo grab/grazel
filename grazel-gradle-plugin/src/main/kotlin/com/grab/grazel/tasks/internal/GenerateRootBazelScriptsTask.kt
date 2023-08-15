@@ -20,23 +20,25 @@ import com.grab.grazel.bazel.starlark.writeToFile
 import com.grab.grazel.di.GrazelComponent
 import com.grab.grazel.di.qualifiers.RootProject
 import com.grab.grazel.gradle.MigrationChecker
-import com.grab.grazel.gradle.dependencies.model.WorkspaceDependencies
+import com.grab.grazel.gradle.dependencies.DefaultDependencyResolutionService
 import com.grab.grazel.migrate.internal.RootBazelFileBuilder
 import com.grab.grazel.migrate.internal.WorkspaceBuilder
 import com.grab.grazel.util.BUILD_BAZEL
 import com.grab.grazel.util.BUILD_BAZEL_IGNORE
-import com.grab.grazel.util.WORKSPACE_IGNORE
+import com.grab.grazel.util.WORKSPACE
 import com.grab.grazel.util.ansiGreen
-import com.grab.grazel.util.fromJson
 import dagger.Lazy
 import org.gradle.api.DefaultTask
 import org.gradle.api.Project
 import org.gradle.api.file.ProjectLayout
 import org.gradle.api.file.RegularFileProperty
 import org.gradle.api.model.ObjectFactory
+import org.gradle.api.provider.Property
 import org.gradle.api.tasks.InputFile
+import org.gradle.api.tasks.Internal
 import org.gradle.api.tasks.OutputFile
 import org.gradle.api.tasks.TaskAction
+import org.gradle.kotlin.dsl.property
 import org.gradle.kotlin.dsl.register
 import javax.inject.Inject
 
@@ -60,12 +62,16 @@ constructor(
     @get:OutputFile
     val workspaceFile: RegularFileProperty = objectFactory
         .fileProperty()
-        .convention(layout.buildDirectory.file("grazel/$WORKSPACE_IGNORE"))
+        .convention(layout.projectDirectory.file(WORKSPACE))
 
     @get:OutputFile
     val buildBazel: RegularFileProperty = objectFactory
         .fileProperty()
         .convention(layout.buildDirectory.file("grazel/$BUILD_BAZEL_IGNORE"))
+
+    @get:Internal
+    val dependencyResolutionService: Property<DefaultDependencyResolutionService> = project
+        .objects.property()
 
     @TaskAction
     fun action() {
@@ -74,13 +80,13 @@ constructor(
             .subprojects
             .filter { migrationChecker.get().canMigrate(it) }
 
-        val workspaceDependencies = fromJson<WorkspaceDependencies>(
-            workspaceDependencies.get().asFile
-        )
-
         workspaceBuilderFactory.get()
-            .create(projectsToMigrate, workspaceDependencies)
-            .build()
+            .create(
+                projectsToMigrate = projectsToMigrate,
+                workspaceDependencies = dependencyResolutionService
+                    .get()
+                    .get(workspaceDependencies.get().asFile)
+            ).build()
             .writeToFile(workspaceFile.get().asFile)
         logger.quiet("Generated WORKSPACE".ansiGreen)
 
@@ -96,7 +102,8 @@ constructor(
 
         fun register(
             @RootProject rootProject: Project,
-            grazelComponent: GrazelComponent
+            grazelComponent: GrazelComponent,
+            action: GenerateRootBazelScriptsTask.() -> Unit = {}
         ) = rootProject.tasks.register<GenerateRootBazelScriptsTask>(
             TASK_NAME,
             grazelComponent.migrationChecker(),
@@ -108,6 +115,7 @@ constructor(
             configure {
                 group = GRAZEL_TASK_GROUP
                 description = "Generate $BUILD_BAZEL for root project"
+                action(this)
             }
         }
     }

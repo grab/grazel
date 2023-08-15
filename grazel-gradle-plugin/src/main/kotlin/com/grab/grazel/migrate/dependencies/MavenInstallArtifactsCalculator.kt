@@ -30,6 +30,7 @@ import com.grab.grazel.gradle.variant.DEFAULT_VARIANT
 import com.grab.grazel.migrate.android.JetifierDataExtractor
 import org.gradle.api.Project
 import org.gradle.api.artifacts.repositories.PasswordCredentials
+import org.gradle.api.file.ProjectLayout
 import org.gradle.api.internal.artifacts.repositories.DefaultMavenArtifactRepository
 import java.util.*
 import javax.inject.Inject
@@ -66,9 +67,10 @@ constructor(
     }
 
     fun get(
+        layout: ProjectLayout,
         workspaceDependencies: WorkspaceDependencies,
         externalArtifacts: Set<String>,
-        externalRepositories: Set<String>
+        externalRepositories: Set<String>,
     ): Set<MavenInstallData> = workspaceDependencies.result
         .mapNotNullTo(TreeSet(compareBy(MavenInstallData::name))) { (variantName, artifacts) ->
             val mavenInstallName = variantName.toMavenRepoName()
@@ -96,6 +98,11 @@ constructor(
                     compareBy(Pair<String, String>::second)
                         .thenBy(Pair<String, String>::first)
                 ).toMap()
+
+            val mavenInstallJson = layout
+                .projectDirectory
+                .file("${mavenInstallName}_install.json").asFile
+
             MavenInstallData(
                 name = mavenInstallName,
                 artifacts = mavenInstallArtifacts,
@@ -113,7 +120,9 @@ constructor(
                 overrideTargets = overrideTargets,
                 resolveTimeout = mavenInstallExtension.resolveTimeout,
                 artifactPinning = mavenInstallExtension.artifactPinning.enabled.get(),
-                versionConflictPolicy = mavenInstallExtension.versionConflictPolicy
+                versionConflictPolicy = mavenInstallExtension.versionConflictPolicy,
+                mavenInstallJson = mavenInstallJson.name,
+                isMavenInstallJsonEnabled = mavenInstallJson.exists()
             )
         }
 

@@ -14,14 +14,18 @@
  * limitations under the License.
  */
 
-package com.grab.grazel.migrate
+package com.grab.grazel.util
 
-import com.grab.grazel.migrate.dependencies.ArtifactPinner
-import com.grab.grazel.migrate.dependencies.DefaultArtifactPinner
-import dagger.Binds
+import org.gradle.internal.logging.progress.ProgressLogger
+import org.gradle.internal.logging.progress.ProgressLoggerFactory
 
-@dagger.Module
-internal interface MigrationModule {
-    @Binds
-    fun DefaultArtifactPinner.bindArtifactsPinner(): ArtifactPinner
+fun ProgressLoggerFactory.startOperation(
+    message: String
+): ProgressLogger = newOperation(message).apply { start(message, message) }
+
+inline fun <reified T> ProgressLoggerFactory.startOperation(
+    message: String,
+    parent: ProgressLogger
+): ProgressLogger = newOperation(T::class.java, parent).apply {
+    start(message, message)
 }

@@ -136,7 +136,7 @@ grazel {
             jetifyIncludeList.add("com.android.support:cardview-v7")
             jetifyExcludeList.add("androidx.appcompat:appcompat")
             artifactPinning {
-                enabled.set(false)
+                enabled.set(true)
             }
             overrideTargetLabels.putAll(
                 // Workaround for https://issuetracker.google.com/issues/285353844

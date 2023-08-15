@@ -101,7 +101,5 @@ data class MavenInstallExtension(
 
 data class ArtifactPinning(
     private val objects: ObjectFactory,
-    var enabled: Property<Boolean> = objects.property<Boolean>().convention(true),
-    // TODO Consider allowing different paths for maven_install.json
-    val mavenInstallJson: String = "maven_install.json"
+    val enabled: Property<Boolean> = objects.property<Boolean>().convention(true),
 )

@@ -43,7 +43,7 @@ abstract class ComputeWorkspaceDependenciesTask : DefaultTask() {
     abstract val compileDependenciesJsons: ListProperty<RegularFile>
 
     @get:OutputFile
-    abstract val mergedDependencies: RegularFileProperty
+    abstract val workspaceDependencies: RegularFileProperty
 
     init {
         group = GRAZEL_TASK_GROUP
@@ -53,7 +53,7 @@ abstract class ComputeWorkspaceDependenciesTask : DefaultTask() {
     @TaskAction
     fun action() {
         val result = ComputeWorkspaceDependencies().compute(compileDependenciesJsons.get())
-        mergedDependencies.asFile.get().writeText(Json.encodeToString(result))
+        workspaceDependencies.asFile.get().writeText(Json.encodeToString(result))
     }
 
     companion object {
@@ -64,7 +64,7 @@ abstract class ComputeWorkspaceDependenciesTask : DefaultTask() {
         ): TaskProvider<ComputeWorkspaceDependenciesTask> {
             val computeTask = rootProject.tasks
                 .register<ComputeWorkspaceDependenciesTask>(TASK_NAME) {
-                    mergedDependencies.set(
+                    workspaceDependencies.set(
                         File(
                             rootProject.buildDir,
                             "grazel/mergedDependencies.json"

@@ -66,6 +66,7 @@ sealed class LoadStrategy(
     abstract fun load(
         builder: StatementsBuilder,
         bzlFile: String,
+        quote: Boolean = true,
         vararg symbols: String
     )
 
@@ -84,6 +85,7 @@ sealed class LoadStrategy(
         override fun load(
             builder: StatementsBuilder,
             bzlFile: String,
+            quote: Boolean,
             vararg symbols: String
         ) {
             val prevImportedSymbols = importedSymbols.getOrDefault(bzlFile, emptySet())
@@ -91,6 +93,7 @@ sealed class LoadStrategy(
                 if (newSymbols.isNotEmpty()) {
                     builder.function(
                         name = "load",
+                        quote = quote,
                         args = buildList {
                             add(bzlFile)
                             addAll(newSymbols)
@@ -117,6 +120,7 @@ sealed class LoadStrategy(
         override fun load(
             builder: StatementsBuilder,
             bzlFile: String,
+            quote: Boolean,
             vararg symbols: String
         ) {
             // Instead of adding `load` statements inline, collect all symbols

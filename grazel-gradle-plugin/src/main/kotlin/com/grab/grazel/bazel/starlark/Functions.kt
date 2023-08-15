@@ -67,12 +67,19 @@ fun StatementsBuilder.function(
     add(com.grab.grazel.bazel.starlark.function(name, multilineParams, assignmentBuilder))
 }
 
-fun StatementsBuilder.function(name: String, vararg args: String) {
-    add(FunctionStatement(name = name, params = args.map(String::quote).map { noArgAssign(it) }))
+fun StatementsBuilder.function(name: String, quote: Boolean = true, vararg args: String) {
+    add(FunctionStatement(
+        name = name,
+        params = args
+            .asSequence()
+            .map { if (quote) it.quote else it }
+            .map { noArgAssign(it) }
+            .toList()
+    ))
 }
 
 fun StatementsBuilder.load(bzlFile: String, vararg symbols: String) {
-    loadStrategy.load(this, bzlFile, *symbols)
+    loadStrategy.load(this, bzlFile, symbols = symbols)
 }
 
 /**
@@ -85,7 +92,7 @@ fun StatementsBuilder.load(bzlFile: String, vararg symbols: String) {
  */
 fun StatementsBuilder.load(bzlFile: String, assignmentBuilder: AssignmentBuilder.() -> Unit = {}) {
     val symbolImports = Assignments(assignmentBuilder = assignmentBuilder)
-    loadStrategy.load(this, bzlFile, symbolImports.asString())
+    loadStrategy.load(this, bzlFile, quote = false, symbolImports.asString())
 }
 
 

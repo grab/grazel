@@ -49,7 +49,7 @@ constructor(
      * See [Task Graph](https://grab.github.io/Grazel/gradle_tasks/#task-graph)
      */
     fun configTasks() {
-        val computeTask = ComputeWorkspaceDependenciesTask.register(
+        val computeWorkspaceDependenciesTask = ComputeWorkspaceDependenciesTask.register(
             rootProject,
             grazelComponent.variantBuilder()
         )
@@ -57,16 +57,17 @@ constructor(
         val rootGenerateBazelScriptsTasks = GenerateRootBazelScriptsTask.register(
             rootProject,
             grazelComponent
-        )
-
-        rootGenerateBazelScriptsTasks.configure {
-            workspaceDependencies.set(computeTask.flatMap { it.mergedDependencies })
+        ) {
+            workspaceDependencies.set(computeWorkspaceDependenciesTask.flatMap { it.workspaceDependencies })
+            dependencyResolutionService.set(grazelComponent.dependencyResolutionService())
         }
 
-        val dataBindingMetaDataTask = AndroidDatabindingMetaDataTask
-            .register(rootProject, grazelComponent) {
-                dependsOn(computeTask)
-            }
+        val dataBindingMetaDataTask = AndroidDatabindingMetaDataTask.register(
+            rootProject,
+            grazelComponent
+        ) {
+            dependsOn(computeWorkspaceDependenciesTask)
+        }
 
         val generateBuildifierScriptTask = GenerateBuildifierScriptTask.register(rootProject) {
             dependsOn(rootGenerateBazelScriptsTasks)
@@ -86,6 +87,12 @@ constructor(
             }
         )
 
+        val pinArtifactsTask = PinMavenArtifactsTask.register(rootProject, grazelComponent) {
+            dependencyResolutionService.set(grazelComponent.dependencyResolutionService())
+            workspaceFile.set(rootFormattingTasks.workspace.flatMap { it.outputFile })
+            workspaceDependencies.set(computeWorkspaceDependenciesTask.flatMap { it.workspaceDependencies })
+        }
+
         // Post script generate task must run after scripts are generated
         val postScriptGenerateTask = PostScriptGenerateTask.register(rootProject, grazelComponent)
 
@@ -97,7 +104,7 @@ constructor(
                 grazelComponent
             ) {
                 dependencyResolutionService.set(grazelComponent.dependencyResolutionService())
-                workspaceDependencies.set(computeTask.flatMap { it.mergedDependencies })
+                workspaceDependencies.set(computeWorkspaceDependenciesTask.flatMap { it.workspaceDependencies })
             }
 
             // Post script generate task must run after project level tasks are generated
@@ -112,11 +119,11 @@ constructor(
             }
         }
 
-
         val migrateTask = migrateToBazelTask().apply {
             dependsOn(postScriptGenerateTask)
-            dependsOn(rootFormattingTasks)
+            dependsOn(rootFormattingTasks.all)
             dependsOn(projectBazelFormattingTasks)
+            dependsOn(pinArtifactsTask)
             configure {
                 // Inside a configure block since GrazelExtension won't be configured yet if
                 // we write it as part of plugin application and all extension value would

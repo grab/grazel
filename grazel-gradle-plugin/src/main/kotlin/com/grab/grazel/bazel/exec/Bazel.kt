@@ -18,30 +18,54 @@ package com.grab.grazel.bazel.exec
 
 import com.grab.grazel.util.LogOutputStream
 import com.grab.grazel.util.ansiGreen
-import com.grab.grazel.util.ansiPurple
 import com.grab.grazel.util.ansiYellow
 import org.gradle.api.Project
 import org.gradle.api.logging.LogLevel
+import org.gradle.api.logging.Logger
+import org.gradle.kotlin.dsl.support.serviceOf
+import org.gradle.process.ExecOperations
 import org.gradle.process.ExecResult
 import java.io.ByteArrayOutputStream
 import java.io.OutputStream
 
-// TODO(arun) Inject exec operations and avoid using Project
+@Deprecated(
+    "Use exec operations variant instead of using Project instance",
+    level = DeprecationLevel.WARNING
+)
 internal fun Project.bazelCommand(
     command: String,
     vararg args: String,
     ignoreExit: Boolean = false,
     outputStream: OutputStream? = null,
     errorOutputStream: OutputStream? = null,
+): ExecResult = serviceOf<ExecOperations>().bazelCommand(
+    logger,
+    command,
+    *args,
+    ignoreExit = ignoreExit,
+    outputStream = outputStream,
+    errorOutputStream = errorOutputStream
+)
+
+internal fun ExecOperations.bazelCommand(
+    logger: Logger,
+    command: String,
+    vararg args: String,
+    ignoreExit: Boolean = false,
+    outputStream: OutputStream? = null,
+    errorOutputStream: OutputStream? = null,
 ): ExecResult {
-    val commands: List<String> = mutableListOf("bazelisk", command).apply {
+    val commands = buildSet {
+        add("bazelisk")
+        add(command)
         addAll(args)
+        add("--noshow_progress")
+        add("--color=yes")
     }
     logger.quiet("${"Running".ansiGreen} ${commands.joinToString(separator = " ").ansiYellow}")
     return exec {
         commandLine(*commands.toTypedArray())
         standardOutput = outputStream ?: LogOutputStream(logger, LogLevel.QUIET)
-        // Should be error but bazel wierdly outputs normal stuff to error
         errorOutput = errorOutputStream ?: LogOutputStream(logger, LogLevel.QUIET)
         isIgnoreExitValue = ignoreExit
     }

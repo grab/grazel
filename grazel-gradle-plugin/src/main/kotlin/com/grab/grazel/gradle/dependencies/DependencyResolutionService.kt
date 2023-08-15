@@ -22,9 +22,11 @@ import com.grab.grazel.gradle.dependencies.DependencyResolutionService.Companion
 import com.grab.grazel.gradle.dependencies.model.WorkspaceDependencies
 import com.grab.grazel.tasks.internal.ComputeWorkspaceDependenciesTask
 import com.grab.grazel.tasks.internal.GenerateBazelScriptsTask
+import com.grab.grazel.util.fromJson
 import org.gradle.api.Project
 import org.gradle.api.services.BuildService
 import org.gradle.api.services.BuildServiceParameters
+import java.io.File
 
 /**
  * A [BuildService] to cache and store dependencies computed for `WORKSPACE` by
@@ -40,7 +42,6 @@ internal interface DependencyResolutionService : BuildService<DependencyResoluti
      * under `@maven` repository then will return `@maven//:androidx_activity_activity`
      * in form of [MavenDependency]
      *
-     * @param workspaceDependencies [WorkspaceDependencies] data computed by [ComputeWorkspaceDependenciesTask]
      * @param variants Variant hierarchy sorted by priority
      * @param group Maven group name
      * @param name Maven artifact name
@@ -50,6 +51,8 @@ internal interface DependencyResolutionService : BuildService<DependencyResoluti
         group: String,
         name: String
     ): MavenDependency?
+
+    fun get(workspaceDependenciesJson: File): WorkspaceDependencies
 
     fun populateCache(workspaceDependencies: WorkspaceDependencies)
 
@@ -63,6 +66,7 @@ internal interface DependencyResolutionService : BuildService<DependencyResoluti
 internal abstract class DefaultDependencyResolutionService : DependencyResolutionService {
 
     private var mavenInstallStore: MavenInstallStore? = null
+    private var workspaceDependencies: WorkspaceDependencies? = null
 
     override fun get(
         variants: Set<String>,
@@ -70,6 +74,14 @@ internal abstract class DefaultDependencyResolutionService : DependencyResolutio
         name: String
     ): MavenDependency? {
         return mavenInstallStore?.get(variants, group, name)
+    }
+
+    override fun get(workspaceDependenciesJson: File): WorkspaceDependencies {
+        if (workspaceDependencies == null) {
+            workspaceDependencies = fromJson<WorkspaceDependencies>(workspaceDependenciesJson)
+        }
+        populateCache(workspaceDependencies!!)
+        return workspaceDependencies!!
     }
 
     override fun populateCache(workspaceDependencies: WorkspaceDependencies) {

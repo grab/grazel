@@ -41,8 +41,7 @@ import com.grab.grazel.migrate.MigrationModule
 import com.grab.grazel.migrate.android.AndroidInstrumentationBinaryDataExtractor
 import com.grab.grazel.migrate.android.AndroidLibraryDataExtractor
 import com.grab.grazel.migrate.android.ManifestValuesBuilder
-import com.grab.grazel.migrate.dependencies.ArtifactsPinner
-import com.grab.grazel.migrate.dependencies.DefaultArtifactsPinner
+import com.grab.grazel.migrate.dependencies.ArtifactPinner
 import com.grab.grazel.migrate.dependencies.MavenInstallArtifactsCalculator
 import com.grab.grazel.migrate.internal.ProjectBazelFileBuilder
 import com.grab.grazel.migrate.internal.RootBazelFileBuilder
@@ -56,12 +55,7 @@ import dagger.Lazy
 import dagger.Module
 import dagger.Provides
 import org.gradle.api.Project
-import org.gradle.api.file.FileSystemOperations
-import org.gradle.api.file.ProjectLayout
-import org.gradle.api.model.ObjectFactory
-import org.gradle.configurationcache.extensions.serviceOf
 import org.gradle.kotlin.dsl.the
-import org.gradle.process.ExecOperations
 import javax.inject.Singleton
 
 @Component(
@@ -82,7 +76,7 @@ internal interface GrazelComponent {
     fun projectBazelFileBuilderFactory(): Lazy<ProjectBazelFileBuilder.Factory>
     fun workspaceBuilderFactory(): Lazy<WorkspaceBuilder.Factory>
     fun rootBazelFileBuilder(): Lazy<RootBazelFileBuilder>
-    fun artifactsPinner(): Lazy<ArtifactsPinner>
+    fun artifactPinner(): Lazy<ArtifactPinner>
     fun dependenciesDataSource(): Lazy<DependenciesDataSource>
     fun mavenInstallArtifactsCalculator(): Lazy<MavenInstallArtifactsCalculator>
     fun androidVariantDataSource(): Lazy<AndroidVariantDataSource>
@@ -119,9 +113,6 @@ internal interface GrazelModule {
     @Binds
     fun DefaultRepositoryDataSource.bindRepositoryDataSource(): RepositoryDataSource
 
-    @Binds
-    fun DefaultArtifactsPinner.bindArtifactsPinner(): ArtifactsPinner
-
     companion object {
         @Singleton
         @Provides
@@ -146,16 +137,7 @@ internal interface GrazelModule {
         // Added to satisfy dagger expectation of having all bindings available when @Inject is used
         // For usage, actual instance derived from Gradle API must be used
         @Provides
-        fun @receiver:RootProject Project.exec(): ExecOperations = serviceOf()
-
-        @Provides
-        fun @receiver:RootProject Project.objects(): ObjectFactory = serviceOf()
-
-        @Provides
-        fun @receiver:RootProject Project.layout(): ProjectLayout = serviceOf()
-
-        @Provides
-        fun @receiver:RootProject Project.fileSystemOperation(): FileSystemOperations = serviceOf()
+        fun @receiver:RootProject Project.gradleServices() = GradleServices.from(this)
     }
 }
 

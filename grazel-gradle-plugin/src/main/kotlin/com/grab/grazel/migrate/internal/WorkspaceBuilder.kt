@@ -43,7 +43,6 @@ import com.grab.grazel.gradle.dependencies.model.WorkspaceDependencies
 import com.grab.grazel.gradle.isAndroidApplication
 import com.grab.grazel.migrate.BazelFileBuilder
 import com.grab.grazel.migrate.android.parseCompileSdkVersion
-import com.grab.grazel.migrate.dependencies.ArtifactsPinner
 import com.grab.grazel.migrate.dependencies.MavenInstallArtifactsCalculator
 import org.gradle.api.Project
 import org.gradle.kotlin.dsl.the
@@ -55,7 +54,6 @@ internal class WorkspaceBuilder(
     private val projectsToMigrate: List<Project>,
     private val grazelExtension: GrazelExtension,
     private val gradleProjectInfo: GradleProjectInfo,
-    private val artifactsPinner: ArtifactsPinner,
     private val workspaceDependencies: WorkspaceDependencies,
     private val mavenInstallArtifactsCalculator: MavenInstallArtifactsCalculator
 ) : BazelFileBuilder {
@@ -64,7 +62,6 @@ internal class WorkspaceBuilder(
         @param:RootProject private val rootProject: Project,
         private val grazelExtension: GrazelExtension,
         private val gradleProjectInfo: GradleProjectInfo,
-        private val artifactsPinner: ArtifactsPinner,
         private val mavenInstallArtifactsCalculator: MavenInstallArtifactsCalculator
     ) {
         fun create(
@@ -75,7 +72,6 @@ internal class WorkspaceBuilder(
             projectsToMigrate,
             grazelExtension,
             gradleProjectInfo,
-            artifactsPinner,
             workspaceDependencies,
             mavenInstallArtifactsCalculator
         )
@@ -115,6 +111,7 @@ internal class WorkspaceBuilder(
             add(repository)
         }
         mavenInstallArtifactsCalculator.get(
+            rootProject.layout,
             workspaceDependencies,
             externalArtifacts.toSortedSet(),
             externalRepositories.toSortedSet(),
@@ -133,7 +130,9 @@ internal class WorkspaceBuilder(
                 excludeArtifacts = mavenInstallData.excludeArtifacts,
                 overrideTargets = mavenInstallData.overrideTargets,
                 versionConflictPolicy = mavenInstallData.versionConflictPolicy,
-                artifactPinning = artifactsPinner.isEnabled
+                artifactPinning = mavenInstallData.artifactPinning,
+                mavenInstallJson = mavenInstallData.mavenInstallJson,
+                mavenInstallJsonEnabled = mavenInstallData.isMavenInstallJsonEnabled,
             )
         }
     }

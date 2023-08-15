@@ -43,7 +43,7 @@ fun StatementsBuilder.loadBazelCommonArtifacts(bazelCommonRepoName: String) {
 }
 
 fun StatementsBuilder.registerToolchain(toolchain: String) {
-    function("register_toolchains", toolchain.quote)
+    function("register_toolchains", quote = true, toolchain.quote)
 }
 
 fun StatementsBuilder.bazelCommonRepository(

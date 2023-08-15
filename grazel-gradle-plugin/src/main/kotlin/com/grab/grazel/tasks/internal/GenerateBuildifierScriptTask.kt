@@ -18,34 +18,51 @@ package com.grab.grazel.tasks.internal
 
 import com.grab.grazel.bazel.exec.bazelCommand
 import com.grab.grazel.di.qualifiers.RootProject
+import com.grab.grazel.migrate.dependencies.BazelLogParsingOutputStream
 import com.grab.grazel.util.BUILDIFIER
+import com.grab.grazel.util.startOperation
 import org.gradle.api.DefaultTask
 import org.gradle.api.Project
 import org.gradle.api.file.RegularFileProperty
+import org.gradle.api.logging.LogLevel.QUIET
+import org.gradle.api.model.ObjectFactory
 import org.gradle.api.tasks.OutputFile
 import org.gradle.api.tasks.TaskAction
+import org.gradle.api.tasks.UntrackedTask
+import org.gradle.internal.logging.progress.ProgressLoggerFactory
 import org.gradle.kotlin.dsl.register
+import org.gradle.process.ExecOperations
+import javax.inject.Inject
 
-abstract class GenerateBuildifierScriptTask : DefaultTask() {
+@UntrackedTask(because = "Caching implemented via Bazel")
+internal open class GenerateBuildifierScriptTask
+@Inject
+constructor(
+    objects: ObjectFactory,
+    private val execOperations: ExecOperations,
+    private val progressLoggerFactory: ProgressLoggerFactory
+) : DefaultTask() {
 
     @get:OutputFile
-    abstract val buildifierScript: RegularFileProperty
-
-    init {
-        // This task is supposed to run alawys as the generated buildifier script does not change
-        // even when buildifier version was changed.
-        // We are pushing the responsibility to bazel to determine if it is in fact up-to-date or not
-        outputs.upToDateWhen { false }
-    }
+    val buildifierScript: RegularFileProperty = objects.fileProperty()
 
     @TaskAction
     fun action() {
-        project.bazelCommand(
+        val progress = progressLoggerFactory.startOperation("Setting up buildifier")
+        val outputStream = BazelLogParsingOutputStream(
+            logger = logger,
+            level = QUIET,
+            progressLogger = progress,
+            logOutput = true
+        )
+        execOperations.bazelCommand(
+            logger = logger,
             "run",
             "@grab_bazel_common//:buildifier",
             "--script_path=${buildifierScript.get().asFile.absolutePath}",
-            "--noshow_progress"
+            errorOutputStream = outputStream,
         )
+        progress.completed()
     }
 
     companion object {
@@ -59,8 +76,8 @@ abstract class GenerateBuildifierScriptTask : DefaultTask() {
         ) {
             description = "Generates buildifier executable script"
             group = GRAZEL_TASK_GROUP
-            buildifierScript.set(project.layout.buildDirectory.file(BUILDIFIER))
-
+            val buildDirectory = project.layout.buildDirectory
+            buildifierScript.convention(buildDirectory.file("grazel/$BUILDIFIER"))
             configureAction(this)
         }
     }

@@ -99,6 +99,7 @@ maven_install(
         "org.jetbrains:annotations:13.0",
     ],
     excluded_artifacts = ["androidx.test.espresso:espresso-contrib"],
+    fail_if_repin_required = False,
     fail_on_missing_checksum = False,
     jetify = True,
     jetify_include_list = [
@@ -128,6 +129,7 @@ maven_install(
         "org.jetbrains.kotlin:kotlin-stdlib-common",
         "org.jetbrains:annotations",
     ],
+    maven_install_json = "//:android_test_maven_install.json",
     override_targets = {
         "androidx.annotation:annotation": "@maven//:androidx_annotation_annotation_jvm",
         "androidx.annotation:annotation-experimental": "@maven//:androidx_annotation_annotation_experimental",
@@ -144,6 +146,10 @@ maven_install(
     resolve_timeout = 1000,
     version_conflict_policy = "pinned",
 )
+
+load("@android_test_maven//:defs.bzl", android_test_maven_pinned_maven_install = "pinned_maven_install")
+
+android_test_maven_pinned_maven_install()
 
 maven_install(
     name = "debug_maven",
@@ -178,6 +184,7 @@ maven_install(
         "org.jetbrains:annotations:13.0",
     ],
     excluded_artifacts = ["androidx.test.espresso:espresso-contrib"],
+    fail_if_repin_required = False,
     fail_on_missing_checksum = False,
     jetify = True,
     jetify_include_list = [
@@ -211,6 +218,7 @@ maven_install(
         "org.jetbrains.kotlinx:kotlinx-coroutines-core",
         "org.jetbrains:annotations",
     ],
+    maven_install_json = "//:debug_maven_install.json",
     override_targets = {
         "androidx.annotation:annotation": "@maven//:androidx_annotation_annotation_jvm",
         "androidx.arch.core:core-common": "@maven//:androidx_arch_core_core_common",
@@ -242,6 +250,10 @@ maven_install(
     resolve_timeout = 1000,
     version_conflict_policy = "pinned",
 )
+
+load("@debug_maven//:defs.bzl", debug_maven_pinned_maven_install = "pinned_maven_install")
+
+debug_maven_pinned_maven_install()
 
 maven_install(
     name = "maven",
@@ -328,6 +340,7 @@ maven_install(
         "org.jetbrains:annotations:13.0",
     ],
     excluded_artifacts = ["androidx.test.espresso:espresso-contrib"],
+    fail_if_repin_required = False,
     fail_on_missing_checksum = False,
     jetify = True,
     jetify_include_list = [
@@ -404,6 +417,7 @@ maven_install(
         "org.jetbrains.kotlinx:kotlinx-coroutines-core",
         "org.jetbrains:annotations",
     ],
+    maven_install_json = "//:maven_install.json",
     override_targets = {
         "androidx.annotation:annotation": "@maven//:androidx_annotation_annotation_jvm",
     },
@@ -415,6 +429,10 @@ maven_install(
     version_conflict_policy = "pinned",
 )
 
+load("@maven//:defs.bzl", maven_pinned_maven_install = "pinned_maven_install")
+
+maven_pinned_maven_install()
+
 maven_install(
     name = "test_maven",
     artifacts = [
@@ -422,6 +440,7 @@ maven_install(
         "org.hamcrest:hamcrest-core:1.3",
     ],
     excluded_artifacts = ["androidx.test.espresso:espresso-contrib"],
+    fail_if_repin_required = False,
     fail_on_missing_checksum = False,
     jetify = True,
     jetify_include_list = [
@@ -429,6 +448,7 @@ maven_install(
         "junit:junit",
         "org.hamcrest:hamcrest-core",
     ],
+    maven_install_json = "//:test_maven_install.json",
     override_targets = {
         "androidx.annotation:annotation": "@maven//:androidx_annotation_annotation_jvm",
     },
@@ -438,6 +458,10 @@ maven_install(
     resolve_timeout = 1000,
     version_conflict_policy = "pinned",
 )
+
+load("@test_maven//:defs.bzl", test_maven_pinned_maven_install = "pinned_maven_install")
+
+test_maven_pinned_maven_install()
 
 android_sdk_repository(
     name = "androidsdk",

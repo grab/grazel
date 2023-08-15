@@ -18,7 +18,7 @@ package com.grab.grazel.util
 
 import org.gradle.api.Project
 import java.io.FileInputStream
-import java.util.*
+import java.util.Properties
 
 internal fun Project.localProperties(): Properties {
     val localPropertiesFile = project.rootProject.file("local.properties")
