@@ -123,13 +123,15 @@ constructor(
             dependsOn(postScriptGenerateTask)
             dependsOn(rootFormattingTasks.all)
             dependsOn(projectBazelFormattingTasks)
-            dependsOn(pinArtifactsTask)
             configure {
-                // Inside a configure block since GrazelExtension won't be configured yet if
+                // Inside a configure block since GrazelExtension won't be configured yet and if
                 // we write it as part of plugin application and all extension value would
                 // have default value instead of user configured value.
                 if (grazelComponent.extension().android.features.dataBindingMetaData) {
                     dependsOn(dataBindingMetaDataTask)
+                }
+                if (grazelComponent.extension().rules.mavenInstall.artifactPinning.enabled.get()) {
+                    dependsOn(pinArtifactsTask)
                 }
             }
         }

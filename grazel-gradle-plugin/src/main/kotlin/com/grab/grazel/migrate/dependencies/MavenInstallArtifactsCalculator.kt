@@ -122,7 +122,7 @@ constructor(
                 artifactPinning = mavenInstallExtension.artifactPinning.enabled.get(),
                 versionConflictPolicy = mavenInstallExtension.versionConflictPolicy,
                 mavenInstallJson = mavenInstallJson.name,
-                isMavenInstallJsonEnabled = mavenInstallJson.exists()
+                isMavenInstallJsonEnabled = mavenInstallExtension.artifactPinning.enabled.get() && mavenInstallJson.exists()
             )
         }
 
