@@ -22,6 +22,9 @@ import org.gradle.api.artifacts.repositories.ArtifactRepository
 import org.gradle.api.artifacts.repositories.PasswordCredentials
 import org.gradle.api.internal.artifacts.repositories.DefaultMavenArtifactRepository
 import org.gradle.api.internal.artifacts.repositories.DefaultMavenLocalArtifactRepository
+import org.gradle.api.provider.SetProperty
+import org.gradle.kotlin.dsl.setProperty
+import java.io.Serializable
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -51,7 +54,19 @@ internal interface RepositoryDataSource {
      * Same as `unsupportedRepositories` but mapped to their names.
      */
     val unsupportedRepositoryNames: List<String>
+
+    /**
+     * Lazy alternative to [allRepositoriesByName] to avoid eager evaluation.
+     */
+    val allRepositoriesLazy: SetProperty<Repository>
 }
+
+internal data class Repository(
+    val name: String,
+    val url: String,
+    val username: String?,
+    val password: String?,
+) : Serializable
 
 @Singleton
 internal class DefaultRepositoryDataSource @Inject constructor(
@@ -92,6 +107,21 @@ internal class DefaultRepositoryDataSource @Inject constructor(
 
     override val unsupportedRepositoryNames: List<String> by lazy {
         unsupportedRepositories.map { it.name }
+    }
+    override val allRepositoriesLazy: SetProperty<Repository> by lazy {
+        rootProject
+            .objects
+            .setProperty<Repository>()
+            .convention(rootProject.provider {
+                allRepositoriesByName.map { (name, repo) ->
+                    Repository(
+                        name = name,
+                        url = repo.url.toString(),
+                        username = repo.credentials?.username,
+                        password = repo.credentials?.password
+                    )
+                }.toSet()
+            })
     }
 
     /**

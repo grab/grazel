@@ -67,6 +67,13 @@ private fun combineExternalVariablesAndArray(
     }
 }
 
+fun StatementsBuilder.setupMavenInstall() {
+    load("@rules_jvm_external//:repositories.bzl", "rules_jvm_external_deps")
+    add("rules_jvm_external_deps()")
+    load("@rules_jvm_external//:setup.bzl", "rules_jvm_external_setup")
+    add("rules_jvm_external_setup()")
+}
+
 fun StatementsBuilder.mavenInstall(
     name: String? = null,
     rulesJvmExternalName: String,

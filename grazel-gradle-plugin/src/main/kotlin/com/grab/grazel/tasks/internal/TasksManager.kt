@@ -93,6 +93,11 @@ constructor(
             workspaceDependencies.set(computeWorkspaceDependenciesTask.flatMap { it.workspaceDependencies })
         }
 
+        val generateDownloaderConfigTask = GenerateDownloaderConfigTask.register(
+            rootProject,
+            grazelComponent
+        )
+
         // Post script generate task must run after scripts are generated
         val postScriptGenerateTask = PostScriptGenerateTask.register(rootProject, grazelComponent)
 
@@ -132,6 +137,7 @@ constructor(
                 }
                 if (grazelComponent.extension().rules.mavenInstall.artifactPinning.enabled.get()) {
                     dependsOn(pinArtifactsTask)
+                    dependsOn(generateDownloaderConfigTask)
                 }
             }
         }

@@ -91,6 +91,7 @@ internal interface GrazelComponent {
     fun manifestValuesBuilder(): ManifestValuesBuilder
 
     fun dependencyResolutionService(): GradleProvider<DefaultDependencyResolutionService>
+    fun repositoryDataSource(): Lazy<RepositoryDataSource>
 }
 
 @Module(

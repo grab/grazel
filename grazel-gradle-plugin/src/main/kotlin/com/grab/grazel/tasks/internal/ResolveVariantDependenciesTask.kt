@@ -97,9 +97,11 @@ abstract class ResolveVariantDependenciesTask : DefaultTask() {
             ResolvedComponentsVisitor()
                 .visit(root, logger::info) { component, repository, dependencies ->
                     val version = component.moduleVersion!!
-                    val shortId = version.group + ":" + version.name
+                    val shortId = "${version.group}:${version.name}"
                     val isDirect = shortId in directDependenciesMap
-                    if (shortId !in baseDependenciesMap)
+                    val isUnique = shortId !in baseDependenciesMap
+                    val excludeRules = excludeRulesMap.getOrDefault(shortId, emptySet())
+                    if (isUnique) {
                         ResolvedDependency(
                             id = component.toString(),
                             shortId = shortId,
@@ -107,9 +109,9 @@ abstract class ResolveVariantDependenciesTask : DefaultTask() {
                             version = version.version,
                             dependencies = dependencies,
                             repository = repository,
-                            excludeRules = excludeRulesMap.getOrDefault(shortId, emptySet())
+                            excludeRules = excludeRules
                         )
-                    else null
+                    } else null
                 }.asSequence()
         }.filter { if (removeTransitives) it.direct else true }.toSet()
     }

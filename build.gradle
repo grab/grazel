@@ -124,11 +124,6 @@ grazel {
             }
         }
         mavenInstall {
-            httpArchiveRepository {
-                sha256 = "f86fd42a809e1871ca0aabe89db0d440451219c3ce46c58da240c7dcdc00125f"
-                stripPrefix = "rules_jvm_external-5.2"
-                url = "https://github.com/bazelbuild/rules_jvm_external/releases/download/5.2/rules_jvm_external-5.2.tar.gz"
-            }
             includeCredentials = false
             resolveTimeout = 1000
             excludeArtifactsDenyList.add("androidx.constraintlayout:constraintlayout-core")

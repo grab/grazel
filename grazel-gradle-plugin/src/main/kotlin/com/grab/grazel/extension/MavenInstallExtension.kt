@@ -29,8 +29,8 @@ import org.gradle.kotlin.dsl.property
 
 internal const val RULES_JVM_EXTERNAL_NAME = "rules_jvm_external"
 internal const val RULES_JVM_EXTERNAL_SHA256 =
-    "f36441aa876c4f6427bfb2d1f2d723b48e9d930b62662bf723ddfb8fc80f0140"
-internal const val RULES_JVM_EXTERNAl_TAG = "4.1"
+    "d31e369b854322ca5098ea12c69d7175ded971435e55c18dd9dd5f29cc5249ac"
+internal const val RULES_JVM_EXTERNAl_TAG = "5.3"
 
 internal val MAVEN_INSTALL_REPOSITORY = HttpArchiveRule(
     name = RULES_JVM_EXTERNAL_NAME,
