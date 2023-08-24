@@ -33,17 +33,30 @@ class BazelLogParsingOutputStream(
     private val level: LogLevel,
     private val progressLogger: ProgressLogger,
     private val mavenRepo: String = "",
-    private val logOutput: Boolean = true
-) : ByteArrayOutputStream() {
+    private val logOutput: Boolean = true,
+) : ByteArrayOutputStream(
+    /* size = */ 16 // Reduce the initial size to log progress often.
+) {
 
     /**
      * Returns true if the maven dependencies are up to date determined by the presence of warning
      * from rules_jvm_external implementation. Must be called only after command is done.
      */
     var isOutOfDate: Boolean = false
+        private set
 
-
-    private val fileExts = listOf("aar", "jar", "pom", "sha1")
+    /**
+     * List of error messages that are printed by rules_jvm_external when the maven dependencies are
+     * out of date.
+     */
+    private val errorMessages = listOf(
+        "contains an invalid signature",
+        "maven_install.json contains an invalid input signature and must be regenerated",
+        "Lock file should be updated",
+        "It is not a valid maven_install.json file",
+        "json have changed, but the lock file has not been regenerated"
+    )
+    private val fileExts = listOf("aar", "jar", "pom", "sha1", "md5", "sha256", "sha1")
 
     override fun flush() {
         val message = toString()
@@ -54,7 +67,7 @@ class BazelLogParsingOutputStream(
 
         printProgress(message, progressLogger)
 
-        if ("maven_install.json contains an invalid input signature and must be regenerated" in message && !isOutOfDate) {
+        if (errorMessages.any { it in message } && !isOutOfDate) {
             isOutOfDate = true
             logger.log(level, "WARNING: $mavenRepo repo is out of date.".ansiRed)
         }

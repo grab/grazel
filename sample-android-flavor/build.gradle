@@ -47,6 +47,14 @@ android {
         enabled = true
     }
 
+    buildFeatures {
+        compose true
+    }
+
+    composeOptions {
+        kotlinCompilerExtensionVersion libs.versions.androidx.compose.get()
+    }
+
     buildTypes {
         debug {
             manifestPlaceholders = [
@@ -63,6 +71,8 @@ dependencies {
     implementation libs.androidx.appcompat
     implementation libs.androidx.core
     implementation libs.androidx.constraintlayout.core
+
+    implementation libs.androidx.compose.ui
 
     implementation(libs.androidx.constraintlayout) {
         // Sample for exclude rules.

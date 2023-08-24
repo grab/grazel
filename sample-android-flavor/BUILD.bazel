@@ -7,6 +7,7 @@ android_library(
         "src/flavor1/java/com/grab/grazel/android/flavor/HelloFlavorMessage.kt",
     ]),
     custom_package = "com.grab.grazel.android.flavor",
+    enable_compose = True,
     enable_data_binding = True,
     manifest = "src/main/AndroidManifest.xml",
     res_values = {
@@ -28,6 +29,7 @@ android_library(
         "//flavor-libs/sample-library-flavor1",
         "@debug_maven//:androidx_core_core",
         "@maven//:androidx_appcompat_appcompat",
+        "@maven//:androidx_compose_ui_ui",
         "@maven//:androidx_constraintlayout_constraintlayout",
         "@maven//:androidx_constraintlayout_constraintlayout_core",
     ],
@@ -40,6 +42,7 @@ android_library(
         "src/flavor1/java/com/grab/grazel/android/flavor/HelloFlavorMessage.kt",
     ]),
     custom_package = "com.grab.grazel.android.flavor",
+    enable_compose = True,
     enable_data_binding = True,
     manifest = "src/main/AndroidManifest.xml",
     res_values = {
@@ -61,6 +64,7 @@ android_library(
         "//flavor-libs/sample-library-flavor1",
         "@debug_maven//:androidx_core_core",
         "@maven//:androidx_appcompat_appcompat",
+        "@maven//:androidx_compose_ui_ui",
         "@maven//:androidx_constraintlayout_constraintlayout",
         "@maven//:androidx_constraintlayout_constraintlayout_core",
     ],
@@ -73,6 +77,7 @@ android_library(
         "src/flavor2/java/com/grab/grazel/android/flavor/HelloFlavorMessage.kt",
     ]),
     custom_package = "com.grab.grazel.android.flavor",
+    enable_compose = True,
     enable_data_binding = True,
     manifest = "src/main/AndroidManifest.xml",
     res_values = {
@@ -94,6 +99,7 @@ android_library(
         "//flavor-libs/sample-library-flavor2",
         "@debug_maven//:androidx_core_core",
         "@maven//:androidx_appcompat_appcompat",
+        "@maven//:androidx_compose_ui_ui",
         "@maven//:androidx_constraintlayout_constraintlayout",
         "@maven//:androidx_constraintlayout_constraintlayout_core",
     ],
@@ -106,6 +112,7 @@ android_library(
         "src/flavor2/java/com/grab/grazel/android/flavor/HelloFlavorMessage.kt",
     ]),
     custom_package = "com.grab.grazel.android.flavor",
+    enable_compose = True,
     enable_data_binding = True,
     manifest = "src/main/AndroidManifest.xml",
     res_values = {
@@ -127,6 +134,7 @@ android_library(
         "//flavor-libs/sample-library-flavor2",
         "@debug_maven//:androidx_core_core",
         "@maven//:androidx_appcompat_appcompat",
+        "@maven//:androidx_compose_ui_ui",
         "@maven//:androidx_constraintlayout_constraintlayout",
         "@maven//:androidx_constraintlayout_constraintlayout_core",
     ],

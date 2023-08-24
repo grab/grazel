@@ -62,18 +62,26 @@ class BazelLogParsingOutputStreamTest {
 
     @Test
     fun `assert when invalid signature error is preset for rules_jvm_external output, out of date is set`() {
-        val message = "maven_install.json contains an invalid input signature and " +
-            "must be regenerated"
-        PrintStream(bazelLogParsingOutputStream, false).apply {
-            println(message)
-            println("")
-            flush()
-        }
-        assertTrue("Stream contains Invalid Signature error") {
-            logger.logs.any { it.message?.contains(message) == true }
-        }
-        assertTrue("Out of date is set") {
-            bazelLogParsingOutputStream.isOutOfDate
+        val errorMessages = listOf(
+            "contains an invalid signature",
+            "maven_install.json contains an invalid input signature and must be regenerated",
+            "Lock file should be updated",
+            "It is not a valid maven_install.json file",
+            "json have changed, but the lock file has not been regenerated"
+        )
+        errorMessages.forEach { message ->
+            setup()
+            PrintStream(bazelLogParsingOutputStream, false).apply {
+                println(message)
+                println("")
+                flush()
+            }
+            assertTrue("Stream contains Invalid Signature error") {
+                logger.logs.any { it.message?.contains(message) == true }
+            }
+            assertTrue("Out of date is set") {
+                bazelLogParsingOutputStream.isOutOfDate
+            }
         }
     }
 

@@ -31,6 +31,7 @@ import com.grab.grazel.bazel.rules.loadBazelCommonArtifacts
 import com.grab.grazel.bazel.rules.loadDaggerArtifactsAndRepositories
 import com.grab.grazel.bazel.rules.mavenInstall
 import com.grab.grazel.bazel.rules.registerKotlinToolchain
+import com.grab.grazel.bazel.rules.setupMavenInstall
 import com.grab.grazel.bazel.rules.toolAndroidRepository
 import com.grab.grazel.bazel.rules.workspace
 import com.grab.grazel.bazel.starlark.LoadStrategy
@@ -109,6 +110,7 @@ internal class WorkspaceBuilder(
 
         val mavenInstall = grazelExtension.rules.mavenInstall.apply {
             add(repository)
+            setupMavenInstall()
         }
         mavenInstallArtifactsCalculator.get(
             rootProject.layout,

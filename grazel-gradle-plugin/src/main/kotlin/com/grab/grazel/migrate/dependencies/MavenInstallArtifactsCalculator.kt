@@ -52,6 +52,8 @@ constructor(
 
     private val mavenInstallExtension get() = grazelExtension.rules.mavenInstall
 
+    private val includeCredentials get() = mavenInstallExtension.includeCredentials
+
     /**
      * Map of user configured overrides for artifact versions.
      */
@@ -78,14 +80,7 @@ constructor(
                 .mapTo(TreeSet(compareBy(MavenInstallArtifact::id)), ::toMavenInstallArtifact)
                 .also { if (it.isEmpty()) return@mapNotNullTo null }
 
-            // Repositories
-            val repositories = artifacts
-                .mapTo(TreeSet(), ResolvedDependency::repository)
-                .mapTo(mutableSetOf()) {
-                    repositoryDataSource.allRepositoriesByName
-                        .getValue(it)
-                        .toMavenRepository()
-                }
+            val repositories = calculateRepositories(artifacts)
 
             // Overrides
             val overridesFromExtension = mavenInstallExtension.overrideTargetLabels.get().toList()
@@ -157,7 +152,6 @@ constructor(
             // We only support basic auth now
             null
         }
-        val includeCredentials = mavenInstallExtension.includeCredentials
         val username = if (includeCredentials) passwordCredentials?.username else null
         val password = if (includeCredentials) passwordCredentials?.password else null
         return DefaultMavenRepository(
@@ -165,5 +159,15 @@ constructor(
             username,
             password
         )
+    }
+
+    private fun calculateRepositories(artifacts: List<ResolvedDependency>): Set<DefaultMavenRepository> {
+        val gradleRepositories = artifacts.map(ResolvedDependency::repository)
+            .asSequence()
+            .map { repositoryDataSource.allRepositoriesByName.getValue(it) }
+            .sortedBy {
+                repositoryDataSource.allRepositoriesByName.entries.indexOf(it.name) // Preserve order
+            }.toSet()
+        return gradleRepositories.map { it.toMavenRepository() }.toSet()
     }
 }
