@@ -79,8 +79,8 @@ class DefaultAndroidLibraryDataExtractorTest {
                 result = buildMap {
                     put(
                         "maven", listOf(
-                            from("com.android.databinding:viewbinding:1.0.0:maven"),
-                            from("com.android.databinding:baseLibrary:1.0.0:maven")
+                            from("com.android.databinding:viewbinding:1.0.0:maven:false"),
+                            from("com.android.databinding:baseLibrary:1.0.0:maven:false")
                         )
                     )
                 }

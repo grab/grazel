@@ -128,11 +128,14 @@ grazel {
             resolveTimeout = 1000
             excludeArtifactsDenyList.add("androidx.constraintlayout:constraintlayout-core")
             excludeArtifacts.add("androidx.test.espresso:espresso-contrib")
+
+            // Force add any artifact for jetifier
             jetifyIncludeList.add("com.android.support:cardview-v7")
-            jetifyExcludeList.add("androidx.appcompat:appcompat")
+
             artifactPinning {
                 enabled.set(true)
             }
+
             overrideTargetLabels.putAll(
                 // Workaround for https://issuetracker.google.com/issues/285353844
                 ["androidx.annotation:annotation": "@maven//:androidx_annotation_annotation_jvm"]

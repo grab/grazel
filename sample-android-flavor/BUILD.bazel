@@ -32,6 +32,7 @@ android_library(
         "@maven//:androidx_compose_ui_ui",
         "@maven//:androidx_constraintlayout_constraintlayout",
         "@maven//:androidx_constraintlayout_constraintlayout_core",
+        "@maven//:com_google_android_support_wearable",
     ],
 )
 
@@ -67,6 +68,7 @@ android_library(
         "@maven//:androidx_compose_ui_ui",
         "@maven//:androidx_constraintlayout_constraintlayout",
         "@maven//:androidx_constraintlayout_constraintlayout_core",
+        "@maven//:com_google_android_support_wearable",
     ],
 )
 
@@ -102,6 +104,7 @@ android_library(
         "@maven//:androidx_compose_ui_ui",
         "@maven//:androidx_constraintlayout_constraintlayout",
         "@maven//:androidx_constraintlayout_constraintlayout_core",
+        "@maven//:com_google_android_support_wearable",
     ],
 )
 
@@ -137,5 +140,6 @@ android_library(
         "@maven//:androidx_compose_ui_ui",
         "@maven//:androidx_constraintlayout_constraintlayout",
         "@maven//:androidx_constraintlayout_constraintlayout_core",
+        "@maven//:com_google_android_support_wearable",
     ],
 )

@@ -21,14 +21,11 @@ import com.grab.grazel.bazel.rules.MavenInstallArtifact
 import com.grab.grazel.bazel.rules.MavenInstallArtifact.*
 import com.grab.grazel.bazel.rules.MavenInstallArtifact.Exclusion.*
 import com.grab.grazel.bazel.rules.MavenRepository.*
-import com.grab.grazel.di.qualifiers.RootProject
 import com.grab.grazel.gradle.RepositoryDataSource
 import com.grab.grazel.gradle.dependencies.model.ExcludeRule
 import com.grab.grazel.gradle.dependencies.model.ResolvedDependency
 import com.grab.grazel.gradle.dependencies.model.WorkspaceDependencies
 import com.grab.grazel.gradle.variant.DEFAULT_VARIANT
-import com.grab.grazel.migrate.android.JetifierDataExtractor
-import org.gradle.api.Project
 import org.gradle.api.artifacts.repositories.PasswordCredentials
 import org.gradle.api.file.ProjectLayout
 import org.gradle.api.internal.artifacts.repositories.DefaultMavenArtifactRepository
@@ -42,7 +39,6 @@ import javax.inject.Inject
 internal class MavenInstallArtifactsCalculator
 @Inject
 constructor(
-    @param:RootProject private val rootProject: Project,
     private val repositoryDataSource: RepositoryDataSource,
     private val grazelExtension: GrazelExtension,
 ) {
@@ -90,13 +86,18 @@ constructor(
                 .toList()
             val overrideTargets = (overridesFromArtifacts + overridesFromExtension)
                 .sortedWith(
-                    compareBy(Pair<String, String>::second)
-                        .thenBy(Pair<String, String>::first)
+                    compareBy(Pair<String, String>::second).thenBy(Pair<String, String>::first)
                 ).toMap()
 
             val mavenInstallJson = layout
                 .projectDirectory
                 .file("${mavenInstallName}_install.json").asFile
+
+            val jetifierArtifacts = (artifacts
+                .asSequence()
+                .filter(ResolvedDependency::jetifier)
+                .map(ResolvedDependency::shortId)
+                .toList() + mavenInstallExtension.jetifyIncludeList.get()).toSortedSet()
 
             MavenInstallData(
                 name = mavenInstallName,
@@ -104,11 +105,9 @@ constructor(
                 externalArtifacts = if (variantName == DEFAULT_VARIANT) externalArtifacts else emptySet(),
                 repositories = repositories,
                 externalRepositories = if (variantName == DEFAULT_VARIANT) externalRepositories else emptySet(),
-                jetifierData = JetifierDataExtractor().extract(
-                    rootProject = rootProject,
-                    includeList = mavenInstallExtension.jetifyIncludeList.get(),
-                    excludeList = mavenInstallExtension.jetifyExcludeList.get(),
-                    allArtifacts = mavenInstallArtifacts.map(MavenInstallArtifact::id)
+                jetifierConfig = JetifierConfig(
+                    isEnabled = jetifierArtifacts.isNotEmpty(),
+                    artifacts = jetifierArtifacts
                 ),
                 failOnMissingChecksum = false,
                 excludeArtifacts = mavenInstallExtension.excludeArtifacts.get().toSet(),

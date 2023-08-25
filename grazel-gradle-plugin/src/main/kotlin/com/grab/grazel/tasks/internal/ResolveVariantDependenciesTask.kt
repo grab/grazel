@@ -95,7 +95,7 @@ abstract class ResolveVariantDependenciesTask : DefaultTask() {
     ): Set<ResolvedDependency> {
         return get().asSequence().flatMap { root ->
             ResolvedComponentsVisitor()
-                .visit(root, logger::info) { component, repository, dependencies ->
+                .visit(root, logger::info) { (component, repository, dependencies, jetifier) ->
                     val version = component.moduleVersion!!
                     val shortId = "${version.group}:${version.name}"
                     val isDirect = shortId in directDependenciesMap
@@ -109,7 +109,8 @@ abstract class ResolveVariantDependenciesTask : DefaultTask() {
                             version = version.version,
                             dependencies = dependencies,
                             repository = repository,
-                            excludeRules = excludeRules
+                            excludeRules = excludeRules,
+                            jetifier = jetifier
                         )
                     } else null
                 }.asSequence()

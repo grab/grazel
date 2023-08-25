@@ -84,7 +84,7 @@ fun StatementsBuilder.mavenInstall(
     jetify: Boolean = false,
     mavenInstallJson: String? = null,
     mavenInstallJsonEnabled: Boolean = false,
-    jetifyIncludeList: List<String> = emptyList(),
+    jetifyArtifacts: Set<String> = emptySet(),
     failOnMissingChecksum: Boolean = true,
     resolveTimeout: Int = 600,
     excludeArtifacts: Set<String> = emptySet(),
@@ -113,8 +113,8 @@ fun StatementsBuilder.mavenInstall(
             "jetify" `=` "True"
         }
 
-        jetifyIncludeList.notEmpty {
-            "jetify_include_list" `=` array(jetifyIncludeList.quote)
+        jetifyArtifacts.notEmpty {
+            "jetify_include_list" `=` array(jetifyArtifacts.quote)
         }
 
         if (!failOnMissingChecksum) {
