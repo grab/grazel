@@ -18,10 +18,12 @@ package com.grab.grazel.gradle.dependencies.model
 
 import com.grab.grazel.bazel.starlark.BazelDependency
 import kotlinx.serialization.Serializable
+import org.gradle.api.artifacts.result.ResolvedComponentResult
 import org.gradle.api.internal.artifacts.ivyservice.ivyresolve.Versioned
 import org.gradle.api.internal.artifacts.ivyservice.ivyresolve.strategy.DefaultVersionComparator
 import org.gradle.api.internal.artifacts.ivyservice.ivyresolve.strategy.Version
 import org.gradle.api.internal.artifacts.ivyservice.ivyresolve.strategy.VersionParser
+import org.gradle.api.internal.artifacts.result.DefaultResolvedComponentResult
 
 @Serializable
 internal data class ResolveDependenciesResult(
@@ -38,13 +40,14 @@ internal data class ResolvedDependency(
     val dependencies: Set<String>,
     val excludeRules: Set<ExcludeRule>,
     val repository: String,
+    val jetifier: Boolean,
     val overrideTarget: OverrideTarget? = null
 ) : Comparable<ResolvedDependency> {
     override fun compareTo(other: ResolvedDependency) = id.compareTo(other.id)
 
     companion object {
         fun from(dependencyNotation: String): ResolvedDependency {
-            val (group, name, version, repository) = dependencyNotation.split(":")
+            val (group, name, version, repository, jetifier) = dependencyNotation.split(":")
             val shortId = "$group:$name"
             return ResolvedDependency(
                 id = "$group:$name:$version",
@@ -53,8 +56,18 @@ internal data class ResolvedDependency(
                 direct = false,
                 dependencies = emptySet(),
                 excludeRules = emptySet(),
-                repository = repository
+                repository = repository,
+                jetifier = jetifier.toBoolean()
             )
+        }
+
+        fun createDependencyNotation(
+            component: ResolvedComponentResult,
+            jetifierEnabled: Boolean
+        ): String {
+            val repository = (component as? DefaultResolvedComponentResult)?.repositoryName ?: ""
+            val jetifier = jetifierEnabled && !component.toString().startsWith("androidx.")
+            return "$component:${repository}:$jetifier"
         }
     }
 }

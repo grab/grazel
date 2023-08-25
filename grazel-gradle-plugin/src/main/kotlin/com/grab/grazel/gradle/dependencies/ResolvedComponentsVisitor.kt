@@ -17,9 +17,11 @@
 package com.grab.grazel.gradle.dependencies
 
 import com.grab.grazel.gradle.dependencies.ResolvedComponentsVisitor.Companion.IGNORED_ARTIFACTS
+import com.grab.grazel.gradle.dependencies.model.ResolvedDependency
 import com.grab.grazel.util.ansiCyan
 import com.grab.grazel.util.ansiGreen
 import com.grab.grazel.util.ansiYellow
+import org.gradle.api.artifacts.component.ComponentSelector
 import org.gradle.api.artifacts.result.ResolutionResult
 import org.gradle.api.artifacts.result.ResolvedComponentResult
 import org.gradle.api.artifacts.result.ResolvedDependencyResult
@@ -51,6 +53,20 @@ internal class ResolvedComponentsVisitor {
     private val Node.repository
         get() = (this as? DefaultResolvedComponentResult)?.repositoryName ?: ""
 
+    data class VisitResult(
+        val component: Node,
+        val repository: String,
+        val dependencies: Set<String>,
+        val hasJetifier: Boolean
+    ) : Comparable<VisitResult> {
+        override fun compareTo(
+            other: VisitResult
+        ) = component.toString().compareTo(other.component.toString())
+    }
+
+    private val ComponentSelector.isLegacySupportLibrary
+        get() = toString().startsWith("com.android.support")
+
     /**
      * Visit all external dependency nodes in the graph and map them to [T] using the [transform]
      * function. Both current component and its transitive dependencies are provided in the callback
@@ -61,7 +77,7 @@ internal class ResolvedComponentsVisitor {
     fun <T : Comparable<T>> visit(
         root: Node,
         logger: (message: String) -> Unit = { },
-        transform: (component: Node, repository: String, dependencies: Set<String>) -> T?
+        transform: (visitResult: VisitResult) -> T?
     ): Set<T> {
         val transitiveClosureMap = mutableMapOf<Node, MutableSet<Node>>()
         val visited = mutableSetOf<Node>()
@@ -74,27 +90,38 @@ internal class ResolvedComponentsVisitor {
             if (node in visited) return
             visited.add(node)
             printIndented(level, node.toString(), logger)
+            var jetifier = false
 
             val transitiveClosure = TreeSet(compareBy(Node::toString))
             node.dependencies
                 .asSequence()
                 .filterIsInstance<ResolvedDependencyResult>()
-                .map { it.selected }
-                .filter { !it.isProject }
-                .filter { dep -> IGNORED_ARTIFACTS.none { dep.toString().startsWith(it) } }
-                .forEach { directDependency ->
+                .map { it.selected to it.requested }
+                .filter { (selected, _) -> !selected.isProject }
+                .filter { (dep, _) -> IGNORED_ARTIFACTS.none { dep.toString().startsWith(it) } }
+                .forEach { (directDependency, requested) ->
                     dfs(directDependency, level + 1)
 
+                    jetifier = jetifier || requested.isLegacySupportLibrary
                     transitiveClosure.add(directDependency)
                     transitiveClosure.addAll(transitiveClosureMap[directDependency] ?: emptySet())
                 }
+
             transitiveClosureMap[node] = transitiveClosure
             // TODO(arun) Memoize the transform
             if (!node.isProject) {
                 transform(
-                    node,
-                    node.repository,
-                    transitiveClosure.map { it.toString() + ":" + it.repository }.toSet()
+                    VisitResult(
+                        component = node,
+                        repository = node.repository,
+                        dependencies = transitiveClosure.map { dep ->
+                            ResolvedDependency.createDependencyNotation(
+                                component = dep,
+                                jetifierEnabled = jetifier
+                            )
+                        }.toSortedSet(),
+                        hasJetifier = jetifier
+                    )
                 )?.let(result::add)
             }
         }

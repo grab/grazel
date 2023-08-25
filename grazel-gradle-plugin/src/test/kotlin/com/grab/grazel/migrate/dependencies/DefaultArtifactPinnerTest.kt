@@ -105,7 +105,7 @@ class DefaultArtifactPinnerTest {
                 workspaceDependencies = WorkspaceDependencies(result = buildMap {
                     put(
                         DEFAULT_VARIANT,
-                        listOf(ResolvedDependency.from("androidx.annotation:annotation:1.2.0:maven"))
+                        listOf(ResolvedDependency.from("androidx.annotation:annotation:1.2.0:maven:false"))
                     )
                 }),
                 gradleServices = gradleServices,
@@ -138,7 +138,7 @@ class DefaultArtifactPinnerTest {
                 workspaceDependencies = WorkspaceDependencies(result = buildMap {
                     put(
                         DEFAULT_VARIANT,
-                        listOf(ResolvedDependency.from("androidx.annotation:annotation:1.1.0:maven"))
+                        listOf(ResolvedDependency.from("androidx.annotation:annotation:1.1.0:maven:false"))
                     )
                 }),
                 gradleServices = gradleServices,
