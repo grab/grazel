@@ -7,6 +7,7 @@
 .idea/gradle.xml
 .idea/misc.xml
 .idea/modules.xml
+.idea/migrations.xml
 .idea/vcs.xml
 .idea/workspace.xml
 .idea/compiler.xml
