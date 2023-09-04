@@ -95,9 +95,10 @@ class VariantTest {
         androidVariant(appExtension.testVariants.first()).let { androidTestVariant ->
             assertThat(androidTestVariant.extendsFrom).containsExactly(
                 "default",
-                "debug",
                 "paid",
+                "debug",
                 "test",
+                "paidDebug",
                 "androidTest",
                 "debugAndroidTest"
             )
@@ -105,9 +106,10 @@ class VariantTest {
         androidVariant(appExtension.unitTestVariants.first()).let { unitTestVariant ->
             assertThat(unitTestVariant.extendsFrom).containsExactly(
                 "default",
-                "debug",
                 "paid",
+                "debug",
                 "test",
+                "paidDebug",
                 "debugUnitTest"
             )
         }

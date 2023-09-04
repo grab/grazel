@@ -45,10 +45,13 @@ class AndroidVariant(
             add(backingVariant.buildType.name)
             if (variantType.isTest) {
                 add(TEST_VARIANT)
-                if (variantType.isAndroidTest) add(ANDROID_TEST_VARIANT)
+                add(baseVariantName)
+                if (variantType.isAndroidTest) {
+                    add(ANDROID_TEST_VARIANT)
+                }
                 add(backingVariant.buildType.name + variantType.testSuffix)
             }
-        }.filter { it != name }.toSet()
+        }.filter { it != name && it.trim().isNotEmpty() }.toSet()
     }
 
     override val compileConfiguration get() = setOf(backingVariant.compileConfiguration)
@@ -65,6 +68,11 @@ class AndroidVariant(
         .add("name", name)
         .add("variantType", variantType)
         .toString()
+
+    private val baseVariantName: String
+        get() = (backingVariant.flavorName + backingVariant.buildType.name.capitalize()).replaceFirstChar {
+            if (it.isUpperCase()) it.toLowerCase().toString() else it.toString()
+        }
 }
 
 /**
