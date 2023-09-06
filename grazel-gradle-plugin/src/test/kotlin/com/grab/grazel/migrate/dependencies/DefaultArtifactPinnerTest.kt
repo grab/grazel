@@ -1,6 +1,7 @@
 package com.grab.grazel.migrate.dependencies
 
 import com.android.build.gradle.AppExtension
+import com.grab.grazel.bazel.exec.bazelCommand
 import com.grab.grazel.buildProject
 import com.grab.grazel.di.GradleServices
 import com.grab.grazel.fake.FakeLogger
@@ -10,12 +11,15 @@ import com.grab.grazel.gradle.dependencies.model.ResolvedDependency
 import com.grab.grazel.gradle.dependencies.model.WorkspaceDependencies
 import com.grab.grazel.gradle.variant.DEFAULT_VARIANT
 import com.grab.grazel.util.BUILD_BAZEL
+import com.grab.grazel.util.NoOpProgressLogger
 import com.grab.grazel.util.WORKSPACE
 import com.grab.grazel.util.addGrazelExtension
+import com.grab.grazel.util.assertNoThrow
 import com.grab.grazel.util.createGrazelComponent
 import com.grab.grazel.util.doEvaluate
 import com.grab.grazel.util.startOperation
 import org.gradle.api.Project
+import org.gradle.api.logging.LogLevel
 import org.gradle.kotlin.dsl.configure
 import org.junit.Before
 import org.junit.Rule
@@ -31,12 +35,14 @@ class DefaultArtifactPinnerTest {
 
     private lateinit var appProject: Project
     private lateinit var artifactPinner: DefaultArtifactPinner
+    private lateinit var fakeLogger: FakeLogger
 
     @get:Rule
     val temporaryFolder = TemporaryFolder()
 
     @Before
     fun setUp() {
+        fakeLogger = FakeLogger()
         rootProjectDir = temporaryFolder.newFolder("project")
         rootProject = buildProject("root", projectDir = rootProjectDir)
         rootProject.addGrazelExtension()
@@ -164,6 +170,46 @@ class DefaultArtifactPinnerTest {
         }
     }
 
+    @Test
+    fun `assert ensure pinning is able to recover from json corruption`() {
+        rootProject.file(WORKSPACE).apply {
+            writeText(
+                WORKSPACE_TEMPLATE.format(
+                    "\"androidx.annotation:annotation:1.2.0\",",
+                    ""
+                )
+            )
+        }
+        val mavenInstall = rootProject.file("maven_install.json").apply {
+            writeText(CORRUPTED_MAVEN_INSTALL_JSON)
+        }
+
+        val gradleServices = GradleServices.from(rootProject)
+
+        assertNoThrow("Able to successfully recover from json corruption") {
+            artifactPinner.ensureSafeToRun(fakeLogger, gradleServices) {
+                val outputStream = BazelLogParsingOutputStream(
+                    logger = fakeLogger,
+                    level = LogLevel.QUIET,
+                    progressLogger = NoOpProgressLogger,
+                    logOutput = true
+                )
+                val execResult = gradleServices.execOperations.bazelCommand(
+                    logger = fakeLogger,
+                    "build",
+                    "@maven//:androidx_annotation_annotation",
+                    errorOutputStream = outputStream,
+                    ignoreExit = true
+                )
+                outputStream to execResult
+            }
+        }
+
+        assertTrue("maven_install.json is deleted") {
+            !mavenInstall.exists()
+        }
+    }
+
     companion object {
         private val WORKSPACE_TEMPLATE = """
             load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
@@ -216,5 +262,7 @@ class DefaultArtifactPinnerTest {
                 }
             }
         """.trimIndent()
+
+        private val CORRUPTED_MAVEN_INSTALL_JSON = "{{{{}"
     }
 }

@@ -45,6 +45,12 @@ class BazelLogParsingOutputStream(
     var isOutOfDate: Boolean = false
         private set
 
+
+    /**
+     * Used to control whether messages will be printed to logger or not.
+     */
+    private var shouldSkip: Boolean = false
+
     /**
      * List of error messages that are printed by rules_jvm_external when the maven dependencies are
      * out of date.
@@ -54,7 +60,9 @@ class BazelLogParsingOutputStream(
         "maven_install.json contains an invalid input signature and must be regenerated",
         "Lock file should be updated",
         "It is not a valid maven_install.json file",
-        "json have changed, but the lock file has not been regenerated"
+        "json have changed, but the lock file has not been regenerated",
+        "Error in decode",
+        "Error in path",
     )
     private val fileExts = listOf("aar", "jar", "pom", "sha1", "md5", "sha256", "sha1")
 
@@ -62,7 +70,7 @@ class BazelLogParsingOutputStream(
         val message = toString()
 
         if (logOutput) {
-            logger.log(level, message)
+            logMessage(message)
         }
 
         printProgress(message, progressLogger)
@@ -80,16 +88,28 @@ class BazelLogParsingOutputStream(
         .takeLast(4) // Maven path
         .joinToString(":")
 
+    private fun String.trimEmpty() = lines().dropLastWhile {
+        val trimmed = it.trim()
+        trimmed.isEmpty() || trimmed == "\u001B[0m"
+    }
+
+    internal fun logMessage(messages: String) {
+        messages.lines().forEach { message ->
+            if (!shouldSkip) logger.log(level, message)
+            if ("Successfully pinned resolved artifacts for" in message) {
+                shouldSkip = true
+                return@logMessage
+            }
+        }
+    }
+
     /**
      * From given raw bazel log message chunks in [message] try to extract a valid progress message
      * and print it.
      */
     internal fun printProgress(message: String, progressLogger: ProgressLogger) {
         // Last few lines will be the closest to the progress message.
-        val lastFewLines = message.lines().dropLastWhile {
-            val trimmed = it.trim()
-            trimmed.isEmpty() || trimmed == "\u001B[0m"
-        }.takeLast(10)
+        val lastFewLines = message.trimEmpty().takeLast(10)
 
         lastFewLines
             .reversed()

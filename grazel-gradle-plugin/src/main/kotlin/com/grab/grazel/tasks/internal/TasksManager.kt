@@ -69,7 +69,10 @@ constructor(
             dependsOn(computeWorkspaceDependenciesTask)
         }
 
-        val generateBuildifierScriptTask = GenerateBuildifierScriptTask.register(rootProject) {
+        val generateBuildifierScriptTask = GenerateBuildifierScriptTask.register(
+            rootProject,
+            grazelComponent
+        ) {
             dependsOn(rootGenerateBazelScriptsTasks)
         }
 
