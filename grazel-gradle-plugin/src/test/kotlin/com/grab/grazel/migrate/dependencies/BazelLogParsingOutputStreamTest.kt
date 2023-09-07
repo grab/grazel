@@ -67,7 +67,9 @@ class BazelLogParsingOutputStreamTest {
             "maven_install.json contains an invalid input signature and must be regenerated",
             "Lock file should be updated",
             "It is not a valid maven_install.json file",
-            "json have changed, but the lock file has not been regenerated"
+            "json have changed, but the lock file has not been regenerated",
+            "Error in decode",
+            "Error in path",
         )
         errorMessages.forEach { message ->
             setup()
@@ -117,6 +119,47 @@ Downloading https://dl.google.com/dl/android/maven2/androidx/arch/core/core-comm
         }
         assertTrue("Download progress is reported from penultimate line") {
             progressLogger.progressMessages.any { it.contains("Downloading maven2:junit:junit:4.13.2") }
+        }
+    }
+
+    @Test
+    fun `assert pinning instructions are not printed after successfull pinning`() {
+        PrintStream(bazelLogParsingOutputStream, false).apply {
+            println(
+                """Successfully pinned resolved artifacts for @android_test_maven in /Users/arun.sampathkumar/work/Grazel/android_test_maven_install.json. This file should be checked in your version control system.
+For example:
+
+
+=============================================================
+
+maven_install(
+    artifacts = # ...,
+    repositories = # ...,
+    maven_install_json = "@//:android_test_maven_install.json",
+)
+
+load("@android_test_maven//:defs.bzl", "pinned_maven_install")
+pinned_maven_install()
+
+=============================================================
+
+
+
+To update android_test_maven_install.json, run this command to re-pin the unpinned repository:
+
+
+    bazel run @unpinned_android_test_maven//:pin"""
+            )
+            flush()
+        }
+        assertTrue(logger.logs.size == 1, "All unnecessary logs are filtered")
+        assertTrue("Pinning instructions are not printed after successful pinning") {
+            logger.logs
+                .map { it.message }
+                .firstOrNull()
+                ?.matches(
+                    "Successfully pinned resolved artifacts for @android_test_maven in (.*) This file should be checked in your version control system.".toRegex()
+                ) == true
         }
     }
 }

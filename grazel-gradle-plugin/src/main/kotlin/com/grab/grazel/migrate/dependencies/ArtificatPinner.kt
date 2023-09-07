@@ -16,10 +16,13 @@
 
 package com.grab.grazel.migrate.dependencies
 
+import com.grab.grazel.GrazelExtension
 import com.grab.grazel.bazel.exec.bazelCommand
 import com.grab.grazel.bazel.starlark.BazelDependency.MavenDependency
 import com.grab.grazel.di.GradleServices
 import com.grab.grazel.gradle.dependencies.model.WorkspaceDependencies
+import com.grab.grazel.util.NoOpProgressLogger
+import com.grab.grazel.util.WORKSPACE
 import com.grab.grazel.util.ansiCyan
 import com.grab.grazel.util.ansiGreen
 import com.grab.grazel.util.isSuccess
@@ -28,8 +31,10 @@ import org.gradle.api.file.ProjectLayout
 import org.gradle.api.file.RegularFileProperty
 import org.gradle.api.logging.LogLevel.QUIET
 import org.gradle.api.logging.Logger
+import org.gradle.api.logging.Logging
 import org.gradle.internal.logging.progress.ProgressLogger
 import org.gradle.process.ExecOperations
+import org.gradle.process.ExecResult
 import org.gradle.workers.WorkAction
 import org.gradle.workers.WorkParameters
 import java.io.File
@@ -37,24 +42,57 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 internal interface ArtifactPinner {
+
     fun pinArtifacts(
         workspaceFile: File,
         workspaceDependencies: WorkspaceDependencies,
         gradleServices: GradleServices,
         logger: Logger
     ): Boolean
+
+    /**
+     * Ensure that the following [bazelBlock] is safe to run any bazel command that might be dependent
+     * on pinning, for example if maven_install.json gets corrupted or deleted, this ensures the
+     * command is retried after fixing (usually just updating WORKSPACE file to remove pinning).
+     *
+     * Instead of failing command directly, pass the [ExecResult] obtain from [ExecOperations] instead
+     * in the [bazelBlock]
+     *
+     * @param logger logger to log progress
+     * @param bazelBlock block of code that needs to be run, must return the [BazelLogParsingOutputStream]
+     *        and the [ExecResult] of the bazel command that is run inside the block
+     */
+    fun ensureSafeToRun(
+        logger: Logger,
+        gradleServices: GradleServices,
+        bazelBlock: () -> Pair<BazelLogParsingOutputStream, ExecResult>
+    )
 }
 
 @Singleton
 internal class DefaultArtifactPinner
 @Inject
-constructor() : ArtifactPinner {
+constructor(
+    private val grazelExtension: GrazelExtension
+) : ArtifactPinner {
+
+    private val artifactPinningEnabled: Boolean
+        get() = grazelExtension.rules.mavenInstall.artifactPinning.enabled.get()
 
     private fun pin(workspaceFile: File) {
         workspaceFile.writeText(
             workspaceFile.readText().replace(
                 "#maven_install_json ",
                 "maven_install_json "
+            )
+        )
+    }
+
+    private fun unpin(workspaceFile: File) {
+        workspaceFile.writeText(
+            workspaceFile.readText().replace(
+                "maven_install_json ".toRegex(),
+                "#maven_install_json ",
             )
         )
     }
@@ -220,6 +258,37 @@ constructor() : ArtifactPinner {
             return true
         }
     }
+
+    override fun ensureSafeToRun(
+        logger: Logger,
+        gradleServices: GradleServices,
+        bazelBlock: () -> Pair<BazelLogParsingOutputStream, ExecResult>
+    ) {
+        val projectDirectory = gradleServices.layout.projectDirectory
+        val (outputStream, execResult) = bazelBlock()
+        when {
+            !artifactPinningEnabled -> execResult.assertNormalExitValue()
+            outputStream.isOutOfDate && !execResult.isSuccess -> {
+                logger.quiet("Recovering maven install json corruption".ansiCyan)
+
+                unpin(workspaceFile = projectDirectory.file(WORKSPACE).asFile)
+                // Delete all maven_install.jsons as they can be corrupted, let pinning handle generating
+                // them again
+                projectDirectory
+                    .asFileTree
+                    .matching { include("**maven_install.json") }
+                    .forEach(File::delete)
+
+                // Retry the block again after unpinning
+                val (_, execResult) = bazelBlock()
+                execResult.assertNormalExitValue()
+            }
+
+            !outputStream.isOutOfDate && !execResult.isSuccess -> {
+                throw RuntimeException("Bazel command failed")
+            }
+        }
+    }
 }
 
 internal open class PinningWorkAction
@@ -227,6 +296,8 @@ internal open class PinningWorkAction
 constructor(
     private val execOperations: ExecOperations
 ) : WorkAction<PinningWorkAction.Parameters> {
+
+    private val logger = Logging.getLogger(PinningWorkAction::class.java)
 
     interface Parameters : WorkParameters {
         val pinScript: RegularFileProperty
@@ -238,10 +309,17 @@ constructor(
     }
 
     override fun execute() {
+        val outputStream = BazelLogParsingOutputStream(
+            logger = logger,
+            level = QUIET,
+            progressLogger = NoOpProgressLogger,
+        )
         execOperations.exec {
             commandLine = listOf(
                 parameters.pinScript.get().asFile.absolutePath,
             )
+            standardOutput = outputStream
+            errorOutput = outputStream
         }
     }
 }
