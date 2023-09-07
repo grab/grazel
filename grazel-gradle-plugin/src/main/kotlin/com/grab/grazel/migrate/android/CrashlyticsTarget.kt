@@ -26,6 +26,7 @@ class CrashlyticsTarget(
     val packageName: String? = null,
     private val buildId: String? = null,
     private val googleServicesJson: String? = null,
+    override val sortKey: String = "1$name",
 ) : BazelTarget {
 
     override fun statements(builder: StatementsBuilder) = builder {

@@ -28,6 +28,7 @@ internal data class AndroidUnitTestTarget(
     override val deps: List<BazelDependency>,
     override val tags: List<String> = emptyList(),
     override val visibility: Visibility = Visibility.Public,
+    override val sortKey: String = "1$name",
     val associates: List<BazelDependency> = emptyList(),
     val customPackage: String,
     val resources: List<String> = emptyList(),

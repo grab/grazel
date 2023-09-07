@@ -52,7 +52,8 @@ internal data class AndroidLibraryTarget(
     override val packageName: String,
     override val manifest: String? = null,
     override val assetsGlob: List<String> = emptyList(),
-    override val assetsDir: String? = null
+    override val assetsDir: String? = null,
+    override val sortKey: String = "0$name",
 ) : AndroidTarget {
     override fun statements(builder: StatementsBuilder) = builder {
         androidLibrary(
@@ -90,6 +91,7 @@ internal data class AndroidBinaryTarget(
     override val manifest: String? = null,
     override val assetsGlob: List<String> = emptyList(),
     override val assetsDir: String? = null,
+    override val sortKey: String = "0$name",
     val crunchPng: Boolean = false,
     val multidex: Multidex = Multidex.Native,
     val debug: Boolean = true,

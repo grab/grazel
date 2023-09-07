@@ -140,7 +140,7 @@ constructor(
             buildConfigData = extension.extractBuildConfig(this, matchedVariant.variant),
             resValuesData = extension.extractResValue(matchedVariant),
             deps = deps.sorted(),
-            tags = tags
+            tags = tags.sorted()
         )
     }
 

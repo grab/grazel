@@ -68,8 +68,6 @@ internal class AndroidInstrumentationBinaryTargetBuilder
     override fun canHandle(project: Project): Boolean = project.isAndroidApplication
         && project.hasTestInstrumentationRunner
 
-    override fun sortOrder(): Int = 3
-
     private fun AndroidInstrumentationBinaryData.toTarget() = AndroidInstrumentationBinaryTarget(
         name = name,
         associates = associates,
