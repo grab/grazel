@@ -144,6 +144,4 @@ constructor(
     } else emptyList()
 
     override fun canHandle(project: Project) = project.isAndroidApplication
-
-    override fun sortOrder(): Int = 1
 }

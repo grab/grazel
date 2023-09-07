@@ -89,16 +89,6 @@ android_binary(
     ],
 )
 
-crashlytics_android_library(
-    name = "crashlytics-flavor1-free-debug",
-    package_name = "com.grab.grazel.android.sample.free",
-    build_id = "042cb4d8-56f8-41a0-916a-9da28e94d1ba",
-    resource_files = google_services_xml(
-        package_name = "com.grab.grazel.android.sample.free",
-        google_services_json = "src/flavor1FreeDebug/google-services.json",
-    ),
-)
-
 android_binary(
     name = "sample-android-flavor1-paid-debug",
     srcs = glob([
@@ -183,16 +173,6 @@ android_binary(
         "@maven//:androidx_constraintlayout_constraintlayout",
         "@maven//:androidx_emoji2_emoji2",
     ],
-)
-
-crashlytics_android_library(
-    name = "crashlytics-flavor1-paid-debug",
-    package_name = "com.grab.grazel.android.sample.paid",
-    build_id = "042cb4d8-56f8-41a0-916a-9da28e94d1ba",
-    resource_files = google_services_xml(
-        package_name = "com.grab.grazel.android.sample.paid",
-        google_services_json = "src/flavor1Paid/google-services.json",
-    ),
 )
 
 android_binary(
@@ -281,16 +261,6 @@ android_binary(
     ],
 )
 
-crashlytics_android_library(
-    name = "crashlytics-flavor2-free-debug",
-    package_name = "com.grab.grazel.android.sample.free",
-    build_id = "042cb4d8-56f8-41a0-916a-9da28e94d1ba",
-    resource_files = google_services_xml(
-        package_name = "com.grab.grazel.android.sample.free",
-        google_services_json = "src/flavor2Free/google-services.json",
-    ),
-)
-
 android_binary(
     name = "sample-android-flavor2-paid-debug",
     srcs = glob([
@@ -375,6 +345,36 @@ android_binary(
         "@maven//:androidx_constraintlayout_constraintlayout",
         "@maven//:androidx_emoji2_emoji2",
     ],
+)
+
+crashlytics_android_library(
+    name = "crashlytics-flavor1-free-debug",
+    package_name = "com.grab.grazel.android.sample.free",
+    build_id = "042cb4d8-56f8-41a0-916a-9da28e94d1ba",
+    resource_files = google_services_xml(
+        package_name = "com.grab.grazel.android.sample.free",
+        google_services_json = "src/flavor1FreeDebug/google-services.json",
+    ),
+)
+
+crashlytics_android_library(
+    name = "crashlytics-flavor1-paid-debug",
+    package_name = "com.grab.grazel.android.sample.paid",
+    build_id = "042cb4d8-56f8-41a0-916a-9da28e94d1ba",
+    resource_files = google_services_xml(
+        package_name = "com.grab.grazel.android.sample.paid",
+        google_services_json = "src/flavor1Paid/google-services.json",
+    ),
+)
+
+crashlytics_android_library(
+    name = "crashlytics-flavor2-free-debug",
+    package_name = "com.grab.grazel.android.sample.free",
+    build_id = "042cb4d8-56f8-41a0-916a-9da28e94d1ba",
+    resource_files = google_services_xml(
+        package_name = "com.grab.grazel.android.sample.free",
+        google_services_json = "src/flavor2Free/google-services.json",
+    ),
 )
 
 crashlytics_android_library(

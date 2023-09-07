@@ -30,6 +30,7 @@ internal data class KotlinLibraryTarget(
     override val deps: List<BazelDependency>,
     override val visibility: Visibility = Visibility.Public,
     override val tags: List<String> = emptyList(),
+    override val sortKey: String = "0$name",
     val projectName: String = name,
     val packageName: String? = null,
     val res: List<String>,

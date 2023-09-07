@@ -88,8 +88,6 @@ constructor(
     override fun canHandle(project: Project): Boolean = with(project) {
         isAndroid && !isAndroidApplication
     }
-
-    override fun sortOrder(): Int = 2
 }
 
 private fun AndroidLibraryData.toAndroidLibTarget() = AndroidLibraryTarget(

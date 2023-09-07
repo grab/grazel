@@ -95,10 +95,10 @@ internal class DefaultKotlinUnitTestDataExtractor @Inject constructor(
             name = name,
             srcs = srcs,
             additionalSrcSets = additionalSrcSets,
-            deps = deps,
+            deps = deps.sorted(),
             associates = buildList { associate?.let(::add) },
             hasAndroidJarDep = project.hasAndroidJarDep(),
-            tags = tags
+            tags = tags.sorted()
         )
     }
 

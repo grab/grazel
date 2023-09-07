@@ -26,7 +26,8 @@ data class BuildConfigTarget(
     val strings: Map<String, String> = emptyMap(),
     val booleans: Map<String, String> = emptyMap(),
     val ints: Map<String, String> = emptyMap(),
-    val longs: Map<String, String> = emptyMap()
+    val longs: Map<String, String> = emptyMap(),
+    override val sortKey: String = "0$name",
 ) : BazelTarget {
     override fun statements(builder: StatementsBuilder) = builder {
         buildConfig(

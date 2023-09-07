@@ -18,6 +18,7 @@ package com.grab.grazel.migrate.internal
 
 import com.grab.grazel.bazel.starlark.statements
 import com.grab.grazel.migrate.BazelFileBuilder
+import com.grab.grazel.migrate.BazelTarget
 import com.grab.grazel.migrate.TargetBuilder
 import org.gradle.api.Project
 import javax.inject.Inject
@@ -39,9 +40,10 @@ class ProjectBazelFileBuilder(
 
     override fun build() = statements {
         targetBuilders
-            .sortedBy(TargetBuilder::sortOrder)
+            .asSequence()
             .filter { it.canHandle(project) }
             .flatMap { it.build(project) }
+            .sortedBy(BazelTarget::sortKey)
             .forEach { it.statements(this) }
     }
 }
