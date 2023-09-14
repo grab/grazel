@@ -11,6 +11,7 @@ import com.grab.grazel.util.doEvaluate
 import com.grab.grazel.util.truth
 import org.gradle.api.Project
 import org.gradle.api.artifacts.Configuration
+import org.gradle.api.internal.artifacts.result.DefaultResolvedDependencyResult
 import org.gradle.kotlin.dsl.configure
 import org.gradle.kotlin.dsl.dependencies
 import org.gradle.kotlin.dsl.repositories
@@ -26,10 +27,12 @@ class ResolvedComponentsVisitorTest {
     private lateinit var androidProject: Project
     private lateinit var variantBuilder: VariantBuilder
     private lateinit var compileConfigurations: Set<Configuration>
+    private lateinit var resolutionCache: DependencyResolutionService
 
     @get:Rule
     val temporaryFolder = TemporaryFolder()
     private lateinit var projectDir: File
+
 
     @Before
     fun setup() {
@@ -61,7 +64,9 @@ class ResolvedComponentsVisitorTest {
             }
         }
         androidProject.doEvaluate()
-        variantBuilder = rootProject.createGrazelComponent().variantBuilder().get()
+        val grazelComponent = rootProject.createGrazelComponent()
+        variantBuilder = grazelComponent.variantBuilder().get()
+        resolutionCache = grazelComponent.dependencyResolutionService().get()
         compileConfigurations = variantBuilder.build(androidProject)
             .asSequence()
             .filter { it.variantType == VariantType.AndroidBuild }
@@ -72,7 +77,7 @@ class ResolvedComponentsVisitorTest {
     @Test
     fun `assert jetifier is enabled when legacy support lib is used`() {
         val results = compileConfigurations.flatMap { configuration ->
-            ResolvedComponentsVisitor().visit(configuration.incoming.resolutionResult.root) { it }
+            ResolvedComponentsVisitor(resolutionCache).visit(configuration.incoming.resolutionResult.root) { it }
         }
         assertTrue("Only support lib dependencies should be jetified") {
             results
@@ -87,7 +92,7 @@ class ResolvedComponentsVisitorTest {
     @Test
     fun `assert resolved component visitor flattens the graph`() {
         val results = compileConfigurations.flatMap { configuration ->
-            ResolvedComponentsVisitor().visit(configuration.incoming.resolutionResult.root) { it }
+            ResolvedComponentsVisitor(resolutionCache).visit(configuration.incoming.resolutionResult.root) { it }
         }
         assertTrue("Resolved component visitor flattens the transitive dependencies") {
             results.size == 12
@@ -106,6 +111,26 @@ class ResolvedComponentsVisitorTest {
                 "com.android.support:support-annotations:26.0.2:Google:true",
                 "com.android.support:percent:26.0.2:Google:true",
             )
+        }
+    }
+
+    @Test
+    fun `assert resolved component visitor caches resolution result`() {
+        compileConfigurations.flatMap { configuration ->
+            ResolvedComponentsVisitor(resolutionCache)
+                .visit(configuration.incoming.resolutionResult.root) { it }
+        }
+        val root = compileConfigurations.first().incoming.resolutionResult.root
+        assertTrue("Resolved components (non project) are cached using provided resolution cache") {
+            resolutionCache.getTransitiveResult(root) == null
+        }
+
+        assertTrue("External artifacts are cached using provided resolution cache") {
+            resolutionCache.getTransitiveResult(
+                root.dependencies
+                    .filterIsInstance<DefaultResolvedDependencyResult>()
+                    .first().selected
+            )?.components?.isNotEmpty() ?: false
         }
     }
 }

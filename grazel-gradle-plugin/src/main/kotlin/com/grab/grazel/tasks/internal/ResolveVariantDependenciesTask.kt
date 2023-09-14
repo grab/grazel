@@ -16,6 +16,7 @@
 
 package com.grab.grazel.tasks.internal
 
+import com.grab.grazel.gradle.dependencies.DefaultDependencyResolutionService
 import com.grab.grazel.gradle.dependencies.ResolvedComponentsVisitor
 import com.grab.grazel.gradle.dependencies.model.ExcludeRule
 import com.grab.grazel.gradle.dependencies.model.ResolveDependenciesResult
@@ -38,9 +39,11 @@ import org.gradle.api.file.RegularFileProperty
 import org.gradle.api.provider.ListProperty
 import org.gradle.api.provider.MapProperty
 import org.gradle.api.provider.Property
+import org.gradle.api.provider.Provider
 import org.gradle.api.tasks.CacheableTask
 import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.InputFiles
+import org.gradle.api.tasks.Internal
 import org.gradle.api.tasks.OutputFile
 import org.gradle.api.tasks.PathSensitive
 import org.gradle.api.tasks.PathSensitivity
@@ -52,7 +55,7 @@ import java.io.File
 import kotlin.streams.asSequence
 
 @CacheableTask
-abstract class ResolveVariantDependenciesTask : DefaultTask() {
+internal abstract class ResolveVariantDependenciesTask : DefaultTask() {
 
     @get:Input
     abstract val variantName: Property<String>
@@ -78,6 +81,9 @@ abstract class ResolveVariantDependenciesTask : DefaultTask() {
     @get:OutputFile
     abstract val resolvedDependencies: RegularFileProperty
 
+    @get:Internal
+    abstract val dependencyResolutionService: Property<DefaultDependencyResolutionService>
+
     @get:InputFiles
     @get:PathSensitive(PathSensitivity.RELATIVE)
     abstract val baseDependenciesJsons: ListProperty<RegularFile>
@@ -92,9 +98,10 @@ abstract class ResolveVariantDependenciesTask : DefaultTask() {
         baseDependenciesMap: Map<String, String> = emptyMap(),
         excludeRulesMap: Map<String, Set<ExcludeRule>> = emptyMap(),
         removeTransitives: Boolean = false
-    ): Set<ResolvedDependency> {
-        return get().asSequence().flatMap { root ->
-            ResolvedComponentsVisitor()
+    ): Set<ResolvedDependency> = get()
+        .asSequence()
+        .flatMap { root ->
+            ResolvedComponentsVisitor(dependencyResolutionService.get())
                 .visit(root, logger::info) { (component, repository, dependencies, jetifier) ->
                     val version = component.moduleVersion!!
                     val shortId = "${version.group}:${version.name}"
@@ -115,7 +122,6 @@ abstract class ResolveVariantDependenciesTask : DefaultTask() {
                     } else null
                 }.asSequence()
         }.filter { if (removeTransitives) it.direct else true }.toSet()
-    }
 
     @TaskAction
     fun action() {
@@ -166,6 +172,7 @@ abstract class ResolveVariantDependenciesTask : DefaultTask() {
         internal fun register(
             rootProject: Project,
             variantBuilderProvider: Lazy<VariantBuilder>,
+            dependencyResolutionService: Provider<DefaultDependencyResolutionService>,
             subprojectTaskConfigure: (TaskProvider<ResolveVariantDependenciesTask>) -> Unit
         ) {
             // Register a lifecycle to aggregate all subproject tasks
@@ -175,7 +182,12 @@ abstract class ResolveVariantDependenciesTask : DefaultTask() {
                 subprojects.forEach { project ->
                     // First pass to create all tasks
                     variantBuilder.onVariants(project) { variant ->
-                        processVariant(project, variant, rootResolveDependenciesTask)
+                        processVariant(
+                            project,
+                            variant,
+                            rootResolveDependenciesTask,
+                            dependencyResolutionService
+                        )
                     }
                     // Second pass to establish inter dependencies based on extendsFrom property
                     variantBuilder.onVariants(project) { variant ->
@@ -203,7 +215,8 @@ abstract class ResolveVariantDependenciesTask : DefaultTask() {
         private fun processVariant(
             project: Project,
             variant: Variant<*>,
-            rootResolveDependenciesTask: TaskProvider<Task>
+            rootResolveDependenciesTask: TaskProvider<Task>,
+            dependencyResolutionService: Provider<DefaultDependencyResolutionService>
         ) {
             val resolveVariantDependenciesTask = project.tasks
                 .register<ResolveVariantDependenciesTask>(variant.name + "ResolveDependencies") {
@@ -251,6 +264,7 @@ abstract class ResolveVariantDependenciesTask : DefaultTask() {
                             "grazel/${variant.name}/dependencies.json"
                         )
                     )
+                    this.dependencyResolutionService.set(dependencyResolutionService)
                 }
             rootResolveDependenciesTask.dependsOn(resolveVariantDependenciesTask)
         }

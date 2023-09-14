@@ -34,7 +34,9 @@ private typealias Node = ResolvedComponentResult
  * Visitor to flatten all components (including transitives) from a root [ResolvedComponentResult].
  * Ignore few artifacts specified by [IGNORED_ARTIFACTS]
  */
-internal class ResolvedComponentsVisitor {
+internal class ResolvedComponentsVisitor(
+    private val resolutionCache: DependencyResolutionService
+) {
 
     private fun printIndented(level: Int, message: String, logger: (message: String) -> Unit) {
         val prefix = if (level == 0) "─" else " └"
@@ -90,25 +92,34 @@ internal class ResolvedComponentsVisitor {
             if (node in visited) return
             visited.add(node)
             printIndented(level, node.toString(), logger)
+
             var jetifier = false
-
             val transitiveClosure = TreeSet(compareBy(Node::toString))
-            node.dependencies
-                .asSequence()
-                .filterIsInstance<ResolvedDependencyResult>()
-                .map { it.selected to it.requested }
-                .filter { (selected, _) -> !selected.isProject }
-                .filter { (dep, _) -> IGNORED_ARTIFACTS.none { dep.toString().startsWith(it) } }
-                .forEach { (directDependency, requested) ->
-                    dfs(directDependency, level + 1)
+            val transitiveResult = resolutionCache.getTransitiveResult(node)
+            if (transitiveResult != null) {
+                jetifier = transitiveResult.jetifier
+                transitiveClosure.addAll(transitiveResult.components)
+            } else {
+                node.dependencies
+                    .asSequence()
+                    .filterIsInstance<ResolvedDependencyResult>()
+                    .map { it.selected to it.requested }
+                    .filter { (selected, _) -> !selected.isProject }
+                    .filter { (dep, _) -> IGNORED_ARTIFACTS.none { dep.toString().startsWith(it) } }
+                    .forEach { (directDependency, requested) ->
+                        dfs(directDependency, level + 1)
 
-                    jetifier = jetifier || requested.isLegacySupportLibrary
-                    transitiveClosure.add(directDependency)
-                    transitiveClosure.addAll(transitiveClosureMap[directDependency] ?: emptySet())
-                }
+                        jetifier = jetifier || requested.isLegacySupportLibrary
+                        transitiveClosure.add(directDependency)
+                        transitiveClosure.addAll(
+                            transitiveClosureMap[directDependency] ?: emptySet()
+                        )
+                    }
+                resolutionCache.set(node, TransitiveResult(transitiveClosure, jetifier))
+            }
 
             transitiveClosureMap[node] = transitiveClosure
-            // TODO(arun) Memoize the transform
+
             if (!node.isProject) {
                 transform(
                     VisitResult(
