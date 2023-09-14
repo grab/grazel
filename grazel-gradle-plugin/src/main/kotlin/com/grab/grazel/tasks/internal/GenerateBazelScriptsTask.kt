@@ -20,14 +20,12 @@ import com.grab.grazel.bazel.starlark.writeToFile
 import com.grab.grazel.di.GrazelComponent
 import com.grab.grazel.gradle.MigrationChecker
 import com.grab.grazel.gradle.dependencies.DefaultDependencyResolutionService
-import com.grab.grazel.gradle.dependencies.model.WorkspaceDependencies
 import com.grab.grazel.gradle.isMigrated
 import com.grab.grazel.migrate.internal.ProjectBazelFileBuilder
 import com.grab.grazel.util.BUILD_BAZEL
 import com.grab.grazel.util.BUILD_BAZEL_IGNORE
 import com.grab.grazel.util.ansiGreen
 import com.grab.grazel.util.ansiYellow
-import com.grab.grazel.util.fromJson
 import dagger.Lazy
 import org.gradle.api.DefaultTask
 import org.gradle.api.Project
@@ -76,11 +74,8 @@ constructor(
         val buildBazelFile = buildBazel.get().asFile
         val bazelIgnoreFile = project.file(BUILD_BAZEL_IGNORE)
 
-        val workspaceDependencies = fromJson<WorkspaceDependencies>(
-            workspaceDependencies.get().asFile
-        )
-
-        dependencyResolutionService.get().populateCache(workspaceDependencies)
+        dependencyResolutionService.get()
+            .get(workspaceDependencies.get().asFile)
 
         // Check if current project can be migrated
         if (migrationChecker.get().canMigrate(project)) {

@@ -57,8 +57,8 @@ constructor(
     val workspaceDependencies: RegularFileProperty = gradleServices.objectFactory.fileProperty()
 
     @get:Internal
-    val dependencyResolutionService: Property<DefaultDependencyResolutionService> = project
-        .objects.property()
+    val dependencyResolutionService: Property<DefaultDependencyResolutionService> =
+        gradleServices.objectFactory.property()
 
     @TaskAction
     fun action() {
