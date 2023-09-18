@@ -29,7 +29,13 @@ import org.gradle.api.internal.artifacts.result.DefaultResolvedComponentResult
 internal data class ResolveDependenciesResult(
     val variantName: String,
     val dependencies: Map<String, Set<ResolvedDependency>> = HashMap()
-)
+) {
+    companion object {
+        enum class Scope {
+            COMPILE
+        }
+    }
+}
 
 @Serializable
 internal data class ResolvedDependency(

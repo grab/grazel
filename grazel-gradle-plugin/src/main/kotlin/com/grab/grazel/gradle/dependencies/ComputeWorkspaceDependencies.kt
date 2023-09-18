@@ -3,6 +3,7 @@ package com.grab.grazel.gradle.dependencies
 import com.grab.grazel.bazel.starlark.BazelDependency
 import com.grab.grazel.gradle.dependencies.model.OverrideTarget
 import com.grab.grazel.gradle.dependencies.model.ResolveDependenciesResult
+import com.grab.grazel.gradle.dependencies.model.ResolveDependenciesResult.Companion.Scope.COMPILE
 import com.grab.grazel.gradle.dependencies.model.ResolvedDependency
 import com.grab.grazel.gradle.dependencies.model.WorkspaceDependencies
 import com.grab.grazel.gradle.dependencies.model.allDependencies
@@ -32,7 +33,7 @@ internal class ComputeWorkspaceDependencies {
                         { resolvedDependency ->
                             resolvedDependency
                                 .dependencies
-                                .getValue("compile")
+                                .getValue(COMPILE.name)
                                 .parallelStream()
                         },
                         Collectors.groupingByConcurrent(

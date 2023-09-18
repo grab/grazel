@@ -122,9 +122,9 @@ internal abstract class DefaultDependencyResolutionService : DependencyResolutio
         resolvedComponentResult: ResolvedComponentResult,
         result: TransitiveResult
     ) {
-        if (!resolvedComponentResult.toString().startsWith("project :")) {
+        /*if (!resolvedComponentResult.toString().startsWith("project :")) {
             resolutionCache[resolvedComponentResult.toString()] = result
-        }
+        }*/
     }
 
     companion object {
@@ -134,5 +134,3 @@ internal abstract class DefaultDependencyResolutionService : DependencyResolutio
             .registerIfAbsent(SERVICE_NAME, DefaultDependencyResolutionService::class.java) {}
     }
 }
-
-

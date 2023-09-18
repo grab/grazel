@@ -20,6 +20,7 @@ import com.grab.grazel.gradle.dependencies.DefaultDependencyResolutionService
 import com.grab.grazel.gradle.dependencies.ResolvedComponentsVisitor
 import com.grab.grazel.gradle.dependencies.model.ExcludeRule
 import com.grab.grazel.gradle.dependencies.model.ResolveDependenciesResult
+import com.grab.grazel.gradle.dependencies.model.ResolveDependenciesResult.Companion.Scope.COMPILE
 import com.grab.grazel.gradle.dependencies.model.ResolvedDependency
 import com.grab.grazel.gradle.variant.Variant
 import com.grab.grazel.gradle.variant.VariantBuilder
@@ -52,6 +53,7 @@ import org.gradle.api.tasks.TaskProvider
 import org.gradle.kotlin.dsl.named
 import org.gradle.kotlin.dsl.register
 import java.io.File
+import java.util.*
 import kotlin.streams.asSequence
 
 @CacheableTask
@@ -135,7 +137,7 @@ internal abstract class ResolveVariantDependenciesTask : DefaultTask() {
                     .map<ResolveDependenciesResult>(::fromJson)
                     .sequential()
                     .asSequence()
-                    .flatMap { it.dependencies.getValue("compile") } // Make this configurable
+                    .flatMap { it.dependencies.getValue(COMPILE.name) }
                     .groupBy(ResolvedDependency::shortId, ResolvedDependency::direct)
                     .mapValues { entry -> entry.value.any { it } }
                     .forEach { (shortId, direct) ->
@@ -148,7 +150,7 @@ internal abstract class ResolveVariantDependenciesTask : DefaultTask() {
             variantName = variantName.get(),
             dependencies = buildMap {
                 put(
-                    "compile",
+                    COMPILE.name,
                     compileConfiguration.toResolvedDependencies(
                         directDependenciesMap = compileDirectDependencies.get(),
                         baseDependenciesMap = baseDependenciesMap,
@@ -156,11 +158,6 @@ internal abstract class ResolveVariantDependenciesTask : DefaultTask() {
                         removeTransitives = /*!base.get()*/ true,
                     )
                 )
-                /*put(
-                    "annotationProcessing",
-                    annotationProcessorConfiguration.toResolvedDependencies()
-                )
-                put("kotlinExtension", kotlinCompilerPluginConfiguration.toResolvedDependencies())*/
             }
         )
         resolvedDependencies.get()
@@ -216,55 +213,50 @@ internal abstract class ResolveVariantDependenciesTask : DefaultTask() {
             project: Project,
             variant: Variant<*>,
             rootResolveDependenciesTask: TaskProvider<Task>,
-            dependencyResolutionService: Provider<DefaultDependencyResolutionService>
+            resolutionService: Provider<DefaultDependencyResolutionService>
         ) {
+            val compileConfigurationComponents = project.provider {
+                variant.compileConfiguration
+                    .map { it.incoming.resolutionResult.root }
+                    .toList()
+            }
+
+            val directDependenciesCompile = project.provider {
+                variant.compileConfiguration
+                    .asSequence()
+                    .flatMap { it.incoming.dependencies }
+                    .filterIsInstance<ExternalDependency>()
+                    .associateTo(TreeMap()) { "${it.group}:${it.name}" to "${it.group}:${it.name}" }
+            }
+
+            val excludeRulesCompile = project.provider {
+                variant.compileConfiguration
+                    .asSequence()
+                    .flatMap { it.incoming.dependencies }
+                    .filterIsInstance<ExternalDependency>()
+                    .groupByTo(TreeMap()) { dep -> "${dep.group}:${dep.name}" }
+                    .mapValues { (_, artifacts) ->
+                        artifacts.flatMap { it.extractExcludeRules() }.toSet()
+                    }.filterValues { it.isNotEmpty() }
+
+            }
+
+            val resolvedDependenciesJson = File(
+                project.buildDir,
+                "grazel/${variant.name}/dependencies.json"
+            )
+
             val resolveVariantDependenciesTask = project.tasks
-                .register<ResolveVariantDependenciesTask>(variant.name + "ResolveDependencies") {
+                .register<ResolveVariantDependenciesTask>(
+                    variant.name + "ResolveDependencies"
+                ) {
                     variantName.set(variant.name)
                     base.set(variant.isBase)
-                    compileConfiguration.addAll(project.provider {
-                        variant.compileConfiguration
-                            .map { it.incoming.resolutionResult.root }
-                            .toList()
-                    })
-                    compileDirectDependencies.set(project.provider {
-                        variant.compileConfiguration
-                            .asSequence()
-                            .flatMap { it.incoming.dependencies }
-                            .filterIsInstance<ExternalDependency>()
-                            .associate { "${it.group}:${it.name}" to "${it.group}:${it.name}" }
-                    })
-                    compileExcludeRules.set(project.provider {
-                        variant.compileConfiguration
-                            .asSequence()
-                            .flatMap { it.incoming.dependencies }
-                            .filterIsInstance<ExternalDependency>()
-                            .groupBy { dep -> "${dep.group}:${dep.name}" }
-                            .mapValues { (_, artifacts) ->
-                                artifacts.flatMap { it.extractExcludeRules() }.toSet()
-                            }.filterValues { it.isNotEmpty() }
-
-                    })
-                    /* runtimeConfiguration.addAll(project.provider {
-                         variant.runtimeConfiguration
-                             .map { it.incoming.resolutionResult.root }
-                             .toImmutableList()
-                     })
-                    annotationProcessorConfiguration.addAll(project.provider {
-                        variant.annotationProcessorConfiguration.map { it.incoming.resolutionResult.root }
-                    })
-                    kotlinCompilerPluginConfiguration.addAll(project.provider {
-                        variant.kotlinCompilerPluginConfiguration
-                            .map { it.incoming.resolutionResult.root }
-                            .toList()
-                    })*/
-                    resolvedDependencies.set(
-                        File(
-                            project.buildDir,
-                            "grazel/${variant.name}/dependencies.json"
-                        )
-                    )
-                    this.dependencyResolutionService.set(dependencyResolutionService)
+                    compileConfiguration.set(compileConfigurationComponents)
+                    compileDirectDependencies.set(directDependenciesCompile)
+                    compileExcludeRules.set(excludeRulesCompile)
+                    resolvedDependencies.set(resolvedDependenciesJson)
+                    dependencyResolutionService.set(resolutionService)
                 }
             rootResolveDependenciesTask.dependsOn(resolveVariantDependenciesTask)
         }
