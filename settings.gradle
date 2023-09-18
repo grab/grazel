@@ -47,6 +47,6 @@ if (isCiServer) {
 
 includeBuild("grazel-gradle-plugin") {
     dependencySubstitution {
-        substitute module("com.grab:grazel") with project(":")
+        substitute module("com.grab:grazel") using project(":")
     }
 }

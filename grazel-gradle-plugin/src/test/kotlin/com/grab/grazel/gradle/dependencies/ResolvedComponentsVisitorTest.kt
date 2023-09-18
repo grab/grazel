@@ -16,6 +16,7 @@ import org.gradle.kotlin.dsl.configure
 import org.gradle.kotlin.dsl.dependencies
 import org.gradle.kotlin.dsl.repositories
 import org.junit.Before
+import org.junit.Ignore
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
@@ -115,6 +116,7 @@ class ResolvedComponentsVisitorTest {
     }
 
     @Test
+    @Ignore("Caching is disabled temporarily due to it breaking up-to-date checks")
     fun `assert resolved component visitor caches resolution result`() {
         compileConfigurations.flatMap { configuration ->
             ResolvedComponentsVisitor(resolutionCache)
