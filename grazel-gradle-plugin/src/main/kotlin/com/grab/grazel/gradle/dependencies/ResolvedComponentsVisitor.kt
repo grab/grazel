@@ -85,19 +85,24 @@ internal class ResolvedComponentsVisitor(
         val visited = mutableSetOf<Node>()
         val result = TreeSet<T>(compareBy { it })
 
+        data class JetifyResult(var enabled: Boolean = false)
+
         /**
          * Do a depth-first visit to collect all transitive dependencies
+         *
+         * @param node Current component node
+         * @param jetify Holder to store jetifier result across call stack
+         * @param level The current traversal depth
          */
-        fun dfs(node: Node, level: Int = 0) {
+        fun dfs(node: Node, jetify: JetifyResult = JetifyResult(), level: Int = 0) {
             if (node in visited) return
             visited.add(node)
             printIndented(level, node.toString(), logger)
 
-            var jetifier = false
             val transitiveClosure = TreeSet(compareBy(Node::toString))
             val transitiveResult = resolutionCache.getTransitiveResult(node)
             if (transitiveResult != null) {
-                jetifier = transitiveResult.jetifier
+                jetify.enabled = transitiveResult.jetifier
                 transitiveClosure.addAll(transitiveResult.components)
             } else {
                 node.dependencies
@@ -107,15 +112,15 @@ internal class ResolvedComponentsVisitor(
                     .filter { (selected, _) -> !selected.isProject }
                     .filter { (dep, _) -> IGNORED_ARTIFACTS.none { dep.toString().startsWith(it) } }
                     .forEach { (directDependency, requested) ->
-                        dfs(directDependency, level + 1)
+                        jetify.enabled = jetify.enabled || requested.isLegacySupportLibrary
+                        dfs(directDependency, jetify, level + 1)
 
-                        jetifier = jetifier || requested.isLegacySupportLibrary
                         transitiveClosure.add(directDependency)
                         transitiveClosure.addAll(
                             transitiveClosureMap[directDependency] ?: emptySet()
                         )
                     }
-                resolutionCache.set(node, TransitiveResult(transitiveClosure, jetifier))
+                resolutionCache.set(node, TransitiveResult(transitiveClosure, jetify.enabled))
             }
 
             transitiveClosureMap[node] = transitiveClosure
@@ -128,10 +133,10 @@ internal class ResolvedComponentsVisitor(
                         dependencies = transitiveClosure.map { dep ->
                             ResolvedDependency.createDependencyNotation(
                                 component = dep,
-                                jetifierEnabled = jetifier
+                                jetifierEnabled = jetify.enabled
                             )
                         }.toSortedSet(),
-                        hasJetifier = jetifier
+                        hasJetifier = jetify.enabled
                     )
                 )?.let(result::add)
             }
