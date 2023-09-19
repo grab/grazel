@@ -37,7 +37,7 @@ class ResolvedComponentsVisitorTest {
 
     @Before
     fun setup() {
-        projectDir = temporaryFolder.newFolder("projecs")
+        projectDir = temporaryFolder.newFolder("project")
         rootProject = buildProject("root", projectDir = projectDir).also { root ->
             root.addGrazelExtension()
         }
@@ -62,8 +62,13 @@ class ResolvedComponentsVisitorTest {
                     "implementation",
                     "com.google.android.support:wearable:2.1.0"
                 )
+                add(
+                    "implementation",
+                    "com.google.ar.sceneform.ux:sceneform-ux:1.0.0"
+                )
             }
         }
+
         androidProject.doEvaluate()
         val grazelComponent = rootProject.createGrazelComponent()
         variantBuilder = grazelComponent.variantBuilder().get()
@@ -80,13 +85,16 @@ class ResolvedComponentsVisitorTest {
         val results = compileConfigurations.flatMap { configuration ->
             ResolvedComponentsVisitor(resolutionCache).visit(configuration.incoming.resolutionResult.root) { it }
         }
-        assertTrue("Only support lib dependencies should be jetified") {
+        assertTrue("Artifacts containing support libs are jetified") {
             results
                 .asSequence()
                 .filter { it.hasJetifier }
-                .filterNot {
-                    it.component.toString().startsWith("com.google.android.support:wearable")
-                }.all { it.component.toString().startsWith("com.android.support") }
+                .all {
+                    val id = it.component.toString()
+                    id.startsWith("com.android.support") ||
+                        id.startsWith("com.google.ar") ||
+                        id.startsWith("com.google.android")
+                }
         }
     }
 
@@ -96,21 +104,26 @@ class ResolvedComponentsVisitorTest {
             ResolvedComponentsVisitor(resolutionCache).visit(configuration.incoming.resolutionResult.root) { it }
         }
         assertTrue("Resolved component visitor flattens the transitive dependencies") {
-            results.size == 12
+            results.size == 18
         }
         // Tests for repo, sorting and jetifier
         results.flatMapTo(HashSet()) { it.dependencies }.truth {
             containsExactly(
                 "com.android.support:support-core-ui:26.0.2:Google:true",
-                "com.android.support:support-core-utils:26.0.2:Google:true",
-                "com.android.support:recyclerview-v7:26.0.2:Google:true",
+                "com.google.ar.sceneform:sceneform-base:1.0.0:Google:true",
                 "com.android.support:support-v4:26.0.2:Google:true",
                 "com.android.support:support-fragment:26.0.2:Google:true",
+                "com.google.ar:core:1.2.0:Google:true",
                 "javax.inject:javax.inject:1:MavenRepo:false",
+                "com.google.ar.sceneform:filament-android:1.0.0:Google:true",
                 "com.android.support:support-media-compat:26.0.2:Google:true",
-                "com.android.support:support-compat:26.0.2:Google:true",
-                "com.android.support:support-annotations:26.0.2:Google:true",
                 "com.android.support:percent:26.0.2:Google:true",
+                "com.android.support:support-core-utils:26.0.2:Google:true",
+                "com.google.ar.sceneform:core:1.0.0:Google:true",
+                "com.google.ar.sceneform:rendering:1.0.0:Google:true",
+                "com.android.support:recyclerview-v7:26.0.2:Google:true",
+                "com.android.support:support-compat:26.0.2:Google:true",
+                "com.android.support:support-annotations:26.0.2:Google:true"
             )
         }
     }
