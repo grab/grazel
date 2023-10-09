@@ -28,7 +28,6 @@ import org.gradle.api.artifacts.result.ResolvedComponentResult
 import org.gradle.api.services.BuildService
 import org.gradle.api.services.BuildServiceParameters
 import java.io.File
-import java.util.concurrent.ConcurrentSkipListMap
 
 /**
  * A [BuildService] to cache and store dependencies computed for `WORKSPACE` by
@@ -56,12 +55,6 @@ internal interface DependencyResolutionService : BuildService<DependencyResoluti
 
     fun get(workspaceDependenciesJson: File): WorkspaceDependencies
 
-    fun getTransitiveResult(
-        resolvedComponentResult: ResolvedComponentResult,
-    ): TransitiveResult?
-
-    fun set(resolvedComponentResult: ResolvedComponentResult, result: TransitiveResult)
-
     companion object {
         internal const val SERVICE_NAME = "DependencyResolutionCache"
     }
@@ -78,7 +71,6 @@ internal abstract class DefaultDependencyResolutionService : DependencyResolutio
 
     private var mavenInstallStore: MavenInstallStore? = null
     private var workspaceDependencies: WorkspaceDependencies? = null
-    private val resolutionCache = ConcurrentSkipListMap<String, TransitiveResult>()
 
     override fun get(
         variants: Set<String>,
@@ -112,19 +104,6 @@ internal abstract class DefaultDependencyResolutionService : DependencyResolutio
     override fun close() {
         mavenInstallStore?.close()
         mavenInstallStore = null
-    }
-
-    override fun getTransitiveResult(
-        resolvedComponentResult: ResolvedComponentResult
-    ) = resolutionCache[resolvedComponentResult.toString()]
-
-    override fun set(
-        resolvedComponentResult: ResolvedComponentResult,
-        result: TransitiveResult
-    ) {
-        /*if (!resolvedComponentResult.toString().startsWith("project :")) {
-            resolutionCache[resolvedComponentResult.toString()] = result
-        }*/
     }
 
     companion object {

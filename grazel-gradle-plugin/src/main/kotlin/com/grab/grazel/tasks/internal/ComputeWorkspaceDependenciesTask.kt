@@ -17,7 +17,6 @@
 package com.grab.grazel.tasks.internal
 
 import com.grab.grazel.gradle.dependencies.ComputeWorkspaceDependencies
-import com.grab.grazel.gradle.dependencies.DefaultDependencyResolutionService
 import com.grab.grazel.gradle.variant.VariantBuilder
 import com.grab.grazel.util.Json
 import dagger.Lazy
@@ -27,7 +26,6 @@ import org.gradle.api.Project
 import org.gradle.api.file.RegularFile
 import org.gradle.api.file.RegularFileProperty
 import org.gradle.api.provider.ListProperty
-import org.gradle.api.provider.Provider
 import org.gradle.api.tasks.CacheableTask
 import org.gradle.api.tasks.InputFiles
 import org.gradle.api.tasks.OutputFile
@@ -63,7 +61,6 @@ abstract class ComputeWorkspaceDependenciesTask : DefaultTask() {
         internal fun register(
             rootProject: Project,
             variantBuilderProvider: Lazy<VariantBuilder>,
-            dependencyResolutionService: Provider<DefaultDependencyResolutionService>
         ): TaskProvider<ComputeWorkspaceDependenciesTask> {
             val computeTask = rootProject.tasks
                 .register<ComputeWorkspaceDependenciesTask>(TASK_NAME) {
@@ -77,7 +74,6 @@ abstract class ComputeWorkspaceDependenciesTask : DefaultTask() {
             ResolveVariantDependenciesTask.register(
                 rootProject,
                 variantBuilderProvider,
-                dependencyResolutionService
             ) { taskProvider ->
                 computeTask.configure {
                     compileDependenciesJsons.add(taskProvider.flatMap { it.resolvedDependencies })

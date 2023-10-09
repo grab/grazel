@@ -46,15 +46,19 @@ internal data class ResolvedDependency(
     val dependencies: Set<String>,
     val excludeRules: Set<ExcludeRule>,
     val repository: String,
-    val jetifier: Boolean,
+    val requiresJetifier: Boolean,
+    val jetifierSource: String? = null,
     val overrideTarget: OverrideTarget? = null
 ) : Comparable<ResolvedDependency> {
     override fun compareTo(other: ResolvedDependency) = id.compareTo(other.id)
 
     companion object {
         fun from(dependencyNotation: String): ResolvedDependency {
-            val (group, name, version, repository, jetifier) = dependencyNotation.split(":")
+            val chunks = dependencyNotation.split(":")
+            val (group, name, version, repository, jetifierGroup) = chunks
             val shortId = "$group:$name"
+            val jetifierSource = if (jetifierGroup != "null") "$jetifierGroup:${chunks.last()}"
+            else null
             return ResolvedDependency(
                 id = "$group:$name:$version",
                 version = version,
@@ -63,17 +67,17 @@ internal data class ResolvedDependency(
                 dependencies = emptySet(),
                 excludeRules = emptySet(),
                 repository = repository,
-                jetifier = jetifier.toBoolean()
+                requiresJetifier = false,
+                jetifierSource = jetifierSource
             )
         }
 
         fun createDependencyNotation(
             component: ResolvedComponentResult,
-            jetifierEnabled: Boolean
+            jetifierSource: String?
         ): String {
             val repository = (component as? DefaultResolvedComponentResult)?.repositoryName ?: ""
-            val jetifier = jetifierEnabled && !component.toString().startsWith("androidx.")
-            return "$component:${repository}:$jetifier"
+            return "$component:${repository}:$jetifierSource"
         }
     }
 }
