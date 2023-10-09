@@ -26,4 +26,4 @@ runs:
 
         -   name: Run bazel command
             shell: bash
-            run: bazelisk ${{ inputs.bazel-command }}
+            run: bazelisk ${{ inputs.bazel-command }} --config=ci

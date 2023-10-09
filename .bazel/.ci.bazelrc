@@ -1,0 +1,2 @@
+common:ci --noshow_progress
+common:ci --color=no
