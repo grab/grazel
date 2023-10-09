@@ -1,4 +1,5 @@
 import %workspace%/.bazel/.default.bazelrc
 import %workspace%/.bazel/.test.bazelrc
+import %workspace%/.bazel/.ci.bazelrc
 
 try-import local.bazelrc
