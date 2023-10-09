@@ -74,10 +74,6 @@ dependencies {
 
     implementation libs.androidx.compose.ui
 
-    //Intentionally added to test out jetifier support
-    //noinspection GradleCompatible
-    implementation libs.wearable
-
     implementation(libs.androidx.constraintlayout) {
         // Sample for exclude rules.
         exclude group: "androidx.core", module: "core"

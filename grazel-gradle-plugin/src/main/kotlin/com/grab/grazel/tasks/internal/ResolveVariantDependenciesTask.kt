@@ -44,7 +44,6 @@ import org.gradle.api.provider.Provider
 import org.gradle.api.tasks.CacheableTask
 import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.InputFiles
-import org.gradle.api.tasks.Internal
 import org.gradle.api.tasks.OutputFile
 import org.gradle.api.tasks.PathSensitive
 import org.gradle.api.tasks.PathSensitivity
@@ -83,9 +82,6 @@ internal abstract class ResolveVariantDependenciesTask : DefaultTask() {
     @get:OutputFile
     abstract val resolvedDependencies: RegularFileProperty
 
-    @get:Internal
-    abstract val dependencyResolutionService: Property<DefaultDependencyResolutionService>
-
     @get:InputFiles
     @get:PathSensitive(PathSensitivity.RELATIVE)
     abstract val baseDependenciesJsons: ListProperty<RegularFile>
@@ -103,26 +99,33 @@ internal abstract class ResolveVariantDependenciesTask : DefaultTask() {
     ): Set<ResolvedDependency> = get()
         .asSequence()
         .flatMap { root ->
-            ResolvedComponentsVisitor(dependencyResolutionService.get())
-                .visit(root, logger::info) { (component, repository, dependencies, jetifier) ->
-                    val version = component.moduleVersion!!
-                    val shortId = "${version.group}:${version.name}"
-                    val isDirect = shortId in directDependenciesMap
-                    val isUnique = shortId !in baseDependenciesMap
-                    val excludeRules = excludeRulesMap.getOrDefault(shortId, emptySet())
-                    if (isUnique) {
-                        ResolvedDependency(
-                            id = component.toString(),
-                            shortId = shortId,
-                            direct = isDirect,
-                            version = version.version,
-                            dependencies = dependencies,
-                            repository = repository,
-                            excludeRules = excludeRules,
-                            jetifier = jetifier
-                        )
-                    } else null
-                }.asSequence()
+            ResolvedComponentsVisitor().visit(
+                root,
+                logger::info
+            ) { (component, repository, dependencies, jetifier) ->
+                val version = component.moduleVersion!!
+                val shortId = "${version.group}:${version.name}"
+                val isDirect = shortId in directDependenciesMap
+                val isUnique = shortId !in baseDependenciesMap
+                val excludeRules = excludeRulesMap.getOrDefault(shortId, emptySet())
+                if (isUnique) {
+                    ResolvedDependency(
+                        id = component.toString(),
+                        shortId = shortId,
+                        direct = isDirect,
+                        version = version.version,
+                        dependencies = dependencies.mapTo(TreeSet()) { (dependency, jetifierSource) ->
+                            ResolvedDependency.createDependencyNotation(
+                                dependency,
+                                jetifierSource
+                            )
+                        },
+                        repository = repository,
+                        excludeRules = excludeRules,
+                        requiresJetifier = jetifier
+                    )
+                } else null
+            }.asSequence()
         }.filter { if (removeTransitives) it.direct else true }.toSet()
 
     @TaskAction
@@ -169,7 +172,6 @@ internal abstract class ResolveVariantDependenciesTask : DefaultTask() {
         internal fun register(
             rootProject: Project,
             variantBuilderProvider: Lazy<VariantBuilder>,
-            dependencyResolutionService: Provider<DefaultDependencyResolutionService>,
             subprojectTaskConfigure: (TaskProvider<ResolveVariantDependenciesTask>) -> Unit
         ) {
             // Register a lifecycle to aggregate all subproject tasks
@@ -183,10 +185,9 @@ internal abstract class ResolveVariantDependenciesTask : DefaultTask() {
                             project,
                             variant,
                             rootResolveDependenciesTask,
-                            dependencyResolutionService
                         )
                     }
-                    // Second pass to establish inter dependencies based on extendsFrom property
+                    // Second pass to establish inter-dependencies based on extendsFrom property
                     variantBuilder.onVariants(project) { variant ->
                         configureVariantTaskDependencies(project, variant, subprojectTaskConfigure)
                     }
@@ -213,7 +214,6 @@ internal abstract class ResolveVariantDependenciesTask : DefaultTask() {
             project: Project,
             variant: Variant<*>,
             rootResolveDependenciesTask: TaskProvider<Task>,
-            resolutionService: Provider<DefaultDependencyResolutionService>
         ) {
             val compileConfigurationComponents = project.provider {
                 variant.compileConfiguration
@@ -256,7 +256,6 @@ internal abstract class ResolveVariantDependenciesTask : DefaultTask() {
                     compileDirectDependencies.set(directDependenciesCompile)
                     compileExcludeRules.set(excludeRulesCompile)
                     resolvedDependencies.set(resolvedDependenciesJson)
-                    dependencyResolutionService.set(resolutionService)
                 }
             rootResolveDependenciesTask.dependsOn(resolveVariantDependenciesTask)
         }

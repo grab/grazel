@@ -52,7 +52,6 @@ constructor(
         val computeWorkspaceDependenciesTask = ComputeWorkspaceDependenciesTask.register(
             rootProject,
             grazelComponent.variantBuilder(),
-            grazelComponent.dependencyResolutionService()
         )
         // Root bazel file generation task that should run at the start of migration
         val rootGenerateBazelScriptsTasks = GenerateRootBazelScriptsTask.register(

@@ -17,7 +17,6 @@
 package com.grab.grazel.gradle.dependencies
 
 import com.grab.grazel.gradle.dependencies.ResolvedComponentsVisitor.Companion.IGNORED_ARTIFACTS
-import com.grab.grazel.gradle.dependencies.model.ResolvedDependency
 import com.grab.grazel.util.ansiCyan
 import com.grab.grazel.util.ansiGreen
 import com.grab.grazel.util.ansiYellow
@@ -26,7 +25,7 @@ import org.gradle.api.artifacts.result.ResolutionResult
 import org.gradle.api.artifacts.result.ResolvedComponentResult
 import org.gradle.api.artifacts.result.ResolvedDependencyResult
 import org.gradle.api.internal.artifacts.result.DefaultResolvedComponentResult
-import java.util.TreeSet
+import java.util.*
 
 private typealias Node = ResolvedComponentResult
 
@@ -34,9 +33,7 @@ private typealias Node = ResolvedComponentResult
  * Visitor to flatten all components (including transitives) from a root [ResolvedComponentResult].
  * Ignore few artifacts specified by [IGNORED_ARTIFACTS]
  */
-internal class ResolvedComponentsVisitor(
-    private val resolutionCache: DependencyResolutionService
-) {
+internal class ResolvedComponentsVisitor {
 
     private fun printIndented(level: Int, message: String, logger: (message: String) -> Unit) {
         val prefix = if (level == 0) "─" else " └"
@@ -58,22 +55,33 @@ internal class ResolvedComponentsVisitor(
     data class VisitResult(
         val component: Node,
         val repository: String,
-        val dependencies: Set<String>,
-        val hasJetifier: Boolean
+        val transitiveDeps: Set<DependencyResult>,
+        val requiresJetifier: Boolean
     ) : Comparable<VisitResult> {
         override fun compareTo(
             other: VisitResult
         ) = component.toString().compareTo(other.component.toString())
     }
 
+    /**
+     * Holder to collect dependency information for a [Node]
+     */
+    data class DependencyResult(
+        val dependency: Node,
+        val unjetifiedSource: String?
+    )
+
     private val ComponentSelector.isLegacySupportLibrary
         get() = toString().startsWith("com.android.support")
+
+    private val Node.shortId get() = toString().substringBeforeLast(":")
 
     /**
      * Visit all external dependency nodes in the graph and map them to [T] using the [transform]
      * function. Both current component and its transitive dependencies are provided in the callback
      *
      * @param root The root component usually [ResolutionResult.getRoot]
+     * @param logger The logger to print traversal information in tree format
      * @param transform The callback used to convert to [T]
      */
     fun <T : Comparable<T>> visit(
@@ -81,7 +89,7 @@ internal class ResolvedComponentsVisitor(
         logger: (message: String) -> Unit = { },
         transform: (visitResult: VisitResult) -> T?
     ): Set<T> {
-        val transitiveClosureMap = mutableMapOf<Node, MutableSet<Node>>()
+        val transitiveClosureMap = mutableMapOf<Node, MutableSet<DependencyResult>>()
         val visited = mutableSetOf<Node>()
         val result = TreeSet<T>(compareBy { it })
 
@@ -99,44 +107,39 @@ internal class ResolvedComponentsVisitor(
             visited.add(node)
             printIndented(level, node.toString(), logger)
 
-            val transitiveClosure = TreeSet(compareBy(Node::toString))
-            val transitiveResult = resolutionCache.getTransitiveResult(node)
-            if (transitiveResult != null) {
-                jetify.enabled = transitiveResult.jetifier
-                transitiveClosure.addAll(transitiveResult.components)
-            } else {
-                node.dependencies
-                    .asSequence()
-                    .filterIsInstance<ResolvedDependencyResult>()
-                    .map { it.selected to it.requested }
-                    .filter { (selected, _) -> !selected.isProject }
-                    .filter { (dep, _) -> IGNORED_ARTIFACTS.none { dep.toString().startsWith(it) } }
-                    .forEach { (directDependency, requested) ->
-                        jetify.enabled = jetify.enabled || requested.isLegacySupportLibrary
-                        dfs(directDependency, jetify, level + 1)
+            val transitiveDeps = TreeSet<DependencyResult>(compareBy {
+                it.dependency.toString()
+            })
+            node.dependencies
+                .asSequence()
+                .filterIsInstance<ResolvedDependencyResult>()
+                .map { it.selected to it.requested }
+                .filter { (selected, _) -> !selected.isProject }
+                .filter { (dep, _) -> IGNORED_ARTIFACTS.none { dep.toString().startsWith(it) } }
+                .forEach { (directDependency, requested) ->
+                    jetify.enabled = jetify.enabled || requested.isLegacySupportLibrary
+                    dfs(directDependency, jetify, level + 1)
 
-                        transitiveClosure.add(directDependency)
-                        transitiveClosure.addAll(
-                            transitiveClosureMap[directDependency] ?: emptySet()
+                    transitiveDeps.add(
+                        DependencyResult(
+                            dependency = directDependency,
+                            unjetifiedSource = JetifiedArtifacts[directDependency.shortId]
                         )
-                    }
-                resolutionCache.set(node, TransitiveResult(transitiveClosure, jetify.enabled))
-            }
+                    )
+                    transitiveDeps.addAll(
+                        transitiveClosureMap[directDependency] ?: emptySet()
+                    )
+                }
 
-            transitiveClosureMap[node] = transitiveClosure
+            transitiveClosureMap[node] = transitiveDeps
 
             if (!node.isProject) {
                 transform(
                     VisitResult(
                         component = node,
                         repository = node.repository,
-                        dependencies = transitiveClosure.map { dep ->
-                            ResolvedDependency.createDependencyNotation(
-                                component = dep,
-                                jetifierEnabled = jetify.enabled
-                            )
-                        }.toSortedSet(),
-                        hasJetifier = jetify.enabled
+                        transitiveDeps = transitiveDeps,
+                        requiresJetifier = jetify.enabled
                     )
                 )?.let(result::add)
             }

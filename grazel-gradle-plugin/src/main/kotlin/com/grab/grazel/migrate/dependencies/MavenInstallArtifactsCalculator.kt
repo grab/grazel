@@ -95,9 +95,9 @@ constructor(
 
             val jetifierArtifacts = (artifacts
                 .asSequence()
-                .filter(ResolvedDependency::jetifier)
-                .map(ResolvedDependency::shortId)
-                .toList() + mavenInstallExtension.jetifyIncludeList.get()).toSortedSet()
+                .mapNotNull {
+                    if (it.requiresJetifier) it.shortId else it.jetifierSource
+                }.toList() + mavenInstallExtension.jetifyIncludeList.get()).toSortedSet()
 
             MavenInstallData(
                 name = mavenInstallName,

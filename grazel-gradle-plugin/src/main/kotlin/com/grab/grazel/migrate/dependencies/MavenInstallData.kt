@@ -23,3 +23,8 @@ internal data class MavenInstallData(
     val isMavenInstallJsonEnabled: Boolean,
     val versionConflictPolicy: String?
 )
+
+internal data class JetifierConfig(
+    val isEnabled: Boolean,
+    val artifacts: Set<String>
+)

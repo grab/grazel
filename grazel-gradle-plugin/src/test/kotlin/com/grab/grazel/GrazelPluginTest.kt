@@ -26,12 +26,19 @@ internal fun buildProject(
     name: String,
     parent: Project? = null,
     projectDir: File? = null,
+    gradleUserHome: File? = null,
     builder: ProjectBuilder.() -> Unit = {}
 ): Project = ProjectBuilder
     .builder()
     .withName(name)
     .let { projectBuilder ->
-        projectDir?.let { projectBuilder.withProjectDir(projectDir) } ?: projectBuilder
+        projectDir
+            ?.let { projectBuilder.withProjectDir(projectDir) }
+            ?: projectBuilder
+    }.let { projectBuilder ->
+        gradleUserHome
+            ?.let { projectBuilder.withGradleUserHomeDir(gradleUserHome) }
+            ?: projectBuilder
     }.let { projectBuilder -> parent?.let { projectBuilder.withParent(parent) } ?: projectBuilder }
     .apply(builder)
     .build()
