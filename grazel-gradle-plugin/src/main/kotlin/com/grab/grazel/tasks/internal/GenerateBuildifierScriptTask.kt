@@ -17,6 +17,7 @@
 package com.grab.grazel.tasks.internal
 
 import com.grab.grazel.bazel.exec.bazelCommand
+import com.grab.grazel.bazel.rules.GRAB_BAZEL_COMMON
 import com.grab.grazel.di.GradleServices
 import com.grab.grazel.di.GrazelComponent
 import com.grab.grazel.di.qualifiers.RootProject
@@ -62,7 +63,7 @@ constructor(
             val execResult = gradleServices.execOperations.bazelCommand(
                 logger = logger,
                 "run",
-                "@grab_bazel_common//:buildifier",
+                "@$GRAB_BAZEL_COMMON//:buildifier",
                 "--script_path=${buildifierScript.get().asFile.absolutePath}",
                 errorOutputStream = outputStream,
                 ignoreExit = true

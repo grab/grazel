@@ -148,7 +148,7 @@ fun StatementsBuilder.ktLibrary(
     assetsDir: String? = null,
     tags: List<String> = emptyList()
 ) {
-    load("@grab_bazel_common//rules:defs.bzl", "kotlin_library")
+    load("@$GRAB_BAZEL_COMMON//rules:defs.bzl", "kotlin_library")
 
     rule("kotlin_library") {
         "name" `=` name.quote
