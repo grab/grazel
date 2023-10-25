@@ -148,9 +148,9 @@ fun StatementsBuilder.ktLibrary(
     assetsDir: String? = null,
     tags: List<String> = emptyList()
 ) {
-    load("@io_bazel_rules_kotlin//kotlin:jvm.bzl", "kt_jvm_library")
+    load("@$GRAB_BAZEL_COMMON//rules:defs.bzl", "kotlin_library")
 
-    rule("kt_jvm_library") {
+    rule("kotlin_library") {
         "name" `=` name.quote
         srcs.notEmpty {
             "srcs" `=` srcs.map(String::quote)
@@ -188,7 +188,7 @@ fun StatementsBuilder.ktLibrary(
 }
 
 
-fun StatementsBuilder.grabKtJvmTest(
+fun StatementsBuilder.kotlinTest(
     name: String,
     srcs: List<String> = emptyList(),
     additionalSrcSets: List<String> = emptyList(),
@@ -199,9 +199,9 @@ fun StatementsBuilder.grabKtJvmTest(
     plugins: List<BazelDependency> = emptyList(),
     tags: List<String> = emptyList()
 ) {
-    load("@$GRAB_BAZEL_COMMON//tools/test:test.bzl", "grab_kt_jvm_test")
+    load("@$GRAB_BAZEL_COMMON//rules:defs.bzl", "kotlin_test")
 
-    rule("grab_kt_jvm_test") {
+    rule("kotlin_test") {
         "name" `=` name.quote
         srcs.notEmpty {
             "srcs" `=` srcs.map(String::quote)

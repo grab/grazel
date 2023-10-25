@@ -1,5 +1,4 @@
-load("@grab_bazel_common//rules:defs.bzl", "android_library")
-load("@grab_bazel_common//tools/test:test.bzl", "grab_android_local_test")
+load("@grab_bazel_common//rules:defs.bzl", "android_library", "android_unit_test")
 
 android_library(
     name = "sample-android-library-flavor1-free-debug",
@@ -65,13 +64,13 @@ android_library(
     ],
 )
 
-grab_android_local_test(
+android_unit_test(
     name = "sample-android-library-flavor1-free-debug-test",
     srcs = glob([
         "src/test/java/com/grab/grazel/android/sample/SampleViewModelTest.kt",
     ]),
     associates = [
-        "//sample-android-library:sample-android-library-flavor1-free-debug-kotlin",
+        "//sample-android-library:sample-android-library-flavor1-free-debug_kt",
     ],
     custom_package = "com.grab.grazel.android.sample.lib",
     resources = glob([
@@ -87,13 +86,13 @@ grab_android_local_test(
     ],
 )
 
-grab_android_local_test(
+android_unit_test(
     name = "sample-android-library-flavor1-paid-debug-test",
     srcs = glob([
         "src/test/java/com/grab/grazel/android/sample/SampleViewModelTest.kt",
     ]),
     associates = [
-        "//sample-android-library:sample-android-library-flavor1-paid-debug-kotlin",
+        "//sample-android-library:sample-android-library-flavor1-paid-debug_kt",
     ],
     custom_package = "com.grab.grazel.android.sample.lib",
     resources = glob([
@@ -109,13 +108,13 @@ grab_android_local_test(
     ],
 )
 
-grab_android_local_test(
+android_unit_test(
     name = "sample-android-library-flavor2-free-debug-test",
     srcs = glob([
         "src/test/java/com/grab/grazel/android/sample/SampleViewModelTest.kt",
     ]),
     associates = [
-        "//sample-android-library:sample-android-library-flavor2-free-debug-kotlin",
+        "//sample-android-library:sample-android-library-flavor2-free-debug_kt",
     ],
     custom_package = "com.grab.grazel.android.sample.lib",
     resources = glob([
@@ -131,13 +130,13 @@ grab_android_local_test(
     ],
 )
 
-grab_android_local_test(
+android_unit_test(
     name = "sample-android-library-flavor2-paid-debug-test",
     srcs = glob([
         "src/test/java/com/grab/grazel/android/sample/SampleViewModelTest.kt",
     ]),
     associates = [
-        "//sample-android-library:sample-android-library-flavor2-paid-debug-kotlin",
+        "//sample-android-library:sample-android-library-flavor2-paid-debug_kt",
     ],
     custom_package = "com.grab.grazel.android.sample.lib",
     resources = glob([

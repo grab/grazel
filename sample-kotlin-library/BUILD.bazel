@@ -1,7 +1,6 @@
-load("@grab_bazel_common//tools/test:test.bzl", "grab_kt_jvm_test")
-load("@io_bazel_rules_kotlin//kotlin:jvm.bzl", "kt_jvm_library")
+load("@grab_bazel_common//rules:defs.bzl", "kotlin_library", "kotlin_test")
 
-kt_jvm_library(
+kotlin_library(
     name = "sample-kotlin-library",
     srcs = glob([
         "src/main/java/com/grab/grazel/sample/HelloWorld.kt",
@@ -11,7 +10,7 @@ kt_jvm_library(
     ],
 )
 
-grab_kt_jvm_test(
+kotlin_test(
     name = "sample-kotlin-library-test",
     srcs = glob([
         "src/test/java/com/grab/grazel/sample/TestClass1.kt",

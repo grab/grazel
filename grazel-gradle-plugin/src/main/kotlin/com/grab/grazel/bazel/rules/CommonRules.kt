@@ -61,12 +61,12 @@ fun StatementsBuilder.bazelCommonRepository(
 }
 
 fun StatementsBuilder.pinBazelCommonArtifacts(bazelCommonRepoName: String) {
-    load("@$bazelCommonRepoName//android:maven.bzl", "pin_bazel_common_artifacts")
-    function("pin_bazel_common_artifacts")
+    load("@$bazelCommonRepoName//rules:maven.bzl", "pin_bazel_common_dependencies")
+    function("pin_bazel_common_dependencies")
 }
 
 fun StatementsBuilder.bazelCommonDependencies(bazelCommonRepoName: String) {
-    load("@${bazelCommonRepoName}//android:repositories.bzl", "bazel_common_dependencies")
+    load("@${bazelCommonRepoName}//rules:repositories.bzl", "bazel_common_dependencies")
     function("bazel_common_dependencies")
 }
 
@@ -74,8 +74,8 @@ fun StatementsBuilder.bazelCommonInitialize(
     bazelCommonRepoName: String,
     buildifierVersion: String,
 ) {
-    load("@${bazelCommonRepoName}//android:initialize.bzl", "bazel_common_initialize")
-    function("bazel_common_initialize") {
+    load("@${bazelCommonRepoName}//rules:setup.bzl", "bazel_common_setup")
+    function("bazel_common_setup") {
         "patched_android_tools" `=` "True"
         "buildifier_version" `=` buildifierVersion.quote
     }

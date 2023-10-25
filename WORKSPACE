@@ -27,24 +27,24 @@ load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository")
 
 git_repository(
     name = "grab_bazel_common",
-    commit = "7415aab81c8cfec7ea05bb9bcb2b16d595bbc88e",
+    commit = "421f7a883add946c6a59e356e8e51800c44fb7a1",
     remote = "https://github.com/grab/grab-bazel-common.git",
 )
 
-load("@grab_bazel_common//android:repositories.bzl", "bazel_common_dependencies")
+load("@grab_bazel_common//rules:repositories.bzl", "bazel_common_dependencies")
 
 bazel_common_dependencies()
 
-load("@grab_bazel_common//android:initialize.bzl", "bazel_common_initialize")
+load("@grab_bazel_common//rules:setup.bzl", "bazel_common_setup")
 
-bazel_common_initialize(
-    buildifier_version = "v6.1.2",
+bazel_common_setup(
+    buildifier_version = "6.3.3",
     patched_android_tools = True,
 )
 
-load("@grab_bazel_common//android:maven.bzl", "pin_bazel_common_artifacts")
+load("@grab_bazel_common//rules:maven.bzl", "pin_bazel_common_dependencies")
 
-pin_bazel_common_artifacts()
+pin_bazel_common_dependencies()
 
 DAGGER_TAG = "2.47"
 

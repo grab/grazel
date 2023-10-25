@@ -16,7 +16,6 @@
 
 package com.grab.grazel.bazel.rules
 
-import com.android.builder.model.Version
 import com.grab.grazel.bazel.starlark.Assignee
 import com.grab.grazel.bazel.starlark.BazelDependency
 import com.grab.grazel.bazel.starlark.StatementsBuilder
@@ -26,7 +25,6 @@ import com.grab.grazel.bazel.starlark.glob
 import com.grab.grazel.bazel.starlark.load
 import com.grab.grazel.bazel.starlark.quote
 import com.grab.grazel.bazel.starlark.toObject
-import com.grab.grazel.gradle.dependencies.MavenArtifact
 import com.grab.grazel.migrate.android.BuildConfigData
 import com.grab.grazel.migrate.android.ResValuesData
 
@@ -246,17 +244,6 @@ internal fun StatementsBuilder.androidLibrary(
 internal const val DATABINDING_GROUP = "androidx.databinding"
 internal const val ANDROIDX_GROUP = "androidx.annotation"
 internal const val ANNOTATION_ARTIFACT = "annotation"
-internal val DATABINDING_ARTIFACTS by lazy {
-    val version = Version.ANDROID_GRADLE_PLUGIN_VERSION
-    listOf(
-        MavenArtifact(DATABINDING_GROUP, "databinding-adapters", version),
-        MavenArtifact(DATABINDING_GROUP, "databinding-compiler", version),
-        MavenArtifact(DATABINDING_GROUP, "databinding-common", version),
-        MavenArtifact(DATABINDING_GROUP, "databinding-runtime", version),
-        MavenArtifact(DATABINDING_GROUP, "viewbinding", version),
-        MavenArtifact(ANDROIDX_GROUP, ANNOTATION_ARTIFACT, "1.1.0")
-    )
-}
 
 fun StatementsBuilder.loadCustomRes() {
     load("@$GRAB_BAZEL_COMMON//tools/custom_res:custom_res.bzl", "custom_res")
@@ -274,7 +261,7 @@ fun customRes(
     }
 }
 
-fun StatementsBuilder.grabAndroidLocalTest(
+fun StatementsBuilder.androidUnitTest(
     name: String,
     customPackage: String,
     srcs: List<String> = emptyList(),
@@ -287,9 +274,9 @@ fun StatementsBuilder.grabAndroidLocalTest(
     tags: List<String> = emptyList(),
     resourcesGlob: List<String> = emptyList(),
 ) {
-    load("@$GRAB_BAZEL_COMMON//tools/test:test.bzl", "grab_android_local_test")
+    load("@$GRAB_BAZEL_COMMON//rules:defs.bzl", "android_unit_test")
 
-    rule("grab_android_local_test") {
+    rule("android_unit_test") {
         "name" `=` name.quote
         "custom_package" `=` customPackage.quote
         srcs.notEmpty {
@@ -336,7 +323,7 @@ fun StatementsBuilder.androidInstrumentationBinary(
     testInstrumentationRunner: String? = null,
 ) {
     load(
-        "@$GRAB_BAZEL_COMMON//android/test:instrumentation.bzl",
+        "@$GRAB_BAZEL_COMMON//rules:defs.bzl",
         "android_instrumentation_binary"
     )
     rule("android_instrumentation_binary") {

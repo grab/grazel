@@ -17,7 +17,7 @@
 package com.grab.grazel.migrate.kotlin
 
 import com.grab.grazel.bazel.rules.Visibility
-import com.grab.grazel.bazel.rules.grabKtJvmTest
+import com.grab.grazel.bazel.rules.kotlinTest
 import com.grab.grazel.bazel.starlark.BazelDependency
 import com.grab.grazel.bazel.starlark.StatementsBuilder
 import com.grab.grazel.migrate.BazelBuildTarget
@@ -34,7 +34,7 @@ internal data class UnitTestTarget(
 ) : BazelBuildTarget {
     override fun statements(builder: StatementsBuilder) = builder {
         if (srcs.isNotEmpty()) {
-            grabKtJvmTest(
+            kotlinTest(
                 name = name,
                 srcsGlob = srcs,
                 additionalSrcSets = additionalSrcSets,
