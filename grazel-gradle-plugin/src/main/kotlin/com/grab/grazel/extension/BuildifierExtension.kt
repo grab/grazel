@@ -17,7 +17,7 @@
 package com.grab.grazel.extension
 
 data class BuildifierExtension(
-    var releaseVersion: String = "5.1.0",
+    var releaseVersion: String = "6.3.3",
     var supportedOs: List<String>? = null,
     var supportedArch: List<String>? = null,
     var targetName: String? = null,

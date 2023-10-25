@@ -18,7 +18,7 @@ package com.grab.grazel.migrate.common
 
 import com.grab.grazel.bazel.starlark.BazelDependency
 import com.grab.grazel.bazel.starlark.BazelDependency.ProjectDependency
-import com.grab.grazel.gradle.hasDatabinding
+import com.grab.grazel.bazel.starlark.BazelDependency.StringDependency
 import com.grab.grazel.gradle.isAndroid
 import com.grab.grazel.gradle.isKotlin
 import org.gradle.api.Project
@@ -33,14 +33,10 @@ import org.gradle.api.Project
  */
 internal fun calculateTestAssociate(project: Project, suffix: String = ""): BazelDependency? {
     return when {
-        project.isKotlin && project.hasDatabinding -> {
-            return BazelDependency.StringDependency(
-                """${ProjectDependency(project, suffix)}-kotlin"""
-            )
-        }
-        project.isKotlin && project.isAndroid -> return BazelDependency.StringDependency(
+        project.isKotlin && project.isAndroid -> return StringDependency(
             """${ProjectDependency(project, suffix)}_kt"""
         )
+
         project.isKotlin -> return ProjectDependency(project, suffix)
         else -> null
     }

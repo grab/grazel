@@ -17,7 +17,7 @@
 package com.grab.grazel.migrate.android
 
 import com.grab.grazel.bazel.rules.Visibility
-import com.grab.grazel.bazel.rules.grabAndroidLocalTest
+import com.grab.grazel.bazel.rules.androidUnitTest
 import com.grab.grazel.bazel.starlark.BazelDependency
 import com.grab.grazel.bazel.starlark.StatementsBuilder
 import com.grab.grazel.migrate.BazelBuildTarget
@@ -36,7 +36,7 @@ internal data class AndroidUnitTestTarget(
 ) : BazelBuildTarget {
     override fun statements(builder: StatementsBuilder) = builder {
         if (srcs.isNotEmpty()) {
-            grabAndroidLocalTest(
+            androidUnitTest(
                 name = name,
                 deps = deps,
                 visibility = visibility,

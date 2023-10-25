@@ -33,6 +33,7 @@ build --define=android_dexmerger_tool=d8_dexmerger
 
 build --persistent_multiplex_android_tools
 build --strategy=AndroidAssetMerger=sandboxed
+build --strategy=AndroidLint=sandboxed
 build --strategy=DatabindingStubs=worker
 build --worker_max_instances=Javac=1
 build --worker_max_instances=KotlinCompile=1

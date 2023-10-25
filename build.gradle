@@ -103,12 +103,12 @@ grazel {
         }
         bazelCommon {
             gitRepository {
-                commit = "7415aab81c8cfec7ea05bb9bcb2b16d595bbc88e"
+                commit = "421f7a883add946c6a59e356e8e51800c44fb7a1"
                 remote = "https://github.com/grab/grab-bazel-common.git"
             }
             toolchains {
                 buildifier {
-                    releaseVersion = "v6.1.2"
+                    releaseVersion = "6.3.3"
                     supportedOs = ["linux", "darwin"]
                     supportedArch = ["amd64", "arm64"]
                 }

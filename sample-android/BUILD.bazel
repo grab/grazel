@@ -1,5 +1,4 @@
-load("@grab_bazel_common//android/test:instrumentation.bzl", "android_instrumentation_binary")
-load("@grab_bazel_common//rules:defs.bzl", "android_binary")
+load("@grab_bazel_common//rules:defs.bzl", "android_binary", "android_instrumentation_binary")
 load("@tools_android//tools/crashlytics:defs.bzl", "crashlytics_android_library")
 load("@tools_android//tools/googleservices:defs.bzl", "google_services_xml")
 
