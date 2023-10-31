@@ -174,16 +174,25 @@ internal abstract class ResolveVariantDependenciesTask : DefaultTask() {
             subprojectTaskConfigure: (TaskProvider<ResolveVariantDependenciesTask>) -> Unit
         ) {
             // Register a lifecycle to aggregate all subproject tasks
-            val rootResolveDependenciesTask = rootProject.tasks.register("resolveDependencies") {}
+            val rootResolveDependenciesTask = rootProject.tasks.register("resolveDependencies") {
+                group = GRAZEL_TASK_GROUP
+                description = "Resolve variant tasks dependencies"
+            }
             rootProject.afterEvaluate {
                 val variantBuilder = variantBuilderProvider.get()
                 subprojects.forEach { project ->
+                    val projectResolveDependenciesTask = project.tasks
+                        .register("resolveDependencies") {
+                            group = GRAZEL_TASK_GROUP
+                            description = "Resolve variant tasks dependencies"
+                        }
                     // First pass to create all tasks
                     variantBuilder.onVariants(project) { variant ->
                         processVariant(
                             project,
                             variant,
                             rootResolveDependenciesTask,
+                            projectResolveDependenciesTask
                         )
                     }
                     // Second pass to establish inter-dependencies based on extendsFrom property
@@ -213,6 +222,7 @@ internal abstract class ResolveVariantDependenciesTask : DefaultTask() {
             project: Project,
             variant: Variant<*>,
             rootResolveDependenciesTask: TaskProvider<Task>,
+            projectResolveDependenciesTask: TaskProvider<Task>,
         ) {
             val compileConfigurationComponents = project.provider {
                 variant.compileConfiguration
@@ -257,6 +267,7 @@ internal abstract class ResolveVariantDependenciesTask : DefaultTask() {
                     resolvedDependencies.set(resolvedDependenciesJson)
                 }
             rootResolveDependenciesTask.dependsOn(resolveVariantDependenciesTask)
+            projectResolveDependenciesTask.dependsOn(resolveVariantDependenciesTask)
         }
 
 
@@ -272,8 +283,10 @@ internal abstract class ResolveVariantDependenciesTask : DefaultTask() {
                 val variantTask = this
                 variant.extendsFrom.forEach { extends ->
                     try {
-                        val taskName = extends + "ResolveDependencies"
-                        val extendsTask = tasks.named<ResolveVariantDependenciesTask>(taskName)
+                        val extendsTasksName = extends + "ResolveDependencies"
+                        val extendsTask = tasks.named<ResolveVariantDependenciesTask>(
+                            extendsTasksName
+                        )
                         variantTask.baseDependenciesJsons.add(extendsTask.flatMap { it.resolvedDependencies })
                     } catch (e: Exception) {
                         // TODO(arun) Handle gracefully
