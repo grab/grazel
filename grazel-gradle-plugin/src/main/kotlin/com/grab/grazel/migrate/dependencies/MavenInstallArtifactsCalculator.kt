@@ -18,10 +18,12 @@ package com.grab.grazel.migrate.dependencies
 
 import com.grab.grazel.GrazelExtension
 import com.grab.grazel.bazel.rules.MavenInstallArtifact
-import com.grab.grazel.bazel.rules.MavenInstallArtifact.*
-import com.grab.grazel.bazel.rules.MavenInstallArtifact.Exclusion.*
-import com.grab.grazel.bazel.rules.MavenRepository.*
+import com.grab.grazel.bazel.rules.MavenInstallArtifact.DetailedArtifact
+import com.grab.grazel.bazel.rules.MavenInstallArtifact.Exclusion.SimpleExclusion
+import com.grab.grazel.bazel.rules.MavenInstallArtifact.SimpleArtifact
+import com.grab.grazel.bazel.rules.MavenRepository.DefaultMavenRepository
 import com.grab.grazel.gradle.RepositoryDataSource
+import com.grab.grazel.gradle.dependencies.DefaultJetifierExclusions
 import com.grab.grazel.gradle.dependencies.model.ExcludeRule
 import com.grab.grazel.gradle.dependencies.model.ResolvedDependency
 import com.grab.grazel.gradle.dependencies.model.WorkspaceDependencies
@@ -72,32 +74,34 @@ constructor(
     ): Set<MavenInstallData> = workspaceDependencies.result
         .mapNotNullTo(TreeSet(compareBy(MavenInstallData::name))) { (variantName, artifacts) ->
             val mavenInstallName = variantName.toMavenRepoName()
-            val mavenInstallArtifacts = artifacts
+            val allArtifacts = artifacts + grazelExtension
+                .dependencies
+                .overrideArtifactVersions
+                .get()
+                .map { ResolvedDependency.fromId(it, mavenInstallName) }
+                .asSequence()
+
+            val mavenInstallArtifacts = allArtifacts
                 .mapTo(TreeSet(compareBy(MavenInstallArtifact::id)), ::toMavenInstallArtifact)
                 .also { if (it.isEmpty()) return@mapNotNullTo null }
 
             val repositories = calculateRepositories(artifacts)
 
             // Overrides
-            val overridesFromExtension = mavenInstallExtension.overrideTargetLabels.get().toList()
-            val overridesFromArtifacts = artifacts
-                .mapNotNull(ResolvedDependency::overrideTarget)
-                .map { it.artifactShortId to it.label.toString() }
-                .toList()
-            val overrideTargets = (overridesFromArtifacts + overridesFromExtension)
-                .sortedWith(
-                    compareBy(Pair<String, String>::second).thenBy(Pair<String, String>::first)
-                ).toMap()
+            val overrideTargets = calculateOverrideTargets(artifacts)
 
             val mavenInstallJson = layout
                 .projectDirectory
                 .file("${mavenInstallName}_install.json").asFile
 
-            val jetifierArtifacts = (artifacts
-                .asSequence()
-                .mapNotNull {
-                    if (it.requiresJetifier) it.shortId else it.jetifierSource
-                }.toList() + mavenInstallExtension.jetifyIncludeList.get()).toSortedSet()
+            val jetifierArtifacts = (
+                artifacts
+                    .asSequence()
+                    .mapNotNull { if (it.requiresJetifier) it.shortId else it.jetifierSource }
+                    .toList()
+                    + mavenInstallExtension.jetifyIncludeList.get()
+                    - DefaultJetifierExclusions
+                ).toSortedSet()
 
             MavenInstallData(
                 name = mavenInstallName,
@@ -119,6 +123,21 @@ constructor(
                 isMavenInstallJsonEnabled = mavenInstallExtension.artifactPinning.enabled.get() && mavenInstallJson.exists()
             )
         }
+
+    private fun calculateOverrideTargets(
+        artifacts: List<ResolvedDependency>
+    ): Map<String, String> {
+        val artifactsShortIdMap = artifacts.groupBy { it.shortId }
+        val overridesFromExtension = mavenInstallExtension.overrideTargetLabels.get().toList()
+        val overridesFromArtifacts = artifacts
+            .asSequence()
+            .mapNotNull(ResolvedDependency::overrideTarget)
+            .map { it.artifactShortId to it.label.toString() }
+        return (overridesFromArtifacts + overridesFromExtension)
+            .filter { (shortId, _) -> shortId in artifactsShortIdMap }
+            .sortedBy { it.toString() }
+            .toMap()
+    }
 
     private fun toMavenInstallArtifact(dependency: ResolvedDependency): MavenInstallArtifact {
         val (group, name, version) = dependency.id.split(":")
@@ -165,7 +184,8 @@ constructor(
             .asSequence()
             .map { repositoryDataSource.allRepositoriesByName.getValue(it) }
             .sortedBy {
-                repositoryDataSource.allRepositoriesByName.entries.indexOf(it.name) // Preserve order
+                val name: String = it.name
+                repositoryDataSource.allRepositoriesByName.entries.indexOf<Any>(name) // Preserve order
             }.toSet()
         return gradleRepositories.map { it.toMavenRepository() }.toSet()
     }

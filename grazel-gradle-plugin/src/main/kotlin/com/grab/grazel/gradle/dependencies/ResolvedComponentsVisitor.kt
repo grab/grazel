@@ -51,6 +51,10 @@ internal class ResolvedComponentsVisitor {
     private val Node.isProject get() = toString().startsWith("project :")
     private val Node.repository
         get() = (this as? DefaultResolvedComponentResult)?.repositoryName ?: ""
+    private val Node.shortId get() = toString().substringBeforeLast(":")
+
+    private val ComponentSelector.isLegacySupportLibrary
+        get() = toString().startsWith("com.android.support")
 
     data class VisitResult(
         val component: Node,
@@ -68,13 +72,9 @@ internal class ResolvedComponentsVisitor {
      */
     data class DependencyResult(
         val dependency: Node,
+        val requiresJetifier: Boolean,
         val unjetifiedSource: String?
     )
-
-    private val ComponentSelector.isLegacySupportLibrary
-        get() = toString().startsWith("com.android.support")
-
-    private val Node.shortId get() = toString().substringBeforeLast(":")
 
     /**
      * Visit all external dependency nodes in the graph and map them to [T] using the [transform]
@@ -89,27 +89,25 @@ internal class ResolvedComponentsVisitor {
         logger: (message: String) -> Unit = { },
         transform: (visitResult: VisitResult) -> T?
     ): Set<T> {
-        val transitiveClosureMap = mutableMapOf<Node, MutableSet<DependencyResult>>()
+        val allDependenciesMap = mutableMapOf<Node, MutableSet<DependencyResult>>()
         val visited = mutableSetOf<Node>()
         val result = TreeSet<T>(compareBy { it })
-
-        data class JetifyResult(var enabled: Boolean = false)
 
         /**
          * Do a depth-first visit to collect all transitive dependencies
          *
          * @param node Current component node
-         * @param jetify Holder to store jetifier result across call stack
          * @param level The current traversal depth
          */
-        fun dfs(node: Node, jetify: JetifyResult = JetifyResult(), level: Int = 0) {
+        fun dfs(node: Node, level: Int = 0) {
             if (node in visited) return
             visited.add(node)
             printIndented(level, node.toString(), logger)
 
-            val transitiveDeps = TreeSet<DependencyResult>(compareBy {
-                it.dependency.toString()
-            })
+            // Collection to collect all transitive dependencies
+            val allDependencies = TreeSet<DependencyResult>(
+                compareBy { it.dependency.toString() }
+            )
             node.dependencies
                 .asSequence()
                 .filterIsInstance<ResolvedDependencyResult>()
@@ -117,34 +115,36 @@ internal class ResolvedComponentsVisitor {
                 .filter { (selected, _) -> !selected.isProject }
                 .filter { (dep, _) -> IGNORED_ARTIFACTS.none { dep.toString().startsWith(it) } }
                 .forEach { (directDependency, requested) ->
-                    jetify.enabled = jetify.enabled || requested.isLegacySupportLibrary
-                    dfs(directDependency, jetify, level + 1)
+                    dfs(directDependency, level + 1)
 
-                    transitiveDeps.add(
+                    allDependencies.add(
                         DependencyResult(
                             dependency = directDependency,
+                            requiresJetifier = requested.isLegacySupportLibrary,
                             unjetifiedSource = JetifiedArtifacts[directDependency.shortId]
                         )
                     )
-                    transitiveDeps.addAll(
-                        transitiveClosureMap[directDependency] ?: emptySet()
+                    allDependencies.addAll(
+                        allDependenciesMap[directDependency] ?: emptySet()
                     )
                 }
 
-            transitiveClosureMap[node] = transitiveDeps
+            allDependenciesMap[node] = allDependencies
 
             if (!node.isProject) {
                 transform(
                     VisitResult(
                         component = node,
                         repository = node.repository,
-                        transitiveDeps = transitiveDeps,
-                        requiresJetifier = jetify.enabled
+                        transitiveDeps = allDependencies,
+                        requiresJetifier = allDependencies.any { it.requiresJetifier }
                     )
                 )?.let(result::add)
             }
         }
         dfs(root)
+        allDependenciesMap.clear()
+        visited.clear()
         return result
     }
 

@@ -133,6 +133,12 @@ internal class ComputeWorkspaceDependencies {
             ).apply { put(DEFAULT_VARIANT, defaultFlatClasspath) }
             .mapValues { it.value.values.sortedBy(ResolvedDependency::id) }
 
+        // Clear maps to allow GC
+        defaultFlatClasspath.clear()
+        flattenClasspath.clear()
+        reducedClasspath.clear()
+        defaultClasspath.clear()
+        classPaths.clear()
         return WorkspaceDependencies(result = reducedFinalClasspath)
     }
 

@@ -24,6 +24,7 @@ import com.grab.grazel.gradle.dependencies.BuildGraphType
 import com.grab.grazel.gradle.dependencies.DependenciesDataSource
 import com.grab.grazel.gradle.dependencies.DependencyGraphs
 import com.grab.grazel.gradle.dependencies.GradleDependencyToBazelDependency
+import com.grab.grazel.gradle.hasCompose
 import com.grab.grazel.gradle.variant.AndroidVariantDataSource
 import com.grab.grazel.gradle.variant.MatchedVariant
 import com.grab.grazel.gradle.variant.getMigratableBuildVariants
@@ -102,6 +103,7 @@ internal class DefaultAndroidUnitTestDataExtractor @Inject constructor(
             customPackage = packageName,
             associates = buildList { associate?.let(::add) },
             resources = resources,
+            compose = project.hasCompose
         )
     }
 

@@ -104,7 +104,7 @@ class DefaultDependenciesDataSourceTest {
                             result = buildMap {
                                 put(
                                     "debug", listOf(
-                                        from("com.android.support:appcompat-v7:28.0.0:debug:false"),
+                                        from("com.android.support:appcompat-v7:28.0.0:debug:false:null"),
                                     )
                                 )
                             }

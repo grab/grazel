@@ -33,6 +33,7 @@ internal data class AndroidUnitTestTarget(
     val customPackage: String,
     val resources: List<String> = emptyList(),
     val additionalSrcSets: List<String> = emptyList(),
+    val compose: Boolean,
 ) : BazelBuildTarget {
     override fun statements(builder: StatementsBuilder) = builder {
         if (srcs.isNotEmpty()) {
@@ -45,6 +46,7 @@ internal data class AndroidUnitTestTarget(
                 tags = tags,
                 customPackage = customPackage,
                 resourcesGlob = resources,
+                enableCompose = compose,
                 additionalSrcSets = additionalSrcSets,
             )
         }

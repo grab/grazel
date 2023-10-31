@@ -27,6 +27,7 @@ data class AndroidUnitTestData(
     val customPackage: String,
     val associates: List<BazelDependency>,
     val resources: List<String>,
+    val compose: Boolean,
 )
 
 internal fun AndroidUnitTestData.toUnitTestTarget() = AndroidUnitTestTarget(
@@ -38,4 +39,5 @@ internal fun AndroidUnitTestData.toUnitTestTarget() = AndroidUnitTestTarget(
     customPackage = customPackage,
     resources = resources,
     tags = tags,
+    compose = compose
 )

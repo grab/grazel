@@ -1,13 +1,14 @@
 package com.grab.grazel.util
 
-import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.decodeFromStream
 import org.gradle.api.file.RegularFile
 import java.io.File
+import kotlinx.serialization.json.Json as KotlinJson
 
 // Inject?
-internal val Json = Json {
+internal val Json = KotlinJson {
     explicitNulls = false
+    ignoreUnknownKeys = true
 }
 
 internal inline fun <reified T> fromJson(file: RegularFile): T = fromJson(file.asFile)

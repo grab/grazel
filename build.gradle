@@ -92,8 +92,7 @@ grazel {
     }
     dependencies {
         overrideArtifactVersions.addAll(
-            "androidx.constraintlayout:constraintlayout:2.1.4",
-            "androidx.annotation:annotation:1.7.0-alpha03"
+            //"androidx.constraintlayout:constraintlayout:2.1.4",
         )
     }
     rules {
@@ -103,7 +102,7 @@ grazel {
         }
         bazelCommon {
             gitRepository {
-                commit = "421f7a883add946c6a59e356e8e51800c44fb7a1"
+                commit = "2abb41f0fae9f9c973ca176e9b6b4b73928de2f8"
                 remote = "https://github.com/grab/grab-bazel-common.git"
             }
             toolchains {
@@ -130,7 +129,13 @@ grazel {
             excludeArtifacts.add("androidx.test.espresso:espresso-contrib")
 
             // Force add any artifact for jetifier
-            jetifyIncludeList.add("com.android.support:cardview-v7")
+            jetifyIncludeList.addAll(
+                "com.android.support:cardview-v7",
+                "com.android.support:support-annotations",
+                "com.android.support:support-compat",
+                "com.android.support:support-core-ui",
+                "com.android.support:support-core-utils",
+            )
 
             artifactPinning {
                 enabled.set(true)

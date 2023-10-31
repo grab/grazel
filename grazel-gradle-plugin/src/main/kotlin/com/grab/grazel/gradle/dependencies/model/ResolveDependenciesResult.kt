@@ -53,9 +53,29 @@ internal data class ResolvedDependency(
     override fun compareTo(other: ResolvedDependency) = id.compareTo(other.id)
 
     companion object {
+        private operator fun <E> List<E>.component6() = get(5)
+
+        /**
+         * Construct [ResolvedDependency] from id alone
+         */
+        fun fromId(id: String, repository: String): ResolvedDependency {
+            val (group, name, version) = id.split(":")
+            return ResolvedDependency(
+                id = id,
+                version = version,
+                shortId = "$group:$name",
+                direct = true,
+                dependencies = emptySet(),
+                excludeRules = emptySet(),
+                repository = repository,
+                requiresJetifier = false,
+                jetifierSource = null
+            )
+        }
+
         fun from(dependencyNotation: String): ResolvedDependency {
             val chunks = dependencyNotation.split(":")
-            val (group, name, version, repository, jetifierGroup) = chunks
+            val (group, name, version, repository, requiresJetifier, jetifierGroup) = chunks
             val shortId = "$group:$name"
             val jetifierSource = if (jetifierGroup != "null") "$jetifierGroup:${chunks.last()}"
             else null
@@ -67,17 +87,18 @@ internal data class ResolvedDependency(
                 dependencies = emptySet(),
                 excludeRules = emptySet(),
                 repository = repository,
-                requiresJetifier = false,
+                requiresJetifier = requiresJetifier.toBoolean(),
                 jetifierSource = jetifierSource
             )
         }
 
         fun createDependencyNotation(
             component: ResolvedComponentResult,
+            requiresJetifier: Boolean,
             jetifierSource: String?
         ): String {
             val repository = (component as? DefaultResolvedComponentResult)?.repositoryName ?: ""
-            return "$component:${repository}:$jetifierSource"
+            return "$component:${repository}:$requiresJetifier:$jetifierSource"
         }
     }
 }
@@ -85,9 +106,10 @@ internal data class ResolvedDependency(
 internal fun ResolvedDependency.merge(other: ResolvedDependency): ResolvedDependency {
     return copy(
         direct = direct || other.direct,
-        excludeRules = (excludeRules + other.excludeRules)
-            .toList()
-            .toSortedSet(compareBy(ExcludeRule::toString)),
+        dependencies = (dependencies + other.dependencies).toSortedSet(),
+        jetifierSource = jetifierSource ?: other.jetifierSource,
+        overrideTarget = overrideTarget ?: other.overrideTarget,
+        excludeRules = (excludeRules + other.excludeRules).toSortedSet(compareBy(ExcludeRule::toString)),
     )
 }
 
