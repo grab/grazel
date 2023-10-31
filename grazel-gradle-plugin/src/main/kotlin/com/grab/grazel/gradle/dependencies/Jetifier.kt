@@ -148,3 +148,5 @@ val JetifiedArtifacts = mapOf(
     "androidx.work:work-testing" to "android.arch.work:work-testing",
     "com.google.android.material:material" to "com.android.support:design"
 )
+
+val DefaultJetifierExclusions = setOf("com.android.support:support-v4")

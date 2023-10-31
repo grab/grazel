@@ -38,10 +38,12 @@ import org.gradle.api.tasks.InputFile
 import org.gradle.api.tasks.Internal
 import org.gradle.api.tasks.OutputFile
 import org.gradle.api.tasks.TaskAction
+import org.gradle.api.tasks.UntrackedTask
 import org.gradle.kotlin.dsl.property
 import org.gradle.kotlin.dsl.register
 import javax.inject.Inject
 
+@UntrackedTask(because = "Up to dateness not implemented correctly")
 internal open class GenerateRootBazelScriptsTask
 @Inject
 constructor(
@@ -51,10 +53,6 @@ constructor(
     objectFactory: ObjectFactory,
     layout: ProjectLayout
 ) : DefaultTask() {
-
-    init {
-        outputs.upToDateWhen { false } // This task is supposed to run always until we figure out up-to-date checks
-    }
 
     @get:InputFile
     val workspaceDependencies: RegularFileProperty = project.objects.fileProperty()

@@ -38,10 +38,12 @@ import org.gradle.api.tasks.Internal
 import org.gradle.api.tasks.OutputFile
 import org.gradle.api.tasks.TaskAction
 import org.gradle.api.tasks.TaskProvider
+import org.gradle.api.tasks.UntrackedTask
 import org.gradle.kotlin.dsl.property
 import org.gradle.kotlin.dsl.register
 import javax.inject.Inject
 
+@UntrackedTask(because = "Up to dateness not implemented correctly")
 internal open class GenerateBazelScriptsTask
 @Inject
 constructor(
@@ -59,10 +61,6 @@ constructor(
     @get:Internal
     val dependencyResolutionService: Property<DefaultDependencyResolutionService> =
         project.objects.property()
-
-    init {
-        outputs.upToDateWhen { false } // This task is supposed to run always until we figure out up-to-date checks
-    }
 
     @get:OutputFile
     val buildBazel: RegularFileProperty = objectFactory.fileProperty().apply {

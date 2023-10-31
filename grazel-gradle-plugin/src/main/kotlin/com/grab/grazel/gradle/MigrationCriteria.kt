@@ -63,7 +63,9 @@ internal class MigrationChecker @Inject constructor(
         return when {
             canMigrateInternal(project) -> true
             else -> {
-                dependencyGraphsProvider.get().dependenciesSubGraph(project)
+                dependencyGraphsProvider
+                    .get()
+                    .dependenciesSubGraph(project)
                     .all(::canMigrateInternal)
             }
         }

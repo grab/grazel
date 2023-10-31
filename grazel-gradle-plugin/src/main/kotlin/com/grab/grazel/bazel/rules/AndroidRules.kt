@@ -271,6 +271,7 @@ fun StatementsBuilder.androidUnitTest(
     deps: List<BazelDependency> = emptyList(),
     associates: List<BazelDependency> = emptyList(),
     plugins: List<BazelDependency> = emptyList(),
+    enableCompose: Boolean = false,
     tags: List<String> = emptyList(),
     resourcesGlob: List<String> = emptyList(),
 ) {
@@ -294,6 +295,9 @@ fun StatementsBuilder.androidUnitTest(
         }
         deps.notEmpty {
             "deps" `=` array(deps.map(BazelDependency::toString).map(String::quote))
+        }
+        if (enableCompose) {
+            "enable_compose" `=` enableCompose.toString().capitalize()
         }
         plugins.notEmpty {
             "plugins" `=` array(plugins.map(BazelDependency::toString).map(String::quote))

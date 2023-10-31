@@ -27,7 +27,7 @@ load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository")
 
 git_repository(
     name = "grab_bazel_common",
-    commit = "421f7a883add946c6a59e356e8e51800c44fb7a1",
+    commit = "2abb41f0fae9f9c973ca176e9b6b4b73928de2f8",
     remote = "https://github.com/grab/grab-bazel-common.git",
 )
 
@@ -82,7 +82,7 @@ maven_install(
     name = "android_test_maven",
     artifacts = [
         "androidx.annotation:annotation-experimental:1.1.0",
-        "androidx.annotation:annotation:1.7.0-alpha03",
+        "androidx.annotation:annotation:1.2.0",
         "androidx.concurrent:concurrent-futures:1.1.0",
         "androidx.lifecycle:lifecycle-common:2.3.1",
         "androidx.test.espresso:espresso-core:3.5.1",
@@ -113,9 +113,13 @@ maven_install(
     jetify_include_list = [
         "android.arch.lifecycle:common",
         "com.android.support.test.espresso:espresso-idling-resource",
+        "com.android.support.test:monitor",
         "com.android.support.test:runner",
         "com.android.support:cardview-v7",
         "com.android.support:support-annotations",
+        "com.android.support:support-compat",
+        "com.android.support:support-core-ui",
+        "com.android.support:support-core-utils",
     ],
     maven_install_json = "//:android_test_maven_install.json",
     override_targets = {
@@ -123,9 +127,9 @@ maven_install(
         "androidx.annotation:annotation-experimental": "@maven//:androidx_annotation_annotation_experimental",
         "androidx.lifecycle:lifecycle-common": "@maven//:androidx_lifecycle_lifecycle_common",
         "javax.inject:javax.inject": "@maven//:javax_inject_javax_inject",
-        "org.jetbrains:annotations": "@maven//:org_jetbrains_annotations",
         "org.jetbrains.kotlin:kotlin-stdlib": "@maven//:org_jetbrains_kotlin_kotlin_stdlib",
         "org.jetbrains.kotlin:kotlin-stdlib-common": "@maven//:org_jetbrains_kotlin_kotlin_stdlib_common",
+        "org.jetbrains:annotations": "@maven//:org_jetbrains_annotations",
     },
     repositories = [
         "https://dl.google.com/dl/android/maven2/",
@@ -142,7 +146,7 @@ android_test_maven_pinned_maven_install()
 maven_install(
     name = "debug_maven",
     artifacts = [
-        "androidx.annotation:annotation:1.7.0-alpha03",
+        "androidx.annotation:annotation:1.1.0",
         "androidx.arch.core:core-common:2.1.0",
         "androidx.arch.core:core-runtime:2.1.0",
         "androidx.collection:collection:1.0.0",
@@ -190,6 +194,8 @@ maven_install(
         "com.android.support:recyclerview-v7",
         "com.android.support:support-annotations",
         "com.android.support:support-compat",
+        "com.android.support:support-core-ui",
+        "com.android.support:support-core-utils",
         "com.android.support:versionedparcelable",
     ],
     maven_install_json = "//:debug_maven_install.json",
@@ -208,7 +214,6 @@ maven_install(
         "androidx.lifecycle:lifecycle-viewmodel": "@maven//:androidx_lifecycle_lifecycle_viewmodel",
         "androidx.lifecycle:lifecycle-viewmodel-ktx": "@maven//:androidx_lifecycle_lifecycle_viewmodel_ktx",
         "androidx.versionedparcelable:versionedparcelable": "@maven//:androidx_versionedparcelable_versionedparcelable",
-        "org.jetbrains:annotations": "@maven//:org_jetbrains_annotations",
         "org.jetbrains.kotlin:kotlin-stdlib": "@maven//:org_jetbrains_kotlin_kotlin_stdlib",
         "org.jetbrains.kotlin:kotlin-stdlib-common": "@maven//:org_jetbrains_kotlin_kotlin_stdlib_common",
         "org.jetbrains.kotlin:kotlin-stdlib-jdk7": "@maven//:org_jetbrains_kotlin_kotlin_stdlib_jdk7",
@@ -216,6 +221,7 @@ maven_install(
         "org.jetbrains.kotlinx:atomicfu": "@maven//:org_jetbrains_kotlinx_atomicfu",
         "org.jetbrains.kotlinx:kotlinx-coroutines-android": "@maven//:org_jetbrains_kotlinx_kotlinx_coroutines_android",
         "org.jetbrains.kotlinx:kotlinx-coroutines-core": "@maven//:org_jetbrains_kotlinx_kotlinx_coroutines_core",
+        "org.jetbrains:annotations": "@maven//:org_jetbrains_annotations",
     },
     repositories = [
         "https://dl.google.com/dl/android/maven2/",
@@ -237,7 +243,7 @@ maven_install(
         "androidx.activity:activity:1.7.2",
         "androidx.annotation:annotation-experimental:1.3.0",
         "androidx.annotation:annotation-jvm:1.6.0",
-        "androidx.annotation:annotation:1.7.0-alpha03",
+        "androidx.annotation:annotation:1.6.0",
         "androidx.appcompat:appcompat-resources:1.6.1",
         "androidx.appcompat:appcompat:1.6.1",
         "androidx.arch.core:core-common:2.2.0",
@@ -342,12 +348,13 @@ maven_install(
         "com.android.support:loader",
         "com.android.support:support-annotations",
         "com.android.support:support-compat",
+        "com.android.support:support-core-ui",
+        "com.android.support:support-core-utils",
         "com.android.support:support-fragment",
         "com.android.support:support-vector-drawable",
         "com.android.support:versionedparcelable",
         "com.android.support:viewpager",
         "com.google.ar.sceneform.ux:sceneform-ux",
-        "com.google.dagger:dagger",
     ],
     maven_install_json = "//:maven_install.json",
     override_targets = {
@@ -377,11 +384,12 @@ maven_install(
     jetify = True,
     jetify_include_list = [
         "com.android.support:cardview-v7",
+        "com.android.support:support-annotations",
+        "com.android.support:support-compat",
+        "com.android.support:support-core-ui",
+        "com.android.support:support-core-utils",
     ],
     maven_install_json = "//:test_maven_install.json",
-    override_targets = {
-        "androidx.annotation:annotation": "@maven//:androidx_annotation_annotation_jvm",
-    },
     repositories = [
         "https://repo.maven.apache.org/maven2/",
     ],

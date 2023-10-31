@@ -16,7 +16,6 @@
 
 package com.grab.grazel.tasks.internal
 
-import com.grab.grazel.gradle.dependencies.DefaultDependencyResolutionService
 import com.grab.grazel.gradle.dependencies.ResolvedComponentsVisitor
 import com.grab.grazel.gradle.dependencies.model.ExcludeRule
 import com.grab.grazel.gradle.dependencies.model.ResolveDependenciesResult
@@ -40,7 +39,6 @@ import org.gradle.api.file.RegularFileProperty
 import org.gradle.api.provider.ListProperty
 import org.gradle.api.provider.MapProperty
 import org.gradle.api.provider.Property
-import org.gradle.api.provider.Provider
 import org.gradle.api.tasks.CacheableTask
 import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.InputFiles
@@ -88,7 +86,7 @@ internal abstract class ResolveVariantDependenciesTask : DefaultTask() {
 
     init {
         group = GRAZEL_TASK_GROUP
-        description = "Resolves configurations and serialized them to be read on later"
+        description = "Resolves configurations and serializes them to be read on later"
     }
 
     private fun ListProperty<ResolvedComponentResult>.toResolvedDependencies(
@@ -114,9 +112,10 @@ internal abstract class ResolveVariantDependenciesTask : DefaultTask() {
                         shortId = shortId,
                         direct = isDirect,
                         version = version.version,
-                        dependencies = dependencies.mapTo(TreeSet()) { (dependency, jetifierSource) ->
+                        dependencies = dependencies.mapTo(TreeSet()) { (dependency, requiresJetifier, jetifierSource) ->
                             ResolvedDependency.createDependencyNotation(
                                 dependency,
+                                requiresJetifier,
                                 jetifierSource
                             )
                         },

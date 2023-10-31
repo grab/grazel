@@ -40,6 +40,7 @@ internal fun UnitTestData.toUnitTestTarget(): BazelBuildTarget =
             associates = associates,
             customPackage = "",
             tags = tags,
+            compose = false,
         )
     } else {
         UnitTestTarget(

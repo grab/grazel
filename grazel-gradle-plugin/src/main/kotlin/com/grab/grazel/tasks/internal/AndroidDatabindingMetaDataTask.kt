@@ -24,11 +24,13 @@ import dagger.Lazy
 import org.gradle.api.DefaultTask
 import org.gradle.api.Project
 import org.gradle.api.tasks.TaskAction
+import org.gradle.api.tasks.UntrackedTask
 import org.gradle.kotlin.dsl.register
 import org.jetbrains.kotlin.konan.file.File
 import java.util.zip.ZipFile
 import javax.inject.Inject
 
+@UntrackedTask(because = "Up to dateness not implemented currently")
 internal open class AndroidDatabindingMetaDataTask
 @Inject
 constructor(
