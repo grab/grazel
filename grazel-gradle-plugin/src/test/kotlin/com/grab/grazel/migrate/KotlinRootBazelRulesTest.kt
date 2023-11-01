@@ -16,14 +16,16 @@
 
 package com.grab.grazel.migrate
 
-import com.google.common.truth.Truth
 import com.grab.grazel.GrazelExtension
 import com.grab.grazel.bazel.starlark.asString
 import com.grab.grazel.buildProject
-import com.grab.grazel.di.DaggerGrazelComponent
 import com.grab.grazel.gradle.ANDROID_LIBRARY_PLUGIN
 import com.grab.grazel.gradle.KOTLIN_ANDROID_PLUGIN
+import com.grab.grazel.gradle.dependencies.model.WorkspaceDependencies
 import com.grab.grazel.migrate.internal.RootBazelFileBuilder
+import com.grab.grazel.util.addGrazelExtension
+import com.grab.grazel.util.createGrazelComponent
+import com.grab.grazel.util.truth
 import org.gradle.api.Project
 import org.gradle.kotlin.dsl.configure
 import org.gradle.kotlin.dsl.dependencies
@@ -39,11 +41,14 @@ class KotlinRootBazelRulesTest {
     @Before
     fun setup() {
         rootProject = buildProject("root")
-        rootProject.extensions.add(GrazelExtension.GRAZEL_EXTENSION, GrazelExtension(rootProject))
-        rootBazelFileBuilder = DaggerGrazelComponent
-            .factory()
-            .create(rootProject)
-            .rootBazelFileBuilder().get()
+        val grazelComponent = rootProject.createGrazelComponent()
+        rootProject.addGrazelExtension()
+        rootBazelFileBuilder = grazelComponent.rootBazelFileFactory()
+            .get()
+            .create(
+                gradleProjectInfo = grazelComponent.gradleProjectInfoFactory().get()
+                    .create(WorkspaceDependencies(emptyMap()))
+            )
 
         subProject = buildProject("subproject", rootProject)
         subProject.run {
@@ -63,12 +68,11 @@ class KotlinRootBazelRulesTest {
 
     @Test
     fun `assert by default custom toolchain is not registered in root BUILD`() {
-        rootProject.configure<GrazelExtension> {
-            // Default setup
-        }
         val rootBazelFileContents = rootBazelFileBuilder.build().asString()
-        Truth.assertThat(rootBazelFileContents).doesNotContain("define_kt_toolchain")
-        Truth.assertThat(rootBazelFileContents).doesNotContain("kt_kotlinc_options")
+        rootBazelFileContents.truth {
+            doesNotContain("define_kt_toolchain")
+            doesNotContain("kt_kotlinc_options")
+        }
     }
 
     @Test
@@ -93,7 +97,7 @@ class KotlinRootBazelRulesTest {
             }
         }
         val rootBazelFileContents = rootBazelFileBuilder.build().asString()
-        Truth.assertThat(rootBazelFileContents).apply {
+        rootBazelFileContents.truth {
             // Kotlin compiler options
             contains(
                 """kt_kotlinc_options(

@@ -25,6 +25,7 @@ import com.grab.grazel.bazel.starlark.asString
 import com.grab.grazel.bazel.starlark.statements
 import com.grab.grazel.buildProject
 import com.grab.grazel.gradle.ANDROID_APPLICATION_PLUGIN
+import com.grab.grazel.gradle.dependencies.model.WorkspaceDependencies
 import com.grab.grazel.util.createGrazelComponent
 import com.grab.grazel.util.doEvaluate
 import org.gradle.api.Project
@@ -36,11 +37,15 @@ class AndroidWorkspaceRepositoriesTest : GrazelPluginTest() {
     @Test
     fun `assert android sdk repository is generated based on values from android binary target`() {
         val buildRootProject = buildRootProject()
-        val workspaceBuilder = buildRootProject
-            .createGrazelComponent()
+        val grazelComponent = buildRootProject.createGrazelComponent()
+        val gradleProjectInfo = grazelComponent.gradleProjectInfoFactory().get()
+        val workspaceBuilder = grazelComponent
             .workspaceBuilderFactory()
             .get()
-            .create(listOf(buildRootProject))
+            .create(
+                listOf(buildRootProject),
+                gradleProjectInfo.create(WorkspaceDependencies(emptyMap())),
+            )
 
         val generatedCode = statements {
             workspaceBuilder.addAndroidSdkRepositories(this)
@@ -56,11 +61,15 @@ class AndroidWorkspaceRepositoriesTest : GrazelPluginTest() {
     @Test
     fun `assert android ndk repository is generated with empty path values`() {
         val buildRootProject = buildRootProject()
-        val workspaceBuilder = buildRootProject
-            .createGrazelComponent()
+        val grazelComponent = buildRootProject.createGrazelComponent()
+        val gradleProjectInfo = grazelComponent.gradleProjectInfoFactory().get()
+        val workspaceBuilder = grazelComponent
             .workspaceBuilderFactory()
             .get()
-            .create(listOf(buildRootProject))
+            .create(
+                listOf(buildRootProject),
+                gradleProjectInfo.create(WorkspaceDependencies(emptyMap())),
+            )
         val generatedCode = statements {
             workspaceBuilder.addAndroidSdkRepositories(this)
         }.asString()
@@ -77,11 +86,15 @@ class AndroidWorkspaceRepositoriesTest : GrazelPluginTest() {
         val buildRootProject = buildRootProject {
             android.ndkApiLevel = ndkApiLevel
         }
-        val workspaceBuilder = buildRootProject
-            .createGrazelComponent()
+        val grazelComponent = buildRootProject.createGrazelComponent()
+        val gradleProjectInfo = grazelComponent.gradleProjectInfoFactory().get()
+        val workspaceBuilder = grazelComponent
             .workspaceBuilderFactory()
             .get()
-            .create(listOf(buildRootProject))
+            .create(
+                listOf(buildRootProject),
+                gradleProjectInfo.create(WorkspaceDependencies(emptyMap())),
+            )
         val generatedCode = statements {
             workspaceBuilder.addAndroidSdkRepositories(this)
         }.asString()

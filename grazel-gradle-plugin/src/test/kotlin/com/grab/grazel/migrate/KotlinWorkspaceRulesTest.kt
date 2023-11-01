@@ -16,14 +16,16 @@
 
 package com.grab.grazel.migrate
 
-import com.google.common.truth.Truth
 import com.grab.grazel.GrazelExtension
 import com.grab.grazel.bazel.starlark.asString
 import com.grab.grazel.buildProject
-import com.grab.grazel.di.DaggerGrazelComponent
+import com.grab.grazel.di.GrazelComponent
 import com.grab.grazel.gradle.ANDROID_LIBRARY_PLUGIN
 import com.grab.grazel.gradle.KOTLIN_ANDROID_PLUGIN
+import com.grab.grazel.gradle.dependencies.model.WorkspaceDependencies
 import com.grab.grazel.migrate.internal.WorkspaceBuilder
+import com.grab.grazel.util.addGrazelExtension
+import com.grab.grazel.util.createGrazelComponent
 import com.grab.grazel.util.truth
 import org.gradle.api.Project
 import org.gradle.kotlin.dsl.configure
@@ -35,13 +37,14 @@ class KotlinWorkspaceRulesTest {
     private lateinit var rootProject: Project
     private lateinit var subProject: Project
 
+    private lateinit var grazelComponent: GrazelComponent
     private lateinit var workspaceFactory: WorkspaceBuilder.Factory
 
     @Before
     fun setup() {
         rootProject = buildProject("root")
-        rootProject.extensions.add(GrazelExtension.GRAZEL_EXTENSION, GrazelExtension(rootProject))
-        val grazelComponent = DaggerGrazelComponent.factory().create(rootProject)
+        grazelComponent = rootProject.createGrazelComponent()
+        rootProject.addGrazelExtension()
         workspaceFactory = grazelComponent.workspaceBuilderFactory().get()
 
         subProject = buildProject("subproject", rootProject)
@@ -67,11 +70,7 @@ class KotlinWorkspaceRulesTest {
                 sha = kotlinSha
             }
         }
-        val workspaceStatements = workspaceFactory
-            .create(listOf(rootProject, subProject))
-            .build()
-            .asString()
-        workspaceStatements.truth().apply {
+        generateWorkspace().truth {
             // Default http archive
             contains(
                 """http_archive(
@@ -110,9 +109,7 @@ class KotlinWorkspaceRulesTest {
                 }
             }
         }
-        val workspaceStatements =
-            workspaceFactory.create(listOf(rootProject, subProject)).build().asString()
-        Truth.assertThat(workspaceStatements).apply {
+        generateWorkspace().truth {
             contains(
                 """git_repository(
   name = "io_bazel_rules_kotlin",
@@ -134,11 +131,17 @@ class KotlinWorkspaceRulesTest {
                 }
             }
         }
-        val workspaceStatements =
-            workspaceFactory.create(listOf(rootProject, subProject)).build().asString()
-        Truth.assertThat(workspaceStatements).apply {
+        generateWorkspace().truth {
             contains("""register_toolchains("//:kotlin_toolchain")""")
             doesNotContain("kt_register_toolchains()")
         }
     }
+
+    fun generateWorkspace() = workspaceFactory
+        .create(
+            projectsToMigrate = listOf(rootProject, subProject),
+            gradleProjectInfo = grazelComponent.gradleProjectInfoFactory().get()
+                .create(WorkspaceDependencies(emptyMap()))
+        ).build()
+        .asString()
 }
