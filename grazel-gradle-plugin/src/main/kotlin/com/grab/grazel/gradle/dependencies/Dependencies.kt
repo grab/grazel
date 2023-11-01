@@ -47,7 +47,7 @@ import org.gradle.api.artifacts.ResolvedDependency
 import org.gradle.api.artifacts.component.ModuleComponentIdentifier
 import org.gradle.api.internal.artifacts.DefaultResolvedDependency
 import java.io.File
-import java.util.TreeSet
+import java.util.*
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -77,14 +77,6 @@ internal data class ArtifactsConfig(
 )
 
 internal interface DependenciesDataSource {
-    /**
-     * Return the project's maven dependencies before the resolution strategy and any other custom substitution by Gradle
-     */
-    fun mavenDependencies(
-        project: Project,
-        vararg buildGraphTypes: BuildGraphType
-    ): Sequence<Dependency>
-
     /**
      * Return the project's project (module) dependencies before the resolution strategy and any other custom
      * substitutions by Gradle
@@ -169,31 +161,6 @@ internal class DefaultDependenciesDataSource @Inject constructor(
             .flatMap { (listOf(it) + it.children).asSequence() }
             .filter { it.moduleGroup !in IGNORED_ARTIFACT_GROUPS }
             .any { MavenArtifact(it.moduleGroup, it.moduleName).isIgnored }
-    }
-
-    override fun mavenDependencies(
-        project: Project,
-        vararg buildGraphTypes: BuildGraphType
-    ): Sequence<Dependency> {
-        return declaredDependencies(
-            project,
-            *buildGraphTypes.map { it.configurationScope }.toTypedArray()
-        ).filter { (configuration, _) ->
-            if (buildGraphTypes.isEmpty()) {
-                true
-            } else {
-                configurationDataSource.isThisConfigurationBelongsToThisVariants(
-                    project,
-                    *buildGraphTypes.map { it.variant }.toTypedArray(),
-                    configuration = configuration
-                )
-            }
-        }.map { it.second }
-            .filter { it.group != null && it.group !in IGNORED_ARTIFACT_GROUPS }
-            .filter {
-                val artifact = MavenArtifact(it.group, it.name)
-                !artifact.isExcluded && !artifact.isIgnored
-            }.filter { it !is ProjectDependency }
     }
 
     override fun projectDependencies(
