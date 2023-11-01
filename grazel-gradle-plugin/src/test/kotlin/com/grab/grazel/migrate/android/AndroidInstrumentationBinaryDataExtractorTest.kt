@@ -18,7 +18,6 @@ package com.grab.grazel.migrate.android
 
 import com.android.build.gradle.AppExtension
 import com.google.common.truth.Truth
-import com.grab.grazel.GrazelExtension
 import com.grab.grazel.GrazelPluginTest
 import com.grab.grazel.buildProject
 import com.grab.grazel.gradle.ANDROID_APPLICATION_PLUGIN
@@ -103,14 +102,6 @@ class AndroidInstrumentationBinaryDataExtractorTest : GrazelPluginTest() {
         val rootProjectDir = temporaryFolder.newFolder("project")
         val rootProject = buildProject("root", projectDir = rootProjectDir)
         rootProject.addGrazelExtension()
-        rootProject.extensions.configure<GrazelExtension> {
-            rules {
-                test {
-                    enableTestMigration = true
-                }
-            }
-        }
-
         androidBinaryDir = File(rootProjectDir, ANDROID_BINARY_MODULE_NAME).apply {
             mkdirs()
         }

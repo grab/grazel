@@ -54,7 +54,6 @@ data class RulesExtension(
     val googleServices: GoogleServicesExtension = GoogleServicesExtension(),
     val mavenInstall: MavenInstallExtension = MavenInstallExtension(objects),
     val kotlin: KotlinExtension = KotlinExtension(),
-    val test: TestExtension = TestExtension(),
     val dagger: DaggerExtension = DaggerExtension()
 ) {
     fun bazelCommon(block: BazelCommonExtension.() -> Unit) {
@@ -100,15 +99,6 @@ data class RulesExtension(
 
     fun dagger(block: DaggerExtension.() -> Unit) {
         block(dagger)
-    }
-
-    fun test(closure: Closure<*>) {
-        closure.delegate = test
-        closure.call()
-    }
-
-    fun test(block: TestExtension.() -> Unit) {
-        block(test)
     }
 }
 

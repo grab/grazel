@@ -16,7 +16,6 @@
 
 package com.grab.grazel.migrate.target
 
-import com.grab.grazel.extension.TestExtension
 import com.grab.grazel.gradle.ConfigurationScope
 import com.grab.grazel.gradle.isAndroid
 import com.grab.grazel.gradle.isAndroidApplication
@@ -28,6 +27,7 @@ import com.grab.grazel.migrate.android.AndroidLibraryDataExtractor
 import com.grab.grazel.migrate.android.AndroidLibraryTarget
 import com.grab.grazel.migrate.android.AndroidManifestParser
 import com.grab.grazel.migrate.android.AndroidUnitTestDataExtractor
+import com.grab.grazel.migrate.android.AndroidUnitTestTarget
 import com.grab.grazel.migrate.android.DefaultAndroidLibraryDataExtractor
 import com.grab.grazel.migrate.android.DefaultAndroidManifestParser
 import com.grab.grazel.migrate.android.DefaultAndroidUnitTestDataExtractor
@@ -61,7 +61,6 @@ internal class AndroidLibraryTargetBuilder
 constructor(
     private val androidLibraryDataExtractor: AndroidLibraryDataExtractor,
     private val unitTestDataExtractor: AndroidUnitTestDataExtractor,
-    private val testExtension: TestExtension,
     private val variantMatcher: VariantMatcher,
 ) : TargetBuilder {
 
@@ -74,15 +73,13 @@ constructor(
             } + unitTestsTargets(project)
     }
 
-    private fun unitTestsTargets(project: Project) = when {
-        testExtension.enableTestMigration -> variantMatcher.matchedVariants(
+    private fun unitTestsTargets(project: Project): List<AndroidUnitTestTarget> {
+        return variantMatcher.matchedVariants(
             project,
             ConfigurationScope.TEST
         ).map { matchedVariant ->
             unitTestDataExtractor.extract(project, matchedVariant).toUnitTestTarget()
         }
-
-        else -> emptyList()
     }
 
     override fun canHandle(project: Project): Boolean = with(project) {

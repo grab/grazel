@@ -96,10 +96,6 @@ grazel {
         )
     }
     rules {
-        test {
-            enableTestMigration = true
-            detectSourceSets = true
-        }
         bazelCommon {
             gitRepository {
                 commit = "2abb41f0fae9f9c973ca176e9b6b4b73928de2f8"

@@ -59,10 +59,3 @@ data class RobolectricExtension(
         repository = DEFAULT_ROBOLECTRIC_ARCHIVE.apply(builder)
     }
 }
-
-data class TestExtension(
-    var enableTestMigration: Boolean = false,
-    var enabledTransitiveReduction: Boolean = false,
-    var detectSourceSets: Boolean = false,
-)
-
