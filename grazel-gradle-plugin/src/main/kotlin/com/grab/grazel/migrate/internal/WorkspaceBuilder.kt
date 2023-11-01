@@ -39,6 +39,7 @@ import com.grab.grazel.bazel.starlark.StatementsBuilder
 import com.grab.grazel.bazel.starlark.add
 import com.grab.grazel.bazel.starlark.statements
 import com.grab.grazel.di.qualifiers.RootProject
+import com.grab.grazel.gradle.DefaultGradleProjectInfo
 import com.grab.grazel.gradle.GradleProjectInfo
 import com.grab.grazel.gradle.dependencies.model.WorkspaceDependencies
 import com.grab.grazel.gradle.isAndroidApplication
@@ -59,20 +60,23 @@ internal class WorkspaceBuilder(
     private val mavenInstallArtifactsCalculator: MavenInstallArtifactsCalculator
 ) : BazelFileBuilder {
     @Singleton
-    class Factory @Inject constructor(
+    class Factory
+    @Inject
+    constructor(
         @param:RootProject private val rootProject: Project,
         private val grazelExtension: GrazelExtension,
-        private val gradleProjectInfo: GradleProjectInfo,
-        private val mavenInstallArtifactsCalculator: MavenInstallArtifactsCalculator
+        private val gradleProjectInfoFactory: DefaultGradleProjectInfo.Factory,
+        private val mavenInstallArtifactsCalculator: MavenInstallArtifactsCalculator,
     ) {
         fun create(
             projectsToMigrate: List<Project>,
+            gradleProjectInfo: GradleProjectInfo,
             workspaceDependencies: WorkspaceDependencies = WorkspaceDependencies(emptyMap()),
         ) = WorkspaceBuilder(
             rootProject,
             projectsToMigrate,
             grazelExtension,
-            gradleProjectInfo,
+            gradleProjectInfoFactory.create(workspaceDependencies),
             workspaceDependencies,
             mavenInstallArtifactsCalculator
         )

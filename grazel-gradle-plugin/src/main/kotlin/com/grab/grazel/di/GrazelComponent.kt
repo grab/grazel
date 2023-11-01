@@ -75,7 +75,8 @@ internal interface GrazelComponent {
     fun migrationChecker(): Lazy<MigrationChecker>
     fun projectBazelFileBuilderFactory(): Lazy<ProjectBazelFileBuilder.Factory>
     fun workspaceBuilderFactory(): Lazy<WorkspaceBuilder.Factory>
-    fun rootBazelFileBuilder(): Lazy<RootBazelFileBuilder>
+    fun rootBazelFileFactory(): Lazy<RootBazelFileBuilder.Factory>
+    fun gradleProjectInfoFactory(): Lazy<DefaultGradleProjectInfo.Factory>
     fun artifactPinner(): Lazy<ArtifactPinner>
     fun dependenciesDataSource(): Lazy<DependenciesDataSource>
     fun mavenInstallArtifactsCalculator(): Lazy<MavenInstallArtifactsCalculator>
