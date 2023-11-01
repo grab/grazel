@@ -129,10 +129,6 @@ internal interface GrazelModule {
 
         @Provides
         @Singleton
-        fun GrazelExtension.provideTestExtension() = rules.test
-
-        @Provides
-        @Singleton
         fun GrazelExtension.provideMavenInstallExtension() = rules.mavenInstall
 
         // Added to satisfy dagger expectation of having all bindings available when @Inject is used

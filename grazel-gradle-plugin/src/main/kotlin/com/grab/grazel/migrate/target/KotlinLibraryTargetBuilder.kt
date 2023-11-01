@@ -16,7 +16,6 @@
 
 package com.grab.grazel.migrate.target
 
-import com.grab.grazel.extension.TestExtension
 import com.grab.grazel.gradle.isAndroid
 import com.grab.grazel.gradle.isKotlin
 import com.grab.grazel.migrate.BazelTarget
@@ -55,18 +54,15 @@ internal class KotlinLibraryTargetBuilder
 constructor(
     private val projectDataExtractor: KotlinProjectDataExtractor,
     private val kotlinUnitTestDataExtractor: KotlinUnitTestDataExtractor,
-    private val testExtension: TestExtension
 ) : TargetBuilder {
 
     override fun build(project: Project): List<BazelTarget> {
         val projectData = projectDataExtractor.extract(project)
         val ktLibTargets = projectData.toKotlinLibraryTarget()
-        return if (testExtension.enableTestMigration) {
-            val unitTestsTargets = kotlinUnitTestDataExtractor
-                .extract(project)
-                .toUnitTestTarget()
-            listOf(ktLibTargets, unitTestsTargets)
-        } else listOf(ktLibTargets)
+        val unitTestsTargets = kotlinUnitTestDataExtractor
+            .extract(project)
+            .toUnitTestTarget()
+        return listOf(ktLibTargets, unitTestsTargets)
     }
 
     override fun canHandle(project: Project): Boolean = with(project) {

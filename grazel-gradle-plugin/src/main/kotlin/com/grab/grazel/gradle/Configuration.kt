@@ -33,15 +33,11 @@ enum class ConfigurationScope(val scopeName: String) {
 }
 
 internal fun GrazelExtension.configurationScopes(): Array<ConfigurationScope> {
-    return if (rules.test.enableTestMigration) {
-        arrayOf(
-            ConfigurationScope.BUILD,
-            ConfigurationScope.TEST,
-            ConfigurationScope.ANDROID_TEST,
-        )
-    } else {
-        arrayOf(ConfigurationScope.BUILD)
-    }
+    return arrayOf(
+        ConfigurationScope.BUILD,
+        ConfigurationScope.TEST,
+        ConfigurationScope.ANDROID_TEST,
+    )
 }
 
 internal interface ConfigurationDataSource {

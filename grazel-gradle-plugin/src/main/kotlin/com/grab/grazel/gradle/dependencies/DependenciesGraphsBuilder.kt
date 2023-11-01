@@ -20,7 +20,6 @@ import com.google.common.graph.ImmutableValueGraph
 import com.google.common.graph.MutableValueGraph
 import com.google.common.graph.ValueGraphBuilder
 import com.grab.grazel.di.qualifiers.RootProject
-import com.grab.grazel.extension.TestExtension
 import com.grab.grazel.gradle.ConfigurationDataSource
 import com.grab.grazel.gradle.ConfigurationScope
 import com.grab.grazel.gradle.isAndroid
@@ -31,12 +30,13 @@ import org.gradle.api.Project
 import org.gradle.api.artifacts.Configuration
 import javax.inject.Inject
 
-internal class DependenciesGraphsBuilder @Inject constructor(
+internal class DependenciesGraphsBuilder
+@Inject
+constructor(
     @param:RootProject private val rootProject: Project,
     private val dependenciesDataSource: DependenciesDataSource,
     private val configurationDataSource: ConfigurationDataSource,
     private val androidVariantDataSource: AndroidVariantDataSource,
-    private val testExtension: TestExtension,
 ) {
 
     fun build(): DependencyGraphs {
@@ -44,10 +44,8 @@ internal class DependenciesGraphsBuilder @Inject constructor(
             mutableMapOf()
         buildList {
             add(ConfigurationScope.BUILD)
-            if (testExtension.enableTestMigration) {
-                add(ConfigurationScope.TEST)
-                add(ConfigurationScope.ANDROID_TEST)
-            }
+            add(ConfigurationScope.TEST)
+            add(ConfigurationScope.ANDROID_TEST)
         }.forEach { configurationScope ->
             rootProject.subprojects.forEach { sourceProject ->
                 addProjectAsNodeToAllOfItsVariantsGraphs(
