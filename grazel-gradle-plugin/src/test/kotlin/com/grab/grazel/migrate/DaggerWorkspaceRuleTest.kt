@@ -17,15 +17,19 @@
 package com.grab.grazel.migrate
 
 import com.android.build.gradle.LibraryExtension
-import com.google.common.truth.Truth
 import com.grab.grazel.GrazelExtension
 import com.grab.grazel.bazel.starlark.asString
 import com.grab.grazel.buildProject
-import com.grab.grazel.di.DaggerGrazelComponent
+import com.grab.grazel.di.GrazelComponent
 import com.grab.grazel.gradle.ANDROID_LIBRARY_PLUGIN
 import com.grab.grazel.gradle.KOTLIN_ANDROID_PLUGIN
+import com.grab.grazel.gradle.dependencies.model.ResolvedDependency
+import com.grab.grazel.gradle.dependencies.model.WorkspaceDependencies
 import com.grab.grazel.migrate.internal.WorkspaceBuilder
+import com.grab.grazel.util.addGrazelExtension
+import com.grab.grazel.util.createGrazelComponent
 import com.grab.grazel.util.doEvaluate
+import com.grab.grazel.util.truth
 import org.gradle.api.Project
 import org.gradle.kotlin.dsl.configure
 import org.gradle.kotlin.dsl.dependencies
@@ -37,13 +41,14 @@ class DaggerWorkspaceRuleTest {
     private lateinit var rootProject: Project
     private lateinit var subProject: Project
 
+    private lateinit var grazelComponent: GrazelComponent
     private lateinit var workspaceFactory: WorkspaceBuilder.Factory
 
     @Before
     fun setup() {
         rootProject = buildProject("root")
-        rootProject.extensions.add(GrazelExtension.GRAZEL_EXTENSION, GrazelExtension(rootProject))
-        val grazelComponent = DaggerGrazelComponent.factory().create(rootProject)
+        grazelComponent = rootProject.createGrazelComponent()
+        rootProject.addGrazelExtension()
         workspaceFactory = grazelComponent.workspaceBuilderFactory().get()
 
         subProject = buildProject("subproject", rootProject)
@@ -69,6 +74,9 @@ class DaggerWorkspaceRuleTest {
         // Given
         val daggerTag = "2.37"
         val daggerSha = "0f001ed38ed4ebc6f5c501c20bd35a68daf01c8dbd7541b33b7591a84fcc7b1c"
+        subProject.repositories {
+            mavenCentral()
+        }
         subProject.dependencies {
             add("implementation", "com.google.dagger:dagger:$daggerTag")
         }
@@ -84,13 +92,27 @@ class DaggerWorkspaceRuleTest {
         }
 
         // When
-        val workspaceStatements = workspaceFactory
-            .create(listOf(rootProject, subProject))
-            .build()
-            .asString()
+        val workspaceDependencies = WorkspaceDependencies(
+            mapOf(
+                "default" to listOf(
+                    ResolvedDependency.fromId(
+                        "com.google.dagger:dagger:$daggerTag",
+                        "MavenRepo"
+                    )
+                )
+            )
+        )
+        val workspaceStatements = workspaceFactory.create(
+            projectsToMigrate = listOf(rootProject, subProject),
+            gradleProjectInfo = grazelComponent
+                .gradleProjectInfoFactory()
+                .get()
+                .create(workspaceDependencies),
+            workspaceDependencies = workspaceDependencies
+        ).build().asString()
 
         // Then
-        Truth.assertThat(workspaceStatements.removeSpaces()).apply {
+        workspaceStatements.removeSpaces().truth {
             contains(
                 """load("@dagger//:workspace_defs.bzl", "DAGGER_ARTIFACTS", "DAGGER_REPOSITORIES")""".removeSpaces()
             )

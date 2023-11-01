@@ -27,11 +27,22 @@ import com.grab.grazel.bazel.starlark.statements
 import com.grab.grazel.gradle.GradleProjectInfo
 import com.grab.grazel.migrate.BazelFileBuilder
 import javax.inject.Inject
+import javax.inject.Singleton
 
-internal class RootBazelFileBuilder @Inject constructor(
+internal class RootBazelFileBuilder(
     private val gradleProjectInfo: GradleProjectInfo,
-    private val grazelExtension: GrazelExtension
+    private val grazelExtension: GrazelExtension,
 ) : BazelFileBuilder {
+
+    @Singleton
+    class Factory
+    @Inject
+    constructor(private val grazelExtension: GrazelExtension) {
+        fun create(gradleProjectInfo: GradleProjectInfo) = RootBazelFileBuilder(
+            gradleProjectInfo,
+            grazelExtension
+        )
+    }
 
     override fun build(): List<Statement> = statements {
         setupKotlin()

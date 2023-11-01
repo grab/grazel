@@ -17,10 +17,9 @@
 package com.grab.grazel.gradle
 
 import com.grab.grazel.GrazelExtension
-import com.grab.grazel.bazel.rules.DAGGER_GROUP
 import com.grab.grazel.di.qualifiers.RootProject
-import com.grab.grazel.gradle.dependencies.DependenciesDataSource
 import com.grab.grazel.gradle.dependencies.DependencyGraphs
+import com.grab.grazel.gradle.dependencies.model.WorkspaceDependencies
 import dagger.Lazy
 import org.gradle.api.Project
 import javax.inject.Inject
@@ -33,35 +32,44 @@ interface GradleProjectInfo {
     val rootProject: Project
     val grazelExtension: GrazelExtension
     val hasDagger: Boolean
-    val hasDatabinding: Boolean
     val hasAndroidExtension: Boolean
     val hasGooglePlayServices: Boolean
 }
 
-@Singleton
-@Suppress("UnstableApiUsage")
-internal class DefaultGradleProjectInfo @Inject constructor(
-    @param:RootProject
+internal class DefaultGradleProjectInfo(
     override val rootProject: Project,
     override val grazelExtension: GrazelExtension,
     private val dependencyGraphsProvider: Lazy<DependencyGraphs>,
-    internal val dependenciesDataSource: DependenciesDataSource
+    private val workspaceDependencies: WorkspaceDependencies
 ) : GradleProjectInfo {
+
+    @Singleton
+    class Factory
+    @Inject constructor(
+        @param:RootProject
+        private val rootProject: Project,
+        private val grazelExtension: GrazelExtension,
+        private val dependencyGraphsProvider: Lazy<DependencyGraphs>,
+    ) {
+        fun create(
+            workspaceDependencies: WorkspaceDependencies
+        ): GradleProjectInfo = DefaultGradleProjectInfo(
+            rootProject,
+            grazelExtension,
+            dependencyGraphsProvider,
+            workspaceDependencies
+        )
+    }
 
     private val projectGraph: DependencyGraphs get() = dependencyGraphsProvider.get()
 
     override val hasDagger: Boolean by lazy {
-        projectGraph.nodes().any { project ->
-            dependenciesDataSource
-                .mavenDependencies(project)
-                .any { dependency -> dependency.group == DAGGER_GROUP }
-        }
-    }
-
-    override val hasDatabinding: Boolean by lazy {
-        projectGraph
-            .nodes()
-            .any { it.hasDatabinding }
+        workspaceDependencies
+            .result
+            .values
+            .parallelStream()
+            .flatMap { it.stream() }
+            .anyMatch { it.shortId.contains("com.google.dagger") }
     }
 
     override val hasAndroidExtension: Boolean by lazy {

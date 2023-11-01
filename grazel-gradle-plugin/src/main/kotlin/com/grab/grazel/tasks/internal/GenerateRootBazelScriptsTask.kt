@@ -19,6 +19,8 @@ package com.grab.grazel.tasks.internal
 import com.grab.grazel.bazel.starlark.writeToFile
 import com.grab.grazel.di.GrazelComponent
 import com.grab.grazel.di.qualifiers.RootProject
+import com.grab.grazel.gradle.DefaultGradleProjectInfo
+import com.grab.grazel.gradle.GradleProjectInfo
 import com.grab.grazel.gradle.MigrationChecker
 import com.grab.grazel.gradle.dependencies.DefaultDependencyResolutionService
 import com.grab.grazel.migrate.internal.RootBazelFileBuilder
@@ -49,7 +51,8 @@ internal open class GenerateRootBazelScriptsTask
 constructor(
     private val migrationChecker: Lazy<MigrationChecker>,
     private val workspaceBuilderFactory: Lazy<WorkspaceBuilder.Factory>,
-    private val rootBazelBuilder: Lazy<RootBazelFileBuilder>,
+    private val rootBazelBuilderFactory: Lazy<RootBazelFileBuilder.Factory>,
+    private val gradleProjectInfoFactory: Lazy<DefaultGradleProjectInfo.Factory>,
     objectFactory: ObjectFactory,
     layout: ProjectLayout
 ) : DefaultTask() {
@@ -77,18 +80,23 @@ constructor(
         val projectsToMigrate = rootProject
             .subprojects
             .filter { migrationChecker.get().canMigrate(it) }
+        val workspaceDependencies = dependencyResolutionService
+            .get()
+            .get(workspaceDependencies.get().asFile)
 
-        workspaceBuilderFactory.get()
-            .create(
-                projectsToMigrate = projectsToMigrate,
-                workspaceDependencies = dependencyResolutionService
-                    .get()
-                    .get(workspaceDependencies.get().asFile)
-            ).build()
-            .writeToFile(workspaceFile.get().asFile)
+        val gradleProjectInfo: GradleProjectInfo = gradleProjectInfoFactory.get()
+            .create(workspaceDependencies)
+
+        workspaceBuilderFactory.get().create(
+            projectsToMigrate = projectsToMigrate,
+            gradleProjectInfo = gradleProjectInfo,
+            workspaceDependencies = workspaceDependencies
+        ).build().writeToFile(workspaceFile.get().asFile)
         logger.quiet("Generated WORKSPACE".ansiGreen)
 
-        val rootBuildBazelContents = rootBazelBuilder.get().build()
+        val rootBuildBazelContents = rootBazelBuilderFactory.get()
+            .create(gradleProjectInfo)
+            .build()
         if (rootBuildBazelContents.isNotEmpty()) {
             rootBuildBazelContents.writeToFile(buildBazel.get().asFile)
             logger.quiet("Generated $BUILD_BAZEL".ansiGreen)
@@ -106,7 +114,8 @@ constructor(
             TASK_NAME,
             grazelComponent.migrationChecker(),
             grazelComponent.workspaceBuilderFactory(),
-            grazelComponent.rootBazelFileBuilder(),
+            grazelComponent.rootBazelFileFactory(),
+            grazelComponent.gradleProjectInfoFactory(),
             rootProject.objects,
             rootProject.layout
         ).apply {
