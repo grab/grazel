@@ -49,8 +49,8 @@ import org.gradle.api.tasks.TaskAction
 import org.gradle.api.tasks.TaskProvider
 import org.gradle.kotlin.dsl.named
 import org.gradle.kotlin.dsl.register
-import java.io.File
-import java.util.*
+import java.util.TreeMap
+import java.util.TreeSet
 import kotlin.streams.asSequence
 
 @CacheableTask
@@ -250,10 +250,9 @@ internal abstract class ResolveVariantDependenciesTask : DefaultTask() {
 
             }
 
-            val resolvedDependenciesJson = File(
-                project.buildDir,
-                "grazel/${variant.name}/dependencies.json"
-            )
+            val resolvedDependenciesJson = project.layout
+                .buildDirectory
+                .file("grazel/${variant.name}/dependencies.json")
 
             val resolveVariantDependenciesTask = project.tasks
                 .register<ResolveVariantDependenciesTask>(

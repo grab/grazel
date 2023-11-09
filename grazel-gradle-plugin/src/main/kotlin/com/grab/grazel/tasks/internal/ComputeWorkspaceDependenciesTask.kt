@@ -34,7 +34,6 @@ import org.gradle.api.tasks.PathSensitivity
 import org.gradle.api.tasks.TaskAction
 import org.gradle.api.tasks.TaskProvider
 import org.gradle.kotlin.dsl.register
-import java.io.File
 
 @CacheableTask
 abstract class ComputeWorkspaceDependenciesTask : DefaultTask() {
@@ -65,10 +64,7 @@ abstract class ComputeWorkspaceDependenciesTask : DefaultTask() {
             val computeTask = rootProject.tasks
                 .register<ComputeWorkspaceDependenciesTask>(TASK_NAME) {
                     workspaceDependencies.set(
-                        File(
-                            rootProject.buildDir,
-                            "grazel/mergedDependencies.json"
-                        )
+                        rootProject.layout.buildDirectory.file("grazel/mergedDependencies.json")
                     )
                 }
             ResolveVariantDependenciesTask.register(
