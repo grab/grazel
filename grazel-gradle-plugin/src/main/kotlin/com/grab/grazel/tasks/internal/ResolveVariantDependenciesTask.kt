@@ -224,30 +224,29 @@ internal abstract class ResolveVariantDependenciesTask : DefaultTask() {
             rootResolveDependenciesTask: TaskProvider<Task>,
             projectResolveDependenciesTask: TaskProvider<Task>,
         ) {
-            val compileConfigurationComponents = project.provider {
-                variant.compileConfiguration
-                    .map { it.incoming.resolutionResult.root }
-                    .toList()
+            val compileConfigurationProvider = project.provider { variant.compileConfiguration }
+
+            val compileConfigurationComponents = compileConfigurationProvider.map { configs ->
+                configs.map { it.incoming.resolutionResult.root }.toList()
             }
 
-            val directDependenciesCompile = project.provider {
-                variant.compileConfiguration
+            val externalDependencies = compileConfigurationProvider.map { configs ->
+                configs
                     .asSequence()
                     .flatMap { it.incoming.dependencies }
                     .filterIsInstance<ExternalDependency>()
-                    .associateTo(TreeMap()) { "${it.group}:${it.name}" to "${it.group}:${it.name}" }
             }
 
-            val excludeRulesCompile = project.provider {
-                variant.compileConfiguration
-                    .asSequence()
-                    .flatMap { it.incoming.dependencies }
-                    .filterIsInstance<ExternalDependency>()
+            val directDependenciesCompile = externalDependencies.map { deps ->
+                deps.associateTo(TreeMap()) { "${it.group}:${it.name}" to "${it.group}:${it.name}" }
+            }
+
+            val excludeRulesCompile = externalDependencies.map { deps ->
+                deps
                     .groupByTo(TreeMap()) { dep -> "${dep.group}:${dep.name}" }
                     .mapValues { (_, artifacts) ->
                         artifacts.flatMap { it.extractExcludeRules() }.toSet()
                     }.filterValues { it.isNotEmpty() }
-
             }
 
             val resolvedDependenciesJson = project.layout
