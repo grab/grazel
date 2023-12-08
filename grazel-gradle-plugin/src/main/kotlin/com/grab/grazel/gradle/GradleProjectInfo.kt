@@ -79,8 +79,8 @@ internal class DefaultGradleProjectInfo(
     }
 
     override val hasGooglePlayServices: Boolean by lazy {
-        projectGraph
-            .nodes()
+        rootProject
+            .subprojects
             .any { project -> project.hasCrashlytics || project.hasGooglePlayServicesPlugin }
     }
 }
