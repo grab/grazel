@@ -18,6 +18,7 @@ package com.grab.grazel.bazel.rules
 
 import com.grab.grazel.bazel.starlark.Assignee
 import com.grab.grazel.bazel.starlark.BazelDependency
+import com.grab.grazel.bazel.starlark.LintConfigs
 import com.grab.grazel.bazel.starlark.StatementsBuilder
 import com.grab.grazel.bazel.starlark.array
 import com.grab.grazel.bazel.starlark.asString
@@ -137,7 +138,8 @@ internal fun StatementsBuilder.androidBinary(
     deps: List<BazelDependency>,
     assetsGlob: List<String> = emptyList(),
     assetsDir: String? = null,
-    buildConfigData: BuildConfigData
+    buildConfigData: BuildConfigData,
+    lintConfigs: LintConfigs? = null,
 ) {
     load("@$GRAB_BAZEL_COMMON//rules:defs.bzl", "android_binary")
     rule("android_binary") {
@@ -180,6 +182,10 @@ internal fun StatementsBuilder.androidBinary(
         if (!resValuesData.isEmpty) {
             "res_values" `=` resValuesData.merged.toObject(quoteKeys = true, quoteValues = true)
         }
+
+        if (lintConfigs?.merged?.isNotEmpty() == true) {
+            "lint_options" `=` lintConfigs.merged.toObject(quoteValues = true)
+        }
     }
 }
 
@@ -198,7 +204,8 @@ internal fun StatementsBuilder.androidLibrary(
     assetsGlob: List<String> = emptyList(),
     assetsDir: String? = null,
     resValuesData: ResValuesData,
-    buildConfigData: BuildConfigData
+    buildConfigData: BuildConfigData,
+    lintConfigs: LintConfigs?
 ) {
     load("@$GRAB_BAZEL_COMMON//rules:defs.bzl", "android_library")
     rule("android_library") {
@@ -237,6 +244,10 @@ internal fun StatementsBuilder.androidLibrary(
         }
         if (!resValuesData.isEmpty) {
             "res_values" `=` resValuesData.merged.toObject(quoteKeys = true, quoteValues = true)
+        }
+
+        if (lintConfigs?.merged?.isNotEmpty() == true) {
+            "lint_options" `=` lintConfigs.merged.toObject(quoteValues = true)
         }
     }
 }
