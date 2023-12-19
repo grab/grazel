@@ -123,7 +123,8 @@ constructor(
                     resValuesData = androidLibraryData.resValuesData,
                     assetsGlob = androidLibraryData.assets,
                     assetsDir = androidLibraryData.assetsDir,
-                    buildConfigData = androidLibraryData.buildConfigData
+                    buildConfigData = androidLibraryData.buildConfigData,
+                    lintConfigs = androidLibraryData.lintConfigs,
                 )
             ) + intermediateTargets
         }

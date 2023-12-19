@@ -18,9 +18,11 @@ package com.grab.grazel.migrate.android
 
 import com.android.build.gradle.BaseExtension
 import com.android.build.gradle.api.AndroidSourceSet
+import com.android.build.gradle.internal.dsl.LintOptions
 import com.grab.grazel.GrazelExtension
 import com.grab.grazel.bazel.rules.Multidex
 import com.grab.grazel.bazel.starlark.BazelDependency
+import com.grab.grazel.bazel.starlark.LintConfigs
 import com.grab.grazel.gradle.ConfigurationScope.BUILD
 import com.grab.grazel.gradle.dependencies.BuildGraphType
 import com.grab.grazel.gradle.dependencies.DependenciesDataSource
@@ -126,6 +128,8 @@ constructor(
             deps.calculateDirectDependencyTags(name)
         } else emptyList()
 
+        val lintConfigs = lintConfigs(extension.lintOptions, project)
+
         return AndroidLibraryData(
             name = name + matchedVariant.nameSuffix,
             srcs = srcs,
@@ -140,7 +144,8 @@ constructor(
             buildConfigData = extension.extractBuildConfig(this, matchedVariant.variant),
             resValuesData = extension.extractResValue(matchedVariant),
             deps = deps.sorted(),
-            tags = tags.sorted()
+            tags = tags.sorted(),
+            lintConfigs = lintConfigs
         )
     }
 
@@ -156,6 +161,23 @@ constructor(
                 .first { assetItem.contains(it) }
         } else null
     }
+}
+
+private fun lintConfigs(
+    lintOptions: LintOptions,
+    project: Project
+): LintConfigs {
+    val configPath = if (lintOptions.lintConfig?.absolutePath != null) {
+        project.relativePath(lintOptions.lintConfig!!.absolutePath)
+    } else {
+        null
+    }
+    val baseLinePath = if (lintOptions.baselineFile?.absolutePath != null) {
+        project.relativePath(lintOptions.baselineFile!!.absolutePath)
+    } else {
+        null
+    }
+    return LintConfigs(configPath, baseLinePath)
 }
 
 internal interface AndroidBinaryDataExtractor : AndroidExtractor<AndroidBinaryData>
@@ -195,6 +217,8 @@ constructor(
                 .toList()
         ) ?: ""
 
+        val lintConfigs = lintConfigs(extension.lintOptions, project)
+
         return AndroidBinaryData(
             name = project.name,
             manifestValues = manifestValues,
@@ -207,7 +231,8 @@ constructor(
             packageName = matchedVariant.variant.applicationId,
             hasCrashlytics = project.hasCrashlytics,
             compose = project.hasCompose,
-            databinding = project.hasDatabinding
+            databinding = project.hasDatabinding,
+            lintConfigs = lintConfigs,
         )
     }
 }
