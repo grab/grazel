@@ -184,7 +184,7 @@ internal fun StatementsBuilder.androidBinary(
         }
 
         if (lintConfigs?.merged?.isNotEmpty() == true) {
-            "lint_options" `=` lintConfigs.merged.toObject(quoteValues = true)
+            "lint_options" `=` lintConfigs.merged.toObject(quoteKeys = true, quoteValues = true)
         }
     }
 }
