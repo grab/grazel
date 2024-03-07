@@ -39,11 +39,24 @@ jobs:
         runs-on: ubuntu-latest
         steps:
             -   uses: actions/checkout@v3
+            -   name: Query targets
+                run: |
+                    bazelisk query 'kind(kt_jvm_test, ...)' --output label > /tmp/targets
             -   name: Bazel test
                 uses: ./.github/actions/bazel
                 with:
-                    bazel-command: test //...
+                    bazel-command: test --target_pattern_file=/tmp/targets
                     cache-key: bazel-test
+
+    bazel-android-lint:
+        runs-on: ubuntu-latest
+        steps:
+            -   uses: actions/checkout@v3
+            -   name: Bazel Android Lint
+                uses: ./.github/actions/bazel
+                with:
+                    bazel-command: test //sample-android:sample-android-flavor1-free-debug.lint_test
+                    cache-key: bazel-lint
 
     grazel-build:
         runs-on: ubuntu-latest
