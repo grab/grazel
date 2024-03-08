@@ -32,8 +32,9 @@ build --define=android_standalone_dexing_tool=d8_compat_dx
 build --define=android_dexmerger_tool=d8_dexmerger
 
 build --persistent_multiplex_android_tools
-build --strategy=AndroidAssetMerger=sandboxed
-build --strategy=AndroidLint=sandboxed
+build --strategy=AndroidAssetMerger=worker
+build --strategy=AndroidLint=worker
+build --strategy=AndroidLintAnalyze=worker
 build --strategy=DatabindingStubs=worker
 build --worker_max_instances=Javac=1
 build --worker_max_instances=KotlinCompile=1
@@ -46,6 +47,8 @@ build --worker_max_instances=RClassGenerator=1
 build --worker_max_instances=AndroidAapt2=1
 build --worker_max_instances=AndroidAssetMerger=1
 build --worker_max_instances=AndroidResourceMerger=1
+build --worker_max_instances=AndroidLint=1
+build --worker_max_instances=AndroidLintAnalyze=1
 build --worker_max_instances=AndroidCompiledResourceMerger=1
 build --worker_max_instances=Aapt2Optimize=1
 build --worker_max_instances=DatabindingStubs=1

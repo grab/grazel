@@ -34,6 +34,9 @@ android_binary(
     enable_compose = True,
     enable_data_binding = True,
     incremental_dexing = True,
+    lint_options = {
+        "baseline": "lint_baseline.xml",
+    },
     manifest = "src/debug/AndroidManifest.xml",
     manifest_values = {
         "versionCode": "1",
@@ -121,6 +124,9 @@ android_binary(
     enable_compose = True,
     enable_data_binding = True,
     incremental_dexing = True,
+    lint_options = {
+        "baseline": "lint_baseline.xml",
+    },
     manifest = "src/debug/AndroidManifest.xml",
     manifest_values = {
         "versionCode": "1",
@@ -208,6 +214,9 @@ android_binary(
     enable_compose = True,
     enable_data_binding = True,
     incremental_dexing = True,
+    lint_options = {
+        "baseline": "lint_baseline.xml",
+    },
     manifest = "src/debug/AndroidManifest.xml",
     manifest_values = {
         "versionCode": "1",
@@ -295,6 +304,9 @@ android_binary(
     enable_compose = True,
     enable_data_binding = True,
     incremental_dexing = True,
+    lint_options = {
+        "baseline": "lint_baseline.xml",
+    },
     manifest = "src/debug/AndroidManifest.xml",
     manifest_values = {
         "versionCode": "1",

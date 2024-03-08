@@ -127,6 +127,10 @@ android {
     buildFeatures {
         compose = true
     }
+
+    lint {
+        baseline = file("lint_baseline.xml")
+    }
 }
 
 dependencies {
