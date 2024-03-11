@@ -16,8 +16,13 @@
 
 package com.grab.grazel.bazel.starlark
 
-data class LintConfigs(val configPath: String? = null, val baselinePath: String? = null) {
+data class LintConfigs(
+    val enabled: Boolean = true,
+    val configPath: String? = null,
+    val baselinePath: String? = null
+) {
     val merged: Map<String, String> = mapOf(
+        "enabled" to enabled.toString(),
         "config" to configPath,
         "baseline" to baselinePath
     ).filterValues { it != null } as Map<String, String>

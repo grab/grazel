@@ -9,6 +9,9 @@ android_library(
     custom_package = "com.grab.grazel.android.flavor",
     enable_compose = True,
     enable_data_binding = True,
+    lint_options = {
+        "enabled": "true",
+    },
     manifest = "src/main/AndroidManifest.xml",
     res_values = {
         "strings": {
@@ -44,6 +47,9 @@ android_library(
     custom_package = "com.grab.grazel.android.flavor",
     enable_compose = True,
     enable_data_binding = True,
+    lint_options = {
+        "enabled": "true",
+    },
     manifest = "src/main/AndroidManifest.xml",
     res_values = {
         "strings": {
@@ -79,6 +85,9 @@ android_library(
     custom_package = "com.grab.grazel.android.flavor",
     enable_compose = True,
     enable_data_binding = True,
+    lint_options = {
+        "enabled": "true",
+    },
     manifest = "src/main/AndroidManifest.xml",
     res_values = {
         "strings": {
@@ -114,6 +123,9 @@ android_library(
     custom_package = "com.grab.grazel.android.flavor",
     enable_compose = True,
     enable_data_binding = True,
+    lint_options = {
+        "enabled": "true",
+    },
     manifest = "src/main/AndroidManifest.xml",
     res_values = {
         "strings": {

@@ -7,6 +7,9 @@ android_library(
     ]),
     custom_package = "com.grab.grazel.android.sample.lib",
     enable_data_binding = True,
+    lint_options = {
+        "enabled": "true",
+    },
     manifest = "src/main/AndroidManifest.xml",
     visibility = [
         "//visibility:public",
@@ -23,6 +26,9 @@ android_library(
     ]),
     custom_package = "com.grab.grazel.android.sample.lib",
     enable_data_binding = True,
+    lint_options = {
+        "enabled": "true",
+    },
     manifest = "src/main/AndroidManifest.xml",
     visibility = [
         "//visibility:public",
@@ -39,6 +45,9 @@ android_library(
     ]),
     custom_package = "com.grab.grazel.android.sample.lib",
     enable_data_binding = True,
+    lint_options = {
+        "enabled": "true",
+    },
     manifest = "src/main/AndroidManifest.xml",
     visibility = [
         "//visibility:public",
@@ -55,6 +64,9 @@ android_library(
     ]),
     custom_package = "com.grab.grazel.android.sample.lib",
     enable_data_binding = True,
+    lint_options = {
+        "enabled": "true",
+    },
     manifest = "src/main/AndroidManifest.xml",
     visibility = [
         "//visibility:public",
