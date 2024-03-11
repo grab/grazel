@@ -13,12 +13,56 @@
     </issue>
 
     <issue
+        id="MissingVersion"
+        message="Should set `android:versionCode` to specify the application version"
+        errorLine1="&lt;manifest xmlns:android=&quot;http://schemas.android.com/apk/res/android&quot;"
+        errorLine2=" ~~~~~~~~">
+        <location
+            file="../../../../../sample-android/src/debug/AndroidManifest.xml"
+            line="17"
+            column="2"/>
+    </issue>
+
+    <issue
+        id="MissingVersion"
+        message="Should set `android:versionName` to specify the application version"
+        errorLine1="&lt;manifest xmlns:android=&quot;http://schemas.android.com/apk/res/android&quot;"
+        errorLine2=" ~~~~~~~~">
+        <location
+            file="../../../../../sample-android/src/debug/AndroidManifest.xml"
+            line="17"
+            column="2"/>
+    </issue>
+
+    <issue
         id="Typos"
         message="Did you mean &quot;flavor!&quot; instead of &quot;flavor1&quot;?">
         <location
             file="../sample-android-flavor-flavor1-free-debug_res/out/res/values/values.xml"
             line="5"
             column="37"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.string.type` appears to be unused"
+        errorLine1="        &lt;string name=&quot;type&quot;>debug&lt;/string>"
+        errorLine2="                ~~~~~~~~~~~">
+        <location
+            file="../../../../android-armeabi-v7a-fastbuild/bin/sample-android/src/main/res/values/gen_strings_sample-android-flavor1-free-debug_res_value.xml"
+            line="4"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.string.flavor` appears to be unused"
+        errorLine1="        &lt;string name=&quot;flavor&quot;>free&lt;/string>"
+        errorLine2="                ~~~~~~~~~~~~~">
+        <location
+            file="../../../../android-armeabi-v7a-fastbuild/bin/sample-android/src/main/res/values/gen_strings_sample-android-flavor1-free-debug_res_value.xml"
+            line="5"
+            column="17"/>
     </issue>
 
     <issue

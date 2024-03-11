@@ -167,6 +167,9 @@ private fun lintConfigs(
     lintOptions: LintOptions,
     project: Project
 ): LintConfigs {
+    // enable lint for all targets by default
+    val enabled = true
+
     val configPath = if (lintOptions.lintConfig?.absolutePath != null) {
         project.relativePath(lintOptions.lintConfig!!.absolutePath)
     } else {
@@ -177,7 +180,7 @@ private fun lintConfigs(
     } else {
         null
     }
-    return LintConfigs(configPath, baseLinePath)
+    return LintConfigs(enabled, configPath, baseLinePath)
 }
 
 internal interface AndroidBinaryDataExtractor : AndroidExtractor<AndroidBinaryData>
