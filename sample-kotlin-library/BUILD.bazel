@@ -5,6 +5,10 @@ kotlin_library(
     srcs = glob([
         "src/main/java/com/grab/grazel/sample/HelloWorld.kt",
     ]),
+    lint_options = {
+        "enabled": "true",
+        "baseline": "lint-baseline-kotlin.xml",
+    },
     visibility = [
         "//visibility:public",
     ],

@@ -17,11 +17,13 @@
 package com.grab.grazel.migrate.kotlin
 
 import com.grab.grazel.bazel.starlark.BazelDependency
+import com.grab.grazel.bazel.starlark.LintConfigs
 
 data class KotlinProjectData(
     val name: String,
     val srcs: List<String>,
     val res: List<String>,
     val deps: List<BazelDependency>,
-    val tags: List<String>
+    val tags: List<String>,
+    val lintConfigs: LintConfigs
 )

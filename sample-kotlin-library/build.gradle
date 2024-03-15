@@ -16,6 +16,11 @@
 
 apply plugin: "java-library"
 apply plugin: "kotlin"
+apply plugin: "com.android.lint"
+
+lint {
+    baseline file("lint-baseline-kotlin.xml")
+}
 
 dependencies {
     implementation fileTree(dir: "libs", include: ["*.jar"])

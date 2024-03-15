@@ -16,11 +16,14 @@
 
 package com.grab.grazel.migrate.kotlin
 
+import com.android.builder.model.LintOptions
 import com.grab.grazel.GrazelExtension
 import com.grab.grazel.bazel.rules.KOTLIN_PARCELIZE_TARGET
 import com.grab.grazel.bazel.starlark.BazelDependency
+import com.grab.grazel.bazel.starlark.LintConfigs
 import com.grab.grazel.extension.KotlinExtension
 import com.grab.grazel.gradle.ConfigurationScope
+import com.grab.grazel.gradle.LINT_PLUGIN_ID
 import com.grab.grazel.gradle.dependencies.BuildGraphType
 import com.grab.grazel.gradle.dependencies.DependenciesDataSource
 import com.grab.grazel.gradle.dependencies.DependencyGraphs
@@ -86,8 +89,30 @@ constructor(
             srcs = srcs,
             res = resources,
             deps = deps,
-            tags = tags
+            tags = tags,
+            lintConfigs = lintConfigs(project),
         )
+    }
+
+    fun lintConfigs(project: Project): LintConfigs {
+        return if (project.plugins.hasPlugin(LINT_PLUGIN_ID)) {
+            val lint = project.the<LintOptions>()
+            LintConfigs(
+                enabled = true,
+                configPath = lint.lintConfig?.let {
+                    project.relativePath(it)
+                },
+                baselinePath = lint.baselineFile?.let {
+                    project.relativePath(it)
+                },
+            )
+        } else {
+            LintConfigs(
+                enabled = true, // enable Lint by default even when its not enabled in gradle
+                configPath = null,
+                baselinePath = null,
+            )
+        }
     }
 
     private fun Project.kotlinSources(
