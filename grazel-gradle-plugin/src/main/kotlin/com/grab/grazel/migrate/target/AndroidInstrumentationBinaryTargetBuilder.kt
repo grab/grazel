@@ -17,7 +17,6 @@
 package com.grab.grazel.migrate.target
 
 import com.grab.grazel.gradle.ConfigurationScope.ANDROID_TEST
-import com.grab.grazel.gradle.hasCompose
 import com.grab.grazel.gradle.hasTestInstrumentationRunner
 import com.grab.grazel.gradle.isAndroidApplication
 import com.grab.grazel.gradle.variant.VariantMatcher
@@ -62,16 +61,14 @@ internal class AndroidInstrumentationBinaryTargetBuilder
                 matchedVariant = matchedVariant,
                 sourceSetType = SourceSetType.JAVA_KOTLIN,
             )
-            add(androidInstrumentationBinData.toTarget(project))
+            add(androidInstrumentationBinData.toTarget())
         }
     }
 
     override fun canHandle(project: Project): Boolean = project.isAndroidApplication
         && project.hasTestInstrumentationRunner
 
-    private fun AndroidInstrumentationBinaryData.toTarget(
-        project: Project
-    ) = AndroidInstrumentationBinaryTarget(
+    private fun AndroidInstrumentationBinaryData.toTarget() = AndroidInstrumentationBinaryTarget(
         name = name,
         associates = associates,
         customPackage = customPackage,
@@ -85,7 +82,7 @@ internal class AndroidInstrumentationBinaryTargetBuilder
         resourceFiles = resourceFiles,
         srcs = srcs,
         testInstrumentationRunner = testInstrumentationRunner,
-        compose = project.hasCompose,
+        compose = compose,
     )
 }
 
