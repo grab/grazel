@@ -417,6 +417,7 @@ android_instrumentation_binary(
     ],
     custom_package = "com.grab.grazel.android.sample",
     debug_key = "//buildsystem:debug-keystore",
+    enable_compose = True,
     instruments = ":sample-android-flavor1-free-debug",
     manifest_values = {
         "versionCode": "1",
@@ -472,6 +473,7 @@ android_instrumentation_binary(
     ],
     custom_package = "com.grab.grazel.android.sample",
     debug_key = "//buildsystem:debug-keystore",
+    enable_compose = True,
     instruments = ":sample-android-flavor1-paid-debug",
     manifest_values = {
         "versionCode": "1",
@@ -527,6 +529,7 @@ android_instrumentation_binary(
     ],
     custom_package = "com.grab.grazel.android.sample",
     debug_key = "//buildsystem:debug-keystore",
+    enable_compose = True,
     instruments = ":sample-android-flavor2-free-debug",
     manifest_values = {
         "versionCode": "1",
@@ -582,6 +585,7 @@ android_instrumentation_binary(
     ],
     custom_package = "com.grab.grazel.android.sample",
     debug_key = "//buildsystem:debug-keystore",
+    enable_compose = True,
     instruments = ":sample-android-flavor2-paid-debug",
     manifest_values = {
         "versionCode": "1",

@@ -39,6 +39,7 @@ internal data class AndroidInstrumentationBinaryTarget(
     val resourceStripPrefix: String? = null,
     val resourceFiles: List<String>,
     val testInstrumentationRunner: String? = null,
+    val compose: Boolean,
 ) : BazelBuildTarget {
 
     override fun statements(builder: StatementsBuilder) = builder {
@@ -56,6 +57,7 @@ internal data class AndroidInstrumentationBinaryTarget(
             resourceStripPrefix = resourceStripPrefix,
             resourceFiles = buildResFiles(resourceFiles),
             testInstrumentationRunner = testInstrumentationRunner,
+            enableCompose = compose,
         )
     }
 }
