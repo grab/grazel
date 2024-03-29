@@ -336,6 +336,7 @@ fun StatementsBuilder.androidInstrumentationBinary(
     resourceStripPrefix: String? = null,
     resourceFiles: List<Assignee> = emptyList(),
     testInstrumentationRunner: String? = null,
+    enableCompose: Boolean = false,
 ) {
     load(
         "@$GRAB_BAZEL_COMMON//rules:defs.bzl",
@@ -376,6 +377,10 @@ fun StatementsBuilder.androidInstrumentationBinary(
         }
         testInstrumentationRunner?.let {
             "test_instrumentation_runner" `=` it.quote
+        }
+
+        if (enableCompose) {
+            "enable_compose" `=` enableCompose.toString().capitalize()
         }
     }
 }

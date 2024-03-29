@@ -82,6 +82,7 @@ internal class AndroidInstrumentationBinaryTargetBuilder
         resourceFiles = resourceFiles,
         srcs = srcs,
         testInstrumentationRunner = testInstrumentationRunner,
+        compose = compose,
     )
 }
 
