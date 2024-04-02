@@ -163,24 +163,6 @@ constructor(
     }
 }
 
-fun lintConfigs(
-    lintOptions: LintOptions,
-    project: Project
-): LintConfigs {
-    // enable lint for all targets by default
-    val enabled = true
-
-    return LintConfigs(
-        enabled,
-        lintOptions.lintConfig?.let {
-            project.relativePath(it)
-        },
-        lintOptions.baselineFile?.let {
-            project.relativePath(it)
-        }
-    )
-}
-
 internal interface AndroidBinaryDataExtractor : AndroidExtractor<AndroidBinaryData>
 
 @Singleton

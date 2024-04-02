@@ -19,6 +19,7 @@ package com.grab.grazel.android.sample
 import android.content.Intent
 import android.os.Bundle
 import android.os.Parcelable
+import android.util.Log
 import android.widget.Button
 import android.widget.TextView
 import androidx.activity.ComponentActivity
@@ -50,7 +51,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
-
+        Log.d("tag","MainActivity OnCreate")
         HelloWorld()
         verifyBuildConfigFields()
 

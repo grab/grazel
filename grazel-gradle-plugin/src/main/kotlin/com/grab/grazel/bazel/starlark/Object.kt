@@ -70,3 +70,32 @@ fun Map<*, *>.toObject(
         }
     }
 }
+
+/**
+ * Converts the given `List<Field>` to bazel dict.
+ */
+fun List<StarlarkMapEntry>.toObject(): ObjectStatement = obj {
+    forEach { field ->
+        val key = if (field.quoteKeys) {
+            field.name.quote
+        } else {
+            field.name
+        }
+        val value = if (field.quoteValues) {
+            field.value!!.quote
+        } else {
+            field.value!!
+        }
+        key `=` value
+    }
+}
+
+/**
+ * field model for starlark
+ */
+data class StarlarkMapEntry(
+    val name: String,
+    val value: String?,
+    val quoteKeys: Boolean,
+    val quoteValues: Boolean,
+)

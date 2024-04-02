@@ -135,10 +135,14 @@ android {
 
     lint {
         baseline = file("lint_baseline.xml")
+        lintConfig = file("lint.xml")
     }
 }
 
 dependencies {
+    lintChecks project(":lint:custom-lint-rules")
+
+    implementation libs.timber
     implementation fileTree(dir: "libs", include: ["*.jar"])
     implementation project(path: ":sample-kotlin-library")
     implementation project(path: ":sample-android-library")
