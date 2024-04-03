@@ -220,6 +220,11 @@ constructor(
 
         val lintConfigs = lintConfigs(extension.lintOptions, project)
 
+        val resourceConfiguration = matchedVariant.variant
+            .productFlavors
+            .flatMap { it.resourceConfigurations }
+            .toSortedSet()
+
         return AndroidBinaryData(
             name = project.name,
             manifestValues = manifestValues,
@@ -234,6 +239,7 @@ constructor(
             compose = project.hasCompose,
             databinding = project.hasDatabinding,
             lintConfigs = lintConfigs,
+            resConfigs = resourceConfiguration
         )
     }
 }

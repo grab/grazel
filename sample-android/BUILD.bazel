@@ -56,6 +56,19 @@ android_binary(
             "flavor": "free",
         },
     },
+    resource_configuration_filters = [
+        "en",
+        "id",
+        "in",
+        "ja",
+        "km",
+        "ko",
+        "ms",
+        "my",
+        "th",
+        "vi",
+        "zh",
+    ],
     resources = {
         "src/main/res-debug": {
         },
@@ -147,6 +160,19 @@ android_binary(
             "flavor": "paid",
         },
     },
+    resource_configuration_filters = [
+        "en",
+        "id",
+        "in",
+        "ja",
+        "km",
+        "ko",
+        "ms",
+        "my",
+        "th",
+        "vi",
+        "zh",
+    ],
     resources = {
         "src/main/res-debug": {
         },
@@ -238,6 +264,19 @@ android_binary(
             "flavor": "free",
         },
     },
+    resource_configuration_filters = [
+        "en",
+        "id",
+        "in",
+        "ja",
+        "km",
+        "ko",
+        "ms",
+        "my",
+        "th",
+        "vi",
+        "zh",
+    ],
     resources = {
         "src/main/res-debug": {
         },
@@ -329,6 +368,19 @@ android_binary(
             "flavor": "paid",
         },
     },
+    resource_configuration_filters = [
+        "en",
+        "id",
+        "in",
+        "ja",
+        "km",
+        "ko",
+        "ms",
+        "my",
+        "th",
+        "vi",
+        "zh",
+    ],
     resources = {
         "src/main/res-debug": {
         },

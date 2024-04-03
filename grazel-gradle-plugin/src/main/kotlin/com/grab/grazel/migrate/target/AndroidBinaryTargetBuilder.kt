@@ -119,6 +119,7 @@ constructor(
                     packageName = androidBinaryData.packageName,
                     manifest = androidLibraryData.manifestFile,
                     manifestValues = androidBinaryData.manifestValues,
+                    resConfigFilters = androidBinaryData.resConfigs,
                     resDirs = androidLibraryData.res,
                     resValuesData = androidLibraryData.resValuesData,
                     assetsGlob = androidLibraryData.assets,

@@ -66,19 +66,24 @@ android {
     }
 
     flavorDimensions "service", "release"
+    def resConfigs = ["en", "id", "in", "km", "ms", "my", "th", "vi", "zh", "ko", "ja"]
     productFlavors {
         flavor1 {
+            resourceConfigurations += resConfigs
             dimension "service"
         }
         flavor2 {
+            resourceConfigurations += resConfigs
             dimension "service"
         }
         free {
+            resourceConfigurations += resConfigs
             dimension "release"
             applicationIdSuffix ".free"
             resValue("string", "flavor", "free")
         }
         paid {
+            resourceConfigurations += resConfigs
             dimension "release"
             applicationIdSuffix ".paid"
             resValue("string", "flavor", "paid")
