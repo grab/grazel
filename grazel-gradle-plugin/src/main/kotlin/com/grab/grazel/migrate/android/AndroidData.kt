@@ -80,6 +80,7 @@ internal data class AndroidBinaryData(
     override val tags: List<String> = emptyList(),
     override val lintConfigs: LintConfigs,
     val manifestValues: Map<String, String?> = emptyMap(),
+    val resConfigs: Set<String> = emptySet(),
     val multidex: Multidex = Multidex.Native,
     val dexShards: Int? = null,
     val incrementalDexing: Boolean = true,

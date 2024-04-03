@@ -1,5 +1,23 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<issues format="6" by="lint 8.4.0-alpha09" type="baseline" client="" dependencies="true" name="" variant="all" version="8.4.0-alpha09">
+<issues format="6" by="lint 8.5.0-alpha02" type="baseline" client="" dependencies="true" name="" variant="all" version="8.5.0-alpha02">
+
+    <issue
+        id="LocaleFolder"
+        message="The locale folder &quot;`id`&quot; should be called &quot;`in`&quot; instead; see the `java.util.Locale` documentation">
+        <location
+            file="../../../../android-armeabi-v7a-fastbuild/bin/sample-android/sample-android-flavor1-free-debug_res/out/res/values-id"/>
+    </issue>
+
+    <issue
+        id="MissingConstraints"
+        message="This view is not constrained vertically: at runtime it will jump to the top unless you add a vertical constraint"
+        errorLine1="    &lt;EditText"
+        errorLine2="     ~~~~~~~~">
+        <location
+            file="../../../../android-armeabi-v7a-fastbuild/bin/sample-android/sample-android-flavor1-free-debug_res/out/res/layout/activity_main.xml"
+            line="73"
+            column="6"/>
+    </issue>
 
     <issue
         id="DiscouragedApi"
@@ -35,12 +53,122 @@
     </issue>
 
     <issue
+        id="MissingTranslation"
+        message="&quot;generated_value&quot; is not translated in &quot;id&quot; (Indonesian)"
+        errorLine1="        &lt;string name=&quot;generated_value&quot;>This string was generated with resValue&lt;/string>"
+        errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="../../../../android-armeabi-v7a-fastbuild/bin/sample-android/src/main/res/values/gen_strings_sample-android-flavor1-free-debug_res_value.xml"
+            line="3"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="MissingTranslation"
+        message="&quot;type&quot; is not translated in &quot;id&quot; (Indonesian)"
+        errorLine1="        &lt;string name=&quot;type&quot;>debug&lt;/string>"
+        errorLine2="                ~~~~~~~~~~~">
+        <location
+            file="../../../../android-armeabi-v7a-fastbuild/bin/sample-android/src/main/res/values/gen_strings_sample-android-flavor1-free-debug_res_value.xml"
+            line="4"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="MissingTranslation"
+        message="&quot;flavor&quot; is not translated in &quot;id&quot; (Indonesian)"
+        errorLine1="        &lt;string name=&quot;flavor&quot;>free&lt;/string>"
+        errorLine2="                ~~~~~~~~~~~~~">
+        <location
+            file="../../../../android-armeabi-v7a-fastbuild/bin/sample-android/src/main/res/values/gen_strings_sample-android-flavor1-free-debug_res_value.xml"
+            line="5"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="MissingTranslation"
+        message="&quot;app_name&quot; is not translated in &quot;id&quot; (Indonesian)"
+        errorLine1="&lt;string name=&quot;app_name&quot;>Grazel Sample&lt;/string>"
+        errorLine2="        ~~~~~~~~~~~~~~~">
+        <location
+            file="../../../../android-armeabi-v7a-fastbuild/bin/sample-android/sample-android-flavor1-free-debug_res/out/res/values/values.xml"
+            line="14"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="MissingTranslation"
+        message="&quot;custom_resource_set&quot; is not translated in &quot;id&quot; (Indonesian)"
+        errorLine1="&lt;string name=&quot;custom_resource_set&quot;>Debug&lt;/string>"
+        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="../../../../android-armeabi-v7a-fastbuild/bin/sample-android/sample-android-flavor1-free-debug_res/out/res/values/values.xml"
+            line="17"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="MissingTranslation"
+        message="&quot;open_compose_activity&quot; is not translated in &quot;id&quot; (Indonesian)"
+        errorLine1="&lt;string name=&quot;open_compose_activity&quot;>Open Compose Activity&lt;/string>"
+        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="../../../../android-armeabi-v7a-fastbuild/bin/sample-android/sample-android-flavor1-free-debug_res/out/res/values/values.xml"
+            line="20"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="MissingTranslation"
+        message="&quot;open_flavor_activity&quot; is not translated in &quot;id&quot; (Indonesian)"
+        errorLine1="&lt;string name=&quot;open_flavor_activity&quot;>Open Another Activity&lt;/string>"
+        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="../../../../android-armeabi-v7a-fastbuild/bin/sample-android/sample-android-flavor1-free-debug_res/out/res/values/values.xml"
+            line="21"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="MissingTranslation"
+        message="&quot;overridable_resource&quot; is not translated in &quot;id&quot; (Indonesian)"
+        errorLine1="&lt;string name=&quot;overridable_resource&quot;>Overridable resource - From frees&lt;/string>"
+        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="../../../../android-armeabi-v7a-fastbuild/bin/sample-android/sample-android-flavor1-free-debug_res/out/res/values/values.xml"
+            line="24"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="MissingTranslation"
+        message="&quot;title_activity_compose&quot; is not translated in &quot;id&quot; (Indonesian)"
+        errorLine1="&lt;string name=&quot;title_activity_compose&quot;>ComposeActivity&lt;/string>"
+        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="../../../../android-armeabi-v7a-fastbuild/bin/sample-android/sample-android-flavor1-free-debug_res/out/res/values/values.xml"
+            line="27"
+            column="9"/>
+    </issue>
+
+    <issue
         id="Typos"
         message="Did you mean &quot;flavor!&quot; instead of &quot;flavor1&quot;?">
         <location
             file="../sample-android-flavor-flavor1-free-debug_res/out/res/values/values.xml"
             line="5"
             column="37"/>
+    </issue>
+
+    <issue
+        id="ExtraTranslation"
+        message="&quot;overridable_resource1&quot; is translated here but not found in default locale"
+        errorLine1="&lt;string name=&quot;overridable_resource1&quot;>Overridable resource - From free&lt;/string>"
+        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="../../../../android-armeabi-v7a-fastbuild/bin/sample-android/sample-android-flavor1-free-debug_res/out/res/values-id/values.xml"
+            line="5"
+            column="9"/>
     </issue>
 
     <issue
@@ -66,6 +194,17 @@
     </issue>
 
     <issue
+        id="UnusedResources"
+        message="The resource `R.string.overridable_resource1` appears to be unused"
+        errorLine1="&lt;string name=&quot;overridable_resource1&quot;>Overridable resource - From free&lt;/string>"
+        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="../../../../android-armeabi-v7a-fastbuild/bin/sample-android/sample-android-flavor1-free-debug_res/out/res/values-id/values.xml"
+            line="5"
+            column="9"/>
+    </issue>
+
+    <issue
         id="MonochromeLauncherIcon"
         message="The application adaptive icon is missing a monochrome tag"
         errorLine1="&lt;adaptive-icon xmlns:android=&quot;http://schemas.android.com/apk/res/android&quot;>"
@@ -85,6 +224,48 @@
             file="../../../../android-armeabi-v7a-fastbuild/bin/sample-android/sample-android-flavor1-free-debug_res/out/res/mipmap-anydpi-v26/ic_launcher_round.xml"
             line="17"
             column="1"/>
+    </issue>
+
+    <issue
+        id="TextFields"
+        message="This text field does not specify an `inputType`"
+        errorLine1="    &lt;EditText"
+        errorLine2="     ~~~~~~~~">
+        <location
+            file="../../../../android-armeabi-v7a-fastbuild/bin/sample-android/sample-android-flavor1-free-debug_res/out/res/layout/activity_main.xml"
+            line="73"
+            column="6"/>
+    </issue>
+
+    <issue
+        id="Autofill"
+        message="Missing `autofillHints` attribute"
+        errorLine1="    &lt;EditText"
+        errorLine2="     ~~~~~~~~">
+        <location
+            file="../../../../android-armeabi-v7a-fastbuild/bin/sample-android/sample-android-flavor1-free-debug_res/out/res/layout/activity_main.xml"
+            line="73"
+            column="6"/>
+    </issue>
+
+    <issue
+        id="ContentDescription"
+        message="Missing `contentDescription` attribute on image">
+        <location
+            file="../sample-android-flavor-flavor1-free-debug_res/out/res/layout/activity_flavor.xml"
+            line="52"
+            column="10"/>
+    </issue>
+
+    <issue
+        id="LabelFor"
+        message="Missing accessibility label: provide either a view with an `android:labelFor` that references this view or provide an `android:hint`"
+        errorLine1="    &lt;EditText"
+        errorLine2="     ~~~~~~~~">
+        <location
+            file="../../../../android-armeabi-v7a-fastbuild/bin/sample-android/sample-android-flavor1-free-debug_res/out/res/layout/activity_main.xml"
+            line="73"
+            column="6"/>
     </issue>
 
     <issue
@@ -116,7 +297,7 @@
         errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
             file="../../../../android-armeabi-v7a-fastbuild/bin/sample-android/sample-android-flavor1-free-debug_res/out/res/layout/activity_main.xml"
-            line="28"
+            line="29"
             column="9"/>
     </issue>
 

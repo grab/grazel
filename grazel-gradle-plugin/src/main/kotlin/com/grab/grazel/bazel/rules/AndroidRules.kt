@@ -140,6 +140,7 @@ internal fun StatementsBuilder.androidBinary(
     assetsDir: String? = null,
     buildConfigData: BuildConfigData,
     lintConfigs: LintConfigs? = null,
+    resConfigFilters: Set<String> = emptySet(),
 ) {
     load("@$GRAB_BAZEL_COMMON//rules:defs.bzl", "android_binary")
     rule("android_binary") {
@@ -167,6 +168,9 @@ internal fun StatementsBuilder.androidBinary(
                 separator = " + ",
                 transform = Assignee::asString
             )
+        }
+        resConfigFilters.notEmpty {
+            "resource_configuration_filters" `=` resConfigFilters.quote
         }
         resources?.let { "resources" `=` resources }
         deps.notEmpty {

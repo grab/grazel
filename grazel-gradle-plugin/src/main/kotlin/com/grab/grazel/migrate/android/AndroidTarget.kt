@@ -103,6 +103,7 @@ internal data class AndroidBinaryTarget(
     val debugKey: String? = null,
     val dexShards: Int? = null,
     val manifestValues: Map<String, String?> = mapOf(),
+    val resConfigFilters: Set<String> = emptySet(),
     val customPackage: String,
     val incrementalDexing: Boolean = false,
 ) : AndroidTarget {
@@ -121,6 +122,7 @@ internal data class AndroidBinaryTarget(
             srcsGlob = srcs,
             manifest = manifest,
             manifestValues = manifestValues,
+            resConfigFilters = resConfigFilters,
             resources = buildResources(resDirs),
             resValuesData = resValuesData,
             deps = deps,
