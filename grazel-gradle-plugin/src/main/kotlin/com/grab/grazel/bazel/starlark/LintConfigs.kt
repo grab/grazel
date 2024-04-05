@@ -16,14 +16,42 @@
 
 package com.grab.grazel.bazel.starlark
 
+import java.util.Locale
+
 data class LintConfigs(
     val enabled: Boolean = true,
     val configPath: String? = null,
-    val baselinePath: String? = null
+    val baselinePath: String? = null,
+    val lintChecks: List<BazelDependency.StringDependency>? = null
 ) {
-    val merged: Map<String, String> = mapOf(
-        "enabled" to enabled.toString(),
-        "config" to configPath,
-        "baseline" to baselinePath
-    ).filterValues { it != null } as Map<String, String>
+    val merged: List<StarlarkMapEntry> = listOf(
+        StarlarkMapEntry(
+            name = "enabled",
+            value = enabled.toString().capitalize(Locale.ROOT),
+            quoteKeys = true,
+            quoteValues = false
+        ),
+        StarlarkMapEntry(
+            name = "config",
+            value = configPath,
+            quoteKeys = true,
+            quoteValues = true
+        ),
+        StarlarkMapEntry(
+            name = "baseline",
+            value = baselinePath,
+            quoteKeys = true,
+            quoteValues = true
+        ),
+        StarlarkMapEntry(
+            name = "lint_checks",
+            value = if (lintChecks != null) {
+                "[${lintChecks.joinToString(",") { "\"//$it\"" }}]"
+            } else {
+                null
+            },
+            quoteKeys = true,
+            quoteValues = false
+        )
+    ).filter { it.value != null }
 }

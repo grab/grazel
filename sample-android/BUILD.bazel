@@ -35,8 +35,10 @@ android_binary(
     enable_data_binding = True,
     incremental_dexing = True,
     lint_options = {
-        "enabled": "true",
+        "enabled": True,
+        "config": "lint.xml",
         "baseline": "lint_baseline.xml",
+        "lint_checks": ["//lint/custom-lint-rules"],
     },
     manifest = "src/debug/AndroidManifest.xml",
     manifest_values = {
@@ -103,6 +105,7 @@ android_binary(
         "@maven//:androidx_constraintlayout_constraintlayout",
         "@maven//:androidx_emoji2_emoji2",
         "@maven//:com_google_ar_sceneform_ux_sceneform_ux",
+        "@maven//:com_jakewharton_timber_timber",
     ],
 )
 
@@ -139,8 +142,10 @@ android_binary(
     enable_data_binding = True,
     incremental_dexing = True,
     lint_options = {
-        "enabled": "true",
+        "enabled": True,
+        "config": "lint.xml",
         "baseline": "lint_baseline.xml",
+        "lint_checks": ["//lint/custom-lint-rules"],
     },
     manifest = "src/debug/AndroidManifest.xml",
     manifest_values = {
@@ -207,6 +212,7 @@ android_binary(
         "@maven//:androidx_constraintlayout_constraintlayout",
         "@maven//:androidx_emoji2_emoji2",
         "@maven//:com_google_ar_sceneform_ux_sceneform_ux",
+        "@maven//:com_jakewharton_timber_timber",
     ],
 )
 
@@ -243,8 +249,10 @@ android_binary(
     enable_data_binding = True,
     incremental_dexing = True,
     lint_options = {
-        "enabled": "true",
+        "enabled": True,
+        "config": "lint.xml",
         "baseline": "lint_baseline.xml",
+        "lint_checks": ["//lint/custom-lint-rules"],
     },
     manifest = "src/debug/AndroidManifest.xml",
     manifest_values = {
@@ -311,6 +319,7 @@ android_binary(
         "@maven//:androidx_constraintlayout_constraintlayout",
         "@maven//:androidx_emoji2_emoji2",
         "@maven//:com_google_ar_sceneform_ux_sceneform_ux",
+        "@maven//:com_jakewharton_timber_timber",
     ],
 )
 
@@ -347,8 +356,10 @@ android_binary(
     enable_data_binding = True,
     incremental_dexing = True,
     lint_options = {
-        "enabled": "true",
+        "enabled": True,
+        "config": "lint.xml",
         "baseline": "lint_baseline.xml",
+        "lint_checks": ["//lint/custom-lint-rules"],
     },
     manifest = "src/debug/AndroidManifest.xml",
     manifest_values = {
@@ -415,6 +426,7 @@ android_binary(
         "@maven//:androidx_constraintlayout_constraintlayout",
         "@maven//:androidx_emoji2_emoji2",
         "@maven//:com_google_ar_sceneform_ux_sceneform_ux",
+        "@maven//:com_jakewharton_timber_timber",
     ],
 )
 
@@ -511,6 +523,7 @@ android_instrumentation_binary(
         "@maven//:androidx_constraintlayout_constraintlayout",
         "@maven//:androidx_emoji2_emoji2",
         "@maven//:com_google_ar_sceneform_ux_sceneform_ux",
+        "@maven//:com_jakewharton_timber_timber",
     ],
 )
 
@@ -567,6 +580,7 @@ android_instrumentation_binary(
         "@maven//:androidx_constraintlayout_constraintlayout",
         "@maven//:androidx_emoji2_emoji2",
         "@maven//:com_google_ar_sceneform_ux_sceneform_ux",
+        "@maven//:com_jakewharton_timber_timber",
     ],
 )
 
@@ -623,6 +637,7 @@ android_instrumentation_binary(
         "@maven//:androidx_constraintlayout_constraintlayout",
         "@maven//:androidx_emoji2_emoji2",
         "@maven//:com_google_ar_sceneform_ux_sceneform_ux",
+        "@maven//:com_jakewharton_timber_timber",
     ],
 )
 
@@ -679,5 +694,6 @@ android_instrumentation_binary(
         "@maven//:androidx_constraintlayout_constraintlayout",
         "@maven//:androidx_emoji2_emoji2",
         "@maven//:com_google_ar_sceneform_ux_sceneform_ux",
+        "@maven//:com_jakewharton_timber_timber",
     ],
 )

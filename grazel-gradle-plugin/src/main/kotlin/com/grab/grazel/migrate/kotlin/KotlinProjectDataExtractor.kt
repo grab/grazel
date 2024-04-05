@@ -30,7 +30,9 @@ import com.grab.grazel.gradle.dependencies.DependencyGraphs
 import com.grab.grazel.gradle.dependencies.GradleDependencyToBazelDependency
 import com.grab.grazel.gradle.hasKotlinAndroidExtensions
 import com.grab.grazel.migrate.android.SourceSetType
+import com.grab.grazel.migrate.android.customLintRulesTargets
 import com.grab.grazel.migrate.android.filterSourceSetPaths
+import com.grab.grazel.migrate.android.lintConfigs
 import com.grab.grazel.migrate.dependencies.calculateDirectDependencyTags
 import dagger.Lazy
 import org.gradle.api.NamedDomainObjectContainer
@@ -48,8 +50,7 @@ internal interface KotlinProjectDataExtractor {
 
 @Singleton
 internal class DefaultKotlinProjectDataExtractor
-@Inject
-constructor(
+@Inject constructor(
     private val dependenciesDataSource: DependenciesDataSource,
     private val dependencyGraphsProvider: Lazy<DependencyGraphs>,
     private val grazelExtension: GrazelExtension,
@@ -66,19 +67,13 @@ constructor(
         val srcs = project.kotlinSources(sourceSets, SourceSetType.JAVA_KOTLIN).toList()
         val resources = project.kotlinSources(sourceSets, SourceSetType.RESOURCES).toList()
 
-        val deps = projectDependencyGraphs
-            .directDependencies(
-                project,
-                BuildGraphType(ConfigurationScope.BUILD)
-            ).map { dependent ->
-                gradleDependencyToBazelDependency.map(project, dependent, null)
-            } +
-            dependenciesDataSource.collectMavenDeps(
-                project,
-                BuildGraphType(ConfigurationScope.BUILD)
-            ) +
-            project.androidJarDeps() +
-            project.kotlinParcelizeDeps()
+        val deps = projectDependencyGraphs.directDependencies(
+            project, BuildGraphType(ConfigurationScope.BUILD)
+        ).map { dependent ->
+            gradleDependencyToBazelDependency.map(project, dependent, null)
+        } + dependenciesDataSource.collectMavenDeps(
+            project, BuildGraphType(ConfigurationScope.BUILD)
+        ) + project.androidJarDeps() + project.kotlinParcelizeDeps()
 
         val tags = if (kotlinExtension.enabledTransitiveReduction) {
             deps.calculateDirectDependencyTags(self = name)
@@ -88,36 +83,14 @@ constructor(
             name = name,
             srcs = srcs,
             res = resources,
-            deps = deps,
+            deps = deps.replaceAutoService(),
             tags = tags,
             lintConfigs = lintConfigs(project),
         )
     }
 
-    fun lintConfigs(project: Project): LintConfigs {
-        return if (project.plugins.hasPlugin(LINT_PLUGIN_ID)) {
-            val lint = project.the<LintOptions>()
-            LintConfigs(
-                enabled = true,
-                configPath = lint.lintConfig?.let {
-                    project.relativePath(it)
-                },
-                baselinePath = lint.baselineFile?.let {
-                    project.relativePath(it)
-                },
-            )
-        } else {
-            LintConfigs(
-                enabled = true, // enable Lint by default even when its not enabled in gradle
-                configPath = null,
-                baselinePath = null,
-            )
-        }
-    }
-
     private fun Project.kotlinSources(
-        sourceSets: NamedDomainObjectContainer<KotlinSourceSet>,
-        sourceSetType: SourceSetType
+        sourceSets: NamedDomainObjectContainer<KotlinSourceSet>, sourceSetType: SourceSetType
     ): Sequence<String> {
         val sourceSetChoosers: KotlinSourceSet.() -> Sequence<File> = when (sourceSetType) {
             SourceSetType.JAVA, SourceSetType.JAVA_KOTLIN, SourceSetType.KOTLIN -> {
@@ -132,11 +105,20 @@ constructor(
                 { emptySequence() }
             }
         }
-        val dirs = sourceSets
-            .asSequence()
+        val dirs = sourceSets.asSequence()
             .filter { !it.name.toLowerCase().contains("test") } // TODO Consider enabling later.
             .flatMap(sourceSetChoosers)
         return filterSourceSetPaths(dirs, sourceSetType.patterns)
+    }
+}
+
+private fun List<BazelDependency>.replaceAutoService(): List<BazelDependency> {
+    return map {
+        if (it is BazelDependency.MavenDependency && it.toString() == "@maven//:com_google_auto_service_auto_service") {
+            BazelDependency.StringDependency("@grab_bazel_common//third_party/auto-service")
+        } else {
+            it
+        }
     }
 }
 
@@ -147,9 +129,8 @@ internal fun Project.kotlinParcelizeDeps(): List<BazelDependency.StringDependenc
     }
 }
 
-internal fun Project.androidJarDeps(): List<BazelDependency> =
-    if (this.hasAndroidJarDep()) {
-        listOf(BazelDependency.StringDependency("//shared_versions:android_sdk"))
-    } else {
-        emptyList()
-    }
+internal fun Project.androidJarDeps(): List<BazelDependency> = if (this.hasAndroidJarDep()) {
+    listOf(BazelDependency.StringDependency("//shared_versions:android_sdk"))
+} else {
+    emptyList()
+}

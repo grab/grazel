@@ -17,6 +17,7 @@
 package com.grab.grazel.android.sample
 
 import android.os.Parcelable
+import android.util.Log
 import kotlinx.parcelize.Parcelize
 
 @Parcelize

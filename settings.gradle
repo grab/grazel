@@ -50,3 +50,4 @@ includeBuild("grazel-gradle-plugin") {
         substitute module("com.grab:grazel") using project(":")
     }
 }
+include ':lint:custom-lint-rules'

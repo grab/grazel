@@ -10,7 +10,7 @@ android_library(
     enable_compose = True,
     enable_data_binding = True,
     lint_options = {
-        "enabled": "true",
+        "enabled": True,
     },
     manifest = "src/main/AndroidManifest.xml",
     res_values = {
@@ -48,7 +48,7 @@ android_library(
     enable_compose = True,
     enable_data_binding = True,
     lint_options = {
-        "enabled": "true",
+        "enabled": True,
     },
     manifest = "src/main/AndroidManifest.xml",
     res_values = {
@@ -86,7 +86,7 @@ android_library(
     enable_compose = True,
     enable_data_binding = True,
     lint_options = {
-        "enabled": "true",
+        "enabled": True,
     },
     manifest = "src/main/AndroidManifest.xml",
     res_values = {
@@ -124,7 +124,7 @@ android_library(
     enable_compose = True,
     enable_data_binding = True,
     lint_options = {
-        "enabled": "true",
+        "enabled": True,
     },
     manifest = "src/main/AndroidManifest.xml",
     res_values = {

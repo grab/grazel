@@ -2,6 +2,68 @@
 <issues format="6" by="lint 8.5.0-alpha02" type="baseline" client="" dependencies="true" name="" variant="all" version="8.5.0-alpha02">
 
     <issue
+        id="DuplicateDefinition"
+        message="`generated_value` has already been defined in this folder">
+        <location
+            file="../src/main/res/values/gen_strings_sample-android-flavor-flavor2-paid-debug_res_value.xml"
+            line="3"
+            column="17"/>
+        <location
+            file="../src/main/res/values/gen_strings_sample-android-flavor-flavor1-free-debug_res_value.xml"
+            line="3"
+            column="17"
+            message="Previously defined here"/>
+    </issue>
+
+    <issue
+        id="DuplicateDefinition"
+        message="`generated_value` has already been defined in this folder"
+        errorLine1="        &lt;string name=&quot;generated_value&quot;>This string was generated with resValue&lt;/string>"
+        errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="../../../../android-armeabi-v7a-fastbuild/bin/sample-android/src/main/res/values/gen_strings_sample-android-flavor2-paid-debug_res_value.xml"
+            line="3"
+            column="17"/>
+        <location
+            file="../../../../android-armeabi-v7a-fastbuild/bin/sample-android/src/main/res/values/gen_strings_sample-android-flavor1-free-debug_res_value.xml"
+            line="3"
+            column="17"
+            message="Previously defined here"/>
+    </issue>
+
+    <issue
+        id="DuplicateDefinition"
+        message="`type` has already been defined in this folder"
+        errorLine1="        &lt;string name=&quot;type&quot;>debug&lt;/string>"
+        errorLine2="                ~~~~~~~~~~~">
+        <location
+            file="../../../../android-armeabi-v7a-fastbuild/bin/sample-android/src/main/res/values/gen_strings_sample-android-flavor2-paid-debug_res_value.xml"
+            line="4"
+            column="17"/>
+        <location
+            file="../../../../android-armeabi-v7a-fastbuild/bin/sample-android/src/main/res/values/gen_strings_sample-android-flavor1-free-debug_res_value.xml"
+            line="4"
+            column="17"
+            message="Previously defined here"/>
+    </issue>
+
+    <issue
+        id="DuplicateDefinition"
+        message="`flavor` has already been defined in this folder"
+        errorLine1="        &lt;string name=&quot;flavor&quot;>paid&lt;/string>"
+        errorLine2="                ~~~~~~~~~~~~~">
+        <location
+            file="../../../../android-armeabi-v7a-fastbuild/bin/sample-android/src/main/res/values/gen_strings_sample-android-flavor2-paid-debug_res_value.xml"
+            line="5"
+            column="17"/>
+        <location
+            file="../../../../android-armeabi-v7a-fastbuild/bin/sample-android/src/main/res/values/gen_strings_sample-android-flavor1-free-debug_res_value.xml"
+            line="5"
+            column="17"
+            message="Previously defined here"/>
+    </issue>
+
+    <issue
         id="LocaleFolder"
         message="The locale folder &quot;`id`&quot; should be called &quot;`in`&quot; instead; see the `java.util.Locale` documentation">
         <location
@@ -87,13 +149,35 @@
 
     <issue
         id="MissingTranslation"
-        message="&quot;app_name&quot; is not translated in &quot;id&quot; (Indonesian)"
-        errorLine1="&lt;string name=&quot;app_name&quot;>Grazel Sample&lt;/string>"
-        errorLine2="        ~~~~~~~~~~~~~~~">
+        message="&quot;generated_value&quot; is not translated in &quot;id&quot; (Indonesian)"
+        errorLine1="        &lt;string name=&quot;generated_value&quot;>This string was generated with resValue&lt;/string>"
+        errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~">
         <location
-            file="../../../../android-armeabi-v7a-fastbuild/bin/sample-android/sample-android-flavor1-free-debug_res/out/res/values/values.xml"
-            line="14"
-            column="9"/>
+            file="../../../../android-armeabi-v7a-fastbuild/bin/sample-android/src/main/res/values/gen_strings_sample-android-flavor2-paid-debug_res_value.xml"
+            line="3"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="MissingTranslation"
+        message="&quot;type&quot; is not translated in &quot;id&quot; (Indonesian)"
+        errorLine1="        &lt;string name=&quot;type&quot;>debug&lt;/string>"
+        errorLine2="                ~~~~~~~~~~~">
+        <location
+            file="../../../../android-armeabi-v7a-fastbuild/bin/sample-android/src/main/res/values/gen_strings_sample-android-flavor2-paid-debug_res_value.xml"
+            line="4"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="MissingTranslation"
+        message="&quot;flavor&quot; is not translated in &quot;id&quot; (Indonesian)"
+        errorLine1="        &lt;string name=&quot;flavor&quot;>paid&lt;/string>"
+        errorLine2="                ~~~~~~~~~~~~~">
+        <location
+            file="../../../../android-armeabi-v7a-fastbuild/bin/sample-android/src/main/res/values/gen_strings_sample-android-flavor2-paid-debug_res_value.xml"
+            line="5"
+            column="17"/>
     </issue>
 
     <issue
@@ -168,6 +252,28 @@
         <location
             file="../../../../android-armeabi-v7a-fastbuild/bin/sample-android/sample-android-flavor1-free-debug_res/out/res/values-id/values.xml"
             line="5"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="LogNotTimber"
+        message="Using &apos;Log&apos; instead of &apos;Timber&apos;"
+        errorLine1="        Log.d(&quot;tag&quot;,&quot;MainActivity OnCreate&quot;)"
+        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="../../../../../sample-android/src/main/java/com/grab/grazel/android/sample/MainActivity.kt"
+            line="54"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="LogNotTimberTest"
+        message="Using &apos;Log&apos; instead of &apos;Timber&apos;"
+        errorLine1="        Log.d(&quot;tag&quot;,&quot;MainActivity OnCreate&quot;)"
+        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="../../../../../sample-android/src/main/java/com/grab/grazel/android/sample/MainActivity.kt"
+            line="54"
             column="9"/>
     </issue>
 

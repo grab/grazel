@@ -6,7 +6,7 @@ kotlin_library(
         "src/main/java/com/grab/grazel/android/flavor/ModuleName.kt",
     ]),
     lint_options = {
-        "enabled": "true",
+        "enabled": True,
     },
     visibility = [
         "//visibility:public",
