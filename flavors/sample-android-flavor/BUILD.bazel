@@ -1,10 +1,10 @@
 load("@grab_bazel_common//rules:defs.bzl", "android_library")
 
 android_library(
-    name = "sample-android-flavor-flavor1-free-debug",
+    name = "sample-android-flavor-demo-free-debug",
     srcs = glob([
         "src/main/java/com/grab/grazel/android/flavor/**/*.kt",
-        "src/flavor1/java/com/grab/grazel/android/flavor/HelloFlavorMessage.kt",
+        "src/demo/java/com/grab/grazel/android/flavor/HelloFlavorMessage.kt",
     ]),
     custom_package = "com.grab.grazel.android.flavor",
     enable_compose = True,
@@ -19,7 +19,9 @@ android_library(
         },
     },
     resources = {
-        "src/flavor1/res": {
+        "src/demo/res": {
+        },
+        "src/free/res": {
         },
         "src/main/res": {
         },
@@ -29,7 +31,7 @@ android_library(
     ],
     deps = [
         "//:parcelize",
-        "//flavor-libs/sample-library-flavor1",
+        "//flavors/sample-library-demo",
         "@debug_maven//:androidx_core_core",
         "@maven//:androidx_appcompat_appcompat",
         "@maven//:androidx_compose_ui_ui",
@@ -39,10 +41,10 @@ android_library(
 )
 
 android_library(
-    name = "sample-android-flavor-flavor1-paid-debug",
+    name = "sample-android-flavor-demo-paid-debug",
     srcs = glob([
         "src/main/java/com/grab/grazel/android/flavor/**/*.kt",
-        "src/flavor1/java/com/grab/grazel/android/flavor/HelloFlavorMessage.kt",
+        "src/demo/java/com/grab/grazel/android/flavor/HelloFlavorMessage.kt",
     ]),
     custom_package = "com.grab.grazel.android.flavor",
     enable_compose = True,
@@ -57,7 +59,7 @@ android_library(
         },
     },
     resources = {
-        "src/flavor1/res": {
+        "src/demo/res": {
         },
         "src/main/res": {
         },
@@ -67,7 +69,7 @@ android_library(
     ],
     deps = [
         "//:parcelize",
-        "//flavor-libs/sample-library-flavor1",
+        "//flavors/sample-library-demo",
         "@debug_maven//:androidx_core_core",
         "@maven//:androidx_appcompat_appcompat",
         "@maven//:androidx_compose_ui_ui",
@@ -77,10 +79,10 @@ android_library(
 )
 
 android_library(
-    name = "sample-android-flavor-flavor2-free-debug",
+    name = "sample-android-flavor-full-free-debug",
     srcs = glob([
         "src/main/java/com/grab/grazel/android/flavor/**/*.kt",
-        "src/flavor2/java/com/grab/grazel/android/flavor/HelloFlavorMessage.kt",
+        "src/full/java/com/grab/grazel/android/flavor/HelloFlavorMessage.kt",
     ]),
     custom_package = "com.grab.grazel.android.flavor",
     enable_compose = True,
@@ -95,7 +97,9 @@ android_library(
         },
     },
     resources = {
-        "src/flavor2/res": {
+        "src/full/res": {
+        },
+        "src/free/res": {
         },
         "src/main/res": {
         },
@@ -105,7 +109,7 @@ android_library(
     ],
     deps = [
         "//:parcelize",
-        "//flavor-libs/sample-library-flavor2",
+        "//flavors/sample-library-full",
         "@debug_maven//:androidx_core_core",
         "@maven//:androidx_appcompat_appcompat",
         "@maven//:androidx_compose_ui_ui",
@@ -115,10 +119,10 @@ android_library(
 )
 
 android_library(
-    name = "sample-android-flavor-flavor2-paid-debug",
+    name = "sample-android-flavor-full-paid-debug",
     srcs = glob([
         "src/main/java/com/grab/grazel/android/flavor/**/*.kt",
-        "src/flavor2/java/com/grab/grazel/android/flavor/HelloFlavorMessage.kt",
+        "src/full/java/com/grab/grazel/android/flavor/HelloFlavorMessage.kt",
     ]),
     custom_package = "com.grab.grazel.android.flavor",
     enable_compose = True,
@@ -133,7 +137,7 @@ android_library(
         },
     },
     resources = {
-        "src/flavor2/res": {
+        "src/full/res": {
         },
         "src/main/res": {
         },
@@ -143,7 +147,7 @@ android_library(
     ],
     deps = [
         "//:parcelize",
-        "//flavor-libs/sample-library-flavor2",
+        "//flavors/sample-library-full",
         "@debug_maven//:androidx_core_core",
         "@maven//:androidx_appcompat_appcompat",
         "@maven//:androidx_compose_ui_ui",

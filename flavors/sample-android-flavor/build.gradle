@@ -25,15 +25,16 @@ android {
     buildToolsVersion "33.0.1"
 
     defaultConfig {
+        minSdkVersion 21
         resValue "string", "generated_value", "generated"
     }
 
     flavorDimensions "service", "release"
     productFlavors {
-        flavor1 {
+        demo {
             dimension "service"
         }
-        flavor2 {
+        full {
             dimension "service"
         }
         free {
@@ -66,8 +67,8 @@ android {
 }
 
 dependencies {
-    flavor1Implementation project(path: ":flavor-libs:sample-library-flavor1")
-    flavor2Implementation project(path: ":flavor-libs:sample-library-flavor2")
+    demoImplementation project(path: ":flavors:sample-library-demo")
+    fullImplementation project(path: ":flavors:sample-library-full")
 
     implementation libs.androidx.appcompat
     implementation libs.androidx.core

@@ -2,72 +2,10 @@
 <issues format="6" by="lint 8.5.0-alpha02" type="baseline" client="" dependencies="true" name="" variant="all" version="8.5.0-alpha02">
 
     <issue
-        id="DuplicateDefinition"
-        message="`generated_value` has already been defined in this folder">
-        <location
-            file="../src/main/res/values/gen_strings_sample-android-flavor-flavor2-paid-debug_res_value.xml"
-            line="3"
-            column="17"/>
-        <location
-            file="../src/main/res/values/gen_strings_sample-android-flavor-flavor1-free-debug_res_value.xml"
-            line="3"
-            column="17"
-            message="Previously defined here"/>
-    </issue>
-
-    <issue
-        id="DuplicateDefinition"
-        message="`generated_value` has already been defined in this folder"
-        errorLine1="        &lt;string name=&quot;generated_value&quot;>This string was generated with resValue&lt;/string>"
-        errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="../../../../android-armeabi-v7a-fastbuild/bin/sample-android/src/main/res/values/gen_strings_sample-android-flavor2-paid-debug_res_value.xml"
-            line="3"
-            column="17"/>
-        <location
-            file="../../../../android-armeabi-v7a-fastbuild/bin/sample-android/src/main/res/values/gen_strings_sample-android-flavor1-free-debug_res_value.xml"
-            line="3"
-            column="17"
-            message="Previously defined here"/>
-    </issue>
-
-    <issue
-        id="DuplicateDefinition"
-        message="`type` has already been defined in this folder"
-        errorLine1="        &lt;string name=&quot;type&quot;>debug&lt;/string>"
-        errorLine2="                ~~~~~~~~~~~">
-        <location
-            file="../../../../android-armeabi-v7a-fastbuild/bin/sample-android/src/main/res/values/gen_strings_sample-android-flavor2-paid-debug_res_value.xml"
-            line="4"
-            column="17"/>
-        <location
-            file="../../../../android-armeabi-v7a-fastbuild/bin/sample-android/src/main/res/values/gen_strings_sample-android-flavor1-free-debug_res_value.xml"
-            line="4"
-            column="17"
-            message="Previously defined here"/>
-    </issue>
-
-    <issue
-        id="DuplicateDefinition"
-        message="`flavor` has already been defined in this folder"
-        errorLine1="        &lt;string name=&quot;flavor&quot;>paid&lt;/string>"
-        errorLine2="                ~~~~~~~~~~~~~">
-        <location
-            file="../../../../android-armeabi-v7a-fastbuild/bin/sample-android/src/main/res/values/gen_strings_sample-android-flavor2-paid-debug_res_value.xml"
-            line="5"
-            column="17"/>
-        <location
-            file="../../../../android-armeabi-v7a-fastbuild/bin/sample-android/src/main/res/values/gen_strings_sample-android-flavor1-free-debug_res_value.xml"
-            line="5"
-            column="17"
-            message="Previously defined here"/>
-    </issue>
-
-    <issue
         id="LocaleFolder"
         message="The locale folder &quot;`id`&quot; should be called &quot;`in`&quot; instead; see the `java.util.Locale` documentation">
         <location
-            file="../../../../android-armeabi-v7a-fastbuild/bin/sample-android/sample-android-flavor1-free-debug_res/out/res/values-id"/>
+            file="../../../../android-armeabi-v7a-fastbuild/bin/sample-android/sample-android-demo-free-debug_res/out/res/values-id"/>
     </issue>
 
     <issue
@@ -76,7 +14,7 @@
         errorLine1="    &lt;EditText"
         errorLine2="     ~~~~~~~~">
         <location
-            file="../../../../android-armeabi-v7a-fastbuild/bin/sample-android/sample-android-flavor1-free-debug_res/out/res/layout/activity_main.xml"
+            file="../../../../android-armeabi-v7a-fastbuild/bin/sample-android/sample-android-demo-free-debug_res/out/res/layout/activity_main.xml"
             line="73"
             column="6"/>
     </issue>
@@ -120,7 +58,7 @@
         errorLine1="        &lt;string name=&quot;generated_value&quot;>This string was generated with resValue&lt;/string>"
         errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~">
         <location
-            file="../../../../android-armeabi-v7a-fastbuild/bin/sample-android/src/main/res/values/gen_strings_sample-android-flavor1-free-debug_res_value.xml"
+            file="../../../../android-armeabi-v7a-fastbuild/bin/sample-android/src/main/res/values/gen_strings_sample-android-demo-free-debug_res_value.xml"
             line="3"
             column="17"/>
     </issue>
@@ -131,7 +69,7 @@
         errorLine1="        &lt;string name=&quot;type&quot;>debug&lt;/string>"
         errorLine2="                ~~~~~~~~~~~">
         <location
-            file="../../../../android-armeabi-v7a-fastbuild/bin/sample-android/src/main/res/values/gen_strings_sample-android-flavor1-free-debug_res_value.xml"
+            file="../../../../android-armeabi-v7a-fastbuild/bin/sample-android/src/main/res/values/gen_strings_sample-android-demo-free-debug_res_value.xml"
             line="4"
             column="17"/>
     </issue>
@@ -142,40 +80,7 @@
         errorLine1="        &lt;string name=&quot;flavor&quot;>free&lt;/string>"
         errorLine2="                ~~~~~~~~~~~~~">
         <location
-            file="../../../../android-armeabi-v7a-fastbuild/bin/sample-android/src/main/res/values/gen_strings_sample-android-flavor1-free-debug_res_value.xml"
-            line="5"
-            column="17"/>
-    </issue>
-
-    <issue
-        id="MissingTranslation"
-        message="&quot;generated_value&quot; is not translated in &quot;id&quot; (Indonesian)"
-        errorLine1="        &lt;string name=&quot;generated_value&quot;>This string was generated with resValue&lt;/string>"
-        errorLine2="                ~~~~~~~~~~~~~~~~~~~~~~">
-        <location
-            file="../../../../android-armeabi-v7a-fastbuild/bin/sample-android/src/main/res/values/gen_strings_sample-android-flavor2-paid-debug_res_value.xml"
-            line="3"
-            column="17"/>
-    </issue>
-
-    <issue
-        id="MissingTranslation"
-        message="&quot;type&quot; is not translated in &quot;id&quot; (Indonesian)"
-        errorLine1="        &lt;string name=&quot;type&quot;>debug&lt;/string>"
-        errorLine2="                ~~~~~~~~~~~">
-        <location
-            file="../../../../android-armeabi-v7a-fastbuild/bin/sample-android/src/main/res/values/gen_strings_sample-android-flavor2-paid-debug_res_value.xml"
-            line="4"
-            column="17"/>
-    </issue>
-
-    <issue
-        id="MissingTranslation"
-        message="&quot;flavor&quot; is not translated in &quot;id&quot; (Indonesian)"
-        errorLine1="        &lt;string name=&quot;flavor&quot;>paid&lt;/string>"
-        errorLine2="                ~~~~~~~~~~~~~">
-        <location
-            file="../../../../android-armeabi-v7a-fastbuild/bin/sample-android/src/main/res/values/gen_strings_sample-android-flavor2-paid-debug_res_value.xml"
+            file="../../../../android-armeabi-v7a-fastbuild/bin/sample-android/src/main/res/values/gen_strings_sample-android-demo-free-debug_res_value.xml"
             line="5"
             column="17"/>
     </issue>
@@ -186,7 +91,7 @@
         errorLine1="&lt;string name=&quot;custom_resource_set&quot;>Debug&lt;/string>"
         errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
-            file="../../../../android-armeabi-v7a-fastbuild/bin/sample-android/sample-android-flavor1-free-debug_res/out/res/values/values.xml"
+            file="../../../../android-armeabi-v7a-fastbuild/bin/sample-android/sample-android-demo-free-debug_res/out/res/values/values.xml"
             line="17"
             column="9"/>
     </issue>
@@ -197,7 +102,7 @@
         errorLine1="&lt;string name=&quot;open_compose_activity&quot;>Open Compose Activity&lt;/string>"
         errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
-            file="../../../../android-armeabi-v7a-fastbuild/bin/sample-android/sample-android-flavor1-free-debug_res/out/res/values/values.xml"
+            file="../../../../android-armeabi-v7a-fastbuild/bin/sample-android/sample-android-demo-free-debug_res/out/res/values/values.xml"
             line="20"
             column="9"/>
     </issue>
@@ -208,7 +113,7 @@
         errorLine1="&lt;string name=&quot;open_flavor_activity&quot;>Open Another Activity&lt;/string>"
         errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
-            file="../../../../android-armeabi-v7a-fastbuild/bin/sample-android/sample-android-flavor1-free-debug_res/out/res/values/values.xml"
+            file="../../../../android-armeabi-v7a-fastbuild/bin/sample-android/sample-android-demo-free-debug_res/out/res/values/values.xml"
             line="21"
             column="9"/>
     </issue>
@@ -219,7 +124,7 @@
         errorLine1="&lt;string name=&quot;overridable_resource&quot;>Overridable resource - From frees&lt;/string>"
         errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
-            file="../../../../android-armeabi-v7a-fastbuild/bin/sample-android/sample-android-flavor1-free-debug_res/out/res/values/values.xml"
+            file="../../../../android-armeabi-v7a-fastbuild/bin/sample-android/sample-android-demo-free-debug_res/out/res/values/values.xml"
             line="24"
             column="9"/>
     </issue>
@@ -230,7 +135,7 @@
         errorLine1="&lt;string name=&quot;title_activity_compose&quot;>ComposeActivity&lt;/string>"
         errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
-            file="../../../../android-armeabi-v7a-fastbuild/bin/sample-android/sample-android-flavor1-free-debug_res/out/res/values/values.xml"
+            file="../../../../android-armeabi-v7a-fastbuild/bin/sample-android/sample-android-demo-free-debug_res/out/res/values/values.xml"
             line="27"
             column="9"/>
     </issue>
@@ -239,7 +144,7 @@
         id="Typos"
         message="Did you mean &quot;flavor!&quot; instead of &quot;flavor1&quot;?">
         <location
-            file="../sample-android-flavor-flavor1-free-debug_res/out/res/values/values.xml"
+            file="../sample-android-flavor-demo-free-debug_res/out/res/values/values.xml"
             line="5"
             column="37"/>
     </issue>
@@ -250,7 +155,7 @@
         errorLine1="&lt;string name=&quot;overridable_resource1&quot;>Overridable resource - From free&lt;/string>"
         errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
-            file="../../../../android-armeabi-v7a-fastbuild/bin/sample-android/sample-android-flavor1-free-debug_res/out/res/values-id/values.xml"
+            file="../../../../android-armeabi-v7a-fastbuild/bin/sample-android/sample-android-demo-free-debug_res/out/res/values-id/values.xml"
             line="5"
             column="9"/>
     </issue>
@@ -283,7 +188,7 @@
         errorLine1="        &lt;string name=&quot;type&quot;>debug&lt;/string>"
         errorLine2="                ~~~~~~~~~~~">
         <location
-            file="../../../../android-armeabi-v7a-fastbuild/bin/sample-android/src/main/res/values/gen_strings_sample-android-flavor1-free-debug_res_value.xml"
+            file="../../../../android-armeabi-v7a-fastbuild/bin/sample-android/src/main/res/values/gen_strings_sample-android-demo-free-debug_res_value.xml"
             line="4"
             column="17"/>
     </issue>
@@ -294,7 +199,7 @@
         errorLine1="        &lt;string name=&quot;flavor&quot;>free&lt;/string>"
         errorLine2="                ~~~~~~~~~~~~~">
         <location
-            file="../../../../android-armeabi-v7a-fastbuild/bin/sample-android/src/main/res/values/gen_strings_sample-android-flavor1-free-debug_res_value.xml"
+            file="../../../../android-armeabi-v7a-fastbuild/bin/sample-android/src/main/res/values/gen_strings_sample-android-demo-free-debug_res_value.xml"
             line="5"
             column="17"/>
     </issue>
@@ -305,7 +210,7 @@
         errorLine1="&lt;string name=&quot;overridable_resource1&quot;>Overridable resource - From free&lt;/string>"
         errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
-            file="../../../../android-armeabi-v7a-fastbuild/bin/sample-android/sample-android-flavor1-free-debug_res/out/res/values-id/values.xml"
+            file="../../../../android-armeabi-v7a-fastbuild/bin/sample-android/sample-android-demo-free-debug_res/out/res/values-id/values.xml"
             line="5"
             column="9"/>
     </issue>
@@ -316,7 +221,7 @@
         errorLine1="&lt;adaptive-icon xmlns:android=&quot;http://schemas.android.com/apk/res/android&quot;>"
         errorLine2="^">
         <location
-            file="../../../../android-armeabi-v7a-fastbuild/bin/sample-android/sample-android-flavor1-free-debug_res/out/res/mipmap-anydpi-v26/ic_launcher.xml"
+            file="../../../../android-armeabi-v7a-fastbuild/bin/sample-android/sample-android-demo-free-debug_res/out/res/mipmap-anydpi-v26/ic_launcher.xml"
             line="17"
             column="1"/>
     </issue>
@@ -327,7 +232,7 @@
         errorLine1="&lt;adaptive-icon xmlns:android=&quot;http://schemas.android.com/apk/res/android&quot;>"
         errorLine2="^">
         <location
-            file="../../../../android-armeabi-v7a-fastbuild/bin/sample-android/sample-android-flavor1-free-debug_res/out/res/mipmap-anydpi-v26/ic_launcher_round.xml"
+            file="../../../../android-armeabi-v7a-fastbuild/bin/sample-android/sample-android-demo-free-debug_res/out/res/mipmap-anydpi-v26/ic_launcher_round.xml"
             line="17"
             column="1"/>
     </issue>
@@ -338,7 +243,7 @@
         errorLine1="    &lt;EditText"
         errorLine2="     ~~~~~~~~">
         <location
-            file="../../../../android-armeabi-v7a-fastbuild/bin/sample-android/sample-android-flavor1-free-debug_res/out/res/layout/activity_main.xml"
+            file="../../../../android-armeabi-v7a-fastbuild/bin/sample-android/sample-android-demo-free-debug_res/out/res/layout/activity_main.xml"
             line="73"
             column="6"/>
     </issue>
@@ -349,18 +254,9 @@
         errorLine1="    &lt;EditText"
         errorLine2="     ~~~~~~~~">
         <location
-            file="../../../../android-armeabi-v7a-fastbuild/bin/sample-android/sample-android-flavor1-free-debug_res/out/res/layout/activity_main.xml"
+            file="../../../../android-armeabi-v7a-fastbuild/bin/sample-android/sample-android-demo-free-debug_res/out/res/layout/activity_main.xml"
             line="73"
             column="6"/>
-    </issue>
-
-    <issue
-        id="ContentDescription"
-        message="Missing `contentDescription` attribute on image">
-        <location
-            file="../sample-android-flavor-flavor1-free-debug_res/out/res/layout/activity_flavor.xml"
-            line="52"
-            column="10"/>
     </issue>
 
     <issue
@@ -369,29 +265,25 @@
         errorLine1="    &lt;EditText"
         errorLine2="     ~~~~~~~~">
         <location
-            file="../../../../android-armeabi-v7a-fastbuild/bin/sample-android/sample-android-flavor1-free-debug_res/out/res/layout/activity_main.xml"
+            file="../../../../android-armeabi-v7a-fastbuild/bin/sample-android/sample-android-demo-free-debug_res/out/res/layout/activity_main.xml"
             line="73"
             column="6"/>
     </issue>
 
     <issue
         id="SetTextI18n"
-        message="Do not concatenate text displayed with `setText`. Use resource string with placeholders."
-        errorLine1="        findViewById&lt;TextView>(R.id.text2).text = &quot;Flavored JVM class: ${ModuleName().name()}&quot;"
-        errorLine2="                                                  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        message="Do not concatenate text displayed with `setText`. Use resource string with placeholders.">
         <location
-            file="../../../../../sample-android-flavor/src/main/java/com/grab/grazel/android/flavor/FlavorActivity.kt"
+            file="../../../../../../flavors/sample-android-flavor/src/main/java/com/grab/grazel/android/flavor/FlavorActivity.kt"
             line="33"
             column="51"/>
     </issue>
 
     <issue
         id="SetTextI18n"
-        message="String literal in `setText` can not be translated. Use Android resources instead."
-        errorLine1="        findViewById&lt;TextView>(R.id.text2).text = &quot;Flavored JVM class: ${ModuleName().name()}&quot;"
-        errorLine2="                                                   ~~~~~~~~~~~~~~~~~~~~">
+        message="String literal in `setText` can not be translated. Use Android resources instead.">
         <location
-            file="../../../../../sample-android-flavor/src/main/java/com/grab/grazel/android/flavor/FlavorActivity.kt"
+            file="../../../../../../flavors/sample-android-flavor/src/main/java/com/grab/grazel/android/flavor/FlavorActivity.kt"
             line="33"
             column="52"/>
     </issue>
@@ -402,7 +294,7 @@
         errorLine1="        android:text=&quot;Hello World from Grazel!&quot;"
         errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
-            file="../../../../android-armeabi-v7a-fastbuild/bin/sample-android/sample-android-flavor1-free-debug_res/out/res/layout/activity_main.xml"
+            file="../../../../android-armeabi-v7a-fastbuild/bin/sample-android/sample-android-demo-free-debug_res/out/res/layout/activity_main.xml"
             line="29"
             column="9"/>
     </issue>

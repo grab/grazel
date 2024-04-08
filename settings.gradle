@@ -40,9 +40,9 @@ dependencyResolutionManagement {
 
 include(":sample-android")
 include(":sample-android-library")
-include(":sample-android-flavor")
-include(":flavor-libs:sample-library-flavor1")
-include(":flavor-libs:sample-library-flavor2")
+include(":flavors:sample-android-flavor")
+include(":flavors:sample-library-demo")
+include(":flavors:sample-library-full")
 include(":sample-kotlin-library")
 include(":lint:custom-lint-rules")
 

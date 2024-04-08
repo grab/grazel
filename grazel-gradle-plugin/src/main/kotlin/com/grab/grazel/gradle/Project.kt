@@ -35,7 +35,7 @@ const val ANDROID_LIBRARY_PLUGIN = "com.android.library"
 const val LINT_PLUGIN_ID = "com.android.lint"
 const val ANDROID_DYNAMIC_FEATURE = "com.android.dynamic-feature"
 const val FIREBASE_CRASHLYTICS_PLUGIN = "com.google.firebase.crashlytics"
-const val GOOGLE_PLAY_SERVICES_PLUGIN = "com.google.firebase.crashlytics"
+const val GOOGLE_PLAY_SERVICES_PLUGIN = "com.google.gms.google-services"
 
 val Project.isAndroidLibrary get() = plugins.hasPlugin(ANDROID_LIBRARY_PLUGIN)
 val Project.isAndroidApplication get() = plugins.hasPlugin(ANDROID_APPLICATION_PLUGIN)
@@ -53,6 +53,7 @@ val Project.hasDatabinding: Boolean
                 (buildFeatures as? ApplicationBuildFeatures)?.dataBinding == true ||
                 buildFeatures.viewBinding == true
         } == true
+
 val Project.hasCompose: Boolean
     get() = extensions.findByType<BaseExtension>()?.buildFeatures?.compose == true
 

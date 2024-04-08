@@ -43,7 +43,9 @@ android {
 
         resValue "string", "generated_value", "This string was generated with resValue"
 
-        manifestPlaceholders = [orientation: "portrait"]
+        manifestPlaceholders = [
+            orientation: "portrait"
+        ]
         vectorDrawables {
             useSupportLibrary true
         }
@@ -51,7 +53,7 @@ android {
 
     signingConfigs {
         debug {
-            storeFile file("../buildsystem/debug.keystore")
+            storeFile file("../keystore/debug.keystore")
         }
     }
 
@@ -67,14 +69,14 @@ android {
         }
     }
 
-    flavorDimensions "service", "release"
+    flavorDimensions += ["service", "release"]
     def resConfigs = ["en", "id", "in", "km", "ms", "my", "th", "vi", "zh", "ko", "ja"]
     productFlavors {
-        flavor1 {
+        demo {
             resourceConfigurations += resConfigs
             dimension "service"
         }
-        flavor2 {
+        full {
             resourceConfigurations += resConfigs
             dimension "service"
         }
@@ -104,11 +106,6 @@ android {
         }
     }
 
-    buildFeatures {
-        compose true
-        dataBinding true
-    }
-
     composeOptions {
         kotlinCompilerExtensionVersion libs.versions.androidx.compose.get()
     }
@@ -133,6 +130,7 @@ android {
 
     buildFeatures {
         compose = true
+        dataBinding true
     }
 
     lint {
@@ -148,7 +146,7 @@ dependencies {
     implementation fileTree(dir: "libs", include: ["*.jar"])
     implementation project(path: ":sample-kotlin-library")
     implementation project(path: ":sample-android-library")
-    implementation project(path: ":sample-android-flavor")
+    implementation project(path: ":flavors:sample-android-flavor")
     implementation libs.androidx.appcompat
     implementation libs.androidx.lifecycle.runtime
     implementation libs.androidx.lifecycle.common
