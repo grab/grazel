@@ -15,12 +15,14 @@ import com.android.build.api.variant.BuildConfigField
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
-apply plugin: "com.android.application"
-apply plugin: "kotlin-android"
-apply plugin: "kotlin-kapt"
-apply plugin: "kotlin-parcelize"
-apply plugin: "com.google.firebase.crashlytics"
+plugins {
+    alias(libs.plugins.android.application)
+    alias(libs.plugins.kotlin.android)
+    alias(libs.plugins.kotlin.kapt)
+    alias(libs.plugins.kotlin.parcelize)
+    alias(libs.plugins.firebase.crashlytics)
+    alias(libs.plugins.google.mobile.services)
+}
 
 android {
     compileSdkVersion 33
@@ -41,7 +43,9 @@ android {
 
         resValue "string", "generated_value", "This string was generated with resValue"
 
-        manifestPlaceholders = [orientation: "portrait"]
+        manifestPlaceholders = [
+            orientation: "portrait"
+        ]
         vectorDrawables {
             useSupportLibrary true
         }
@@ -49,7 +53,7 @@ android {
 
     signingConfigs {
         debug {
-            storeFile file("../buildsystem/debug.keystore")
+            storeFile file("../keystore/debug.keystore")
         }
     }
 
@@ -65,14 +69,14 @@ android {
         }
     }
 
-    flavorDimensions "service", "release"
+    flavorDimensions += ["service", "release"]
     def resConfigs = ["en", "id", "in", "km", "ms", "my", "th", "vi", "zh", "ko", "ja"]
     productFlavors {
-        flavor1 {
+        demo {
             resourceConfigurations += resConfigs
             dimension "service"
         }
-        flavor2 {
+        full {
             resourceConfigurations += resConfigs
             dimension "service"
         }
@@ -102,11 +106,6 @@ android {
         }
     }
 
-    buildFeatures {
-        compose true
-        dataBinding true
-    }
-
     composeOptions {
         kotlinCompilerExtensionVersion libs.versions.androidx.compose.get()
     }
@@ -121,16 +120,17 @@ android {
         targetCompatibility JavaVersion.VERSION_1_8
     }
     kotlinOptions {
-        jvmTarget = '1.8'
+        jvmTarget = "1.8"
     }
     packagingOptions {
         resources {
-            excludes += '/META-INF/{AL2.0,LGPL2.1}'
+            excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
     }
 
     buildFeatures {
         compose = true
+        dataBinding true
     }
 
     lint {
@@ -146,7 +146,7 @@ dependencies {
     implementation fileTree(dir: "libs", include: ["*.jar"])
     implementation project(path: ":sample-kotlin-library")
     implementation project(path: ":sample-android-library")
-    implementation project(path: ":sample-android-flavor")
+    implementation project(path: ":flavors:sample-android-flavor")
     implementation libs.androidx.appcompat
     implementation libs.androidx.lifecycle.runtime
     implementation libs.androidx.lifecycle.common
@@ -181,5 +181,3 @@ dependencies {
     androidTestImplementation libs.androidx.test.espresso.core
     androidTestImplementation libs.androidx.monitor
 }
-
-apply plugin: "com.google.gms.google-services"

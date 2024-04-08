@@ -1,7 +1,7 @@
 load("@grab_bazel_common//rules:defs.bzl", "kotlin_library", "kotlin_test")
 
 kotlin_library(
-    name = "sample-library-flavor2",
+    name = "sample-library-full",
     srcs = glob([
         "src/main/java/com/grab/grazel/android/flavor/ModuleName.kt",
     ]),
@@ -14,12 +14,12 @@ kotlin_library(
 )
 
 kotlin_test(
-    name = "sample-library-flavor2-test",
+    name = "sample-library-full-test",
     srcs = glob([
         "src/test/java/com/grab/grazel/flavor2/ModuleNameTest.kt",
     ]),
     associates = [
-        "//flavor-libs/sample-library-flavor2:sample-library-flavor2",
+        "//flavors/sample-library-full:sample-library-full",
     ],
     visibility = [
         "//visibility:public",

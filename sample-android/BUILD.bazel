@@ -3,7 +3,7 @@ load("@tools_android//tools/crashlytics:defs.bzl", "crashlytics_android_library"
 load("@tools_android//tools/googleservices:defs.bzl", "google_services_xml")
 
 android_binary(
-    name = "sample-android-flavor1-free-debug",
+    name = "sample-android-demo-free-debug",
     srcs = glob([
         "src/main/java/com/grab/grazel/android/sample/**/*.kt",
     ]),
@@ -15,7 +15,7 @@ android_binary(
         "strings": {
             "SOME_STRING": "Something",
             "VERSION_NAME": "1.0",
-            "VARIANT_NAME": "flavor1FreeDebug",
+            "VARIANT_NAME": "demoFreeDebug",
         },
         "booleans": {
             "SOME_BOOLEAN": "false",
@@ -30,7 +30,7 @@ android_binary(
     },
     crunch_png = False,
     custom_package = "com.grab.grazel.android.sample",
-    debug_key = "//buildsystem:debug-keystore",
+    debug_key = "//keystore:debug-keystore",
     enable_compose = True,
     enable_data_binding = True,
     incremental_dexing = True,
@@ -83,11 +83,11 @@ android_binary(
         "//visibility:public",
     ],
     deps = [
-        ":crashlytics-flavor1-free-debug",
+        ":crashlytics-demo-free-debug",
         "//:dagger",
         "//:parcelize",
-        "//sample-android-flavor:sample-android-flavor-flavor1-free-debug",
-        "//sample-android-library:sample-android-library-flavor1-free-debug",
+        "//flavors/sample-android-flavor:sample-android-flavor-demo-free-debug",
+        "//sample-android-library:sample-android-library-demo-free-debug",
         "//sample-kotlin-library",
         "@debug_maven//:androidx_core_core",
         "@debug_maven//:androidx_lifecycle_lifecycle_common",
@@ -110,7 +110,7 @@ android_binary(
 )
 
 android_binary(
-    name = "sample-android-flavor1-paid-debug",
+    name = "sample-android-demo-paid-debug",
     srcs = glob([
         "src/main/java/com/grab/grazel/android/sample/**/*.kt",
     ]),
@@ -122,7 +122,7 @@ android_binary(
         "strings": {
             "SOME_STRING": "Something",
             "VERSION_NAME": "1.0",
-            "VARIANT_NAME": "flavor1PaidDebug",
+            "VARIANT_NAME": "demoPaidDebug",
         },
         "booleans": {
             "SOME_BOOLEAN": "false",
@@ -137,7 +137,7 @@ android_binary(
     },
     crunch_png = False,
     custom_package = "com.grab.grazel.android.sample",
-    debug_key = "//buildsystem:debug-keystore",
+    debug_key = "//keystore:debug-keystore",
     enable_compose = True,
     enable_data_binding = True,
     incremental_dexing = True,
@@ -190,11 +190,11 @@ android_binary(
         "//visibility:public",
     ],
     deps = [
-        ":crashlytics-flavor1-paid-debug",
+        ":crashlytics-demo-paid-debug",
         "//:dagger",
         "//:parcelize",
-        "//sample-android-flavor:sample-android-flavor-flavor1-paid-debug",
-        "//sample-android-library:sample-android-library-flavor1-paid-debug",
+        "//flavors/sample-android-flavor:sample-android-flavor-demo-paid-debug",
+        "//sample-android-library:sample-android-library-demo-paid-debug",
         "//sample-kotlin-library",
         "@debug_maven//:androidx_core_core",
         "@debug_maven//:androidx_lifecycle_lifecycle_common",
@@ -217,7 +217,7 @@ android_binary(
 )
 
 android_binary(
-    name = "sample-android-flavor2-free-debug",
+    name = "sample-android-full-free-debug",
     srcs = glob([
         "src/main/java/com/grab/grazel/android/sample/**/*.kt",
     ]),
@@ -229,7 +229,7 @@ android_binary(
         "strings": {
             "SOME_STRING": "Something",
             "VERSION_NAME": "1.0",
-            "VARIANT_NAME": "flavor2FreeDebug",
+            "VARIANT_NAME": "fullFreeDebug",
         },
         "booleans": {
             "SOME_BOOLEAN": "false",
@@ -244,7 +244,7 @@ android_binary(
     },
     crunch_png = False,
     custom_package = "com.grab.grazel.android.sample",
-    debug_key = "//buildsystem:debug-keystore",
+    debug_key = "//keystore:debug-keystore",
     enable_compose = True,
     enable_data_binding = True,
     incremental_dexing = True,
@@ -297,11 +297,11 @@ android_binary(
         "//visibility:public",
     ],
     deps = [
-        ":crashlytics-flavor2-free-debug",
+        ":crashlytics-full-free-debug",
         "//:dagger",
         "//:parcelize",
-        "//sample-android-flavor:sample-android-flavor-flavor2-free-debug",
-        "//sample-android-library:sample-android-library-flavor2-free-debug",
+        "//flavors/sample-android-flavor:sample-android-flavor-full-free-debug",
+        "//sample-android-library:sample-android-library-full-free-debug",
         "//sample-kotlin-library",
         "@debug_maven//:androidx_core_core",
         "@debug_maven//:androidx_lifecycle_lifecycle_common",
@@ -324,7 +324,7 @@ android_binary(
 )
 
 android_binary(
-    name = "sample-android-flavor2-paid-debug",
+    name = "sample-android-full-paid-debug",
     srcs = glob([
         "src/main/java/com/grab/grazel/android/sample/**/*.kt",
     ]),
@@ -336,7 +336,7 @@ android_binary(
         "strings": {
             "SOME_STRING": "Something",
             "VERSION_NAME": "1.0",
-            "VARIANT_NAME": "flavor2PaidDebug",
+            "VARIANT_NAME": "fullPaidDebug",
         },
         "booleans": {
             "SOME_BOOLEAN": "false",
@@ -351,7 +351,7 @@ android_binary(
     },
     crunch_png = False,
     custom_package = "com.grab.grazel.android.sample",
-    debug_key = "//buildsystem:debug-keystore",
+    debug_key = "//keystore:debug-keystore",
     enable_compose = True,
     enable_data_binding = True,
     incremental_dexing = True,
@@ -404,11 +404,11 @@ android_binary(
         "//visibility:public",
     ],
     deps = [
-        ":crashlytics-flavor2-paid-debug",
+        ":crashlytics-full-paid-debug",
         "//:dagger",
         "//:parcelize",
-        "//sample-android-flavor:sample-android-flavor-flavor2-paid-debug",
-        "//sample-android-library:sample-android-library-flavor2-paid-debug",
+        "//flavors/sample-android-flavor:sample-android-flavor-full-paid-debug",
+        "//sample-android-library:sample-android-library-full-paid-debug",
         "//sample-kotlin-library",
         "@debug_maven//:androidx_core_core",
         "@debug_maven//:androidx_lifecycle_lifecycle_common",
@@ -431,58 +431,58 @@ android_binary(
 )
 
 crashlytics_android_library(
-    name = "crashlytics-flavor1-free-debug",
+    name = "crashlytics-demo-free-debug",
     package_name = "com.grab.grazel.android.sample.free",
     build_id = "042cb4d8-56f8-41a0-916a-9da28e94d1ba",
     resource_files = google_services_xml(
         package_name = "com.grab.grazel.android.sample.free",
-        google_services_json = "src/flavor1FreeDebug/google-services.json",
+        google_services_json = "src/demoFreeDebug/google-services.json",
     ),
 )
 
 crashlytics_android_library(
-    name = "crashlytics-flavor1-paid-debug",
+    name = "crashlytics-demo-paid-debug",
     package_name = "com.grab.grazel.android.sample.paid",
     build_id = "042cb4d8-56f8-41a0-916a-9da28e94d1ba",
     resource_files = google_services_xml(
         package_name = "com.grab.grazel.android.sample.paid",
-        google_services_json = "src/flavor1Paid/google-services.json",
+        google_services_json = "src/demoPaid/google-services.json",
     ),
 )
 
 crashlytics_android_library(
-    name = "crashlytics-flavor2-free-debug",
+    name = "crashlytics-full-free-debug",
     package_name = "com.grab.grazel.android.sample.free",
     build_id = "042cb4d8-56f8-41a0-916a-9da28e94d1ba",
     resource_files = google_services_xml(
         package_name = "com.grab.grazel.android.sample.free",
-        google_services_json = "src/flavor2Free/google-services.json",
+        google_services_json = "src/fullFree/google-services.json",
     ),
 )
 
 crashlytics_android_library(
-    name = "crashlytics-flavor2-paid-debug",
+    name = "crashlytics-full-paid-debug",
     package_name = "com.grab.grazel.android.sample.paid",
     build_id = "042cb4d8-56f8-41a0-916a-9da28e94d1ba",
     resource_files = google_services_xml(
         package_name = "com.grab.grazel.android.sample.paid",
-        google_services_json = "src/flavor2Paid/google-services.json",
+        google_services_json = "src/fullPaid/google-services.json",
     ),
 )
 
 android_instrumentation_binary(
-    name = "sample-android-flavor1-free-debug-android-test",
+    name = "sample-android-demo-free-debug-android-test",
     srcs = glob([
         "src/androidTest/java/JavaTest.java",
         "src/androidTest/java/KotlinTest.kt",
     ]),
     associates = [
-        "//sample-android:lib_sample-android-flavor1-free-debug_kt",
+        "//sample-android:lib_sample-android-demo-free-debug_kt",
     ],
     custom_package = "com.grab.grazel.android.sample",
-    debug_key = "//buildsystem:debug-keystore",
+    debug_key = "//keystore:debug-keystore",
     enable_compose = True,
-    instruments = ":sample-android-flavor1-free-debug",
+    instruments = ":sample-android-demo-free-debug",
     manifest_values = {
         "versionCode": "1",
         "versionName": "1.0",
@@ -500,9 +500,9 @@ android_instrumentation_binary(
     test_instrumentation_runner = "androidx.test.runner.AndroidJUnitRunner",
     deps = [
         "//:dagger",
-        "//sample-android:lib_sample-android-flavor1-free-debug",
-        "//sample-android-flavor:sample-android-flavor-flavor1-free-debug",
-        "//sample-android-library:sample-android-library-flavor1-free-debug",
+        "//flavors/sample-android-flavor:sample-android-flavor-demo-free-debug",
+        "//sample-android:lib_sample-android-demo-free-debug",
+        "//sample-android-library:sample-android-library-demo-free-debug",
         "//sample-kotlin-library",
         "@android_test_maven//:androidx_lifecycle_lifecycle_common",
         "@android_test_maven//:androidx_test_espresso_espresso_core",
@@ -528,18 +528,18 @@ android_instrumentation_binary(
 )
 
 android_instrumentation_binary(
-    name = "sample-android-flavor1-paid-debug-android-test",
+    name = "sample-android-demo-paid-debug-android-test",
     srcs = glob([
         "src/androidTest/java/JavaTest.java",
         "src/androidTest/java/KotlinTest.kt",
     ]),
     associates = [
-        "//sample-android:lib_sample-android-flavor1-paid-debug_kt",
+        "//sample-android:lib_sample-android-demo-paid-debug_kt",
     ],
     custom_package = "com.grab.grazel.android.sample",
-    debug_key = "//buildsystem:debug-keystore",
+    debug_key = "//keystore:debug-keystore",
     enable_compose = True,
-    instruments = ":sample-android-flavor1-paid-debug",
+    instruments = ":sample-android-demo-paid-debug",
     manifest_values = {
         "versionCode": "1",
         "versionName": "1.0",
@@ -557,9 +557,9 @@ android_instrumentation_binary(
     test_instrumentation_runner = "androidx.test.runner.AndroidJUnitRunner",
     deps = [
         "//:dagger",
-        "//sample-android:lib_sample-android-flavor1-paid-debug",
-        "//sample-android-flavor:sample-android-flavor-flavor1-paid-debug",
-        "//sample-android-library:sample-android-library-flavor1-paid-debug",
+        "//flavors/sample-android-flavor:sample-android-flavor-demo-paid-debug",
+        "//sample-android:lib_sample-android-demo-paid-debug",
+        "//sample-android-library:sample-android-library-demo-paid-debug",
         "//sample-kotlin-library",
         "@android_test_maven//:androidx_lifecycle_lifecycle_common",
         "@android_test_maven//:androidx_test_espresso_espresso_core",
@@ -585,18 +585,18 @@ android_instrumentation_binary(
 )
 
 android_instrumentation_binary(
-    name = "sample-android-flavor2-free-debug-android-test",
+    name = "sample-android-full-free-debug-android-test",
     srcs = glob([
         "src/androidTest/java/JavaTest.java",
         "src/androidTest/java/KotlinTest.kt",
     ]),
     associates = [
-        "//sample-android:lib_sample-android-flavor2-free-debug_kt",
+        "//sample-android:lib_sample-android-full-free-debug_kt",
     ],
     custom_package = "com.grab.grazel.android.sample",
-    debug_key = "//buildsystem:debug-keystore",
+    debug_key = "//keystore:debug-keystore",
     enable_compose = True,
-    instruments = ":sample-android-flavor2-free-debug",
+    instruments = ":sample-android-full-free-debug",
     manifest_values = {
         "versionCode": "1",
         "versionName": "1.0",
@@ -614,9 +614,9 @@ android_instrumentation_binary(
     test_instrumentation_runner = "androidx.test.runner.AndroidJUnitRunner",
     deps = [
         "//:dagger",
-        "//sample-android:lib_sample-android-flavor2-free-debug",
-        "//sample-android-flavor:sample-android-flavor-flavor2-free-debug",
-        "//sample-android-library:sample-android-library-flavor2-free-debug",
+        "//flavors/sample-android-flavor:sample-android-flavor-full-free-debug",
+        "//sample-android:lib_sample-android-full-free-debug",
+        "//sample-android-library:sample-android-library-full-free-debug",
         "//sample-kotlin-library",
         "@android_test_maven//:androidx_lifecycle_lifecycle_common",
         "@android_test_maven//:androidx_test_espresso_espresso_core",
@@ -642,18 +642,18 @@ android_instrumentation_binary(
 )
 
 android_instrumentation_binary(
-    name = "sample-android-flavor2-paid-debug-android-test",
+    name = "sample-android-full-paid-debug-android-test",
     srcs = glob([
         "src/androidTest/java/JavaTest.java",
         "src/androidTest/java/KotlinTest.kt",
     ]),
     associates = [
-        "//sample-android:lib_sample-android-flavor2-paid-debug_kt",
+        "//sample-android:lib_sample-android-full-paid-debug_kt",
     ],
     custom_package = "com.grab.grazel.android.sample",
-    debug_key = "//buildsystem:debug-keystore",
+    debug_key = "//keystore:debug-keystore",
     enable_compose = True,
-    instruments = ":sample-android-flavor2-paid-debug",
+    instruments = ":sample-android-full-paid-debug",
     manifest_values = {
         "versionCode": "1",
         "versionName": "1.0",
@@ -671,9 +671,9 @@ android_instrumentation_binary(
     test_instrumentation_runner = "androidx.test.runner.AndroidJUnitRunner",
     deps = [
         "//:dagger",
-        "//sample-android:lib_sample-android-flavor2-paid-debug",
-        "//sample-android-flavor:sample-android-flavor-flavor2-paid-debug",
-        "//sample-android-library:sample-android-library-flavor2-paid-debug",
+        "//flavors/sample-android-flavor:sample-android-flavor-full-paid-debug",
+        "//sample-android:lib_sample-android-full-paid-debug",
+        "//sample-android-library:sample-android-library-full-paid-debug",
         "//sample-kotlin-library",
         "@android_test_maven//:androidx_lifecycle_lifecycle_common",
         "@android_test_maven//:androidx_test_espresso_espresso_core",

@@ -1,0 +1,9 @@
+filegroup(
+    name = "debug-keystore",
+    srcs = [
+        "debug.keystore",
+    ],
+    visibility = [
+        "//visibility:public",
+    ],
+)

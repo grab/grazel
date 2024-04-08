@@ -8,13 +8,6 @@ A full test suite can be executed via the following command and will be tested o
 ./gradlew check
 ```
 
-- `sample-android`
-- `sample-android-flavor`
-- `sample-android-lib`
-- `sample-kotlin-lib`
-- `sample-lib-flavor1`
-- `sample-lib-flavor2`
-
 In order to test your changes and see if the `BUILD.bazel` is being generated as intended, execute
 the following command in the project root directory
 

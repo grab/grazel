@@ -12,7 +12,7 @@ androidx-monitor = "1.6.1"
 androidx-compose = "1.4.3"
 activity-compose = "1.7.2"
 annotation-jvm = "1.6.0"
-crashlytics = "2.9.5"
+crashlytics = "2.9.9"
 dagger = "2.47"
 dokka = "1.4.32"
 emoji2 = "1.3.0"
@@ -38,7 +38,6 @@ sceneform-ux = "1.15.0"
 timber = "5.0.1"
 auto-service = "1.1.1"
 truth = "1.1.3"
-jetbrains-kotlin-jvm = "1.8.10"
 
 [libraries]
 android-gradle-plugin = { module = "com.android.tools.build:gradle", version.ref = "android-gradle-plugin" }
@@ -75,9 +74,7 @@ databinding-runtime = { module = "androidx.databinding:databinding-runtime", ver
 dokka-gradle-plugin = { module = "org.jetbrains.dokka:dokka-gradle-plugin", version.ref = "dokka" }
 google-dagger = { module = "com.google.dagger:dagger", version.ref = "dagger" }
 google-dagger-compiler = { module = "com.google.dagger:dagger-compiler", version.ref = "dagger" }
-google-firebase-crashlytics = { module = "com.google.firebase:firebase-crashlytics-gradle", version.ref = "crashlytics" }
 google-guava = { module = "com.google.guava:guava", version.ref = "guava" }
-google-mobile-services = { module = "com.google.gms:google-services", version.ref = "google-services" }
 google-truth = { module = "com.google.truth:truth", version.ref = "truth" }
 javapoet = { module = "com.squareup:javapoet", version.ref = "javapoet" }
 junit = { module = "junit:junit", version.ref = "junit" }
@@ -97,6 +94,15 @@ timber = { module = "com.jakewharton.timber:timber", version.ref = "timber" }
 auto-service = { module = "com.google.auto.service:auto-service", version.ref = "auto-service" }
 
 [plugins]
+android-application = { id = "com.android.application", version.ref = "android-gradle-plugin" }
+android-library = { id = "com.android.library", version.ref = "android-gradle-plugin" }
+android-lint = { id = "com.android.lint", version.ref = "android-gradle-plugin" }
+google-mobile-services = { id = "com.google.gms.google-services", version.ref = "google-services" }
+firebase-crashlytics = { id = "com.google.firebase.crashlytics", version.ref = "crashlytics" }
+kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
+kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
+kotlin-kapt = { id = "org.jetbrains.kotlin.kapt", version.ref = "kotlin" }
+kotlin-parcelize = { id = "org.jetbrains.kotlin.plugin.parcelize", version.ref = "kotlin" }
 kotlin-dsl = { id = "org.gradle.kotlin.kotlin-dsl", version.ref = "kotlin-dsl" }
 gradle-publish = { id = "com.gradle.plugin-publish", version.ref = "gradle-plugin-publish" }
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }

@@ -14,14 +14,18 @@
  * limitations under the License.
  */
 
-apply plugin: "com.android.library"
-apply plugin: "kotlin-android"
-apply plugin: "kotlin-parcelize"
+plugins {
+    alias(libs.plugins.android.library)
+    alias(libs.plugins.kotlin.android)
+    alias(libs.plugins.kotlin.parcelize)
+}
 
 android {
     compileSdkVersion 33
     buildToolsVersion "33.0.1"
-
+    defaultConfig {
+        minSdkVersion 21
+    }
     buildFeatures {
         viewBinding true
     }

@@ -26,6 +26,9 @@
 !.idea/runConfigurations.xml
 !.idea/.name
 
+/.aswb
+/.ijwb
+
 .DS_Store
 /captures
 .externalNativeBuild
