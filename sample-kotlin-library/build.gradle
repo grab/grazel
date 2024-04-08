@@ -13,10 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
-apply plugin: "java-library"
-apply plugin: "kotlin"
-apply plugin: "com.android.lint"
+plugins {
+    id("kotlin")
+    id("com.android.lint")
+}
 
 lint {
     baseline file("lint-baseline-kotlin.xml")

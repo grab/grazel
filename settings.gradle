@@ -17,7 +17,9 @@ pluginManagement {
     repositories {
         gradlePluginPortal()
         mavenCentral()
+        google()
     }
+    includeBuild("grazel-gradle-plugin")
     plugins {
         id "com.gradle.enterprise" version "3.6.3"
     }
@@ -27,12 +29,22 @@ plugins {
 }
 rootProject.name = "grazel"
 
+dependencyResolutionManagement {
+    // TODO(arun) Incompatible with repository calculation in grazel
+    //repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+
 include(":sample-android")
-include(':sample-android-library')
+include(":sample-android-library")
 include(":sample-android-flavor")
-include(':flavor-libs:sample-library-flavor1')
+include(":flavor-libs:sample-library-flavor1")
 include(":flavor-libs:sample-library-flavor2")
-include(':sample-kotlin-library')
+include(":sample-kotlin-library")
+include(":lint:custom-lint-rules")
 
 def isCiServer = System.getenv().containsKey("CI") || true
 if (isCiServer) {
@@ -44,10 +56,3 @@ if (isCiServer) {
         }
     }
 }
-
-includeBuild("grazel-gradle-plugin") {
-    dependencySubstitution {
-        substitute module("com.grab:grazel") using project(":")
-    }
-}
-include ':lint:custom-lint-rules'

@@ -1,5 +1,4 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<!--
+<?xml version="1.0" encoding="UTF-8"?><!--
   ~ Copyright 2024 Grabtaxi Holdings PTE LTD (GRAB)
   ~
   ~ Licensed under the Apache License, Version 2.0 (the "License");
@@ -19,5 +18,4 @@
     <!--   baseline warnings ignored so we can pass the CI jobs when we don't find new issues-->
     <issue id="LintBaseline" severity="ignore" />
     <issue id="LintBaselineFixed" severity="ignore" />
-
 </lint>

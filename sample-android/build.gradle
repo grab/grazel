@@ -15,12 +15,14 @@ import com.android.build.api.variant.BuildConfigField
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
-apply plugin: "com.android.application"
-apply plugin: "kotlin-android"
-apply plugin: "kotlin-kapt"
-apply plugin: "kotlin-parcelize"
-apply plugin: "com.google.firebase.crashlytics"
+plugins {
+    alias(libs.plugins.android.application)
+    alias(libs.plugins.kotlin.android)
+    alias(libs.plugins.kotlin.kapt)
+    alias(libs.plugins.kotlin.parcelize)
+    alias(libs.plugins.firebase.crashlytics)
+    alias(libs.plugins.google.mobile.services)
+}
 
 android {
     compileSdkVersion 33
@@ -121,11 +123,11 @@ android {
         targetCompatibility JavaVersion.VERSION_1_8
     }
     kotlinOptions {
-        jvmTarget = '1.8'
+        jvmTarget = "1.8"
     }
     packagingOptions {
         resources {
-            excludes += '/META-INF/{AL2.0,LGPL2.1}'
+            excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
     }
 
@@ -181,5 +183,3 @@ dependencies {
     androidTestImplementation libs.androidx.test.espresso.core
     androidTestImplementation libs.androidx.monitor
 }
-
-apply plugin: "com.google.gms.google-services"
