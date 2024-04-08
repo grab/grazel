@@ -28,6 +28,7 @@ import org.gradle.api.Task
 import org.gradle.api.artifacts.Configuration
 import org.gradle.api.artifacts.ConfigurationContainer
 import org.gradle.api.artifacts.dsl.ArtifactHandler
+import org.gradle.api.artifacts.dsl.DependencyFactory
 import org.gradle.api.artifacts.dsl.DependencyHandler
 import org.gradle.api.artifacts.dsl.DependencyLockingHandler
 import org.gradle.api.artifacts.dsl.RepositoryHandler
@@ -509,6 +510,10 @@ class FakeProject(private val name: String) : Project {
     }
 
     override fun dependencies(configureClosure: Closure<*>) {
+        TODO("Not yet implemented")
+    }
+
+    override fun getDependencyFactory(): DependencyFactory {
         TODO("Not yet implemented")
     }
 

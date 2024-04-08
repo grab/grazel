@@ -25,7 +25,7 @@ jobs:
                     find "$(pwd -P)" -type f \
                     \( -name "*.bazel" -o -name "WORKSPACE" \) \
                     -not -path "*/buildsystem/*" \
-                    -exec bazelisk run //:buildifier -- --mode=check -v {} +
+                    -exec bazelisk run //:buildifier --config=ci -- --mode=check -v {} +
     bazel-build:
         runs-on: ubuntu-latest
         steps:
@@ -55,7 +55,7 @@ jobs:
             -   name: Bazel Android Lint
                 uses: ./.github/actions/bazel
                 with:
-                    bazel-command: test //sample-android:sample-android-flavor1-free-debug.lint_test
+                    bazel-command: test //sample-android:sample-android-demo-free-debug.lint_test
                     cache-key: bazel-lint
 
     grazel-build:
