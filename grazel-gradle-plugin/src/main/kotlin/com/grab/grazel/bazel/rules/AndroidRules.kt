@@ -133,7 +133,7 @@ internal fun StatementsBuilder.androidBinary(
     enableCompose: Boolean = false,
     visibility: Visibility = Visibility.Public,
     resourceFiles: List<Assignee> = emptyList(),
-    resources: Assignee? = null,
+    resourceSets: Assignee? = null,
     resValuesData: ResValuesData,
     deps: List<BazelDependency>,
     assetsGlob: List<String> = emptyList(),
@@ -172,7 +172,7 @@ internal fun StatementsBuilder.androidBinary(
         resConfigFilters.notEmpty {
             "resource_configuration_filters" `=` resConfigFilters.quote
         }
-        resources?.let { "resources" `=` resources }
+        resourceSets?.let { "resource_sets" `=` resourceSets }
         deps.notEmpty {
             "deps" `=` array(deps.map(BazelDependency::toString).quote)
         }
@@ -199,7 +199,7 @@ internal fun StatementsBuilder.androidLibrary(
     manifest: String? = null,
     srcsGlob: List<String> = emptyList(),
     visibility: Visibility = Visibility.Public,
-    resources: Assignee? = null,
+    resorceSets: Assignee? = null,
     resourceFiles: List<Assignee> = emptyList(),
     enableDataBinding: Boolean = false,
     enableCompose: Boolean = false,
@@ -226,7 +226,7 @@ internal fun StatementsBuilder.androidLibrary(
                 transform = Assignee::asString
             )
         }
-        resources?.let { "resources" `=` resources }
+        resorceSets?.let { "resource_sets" `=` resorceSets }
         deps.notEmpty {
             "deps" `=` array(deps.map(BazelDependency::toString).map(String::quote))
         }

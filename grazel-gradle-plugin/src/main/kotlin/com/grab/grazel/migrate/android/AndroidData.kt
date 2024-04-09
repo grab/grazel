@@ -20,13 +20,18 @@ import com.grab.grazel.bazel.rules.Multidex
 import com.grab.grazel.bazel.starlark.BazelDependency
 import com.grab.grazel.bazel.starlark.LintConfigs
 
+internal data class BazelSourceSet(
+    val name: String,
+    val res: String?,
+    val assets: String?,
+    val manifest: String?,
+)
+
 internal interface AndroidData {
     val name: String
     val srcs: List<String>
-    val res: List<String>
+    val resourceSets: Set<BazelSourceSet>
     val resValuesData: ResValuesData
-    val assets: List<String>
-    val assetsDir: String?
     val manifestFile: String?
 
     // Custom package used for detecting Java/Kotlin sources root
@@ -46,10 +51,8 @@ internal interface AndroidData {
 internal data class AndroidLibraryData(
     override val name: String,
     override val srcs: List<String> = emptyList(),
-    override val res: List<String> = emptyList(),
+    override val resourceSets: Set<BazelSourceSet> = emptySet(),
     override val resValuesData: ResValuesData = ResValuesData(),
-    override val assets: List<String> = emptyList(),
-    override val assetsDir: String? = null,
     override val manifestFile: String? = null,
     override val customPackage: String,
     override val packageName: String,
@@ -65,10 +68,8 @@ internal data class AndroidLibraryData(
 internal data class AndroidBinaryData(
     override val name: String,
     override val srcs: List<String> = emptyList(),
-    override val res: List<String> = emptyList(),
+    override val resourceSets: Set<BazelSourceSet> = emptySet(),
     override val resValuesData: ResValuesData = ResValuesData(),
-    override val assets: List<String> = emptyList(),
-    override val assetsDir: String? = null,
     override val manifestFile: String? = null,
     override val customPackage: String,
     override val packageName: String,
