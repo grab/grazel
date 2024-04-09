@@ -18,11 +18,9 @@ package com.grab.grazel.migrate.android
 
 import com.android.build.gradle.BaseExtension
 import com.android.build.gradle.api.AndroidSourceSet
-import com.android.build.gradle.internal.dsl.LintOptions
 import com.grab.grazel.GrazelExtension
 import com.grab.grazel.bazel.rules.Multidex
 import com.grab.grazel.bazel.starlark.BazelDependency
-import com.grab.grazel.bazel.starlark.LintConfigs
 import com.grab.grazel.gradle.ConfigurationScope.BUILD
 import com.grab.grazel.gradle.dependencies.BuildGraphType
 import com.grab.grazel.gradle.dependencies.DependenciesDataSource
@@ -36,10 +34,7 @@ import com.grab.grazel.gradle.variant.AndroidVariantDataSource
 import com.grab.grazel.gradle.variant.MatchedVariant
 import com.grab.grazel.gradle.variant.getMigratableBuildVariants
 import com.grab.grazel.gradle.variant.nameSuffix
-import com.grab.grazel.migrate.android.PathResolveMode.DIRECTORY
-import com.grab.grazel.migrate.android.SourceSetType.ASSETS
 import com.grab.grazel.migrate.android.SourceSetType.JAVA_KOTLIN
-import com.grab.grazel.migrate.android.SourceSetType.RESOURCES
 import com.grab.grazel.migrate.dependencies.calculateDirectDependencyTags
 import com.grab.grazel.migrate.kotlin.kotlinParcelizeDeps
 import dagger.Lazy
@@ -105,7 +100,6 @@ constructor(
         matchedVariant: MatchedVariant,
         extension: BaseExtension,
         deps: List<BazelDependency>,
-        sourceSetType: SourceSetType = JAVA_KOTLIN
     ): AndroidLibraryData {
         // Only consider source sets from migratable variants
         val migratableSourceSets = matchedVariant.variant.sourceSets
@@ -115,13 +109,14 @@ constructor(
             extension,
             migratableSourceSets
         ) ?: ""
-        val srcs = androidSources(migratableSourceSets, sourceSetType).toList()
-        val res = androidSources(migratableSourceSets, RESOURCES, DIRECTORY).toList().reversed()
+        val srcs = androidSources(migratableSourceSets, JAVA_KOTLIN).toList()
 
-        val assets = androidSources(migratableSourceSets, ASSETS).toList()
-        val assetsDir = assetsDirectory(migratableSourceSets, assets)
+        val resourceSets = migratableSourceSets.flatMap { it.toResourceSet(project) }
+            .reversed()
+            .toSet()
 
-        val manifestFile = androidManifestParser.androidManifestFile(migratableSourceSets)
+        val manifestFile = androidManifestParser
+            .androidManifestFile(migratableSourceSets)
             ?.let(::relativePath)
 
         val tags = if (grazelExtension.rules.kotlin.enabledTransitiveReduction) {
@@ -133,9 +128,7 @@ constructor(
         return AndroidLibraryData(
             name = name + matchedVariant.nameSuffix,
             srcs = srcs,
-            res = res,
-            assets = assets,
-            assetsDir = assetsDir,
+            resourceSets = resourceSets,
             manifestFile = manifestFile,
             customPackage = packageName,
             packageName = packageName,
@@ -147,19 +140,6 @@ constructor(
             tags = tags.sorted(),
             lintConfigs = lintConfigs
         )
-    }
-
-    private fun Project.assetsDirectory(
-        sourceSets: List<AndroidSourceSet>,
-        assets: List<String>
-    ): String? {
-        return if (assets.isNotEmpty()) {
-            val assetItem = assets.first()
-            sourceSets
-                .flatMap { it.assets.srcDirs }
-                .map { relativePath(it) }
-                .first { assetItem.contains(it) }
-        } else null
     }
 }
 

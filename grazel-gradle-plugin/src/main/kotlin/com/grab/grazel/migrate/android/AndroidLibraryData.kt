@@ -38,14 +38,25 @@ internal fun StatementsBuilder.buildResFiles(
 }
 
 internal fun buildResources(
-    resDirs: List<String>,
-) = if (resDirs.isEmpty()) null else
+    resourceSets: Set<BazelSourceSet>,
+) = if (resourceSets.isEmpty()) null else
     Assignee {
         add(
-            statement = resDirs
-                .groupBy { it }
-                .mapValues { emptyMap<String, String>() }
-                .toObject(quoteKeys = true, quoteValues = true, allowEmpty = true)
+            statement = resourceSets.groupBy(
+                keySelector = { it.name },
+                valueTransform = {
+                    mapOf(
+                        "res" to it.res,
+                        "assets" to it.assets,
+                        "manifest" to it.manifest
+                    )
+                })
+                .mapValues { it.value.first() }
+                .toObject(
+                    quoteKeys = true,
+                    quoteValues = true,
+                    allowEmpty = false
+                )
         )
     }
 

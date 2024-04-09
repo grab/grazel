@@ -18,12 +18,17 @@ android_library(
             "generated_value": "generated",
         },
     },
-    resources = {
-        "src/demo/res": {
+    resource_sets = {
+        "demo": {
+            "res": "src/demo/res",
         },
-        "src/free/res": {
+        "free": {
+            "res": "src/free/res",
         },
-        "src/main/res": {
+        "main": {
+            "res": "src/main/res",
+            "assets": "src/main/assets",
+            "manifest": "src/main/AndroidManifest.xml",
         },
     },
     visibility = [
@@ -58,10 +63,14 @@ android_library(
             "generated_value": "generated",
         },
     },
-    resources = {
-        "src/demo/res": {
+    resource_sets = {
+        "demo": {
+            "res": "src/demo/res",
         },
-        "src/main/res": {
+        "main": {
+            "res": "src/main/res",
+            "assets": "src/main/assets",
+            "manifest": "src/main/AndroidManifest.xml",
         },
     },
     visibility = [
@@ -96,12 +105,17 @@ android_library(
             "generated_value": "generated",
         },
     },
-    resources = {
-        "src/full/res": {
+    resource_sets = {
+        "full": {
+            "res": "src/full/res",
         },
-        "src/free/res": {
+        "free": {
+            "res": "src/free/res",
         },
-        "src/main/res": {
+        "main": {
+            "res": "src/main/res",
+            "assets": "src/main/assets",
+            "manifest": "src/main/AndroidManifest.xml",
         },
     },
     visibility = [
@@ -136,10 +150,14 @@ android_library(
             "generated_value": "generated",
         },
     },
-    resources = {
-        "src/full/res": {
+    resource_sets = {
+        "full": {
+            "res": "src/full/res",
         },
-        "src/main/res": {
+        "main": {
+            "res": "src/main/res",
+            "assets": "src/main/assets",
+            "manifest": "src/main/AndroidManifest.xml",
         },
     },
     visibility = [
