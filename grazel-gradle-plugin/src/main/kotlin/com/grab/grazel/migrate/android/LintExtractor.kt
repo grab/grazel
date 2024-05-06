@@ -18,7 +18,6 @@ package com.grab.grazel.migrate.android
 
 import com.android.builder.model.LintOptions
 import com.grab.grazel.bazel.starlark.BazelDependency
-import com.grab.grazel.bazel.starlark.LintConfigs
 import com.grab.grazel.gradle.LINT_PLUGIN_ID
 import org.gradle.api.Project
 import org.gradle.api.artifacts.ProjectDependency
@@ -35,18 +34,18 @@ fun Project.customLintRulesTargets(): List<BazelDependency.StringDependency>? {
     }
 }
 
-fun lintConfigs(project: Project): LintConfigs {
+fun lintConfigs(project: Project): LintConfigData {
     return if (project.plugins.hasPlugin(LINT_PLUGIN_ID)) {
         val lint = project.the<LintOptions>()
 
-        LintConfigs(enabled = true, configPath = lint.lintConfig?.let {
+        LintConfigData(enabled = true, configPath = lint.lintConfig?.let {
             project.relativePath(it)
         }, baselinePath = lint.baselineFile?.let {
             project.relativePath(it)
         }, lintChecks = project.customLintRulesTargets()
         )
     } else {
-        LintConfigs(
+        LintConfigData(
             enabled = true, // enable Lint by default even when its not enabled in gradle
             configPath = null,
             baselinePath = null,
@@ -58,11 +57,11 @@ fun lintConfigs(project: Project): LintConfigs {
 fun lintConfigs(
     lintOptions: com.android.build.gradle.internal.dsl.LintOptions,
     project: Project
-): LintConfigs {
+): LintConfigData {
     // enable lint for all targets by default
     val enabled = true
 
-    return LintConfigs(
+    return LintConfigData(
         enabled,
         lintOptions.lintConfig?.let {
             project.relativePath(it)

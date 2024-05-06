@@ -19,7 +19,7 @@ package com.grab.grazel.bazel.rules
 import com.grab.grazel.bazel.rules.Visibility.Public
 import com.grab.grazel.bazel.starlark.Assignee
 import com.grab.grazel.bazel.starlark.BazelDependency
-import com.grab.grazel.bazel.starlark.LintConfigs
+import com.grab.grazel.migrate.android.LintConfigData
 import com.grab.grazel.bazel.starlark.StatementsBuilder
 import com.grab.grazel.bazel.starlark.add
 import com.grab.grazel.bazel.starlark.array
@@ -149,7 +149,7 @@ fun StatementsBuilder.ktLibrary(
     assetsGlob: List<String> = emptyList(),
     assetsDir: String? = null,
     tags: List<String> = emptyList(),
-    lintConfigs: LintConfigs? = null,
+    lintConfigData: LintConfigData? = null,
 ) {
     load("@$GRAB_BAZEL_COMMON//rules:defs.bzl", "kotlin_library")
 
@@ -188,8 +188,8 @@ fun StatementsBuilder.ktLibrary(
             "tags" `=` array(tags.map(String::quote))
         }
 
-        if (lintConfigs?.merged?.isNotEmpty() == true) {
-            "lint_options" `=` lintConfigs.merged.toObject()
+        if (lintConfigData?.merged?.isNotEmpty() == true) {
+            "lint_options" `=` lintConfigData.merged.toObject()
         }
     }
 }

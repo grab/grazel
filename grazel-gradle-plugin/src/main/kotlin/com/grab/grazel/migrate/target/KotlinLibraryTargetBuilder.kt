@@ -75,7 +75,7 @@ constructor(
         res = res,
         deps = deps,
         tags = tags,
-        lintConfigs = lintConfigs
+        lintConfigData = lintConfigData
     )
 }
 

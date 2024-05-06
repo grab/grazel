@@ -18,11 +18,9 @@ package com.grab.grazel.migrate.android
 
 import com.android.build.gradle.BaseExtension
 import com.android.build.gradle.api.AndroidSourceSet
-import com.android.build.gradle.internal.dsl.LintOptions
 import com.grab.grazel.GrazelExtension
 import com.grab.grazel.bazel.rules.Multidex
 import com.grab.grazel.bazel.starlark.BazelDependency
-import com.grab.grazel.bazel.starlark.LintConfigs
 import com.grab.grazel.gradle.ConfigurationScope.BUILD
 import com.grab.grazel.gradle.dependencies.BuildGraphType
 import com.grab.grazel.gradle.dependencies.DependenciesDataSource
@@ -145,7 +143,7 @@ constructor(
             resValuesData = extension.extractResValue(matchedVariant),
             deps = deps.sorted(),
             tags = tags.sorted(),
-            lintConfigs = lintConfigs
+            lintConfigData = lintConfigs
         )
     }
 
@@ -220,7 +218,7 @@ constructor(
             hasCrashlytics = project.hasCrashlytics,
             compose = project.hasCompose,
             databinding = project.hasDatabinding,
-            lintConfigs = lintConfigs,
+            lintConfigData = lintConfigs,
             resConfigs = resourceConfiguration
         )
     }

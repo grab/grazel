@@ -125,7 +125,7 @@ constructor(
                     assetsGlob = androidLibraryData.assets,
                     assetsDir = androidLibraryData.assetsDir,
                     buildConfigData = androidLibraryData.buildConfigData,
-                    lintConfigs = androidLibraryData.lintConfigs,
+                    lintConfigData = androidLibraryData.lintConfigData,
                 )
             ) + intermediateTargets
         }

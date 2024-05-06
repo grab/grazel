@@ -18,7 +18,7 @@ package com.grab.grazel.bazel.rules
 
 import com.grab.grazel.bazel.starlark.Assignee
 import com.grab.grazel.bazel.starlark.BazelDependency
-import com.grab.grazel.bazel.starlark.LintConfigs
+import com.grab.grazel.migrate.android.LintConfigData
 import com.grab.grazel.bazel.starlark.StatementsBuilder
 import com.grab.grazel.bazel.starlark.array
 import com.grab.grazel.bazel.starlark.asString
@@ -139,7 +139,7 @@ internal fun StatementsBuilder.androidBinary(
     assetsGlob: List<String> = emptyList(),
     assetsDir: String? = null,
     buildConfigData: BuildConfigData,
-    lintConfigs: LintConfigs? = null,
+    lintConfigData: LintConfigData? = null,
     resConfigFilters: Set<String> = emptySet(),
 ) {
     load("@$GRAB_BAZEL_COMMON//rules:defs.bzl", "android_binary")
@@ -187,8 +187,8 @@ internal fun StatementsBuilder.androidBinary(
             "res_values" `=` resValuesData.merged.toObject(quoteKeys = true, quoteValues = true)
         }
 
-        if (lintConfigs?.merged?.isNotEmpty() == true) {
-            "lint_options" `=` lintConfigs.merged.toObject()
+        if (lintConfigData?.merged?.isNotEmpty() == true) {
+            "lint_options" `=` lintConfigData.merged.toObject()
         }
     }
 }
@@ -209,7 +209,7 @@ internal fun StatementsBuilder.androidLibrary(
     assetsDir: String? = null,
     resValuesData: ResValuesData,
     buildConfigData: BuildConfigData,
-    lintConfigs: LintConfigs?
+    lintConfigData: LintConfigData?
 ) {
     load("@$GRAB_BAZEL_COMMON//rules:defs.bzl", "android_library")
     rule("android_library") {
@@ -250,8 +250,8 @@ internal fun StatementsBuilder.androidLibrary(
             "res_values" `=` resValuesData.merged.toObject(quoteKeys = true, quoteValues = true)
         }
 
-        if (lintConfigs?.merged?.isNotEmpty() == true) {
-            "lint_options" `=` lintConfigs.merged.toObject()
+        if (lintConfigData?.merged?.isNotEmpty() == true) {
+            "lint_options" `=` lintConfigData.merged.toObject()
         }
     }
 }

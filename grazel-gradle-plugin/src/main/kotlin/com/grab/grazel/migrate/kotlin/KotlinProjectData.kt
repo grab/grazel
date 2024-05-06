@@ -17,7 +17,7 @@
 package com.grab.grazel.migrate.kotlin
 
 import com.grab.grazel.bazel.starlark.BazelDependency
-import com.grab.grazel.bazel.starlark.LintConfigs
+import com.grab.grazel.migrate.android.LintConfigData
 
 data class KotlinProjectData(
     val name: String,
@@ -25,5 +25,5 @@ data class KotlinProjectData(
     val res: List<String>,
     val deps: List<BazelDependency>,
     val tags: List<String>,
-    val lintConfigs: LintConfigs
+    val lintConfigData: LintConfigData
 )
