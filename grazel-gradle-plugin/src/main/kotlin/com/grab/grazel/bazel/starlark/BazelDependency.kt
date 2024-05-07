@@ -18,7 +18,9 @@ package com.grab.grazel.bazel.starlark
 
 import kotlinx.serialization.Serializable
 import org.gradle.api.Project
+import java.io.File
 
+// TODO(arun) Rename this to BazelLabel
 sealed class BazelDependency : Comparable<BazelDependency> {
 
     override fun compareTo(other: BazelDependency) = toString().compareTo(other.toString())
@@ -34,12 +36,13 @@ sealed class BazelDependency : Comparable<BazelDependency> {
                 .rootProject
                 .relativePath(dependencyProject.projectDir)
             val buildTargetName = dependencyProject.name
+            val sep = File.separator
             return when {
-                relativeRootPath.contains("/") -> {
+                relativeRootPath.contains(sep) -> {
                     val path = relativeRootPath
-                        .split("/")
+                        .split(sep)
                         .dropLast(1)
-                        .joinToString("/")
+                        .joinToString(sep)
                     "//$path/$buildTargetName:$prefix$buildTargetName$suffix"
                 }
 
@@ -48,8 +51,24 @@ sealed class BazelDependency : Comparable<BazelDependency> {
         }
     }
 
-    data class StringDependency(val dep: String) : BazelDependency() {
-        override fun toString() = dep
+    data class FileDependency(
+        val file: File,
+        val rootProject: Project
+    ) : BazelDependency() {
+        override fun toString(): String {
+            val fileName = file.name
+            val filePath = rootProject.relativePath(file)
+            return if (fileName == filePath) {
+                "//:$fileName"
+            } else {
+                // The file is not in root directory
+                "//${filePath.substringBeforeLast(File.separator)}:$fileName"
+            }
+        }
+    }
+
+    data class StringDependency(val string: String) : BazelDependency() {
+        override fun toString() = string
     }
 
     @Serializable

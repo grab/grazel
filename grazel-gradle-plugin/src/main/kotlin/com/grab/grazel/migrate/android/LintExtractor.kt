@@ -18,58 +18,62 @@ package com.grab.grazel.migrate.android
 
 import com.android.builder.model.LintOptions
 import com.grab.grazel.bazel.starlark.BazelDependency
-import com.grab.grazel.bazel.starlark.LintConfigs
+import com.grab.grazel.bazel.starlark.BazelDependency.FileDependency
 import com.grab.grazel.gradle.LINT_PLUGIN_ID
 import org.gradle.api.Project
 import org.gradle.api.artifacts.ProjectDependency
 import org.gradle.kotlin.dsl.the
 
-fun Project.customLintRulesTargets(): List<BazelDependency.StringDependency>? {
-    val root = this.rootProject
-    return configurations.asSequence().filter { it.name.contains("lintChecks") }
+internal fun Project.customLintRulesTargets(): List<BazelDependency>? {
+    return configurations
+        .asSequence()
+        .filter { it.name.contains("lintChecks") }
         .flatMap { lintChecksConfig ->
-            lintChecksConfig.dependencies.asSequence().filterIsInstance<ProjectDependency>()
-                .map { BazelDependency.StringDependency(root.relativePath(it.dependencyProject.projectDir)) }
-        }.let {
-        it.toList().ifEmpty { null }
-    }
+            lintChecksConfig
+                .dependencies
+                .asSequence()
+                .filterIsInstance<ProjectDependency>()
+                .map { BazelDependency.ProjectDependency(it.dependencyProject) }
+        }.let { it.toList().ifEmpty { null } }
 }
 
-fun lintConfigs(project: Project): LintConfigs {
+internal fun lintConfigs(project: Project): LintConfigData {
     return if (project.plugins.hasPlugin(LINT_PLUGIN_ID)) {
         val lint = project.the<LintOptions>()
-
-        LintConfigs(enabled = true, configPath = lint.lintConfig?.let {
-            project.relativePath(it)
-        }, baselinePath = lint.baselineFile?.let {
-            project.relativePath(it)
-        }, lintChecks = project.customLintRulesTargets()
+        LintConfigData(
+            enabled = true,
+            lintConfig = lint.lintConfig?.let {
+                FileDependency(
+                    file = it,
+                    rootProject = project.rootProject
+                )
+            },
+            baselinePath = lint.baselineFile?.let { project.relativePath(it) },
+            lintChecks = project.customLintRulesTargets()
         )
     } else {
-        LintConfigs(
+        LintConfigData(
             enabled = true, // enable Lint by default even when its not enabled in gradle
-            configPath = null,
+            lintConfig = null,
             baselinePath = null,
             lintChecks = project.customLintRulesTargets()
         )
     }
 }
 
-fun lintConfigs(
+internal fun lintConfigs(
     lintOptions: com.android.build.gradle.internal.dsl.LintOptions,
     project: Project
-): LintConfigs {
-    // enable lint for all targets by default
-    val enabled = true
-
-    return LintConfigs(
-        enabled,
-        lintOptions.lintConfig?.let {
-            project.relativePath(it)
-        },
-        lintOptions.baselineFile?.let {
-            project.relativePath(it)
-        },
-        project.customLintRulesTargets()
-    )
-}
+) = LintConfigData(
+    enabled = true, // enable lint for all targets by default
+    lintConfig = lintOptions.lintConfig?.let {
+        FileDependency(
+            file = it,
+            rootProject = project.rootProject
+        )
+    },
+    baselinePath = lintOptions.baselineFile?.let {
+        project.relativePath(it)
+    },
+    lintChecks = project.customLintRulesTargets()
+)

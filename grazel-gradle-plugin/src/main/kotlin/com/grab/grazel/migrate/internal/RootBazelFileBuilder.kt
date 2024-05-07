@@ -23,6 +23,7 @@ import com.grab.grazel.bazel.rules.daggerBuildRules
 import com.grab.grazel.bazel.rules.rootKotlinSetup
 import com.grab.grazel.bazel.starlark.Statement
 import com.grab.grazel.bazel.starlark.StatementsBuilder
+import com.grab.grazel.bazel.starlark.exportsFiles
 import com.grab.grazel.bazel.starlark.statements
 import com.grab.grazel.gradle.GradleProjectInfo
 import com.grab.grazel.migrate.BazelFileBuilder
@@ -52,6 +53,9 @@ internal class RootBazelFileBuilder(
             bazelCommonRepoName = grazelExtension.rules.bazelCommon.repository.name,
             toolchains = grazelExtension.rules.bazelCommon.toolchains
         )
+        if (gradleProjectInfo.rootLintXml.exists()) {
+            exportsFiles(gradleProjectInfo.rootLintXml.name)
+        }
     }
 
     private fun StatementsBuilder.setupKotlin() {

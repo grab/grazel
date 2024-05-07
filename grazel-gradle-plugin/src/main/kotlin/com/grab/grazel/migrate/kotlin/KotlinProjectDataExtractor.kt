@@ -16,21 +16,17 @@
 
 package com.grab.grazel.migrate.kotlin
 
-import com.android.builder.model.LintOptions
 import com.grab.grazel.GrazelExtension
 import com.grab.grazel.bazel.rules.KOTLIN_PARCELIZE_TARGET
 import com.grab.grazel.bazel.starlark.BazelDependency
-import com.grab.grazel.bazel.starlark.LintConfigs
 import com.grab.grazel.extension.KotlinExtension
 import com.grab.grazel.gradle.ConfigurationScope
-import com.grab.grazel.gradle.LINT_PLUGIN_ID
 import com.grab.grazel.gradle.dependencies.BuildGraphType
 import com.grab.grazel.gradle.dependencies.DependenciesDataSource
 import com.grab.grazel.gradle.dependencies.DependencyGraphs
 import com.grab.grazel.gradle.dependencies.GradleDependencyToBazelDependency
 import com.grab.grazel.gradle.hasKotlinAndroidExtensions
 import com.grab.grazel.migrate.android.SourceSetType
-import com.grab.grazel.migrate.android.customLintRulesTargets
 import com.grab.grazel.migrate.android.filterSourceSetPaths
 import com.grab.grazel.migrate.android.lintConfigs
 import com.grab.grazel.migrate.dependencies.calculateDirectDependencyTags
@@ -85,7 +81,7 @@ internal class DefaultKotlinProjectDataExtractor
             res = resources,
             deps = deps.replaceAutoService(),
             tags = tags,
-            lintConfigs = lintConfigs(project),
+            lintConfigData = lintConfigs(project),
         )
     }
 

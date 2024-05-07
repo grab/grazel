@@ -120,3 +120,13 @@ fun StatementsBuilder.filegroup(
         "visibility" `=` array(visibility.rule.quote)
     }
 }
+
+fun StatementsBuilder.exportsFiles(
+    vararg files: String,
+) {
+    function(
+        name = "exports_files",
+        quote = false,
+        files.joinToString(prefix = "[", postfix = "]", transform = String::quote)
+    )
+}

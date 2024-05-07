@@ -101,6 +101,6 @@ private fun AndroidLibraryData.toAndroidLibTarget() = AndroidLibraryTarget(
     assetsGlob = assets,
     assetsDir = assetsDir,
     tags = tags,
-    lintConfigs = lintConfigs
+    lintConfigData = lintConfigData
 )
 

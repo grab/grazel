@@ -36,9 +36,9 @@ android_binary(
     incremental_dexing = True,
     lint_options = {
         "enabled": True,
-        "config": "lint.xml",
+        "config": "//:lint.xml",
         "baseline": "lint_baseline.xml",
-        "lint_checks": ["//lint/custom-lint-rules"],
+        "lint_checks": ["//lint/custom-lint-rules:custom-lint-rules"],
     },
     manifest = "src/debug/AndroidManifest.xml",
     manifest_values = {
@@ -143,9 +143,9 @@ android_binary(
     incremental_dexing = True,
     lint_options = {
         "enabled": True,
-        "config": "lint.xml",
+        "config": "//:lint.xml",
         "baseline": "lint_baseline.xml",
-        "lint_checks": ["//lint/custom-lint-rules"],
+        "lint_checks": ["//lint/custom-lint-rules:custom-lint-rules"],
     },
     manifest = "src/debug/AndroidManifest.xml",
     manifest_values = {
@@ -250,9 +250,9 @@ android_binary(
     incremental_dexing = True,
     lint_options = {
         "enabled": True,
-        "config": "lint.xml",
+        "config": "//:lint.xml",
         "baseline": "lint_baseline.xml",
-        "lint_checks": ["//lint/custom-lint-rules"],
+        "lint_checks": ["//lint/custom-lint-rules:custom-lint-rules"],
     },
     manifest = "src/debug/AndroidManifest.xml",
     manifest_values = {
@@ -357,9 +357,9 @@ android_binary(
     incremental_dexing = True,
     lint_options = {
         "enabled": True,
-        "config": "lint.xml",
+        "config": "//:lint.xml",
         "baseline": "lint_baseline.xml",
-        "lint_checks": ["//lint/custom-lint-rules"],
+        "lint_checks": ["//lint/custom-lint-rules:custom-lint-rules"],
     },
     manifest = "src/debug/AndroidManifest.xml",
     manifest_values = {

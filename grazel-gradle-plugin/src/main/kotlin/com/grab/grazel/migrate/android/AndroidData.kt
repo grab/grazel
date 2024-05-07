@@ -18,7 +18,6 @@ package com.grab.grazel.migrate.android
 
 import com.grab.grazel.bazel.rules.Multidex
 import com.grab.grazel.bazel.starlark.BazelDependency
-import com.grab.grazel.bazel.starlark.LintConfigs
 
 internal interface AndroidData {
     val name: String
@@ -40,7 +39,7 @@ internal interface AndroidData {
     val compose: Boolean
     val databinding: Boolean
     val tags: List<String>
-    val lintConfigs: LintConfigs
+    val lintConfigData: LintConfigData
 }
 
 internal data class AndroidLibraryData(
@@ -59,7 +58,7 @@ internal data class AndroidLibraryData(
     override val databinding: Boolean = false,
     override val compose: Boolean = false,
     override val tags: List<String> = emptyList(),
-    override val lintConfigs: LintConfigs,
+    override val lintConfigData: LintConfigData,
 ) : AndroidData
 
 internal data class AndroidBinaryData(
@@ -78,7 +77,7 @@ internal data class AndroidBinaryData(
     override val databinding: Boolean = false,
     override val compose: Boolean = false,
     override val tags: List<String> = emptyList(),
-    override val lintConfigs: LintConfigs,
+    override val lintConfigData: LintConfigData,
     val manifestValues: Map<String, String?> = emptyMap(),
     val resConfigs: Set<String> = emptySet(),
     val multidex: Multidex = Multidex.Native,

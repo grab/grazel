@@ -135,7 +135,6 @@ android {
 
     lint {
         baseline = file("lint_baseline.xml")
-        lintConfig = file("lint.xml")
     }
 }
 

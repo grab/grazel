@@ -21,7 +21,6 @@ import com.grab.grazel.bazel.rules.Visibility
 import com.grab.grazel.bazel.rules.androidBinary
 import com.grab.grazel.bazel.rules.androidLibrary
 import com.grab.grazel.bazel.starlark.BazelDependency
-import com.grab.grazel.bazel.starlark.LintConfigs
 import com.grab.grazel.bazel.starlark.StatementsBuilder
 import com.grab.grazel.migrate.BazelBuildTarget
 
@@ -36,7 +35,7 @@ internal interface AndroidTarget : BazelBuildTarget {
     val manifest: String?
     val assetsGlob: List<String>
     val assetsDir: String?
-    val lintConfigs: LintConfigs?
+    val lintConfigData: LintConfigData?
 }
 
 internal data class AndroidLibraryTarget(
@@ -56,7 +55,7 @@ internal data class AndroidLibraryTarget(
     override val assetsGlob: List<String> = emptyList(),
     override val assetsDir: String? = null,
     override val sortKey: String = "0$name",
-    override val lintConfigs: LintConfigs? = null,
+    override val lintConfigData: LintConfigData? = null,
 ) : AndroidTarget {
     override fun statements(builder: StatementsBuilder) = builder {
         androidLibrary(
@@ -74,7 +73,7 @@ internal data class AndroidLibraryTarget(
             assetsDir = assetsDir,
             buildConfigData = buildConfigData,
             resValuesData = resValuesData,
-            lintConfigs = lintConfigs,
+            lintConfigData = lintConfigData,
         )
     }
 }
@@ -96,7 +95,7 @@ internal data class AndroidBinaryTarget(
     override val assetsGlob: List<String> = emptyList(),
     override val assetsDir: String? = null,
     override val sortKey: String = "0$name",
-    override val lintConfigs: LintConfigs? = null,
+    override val lintConfigData: LintConfigData? = null,
     val crunchPng: Boolean = false,
     val multidex: Multidex = Multidex.Native,
     val debug: Boolean = true,
@@ -129,7 +128,7 @@ internal data class AndroidBinaryTarget(
             assetsGlob = assetsGlob,
             buildConfigData = buildConfigData,
             assetsDir = assetsDir,
-            lintConfigs = lintConfigs,
+            lintConfigData = lintConfigData,
         )
     }
 }

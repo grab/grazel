@@ -49,10 +49,16 @@ allprojects {
         }
     }
 
+    // TODO(arun) Move these to convention plugins
     plugins.withType(com.android.build.gradle.BasePlugin).configureEach { plugin ->
-        (project.extensions.getByName("android") as BaseExtension).compileOptions {
-            sourceCompatibility = JavaVersion.VERSION_11
-            targetCompatibility = JavaVersion.VERSION_11
+        (project.extensions.getByName("android") as BaseExtension).with {
+            compileOptions {
+                sourceCompatibility = JavaVersion.VERSION_11
+                targetCompatibility = JavaVersion.VERSION_11
+            }
+            lint {
+                lintConfig = rootProject.file("lint.xml")
+            }
         }
     }
 
