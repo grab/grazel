@@ -55,7 +55,7 @@ internal data class AndroidLibraryTarget(
     override val assetsGlob: List<String> = emptyList(),
     override val assetsDir: String? = null,
     override val sortKey: String = "0$name",
-    val lintConfigData: LintConfigData? = null,
+    override val lintConfigData: LintConfigData? = null,
 ) : AndroidTarget {
     override fun statements(builder: StatementsBuilder) = builder {
         androidLibrary(

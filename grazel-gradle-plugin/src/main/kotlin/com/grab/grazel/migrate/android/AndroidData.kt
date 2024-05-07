@@ -58,7 +58,7 @@ internal data class AndroidLibraryData(
     override val databinding: Boolean = false,
     override val compose: Boolean = false,
     override val tags: List<String> = emptyList(),
-    val lintConfigData: LintConfigData,
+    override val lintConfigData: LintConfigData,
 ) : AndroidData
 
 internal data class AndroidBinaryData(
@@ -77,7 +77,7 @@ internal data class AndroidBinaryData(
     override val databinding: Boolean = false,
     override val compose: Boolean = false,
     override val tags: List<String> = emptyList(),
-    val lintConfigData: LintConfigData,
+    override val lintConfigData: LintConfigData,
     val manifestValues: Map<String, String?> = emptyMap(),
     val resConfigs: Set<String> = emptySet(),
     val multidex: Multidex = Multidex.Native,

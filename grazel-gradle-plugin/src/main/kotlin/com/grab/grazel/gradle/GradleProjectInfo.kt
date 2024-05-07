@@ -22,18 +22,22 @@ import com.grab.grazel.gradle.dependencies.DependencyGraphs
 import com.grab.grazel.gradle.dependencies.model.WorkspaceDependencies
 import dagger.Lazy
 import org.gradle.api.Project
+import org.gradle.kotlin.dsl.provideDelegate
+import java.io.File
 import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
  * Common metadata about a Gradle project.
  */
+@Deprecated(message = "Consider migrating to target API")
 interface GradleProjectInfo {
     val rootProject: Project
     val grazelExtension: GrazelExtension
     val hasDagger: Boolean
     val hasAndroidExtension: Boolean
     val hasGooglePlayServices: Boolean
+    val rootLintXml: File // TODO(arun) Implementing here due to lack of better place for root project data.
 }
 
 internal class DefaultGradleProjectInfo(
@@ -82,5 +86,8 @@ internal class DefaultGradleProjectInfo(
         rootProject
             .subprojects
             .any { project -> project.hasCrashlytics || project.hasGooglePlayServicesPlugin }
+    }
+    override val rootLintXml: File by lazy {
+        rootProject.file("lint.xml")
     }
 }

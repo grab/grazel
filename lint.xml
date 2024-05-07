@@ -15,7 +15,5 @@
   -->
 
 <lint>
-    <!--   baseline warnings ignored so we can pass the CI jobs when we don't find new issues-->
-    <issue id="LintBaseline" severity="ignore" />
-    <issue id="LintBaselineFixed" severity="ignore" />
+    <issue id="MissingTranslation" severity="ignore" />
 </lint>

@@ -11,6 +11,7 @@ android_library(
     enable_data_binding = True,
     lint_options = {
         "enabled": True,
+        "config": "//:lint.xml",
     },
     manifest = "src/main/AndroidManifest.xml",
     res_values = {
@@ -51,6 +52,7 @@ android_library(
     enable_data_binding = True,
     lint_options = {
         "enabled": True,
+        "config": "//:lint.xml",
     },
     manifest = "src/main/AndroidManifest.xml",
     res_values = {
@@ -89,6 +91,7 @@ android_library(
     enable_data_binding = True,
     lint_options = {
         "enabled": True,
+        "config": "//:lint.xml",
     },
     manifest = "src/main/AndroidManifest.xml",
     res_values = {
@@ -129,6 +132,7 @@ android_library(
     enable_data_binding = True,
     lint_options = {
         "enabled": True,
+        "config": "//:lint.xml",
     },
     manifest = "src/main/AndroidManifest.xml",
     res_values = {

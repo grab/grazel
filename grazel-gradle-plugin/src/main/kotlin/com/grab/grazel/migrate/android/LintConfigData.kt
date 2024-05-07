@@ -18,13 +18,14 @@ package com.grab.grazel.migrate.android
 
 import com.grab.grazel.bazel.starlark.BazelDependency
 import com.grab.grazel.bazel.starlark.StarlarkMapEntry
+import com.grab.grazel.bazel.starlark.quote
 import java.util.Locale
 
 data class LintConfigData(
     val enabled: Boolean = true,
-    val configPath: String? = null,
+    val lintConfig: BazelDependency? = null,
     val baselinePath: String? = null,
-    val lintChecks: List<BazelDependency.StringDependency>? = null
+    val lintChecks: List<BazelDependency>? = null
 ) {
     val merged: List<StarlarkMapEntry> = listOf(
         StarlarkMapEntry(
@@ -35,7 +36,7 @@ data class LintConfigData(
         ),
         StarlarkMapEntry(
             name = "config",
-            value = configPath,
+            value = lintConfig?.toString(),
             quoteKeys = true,
             quoteValues = true
         ),
@@ -48,7 +49,7 @@ data class LintConfigData(
         StarlarkMapEntry(
             name = "lint_checks",
             value = if (lintChecks != null) {
-                "[${lintChecks.joinToString(",") { "\"//$it\"" }}]"
+                "[${lintChecks.joinToString(",", transform = BazelDependency::quote)}]"
             } else {
                 null
             },
