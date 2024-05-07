@@ -57,7 +57,9 @@ sealed class BazelDependency : Comparable<BazelDependency> {
     ) : BazelDependency() {
         override fun toString(): String {
             val fileName = file.name
-            val filePath = rootProject.relativePath(file)
+            val filePath = file.absoluteFile
+                .normalize()
+                .relativeTo(rootProject.projectDir).toString()
             return if (fileName == filePath) {
                 "//:$fileName"
             } else {
