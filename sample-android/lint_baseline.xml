@@ -1,159 +1,214 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<issues name="" by="lint 8.5.0-alpha02" client="" dependencies="true" format="6" type="baseline"
-    variant="all" version="8.5.0-alpha02">
+<issues format="6" by="lint 8.5.0-alpha02" type="baseline" client="" dependencies="true" name="" variant="all" version="8.5.0-alpha02">
 
-    <issue id="LocaleFolder"
+    <issue
+        id="LocaleFolder"
         message="The locale folder &quot;`id`&quot; should be called &quot;`in`&quot; instead; see the `java.util.Locale` documentation">
         <location
-            file="../../../../android-armeabi-v7a-fastbuild/bin/sample-android/sample-android-demo-free-debug_res/out/res/values-id" />
+            file="../../../../android-armeabi-v7a-fastbuild/bin/sample-android/sample-android-demo-free-debug_res/out/res/values-id"/>
     </issue>
 
-    <issue errorLine1="    &lt;EditText" errorLine2="     ~~~~~~~~" id="MissingConstraints"
-        message="This view is not constrained vertically: at runtime it will jump to the top unless you add a vertical constraint">
-        <location column="6"
+    <issue
+        id="MissingConstraints"
+        message="This view is not constrained vertically: at runtime it will jump to the top unless you add a vertical constraint"
+        errorLine1="    &lt;EditText"
+        errorLine2="     ~~~~~~~~">
+        <location
             file="../../../../android-armeabi-v7a-fastbuild/bin/sample-android/sample-android-demo-free-debug_res/out/res/layout/activity_main.xml"
-            line="73" />
-    </issue>
-
-    <issue errorLine1="            android:screenOrientation=&quot;${orientation}&quot;>"
-        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~" id="DiscouragedApi"
-        message="Should not restrict activity to fixed orientation. This may not be suitable for different form factors, causing the app to be letterboxed.">
-        <location column="13" file="../../../../../sample-android/src/debug/AndroidManifest.xml"
-            line="35" />
+            line="73"
+            column="6"/>
     </issue>
 
     <issue
-        errorLine1="&lt;manifest xmlns:android=&quot;http://schemas.android.com/apk/res/android&quot;"
-        errorLine2=" ~~~~~~~~" id="MissingVersion"
-        message="Should set `android:versionCode` to specify the application version">
-        <location column="2" file="../../../../../sample-android/src/debug/AndroidManifest.xml"
-            line="17" />
+        id="DiscouragedApi"
+        message="Should not restrict activity to fixed orientation. This may not be suitable for different form factors, causing the app to be letterboxed."
+        errorLine1="            android:screenOrientation=&quot;${orientation}&quot;>"
+        errorLine2="            ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="../../../../../sample-android/src/debug/AndroidManifest.xml"
+            line="35"
+            column="13"/>
     </issue>
 
     <issue
+        id="MissingVersion"
+        message="Should set `android:versionCode` to specify the application version"
         errorLine1="&lt;manifest xmlns:android=&quot;http://schemas.android.com/apk/res/android&quot;"
-        errorLine2=" ~~~~~~~~" id="MissingVersion"
-        message="Should set `android:versionName` to specify the application version">
-        <location column="2" file="../../../../../sample-android/src/debug/AndroidManifest.xml"
-            line="17" />
+        errorLine2=" ~~~~~~~~">
+        <location
+            file="../../../../../sample-android/src/debug/AndroidManifest.xml"
+            line="17"
+            column="2"/>
     </issue>
 
-    w
-    <issue id="Typos" message="Did you mean &quot;flavor!&quot; instead of &quot;flavor1&quot;?">
-        <location column="37"
+    <issue
+        id="MissingVersion"
+        message="Should set `android:versionName` to specify the application version"
+        errorLine1="&lt;manifest xmlns:android=&quot;http://schemas.android.com/apk/res/android&quot;"
+        errorLine2=" ~~~~~~~~">
+        <location
+            file="../../../../../sample-android/src/debug/AndroidManifest.xml"
+            line="17"
+            column="2"/>
+    </issue>
+
+    <issue
+        id="Typos"
+        message="Did you mean &quot;flavor!&quot; instead of &quot;flavor1&quot;?">
+        <location
             file="../sample-android-flavor-demo-free-debug_res/out/res/values/values.xml"
-            line="5" />
+            line="5"
+            column="37"/>
     </issue>
 
     <issue
+        id="ExtraTranslation"
+        message="&quot;overridable_resource1&quot; is translated here but not found in default locale"
         errorLine1="&lt;string name=&quot;overridable_resource1&quot;>Overridable resource - From free&lt;/string>"
-        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~" id="ExtraTranslation"
-        message="&quot;overridable_resource1&quot; is translated here but not found in default locale">
-        <location column="9"
+        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
             file="../../../../android-armeabi-v7a-fastbuild/bin/sample-android/sample-android-demo-free-debug_res/out/res/values-id/values.xml"
-            line="5" />
-    </issue>
-
-    <issue errorLine1="        Log.d(&quot;tag&quot;,&quot;MainActivity OnCreate&quot;)"
-        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~" id="LogNotTimber"
-        message="Using &apos;Log&apos; instead of &apos;Timber&apos;">
-        <location column="9"
-            file="../../../../../sample-android/src/main/java/com/grab/grazel/android/sample/MainActivity.kt"
-            line="54" />
-    </issue>
-
-    <issue errorLine1="        Log.d(&quot;tag&quot;,&quot;MainActivity OnCreate&quot;)"
-        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~" id="LogNotTimberTest"
-        message="Using &apos;Log&apos; instead of &apos;Timber&apos;">
-        <location column="9"
-            file="../../../../../sample-android/src/main/java/com/grab/grazel/android/sample/MainActivity.kt"
-            line="54" />
-    </issue>
-
-    <issue errorLine1="        &lt;string name=&quot;type&quot;>debug&lt;/string>"
-        errorLine2="                ~~~~~~~~~~~" id="UnusedResources"
-        message="The resource `R.string.type` appears to be unused">
-        <location column="17"
-            file="../../../../android-armeabi-v7a-fastbuild/bin/sample-android/src/main/res/values/gen_strings_sample-android-demo-free-debug_res_value.xml"
-            line="4" />
-    </issue>
-
-    <issue errorLine1="        &lt;string name=&quot;flavor&quot;>free&lt;/string>"
-        errorLine2="                ~~~~~~~~~~~~~" id="UnusedResources"
-        message="The resource `R.string.flavor` appears to be unused">
-        <location column="17"
-            file="../../../../android-armeabi-v7a-fastbuild/bin/sample-android/src/main/res/values/gen_strings_sample-android-demo-free-debug_res_value.xml"
-            line="5" />
+            line="5"
+            column="9"/>
     </issue>
 
     <issue
+        id="LogNotTimber"
+        message="Using &apos;Log&apos; instead of &apos;Timber&apos;"
+        errorLine1="        Log.d(&quot;tag&quot;,&quot;MainActivity OnCreate&quot;)"
+        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="../../../../../sample-android/src/main/java/com/grab/grazel/android/sample/MainActivity.kt"
+            line="54"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="LogNotTimberTest"
+        message="Using &apos;Log&apos; instead of &apos;Timber&apos;"
+        errorLine1="        Log.d(&quot;tag&quot;,&quot;MainActivity OnCreate&quot;)"
+        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
+            file="../../../../../sample-android/src/main/java/com/grab/grazel/android/sample/MainActivity.kt"
+            line="54"
+            column="9"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.string.type` appears to be unused"
+        errorLine1="        &lt;string name=&quot;type&quot;>debug&lt;/string>"
+        errorLine2="                ~~~~~~~~~~~">
+        <location
+            file="../../../../android-armeabi-v7a-fastbuild/bin/sample-android/src/main/res/values/gen_strings_sample-android-demo-free-debug_res_value.xml"
+            line="4"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.string.flavor` appears to be unused"
+        errorLine1="        &lt;string name=&quot;flavor&quot;>free&lt;/string>"
+        errorLine2="                ~~~~~~~~~~~~~">
+        <location
+            file="../../../../android-armeabi-v7a-fastbuild/bin/sample-android/src/main/res/values/gen_strings_sample-android-demo-free-debug_res_value.xml"
+            line="5"
+            column="17"/>
+    </issue>
+
+    <issue
+        id="UnusedResources"
+        message="The resource `R.string.overridable_resource1` appears to be unused"
         errorLine1="&lt;string name=&quot;overridable_resource1&quot;>Overridable resource - From free&lt;/string>"
-        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~" id="UnusedResources"
-        message="The resource `R.string.overridable_resource1` appears to be unused">
-        <location column="9"
+        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
             file="../../../../android-armeabi-v7a-fastbuild/bin/sample-android/sample-android-demo-free-debug_res/out/res/values-id/values.xml"
-            line="5" />
+            line="5"
+            column="9"/>
     </issue>
 
     <issue
+        id="MonochromeLauncherIcon"
+        message="The application adaptive icon is missing a monochrome tag"
         errorLine1="&lt;adaptive-icon xmlns:android=&quot;http://schemas.android.com/apk/res/android&quot;>"
-        errorLine2="^" id="MonochromeLauncherIcon"
-        message="The application adaptive icon is missing a monochrome tag">
-        <location column="1"
+        errorLine2="^">
+        <location
             file="../../../../android-armeabi-v7a-fastbuild/bin/sample-android/sample-android-demo-free-debug_res/out/res/mipmap-anydpi-v26/ic_launcher.xml"
-            line="17" />
+            line="17"
+            column="1"/>
     </issue>
 
     <issue
+        id="MonochromeLauncherIcon"
+        message="The application adaptive roundIcon is missing a monochrome tag"
         errorLine1="&lt;adaptive-icon xmlns:android=&quot;http://schemas.android.com/apk/res/android&quot;>"
-        errorLine2="^" id="MonochromeLauncherIcon"
-        message="The application adaptive roundIcon is missing a monochrome tag">
-        <location column="1"
+        errorLine2="^">
+        <location
             file="../../../../android-armeabi-v7a-fastbuild/bin/sample-android/sample-android-demo-free-debug_res/out/res/mipmap-anydpi-v26/ic_launcher_round.xml"
-            line="17" />
+            line="17"
+            column="1"/>
     </issue>
 
-    <issue errorLine1="    &lt;EditText" errorLine2="     ~~~~~~~~" id="TextFields"
-        message="This text field does not specify an `inputType`">
-        <location column="6"
+    <issue
+        id="TextFields"
+        message="This text field does not specify an `inputType`"
+        errorLine1="    &lt;EditText"
+        errorLine2="     ~~~~~~~~">
+        <location
             file="../../../../android-armeabi-v7a-fastbuild/bin/sample-android/sample-android-demo-free-debug_res/out/res/layout/activity_main.xml"
-            line="73" />
+            line="73"
+            column="6"/>
     </issue>
 
-    <issue errorLine1="    &lt;EditText" errorLine2="     ~~~~~~~~" id="Autofill"
-        message="Missing `autofillHints` attribute">
-        <location column="6"
+    <issue
+        id="Autofill"
+        message="Missing `autofillHints` attribute"
+        errorLine1="    &lt;EditText"
+        errorLine2="     ~~~~~~~~">
+        <location
             file="../../../../android-armeabi-v7a-fastbuild/bin/sample-android/sample-android-demo-free-debug_res/out/res/layout/activity_main.xml"
-            line="73" />
+            line="73"
+            column="6"/>
     </issue>
 
-    <issue errorLine1="    &lt;EditText" errorLine2="     ~~~~~~~~" id="LabelFor"
-        message="Missing accessibility label: provide either a view with an `android:labelFor` that references this view or provide an `android:hint`">
-        <location column="6"
+    <issue
+        id="LabelFor"
+        message="Missing accessibility label: provide either a view with an `android:labelFor` that references this view or provide an `android:hint`"
+        errorLine1="    &lt;EditText"
+        errorLine2="     ~~~~~~~~">
+        <location
             file="../../../../android-armeabi-v7a-fastbuild/bin/sample-android/sample-android-demo-free-debug_res/out/res/layout/activity_main.xml"
-            line="73" />
+            line="73"
+            column="6"/>
     </issue>
 
-    <issue id="SetTextI18n"
+    <issue
+        id="SetTextI18n"
         message="Do not concatenate text displayed with `setText`. Use resource string with placeholders.">
-        <location column="51"
+        <location
             file="../../../../../../flavors/sample-android-flavor/src/main/java/com/grab/grazel/android/flavor/FlavorActivity.kt"
-            line="33" />
+            line="33"
+            column="51"/>
     </issue>
 
-    <issue id="SetTextI18n"
+    <issue
+        id="SetTextI18n"
         message="String literal in `setText` can not be translated. Use Android resources instead.">
-        <location column="52"
+        <location
             file="../../../../../../flavors/sample-android-flavor/src/main/java/com/grab/grazel/android/flavor/FlavorActivity.kt"
-            line="33" />
+            line="33"
+            column="52"/>
     </issue>
 
-    <issue errorLine1="        android:text=&quot;Hello World from Grazel!&quot;"
-        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~" id="HardcodedText"
-        message="Hardcoded string &quot;Hello World from Grazel!&quot;, should use `@string` resource">
-        <location column="9"
+    <issue
+        id="HardcodedText"
+        message="Hardcoded string &quot;Hello World from Grazel!&quot;, should use `@string` resource"
+        errorLine1="        android:text=&quot;Hello World from Grazel!&quot;"
+        errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
+        <location
             file="../../../../android-armeabi-v7a-fastbuild/bin/sample-android/sample-android-demo-free-debug_res/out/res/layout/activity_main.xml"
-            line="29" />
+            line="29"
+            column="9"/>
     </issue>
 
 </issues>
