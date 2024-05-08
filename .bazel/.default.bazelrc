@@ -1,70 +1,80 @@
-# Disk cache
-build --disk_cache=bazel-cache
+# BzlMod
+common --enable_bzlmod=false
 
-# Env config
-build --incompatible_strict_action_env
-build --repo_env=RJE_VERBOSE=true
+# Cache
+common --disk_cache=bazel-cache
+startup --digest_function=blake3
+common --experimental_action_cache_store_output_metadata
+common --modify_execution_info=JavaDeployJar=+no-remote-cache # Don't cache Java deploy jar which is huge in size
+common --remote_cache_compression=true
 
 # Error config
-build --verbose_failures
+common --verbose_failures
+
+# Env config
+common --incompatible_strict_action_env
+common --reuse_sandbox_directories
+common --repo_env=RJE_VERBOSE=true
+
+# Resources
+# Resources
+common --local_cpu_resources=HOST_CPUS*.75 # Android actions start their own threads which can overwhelm the system
 
 # Workers
-build --experimental_worker_multiplex
+common --worker_verbose
+common --experimental_worker_multiplex
+common --experimental_shrink_worker_pool
+common --experimental_worker_for_repo_fetching=platform
 
 # JAVA - START
-build --experimental_strict_java_deps=off # Turn off strict java deps
-build --java_runtime_version=remotejdk_11 # Use inbuilt Java 11 for hermeticity
-build --jvmopt="-Djava.locale.providers=COMPAT,SPI" # Use Java 8 default locale provider
+common --experimental_strict_java_deps=off # Turn off strict java deps
+common --java_runtime_version=remotejdk_11 # Use inbuilt Java 11 for hermeticity
+common --tool_java_runtime_version=remotejdk_11
+common --jvmopt="-Djava.locale.providers=COMPAT,SPI" # Use Java 8 default locale provider
+common --experimental_java_classpath=bazel 
+common --experimental_java_header_input_pruning
 # JAVA - END
 
-# Databinding - START
-build --experimental_android_databinding_v2
-build --android_databinding_use_v3_4_args
-build --android_databinding_use_androidx
-build --experimental_google_legacy_api
-query --experimental_google_legacy_api
-# Databinding - END
-
 # Android
+common --experimental_google_legacy_api
+common --noincompatible_enable_android_toolchain_resolution
+common --noincompatible_enable_cc_toolchain_resolution
 # D8 and Dexing flags
-build --define=android_incremental_dexing_tool=d8_dexbuilder
-build --define=android_standalone_dexing_tool=d8_compat_dx
-build --define=android_dexmerger_tool=d8_dexmerger
+common --define=android_incremental_dexing_tool=d8_dexbuilder
+common --define=android_standalone_dexing_tool=d8_compat_dx
+common --define=android_dexmerger_tool=d8_dexmerger
+# Resource Merging
+common --experimental_disable_instrumentation_manifest_merge
+common --features=android_resources_strict_deps
+common --output_library_merged_assets=false # Turn off asset merging artifact
+# common --android_non_transitive_r_class=true # Disable resource merging a.k.a non transitive R class
+# common --experimental_use_package_aware_rtxt=true # Use package aware R.txt files (required for databinding)
+# common --define=nontransitive_r_class=1 # Adapt bazel common rules for non transitive R class
 
-build --persistent_multiplex_android_tools
-build --strategy=AndroidAssetMerger=worker
-build --strategy=AndroidLint=worker
-build --strategy=AndroidLintAnalyze=worker
-build --strategy=DatabindingStubs=worker
-build --worker_max_instances=Javac=1
-build --worker_max_instances=KotlinCompile=1
-build --worker_max_instances=KotlinKapt=1
-build --worker_max_instances=AaptPackage=1
-build --worker_max_instances=AndroidResourceParser=1
-build --worker_max_instances=AndroidResourceCompiler=1
-build --worker_max_instances=AndroidResourceValidator=1
-build --worker_max_instances=RClassGenerator=1
-build --worker_max_instances=AndroidAapt2=1
-build --worker_max_instances=AndroidAssetMerger=1
-build --worker_max_instances=AndroidResourceMerger=1
-build --worker_max_instances=AndroidLint=1
-build --worker_max_instances=AndroidLintAnalyze=1
-build --worker_max_instances=AndroidCompiledResourceMerger=1
-build --worker_max_instances=Aapt2Optimize=1
-build --worker_max_instances=DatabindingStubs=1
-build --worker_max_instances=GenerateDataBindingBaseClasses=1
-build --worker_max_instances=DexBuilder=1
-build --worker_max_instances=Desugar=1
+common --experimental_persistent_aar_extractor
+common --persistent_multiplex_android_tools
+common --persistent_android_dex_desugar
+common --strategy=DatabindingStubs=worker
+common --worker_max_instances=Javac=1
+common --worker_max_instances=KotlinCompile=1
+common --worker_max_instances=KotlinKapt=1
+common --worker_max_instances=AaptPackage=1
+common --worker_max_instances=AndroidResourceParser=1
+common --worker_max_instances=AndroidResourceCompiler=1
+common --worker_max_instances=AndroidResourceValidator=1
+common --worker_max_instances=AndroidLintAnalyze=1
+common --worker_max_instances=AndroidLint=1
+common --worker_max_instances=RClassGenerator=1
+common --worker_max_instances=AndroidAapt2=1
+common --worker_max_instances=AndroidAssetMerger=1
+common --worker_max_instances=AndroidResourceMerger=1
+common --worker_max_instances=AndroidCompiledResourceMerger=1
+common --worker_max_instances=Aapt2Optimize=1
+common --worker_max_instances=DatabindingStubs=1
+common --worker_max_instances=GenerateDataBindingBaseClasses=1
+common --worker_max_instances=DexBuilder=1
+common --worker_max_instances=Desugar=1
 
 # JVM
-build --strategy=KotlinCompile=worker
-build --strategy=Javac=worker
-
-build --experimental_disable_instrumentation_manifest_merge
-
-# Resource Merging
-build --features=android_resources_strict_deps
-build --output_library_merged_assets=false # Turn off asset merging artifact
-# build --android_non_transitive_r_class=true # Disable resource merging a.k.a non transitive R class
-# build --experimental_use_package_aware_rtxt=true # Use package aware R.txt files (required for databinding)
-# build --define=nontransitive_r_class=1 # Adapt bazel common rules for non transitive R class
+common --strategy=KotlinCompile=worker
+common --strategy=Javac=worker
