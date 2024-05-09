@@ -24,5 +24,6 @@ lint {
 
 dependencies {
     implementation fileTree(dir: "libs", include: ["*.jar"])
+    lintChecks libs.slack.lint.checks
     testImplementation libs.junit
 }

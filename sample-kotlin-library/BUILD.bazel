@@ -8,6 +8,7 @@ kotlin_library(
     lint_options = {
         "enabled": True,
         "baseline": "lint-baseline-kotlin.xml",
+        "lint_checks": ["@lint_maven//:com_slack_lint_slack_lint_checks"],
     },
     visibility = [
         "//visibility:public",

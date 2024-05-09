@@ -15,6 +15,7 @@ import com.grab.grazel.gradle.isAndroid
 import com.grab.grazel.gradle.variant.VariantType.AndroidBuild
 import com.grab.grazel.gradle.variant.VariantType.AndroidTest
 import com.grab.grazel.gradle.variant.VariantType.JvmBuild
+import com.grab.grazel.gradle.variant.VariantType.Lint
 import com.grab.grazel.gradle.variant.VariantType.Test
 import org.gradle.api.Project
 import org.gradle.api.artifacts.Configuration
@@ -66,18 +67,23 @@ enum class DefaultVariants(val variantName: String) {
     },
     AndroidTest("androidTest") {
         override fun toString() = variantName
+    },
+    Lint("lint") {
+        override fun toString() = variantName
     }
 }
 
 val DEFAULT_VARIANT = DefaultVariants.Default.toString()
 val TEST_VARIANT = DefaultVariants.Test.toString()
 val ANDROID_TEST_VARIANT = DefaultVariants.AndroidTest.toString()
+val LINT_VARIANT = DefaultVariants.Lint.toString()
 
 enum class VariantType {
     AndroidBuild,
     AndroidTest,
     Test,
     JvmBuild,
+    Lint,
 }
 
 fun BaseVariant.toVariantType(): VariantType = when (this) {
@@ -134,6 +140,7 @@ class JvmVariantData(
     val variantType: VariantType,
     val name: String = when (variantType) {
         JvmBuild -> DEFAULT_VARIANT
+        Lint -> LINT_VARIANT
         else -> TEST_VARIANT
     }
 )

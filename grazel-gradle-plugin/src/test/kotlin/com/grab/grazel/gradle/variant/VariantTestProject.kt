@@ -6,6 +6,7 @@ import com.grab.grazel.gradle.JAVA_LIBRARY_PLUGIN
 import com.grab.grazel.gradle.KOTLIN_ANDROID_PLUGIN
 import com.grab.grazel.gradle.KOTLIN_KAPT
 import com.grab.grazel.gradle.KOTLIN_PLUGIN
+import com.grab.grazel.gradle.LINT_PLUGIN_ID
 import com.grab.grazel.util.doEvaluate
 import org.gradle.api.Project
 import org.gradle.kotlin.dsl.configure
@@ -43,7 +44,12 @@ fun setupAndroidVariantProject(androidProject: Project) {
                 }
             }
             dataBinding.isEnabled = true
+
+            lintOptions.baselineFile = (file("lint_baseline.xml"))
+            lintOptions.lintConfig = (file("lint.xml"))
+
         }
+
         dependencies {
             add(
                 "implementation",
@@ -73,10 +79,15 @@ fun setupJvmVariantProject(project: Project) {
             apply(JAVA_LIBRARY_PLUGIN)
             apply(KOTLIN_PLUGIN)
             apply(KOTLIN_KAPT)
+            apply(LINT_PLUGIN_ID)
         }
         repositories {
             google()
             mavenCentral()
+        }
+        configure<com.android.build.gradle.internal.dsl.LintOptions> {
+            baselineFile = file("lint_baseline.xml")
+            lintConfig = file("lint.xml")
         }
         dependencies {
             add(
