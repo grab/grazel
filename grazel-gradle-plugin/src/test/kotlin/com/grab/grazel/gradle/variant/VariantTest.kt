@@ -1,16 +1,22 @@
 package com.grab.grazel.gradle.variant
 
 import com.android.build.gradle.AppExtension
+import com.android.build.gradle.BaseExtension
 import com.android.build.gradle.api.BaseVariant
 import com.google.common.truth.Truth.assertThat
+import com.grab.grazel.bazel.starlark.BazelDependency
 import com.grab.grazel.buildProject
 import com.grab.grazel.gradle.variant.Classpath.Compile
 import com.grab.grazel.gradle.variant.VariantType.*
+import com.grab.grazel.migrate.android.LintConfigData
+import com.grab.grazel.migrate.android.lintConfigs
 import org.gradle.api.Project
 import org.gradle.api.artifacts.Configuration
+import org.gradle.kotlin.dsl.getByType
 import org.gradle.kotlin.dsl.the
 import org.junit.Before
 import org.junit.Test
+import java.io.File
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
@@ -200,7 +206,7 @@ class VariantTest {
             variantType = JvmBuild
         ).variantConfigurations.let { configurations ->
             assertEquals(
-                31,
+                32,
                 configurations.size,
                 "Build configurations are parsed correctly for build variant"
             )
@@ -453,5 +459,36 @@ class VariantTest {
             appExtension.unitTestVariants.first(),
             Test
         )
+    }
+
+    @Test
+    fun `assert lint configuration is parsed`() {
+        setupAndroidVariantProject(androidProject)
+        val expectedLintConfigData = LintConfigData(
+            enabled = true,
+            lintConfig = BazelDependency.FileDependency(
+                File(androidProject.projectDir.absolutePath + "/lint.xml"),
+                androidProject.rootProject
+            ),
+            baselinePath = "lint_baseline.xml",
+            lintChecks = null
+        )
+        val extension = androidProject.extensions.getByType<BaseExtension>()
+        assertEquals(expectedLintConfigData, lintConfigs(extension.lintOptions, androidProject))
+    }
+
+    @Test
+    fun `assert lint configuration is parsed for kotlin or java project`() {
+        setupJvmVariantProject(jvmProject)
+        val expectedLintConfigData = LintConfigData(
+            enabled = true,
+            lintConfig = BazelDependency.FileDependency(
+                File(jvmProject.projectDir.absolutePath + "/lint.xml"),
+                jvmProject.rootProject
+            ),
+            baselinePath = "lint_baseline.xml",
+            lintChecks = null
+        )
+        assertEquals(expectedLintConfigData, lintConfigs(jvmProject))
     }
 }

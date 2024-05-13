@@ -27,6 +27,18 @@ data class LintConfigData(
     val baselinePath: String? = null,
     val lintChecks: List<BazelDependency>? = null
 ) {
+
+    private fun lintChecksString(): String? {
+        if (lintChecks.isNullOrEmpty()) return null
+        return "[" + lintChecks.joinToString(",") {
+            if (it is BazelDependency.StringDependency) {
+                "\"//$it\""
+            } else {
+                "\"${it}\""
+            }
+        } + "]"
+    }
+
     val merged: List<StarlarkMapEntry> = listOf(
         StarlarkMapEntry(
             name = "enabled",
@@ -47,14 +59,8 @@ data class LintConfigData(
             quoteValues = true
         ),
         StarlarkMapEntry(
-            name = "lint_checks",
-            value = if (lintChecks != null) {
-                "[${lintChecks.joinToString(",", transform = BazelDependency::quote)}]"
-            } else {
-                null
-            },
-            quoteKeys = true,
-            quoteValues = false
+            name = "lint_checks", value = lintChecksString(), quoteKeys = true, quoteValues = false
         )
     ).filter { it.value != null }
+
 }

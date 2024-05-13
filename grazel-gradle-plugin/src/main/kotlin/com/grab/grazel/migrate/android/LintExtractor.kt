@@ -24,31 +24,41 @@ import org.gradle.api.Project
 import org.gradle.api.artifacts.ProjectDependency
 import org.gradle.kotlin.dsl.the
 
-internal fun Project.customLintRulesTargets(): List<BazelDependency>? {
-    return configurations
-        .asSequence()
-        .filter { it.name.contains("lintChecks") }
+private const val LINT_CHECKS_CONFIGURATION_NAME = "lintChecks"
+private const val Lint_MAVEN_REPO = "lint_maven"
+
+fun Project.customLintRulesTargets(): List<BazelDependency>? {
+    return configurations.asSequence().filter { it.name.contains(LINT_CHECKS_CONFIGURATION_NAME) }
         .flatMap { lintChecksConfig ->
             lintChecksConfig
                 .dependencies
                 .asSequence()
-                .filterIsInstance<ProjectDependency>()
-                .map { BazelDependency.ProjectDependency(it.dependencyProject) }
+                .map {
+                    if (it is ProjectDependency) {
+                        BazelDependency.ProjectDependency(it.dependencyProject)
+                    } else {
+                        BazelDependency.MavenDependency(
+                            group = it.group!!,
+                            name = it.name,
+                            repo = Lint_MAVEN_REPO
+                        )
+                    }
+                }
         }.let { it.toList().ifEmpty { null } }
 }
 
 internal fun lintConfigs(project: Project): LintConfigData {
     return if (project.plugins.hasPlugin(LINT_PLUGIN_ID)) {
-        val lint = project.the<LintOptions>()
+        val lintOptions = project.the<LintOptions>()
         LintConfigData(
             enabled = true,
-            lintConfig = lint.lintConfig?.let {
+            lintConfig = lintOptions.lintConfig?.let {
                 FileDependency(
                     file = it,
                     rootProject = project.rootProject
                 )
             },
-            baselinePath = lint.baselineFile?.let { project.relativePath(it) },
+            baselinePath = lintOptions.baselineFile?.let { project.relativePath(it) },
             lintChecks = project.customLintRulesTargets()
         )
     } else {

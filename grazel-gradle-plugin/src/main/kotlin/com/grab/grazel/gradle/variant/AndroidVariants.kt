@@ -10,6 +10,7 @@ import com.grab.grazel.gradle.variant.Classpath.Runtime
 import com.grab.grazel.gradle.variant.VariantType.AndroidBuild
 import com.grab.grazel.gradle.variant.VariantType.AndroidTest
 import com.grab.grazel.gradle.variant.VariantType.JvmBuild
+import com.grab.grazel.gradle.variant.VariantType.Lint
 import com.grab.grazel.gradle.variant.VariantType.Test
 import org.gradle.api.Project
 import org.gradle.api.artifacts.Configuration
@@ -94,6 +95,7 @@ abstract class AndroidNonVariant<T>(
         get() = backingVariant.name + when (variantType) {
             AndroidTest -> AndroidTest.name
             Test -> Test.name
+            Lint -> Lint.name
             else -> ""
         }
 
@@ -200,6 +202,7 @@ data class DefaultVariantData(
     val name: String = when (variantType) {
         AndroidBuild -> DEFAULT_VARIANT
         AndroidTest -> ANDROID_TEST_VARIANT
+        Lint -> LINT_VARIANT
         else -> TEST_VARIANT
     },
 )
@@ -241,6 +244,7 @@ class AndroidDefaultVariant(
                     AndroidBuild -> !configName.isTest()
                     AndroidTest -> configName.isAndroidTest()
                     Test -> configName.isUnitTest()
+                    Lint -> configName.isLint()
                     JvmBuild -> error("Invalid variant type ${JvmBuild.name} for Android variant")
                 }
             }.toSet()

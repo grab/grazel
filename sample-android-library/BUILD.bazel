@@ -12,6 +12,10 @@ android_library(
         "config": "//:lint.xml",
     },
     manifest = "src/main/AndroidManifest.xml",
+    resources = {
+        "src/main/res": {
+        },
+    },
     visibility = [
         "//visibility:public",
     ],
@@ -32,6 +36,10 @@ android_library(
         "config": "//:lint.xml",
     },
     manifest = "src/main/AndroidManifest.xml",
+    resources = {
+        "src/main/res": {
+        },
+    },
     visibility = [
         "//visibility:public",
     ],
@@ -52,6 +60,10 @@ android_library(
         "config": "//:lint.xml",
     },
     manifest = "src/main/AndroidManifest.xml",
+    resources = {
+        "src/main/res": {
+        },
+    },
     visibility = [
         "//visibility:public",
     ],
@@ -72,6 +84,10 @@ android_library(
         "config": "//:lint.xml",
     },
     manifest = "src/main/AndroidManifest.xml",
+    resources = {
+        "src/main/res": {
+        },
+    },
     visibility = [
         "//visibility:public",
     ],

@@ -18,9 +18,6 @@ package com.grab.grazel.migrate.android
 
 import com.android.build.gradle.AppExtension
 import com.grab.grazel.GrazelPluginTest
-import com.grab.grazel.bazel.starlark.Assignee
-import com.grab.grazel.bazel.starlark.StatementsBuilder
-import com.grab.grazel.bazel.starlark.asString
 import com.grab.grazel.buildProject
 import com.grab.grazel.gradle.ANDROID_APPLICATION_PLUGIN
 import com.grab.grazel.gradle.variant.MatchedVariant
@@ -32,7 +29,6 @@ import org.gradle.kotlin.dsl.configure
 import org.gradle.kotlin.dsl.the
 import org.junit.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertTrue
 
 class AndroidLibraryDataKtTest : GrazelPluginTest() {
     private lateinit var rootProject: Project
@@ -55,6 +51,7 @@ class AndroidLibraryDataKtTest : GrazelPluginTest() {
                 }
                 block(this)
             }
+
             doEvaluate()
         }
         return appProject

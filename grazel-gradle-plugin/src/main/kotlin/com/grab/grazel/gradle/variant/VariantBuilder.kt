@@ -5,6 +5,7 @@ import com.grab.grazel.gradle.isJvm
 import com.grab.grazel.gradle.variant.VariantType.AndroidBuild
 import com.grab.grazel.gradle.variant.VariantType.AndroidTest
 import com.grab.grazel.gradle.variant.VariantType.JvmBuild
+import com.grab.grazel.gradle.variant.VariantType.Lint
 import com.grab.grazel.gradle.variant.VariantType.Test
 import org.gradle.api.Project
 import java.util.concurrent.ConcurrentHashMap
@@ -65,6 +66,11 @@ constructor(
                     AndroidDefaultVariant(
                         project = project,
                         variantType = AndroidTest,
+                        ignoreKeywords = flavorsBuildTypes
+                    ),
+                    AndroidDefaultVariant(
+                        project = project,
+                        variantType = VariantType.Lint,
                         ignoreKeywords = flavorsBuildTypes
                     )
                 )
@@ -139,6 +145,13 @@ constructor(
                         ignoreKeywords = flavorsBuildTypes
                     )
                 )
+                action(
+                    AndroidDefaultVariant(
+                        project = project,
+                        variantType = Lint,
+                        ignoreKeywords = flavorsBuildTypes
+                    )
+                )
 
                 variantDataSource.migratableVariants(project) { variant ->
                     action(AndroidVariant(project, variant))
@@ -153,7 +166,7 @@ constructor(
                         .asSequence()
                         .flatMap { buildType ->
                             VariantType.values()
-                                .filter { it != JvmBuild }
+                                .filter { it != JvmBuild && it != Lint }
                                 .map { variantType ->
                                     AndroidBuildType(
                                         project = project,
@@ -168,7 +181,7 @@ constructor(
                     VariantType
                         .values()
                         .asSequence()
-                        .filter { it != JvmBuild }
+                        .filter { it != JvmBuild && it != Lint }
                         .flatMap { variantType ->
                             flavors.map { flavor ->
                                 AndroidFlavor(
@@ -183,6 +196,7 @@ constructor(
             } else if (project.isJvm) {
                 action(JvmVariant(project = project, variantType = JvmBuild))
                 action(JvmVariant(project = project, variantType = Test))
+                action(JvmVariant(project = project, variantType = Lint))
             }
         }
     }

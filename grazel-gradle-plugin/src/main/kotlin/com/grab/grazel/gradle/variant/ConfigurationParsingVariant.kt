@@ -4,6 +4,7 @@ import com.grab.grazel.gradle.hasKapt
 import com.grab.grazel.gradle.variant.VariantType.AndroidBuild
 import com.grab.grazel.gradle.variant.VariantType.AndroidTest
 import com.grab.grazel.gradle.variant.VariantType.JvmBuild
+import com.grab.grazel.gradle.variant.VariantType.Lint
 import com.grab.grazel.gradle.variant.VariantType.Test
 import com.grab.grazel.util.addTo
 import org.gradle.api.artifacts.Configuration
@@ -78,6 +79,7 @@ interface ConfigurationParsingVariant<T> : Variant<T> {
                     AndroidBuild -> configName.startsWith("kapt${namePattern.capitalize()}")
                     AndroidTest -> configName.startsWith("kaptAndroidTest${basePattern.capitalize()}")
                     Test -> configName.startsWith("kaptTest${basePattern.capitalize()}")
+                    VariantType.Lint -> false
                     JvmBuild -> error("Invalid variant type ${JvmBuild.name} for Android variant")
                 }
             }.addTo(this)
@@ -106,6 +108,8 @@ interface ConfigurationParsingVariant<T> : Variant<T> {
                 Test -> configName == "test${basePattern}${onlyConfig}$dm".toLowerCase()
                     || configName == "test${basePattern}Implementation$dm".toLowerCase()
 
+                Lint -> configName == "lintChecks".toLowerCase()
+
                 else -> error("$JvmBuild invalid for build type runtime configuration")
             }
         }.toSet()
@@ -117,6 +121,8 @@ interface ConfigurationParsingVariant<T> : Variant<T> {
     fun String.isUnitTest() = startsWith("test")
         || startsWith("kaptTest")
         || contains("UnitTest")
+
+    fun String.isLint() = startsWith("lintChecks")
 
     fun String.isTest() = isAndroidTest() || isUnitTest() || contains("Test")
 }

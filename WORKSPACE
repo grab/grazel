@@ -238,6 +238,38 @@ load("@debug_maven//:defs.bzl", debug_maven_pinned_maven_install = "pinned_maven
 debug_maven_pinned_maven_install()
 
 maven_install(
+    name = "lint_maven",
+    artifacts = [
+        "com.google.auto.service:auto-service-annotations:1.1.1",
+        "com.slack.lint:slack-lint-checks:0.2.3",
+    ],
+    excluded_artifacts = ["androidx.test.espresso:espresso-contrib"],
+    fail_if_repin_required = False,
+    fail_on_missing_checksum = False,
+    jetify = True,
+    jetify_include_list = [
+        "com.android.support:cardview-v7",
+        "com.android.support:support-annotations",
+        "com.android.support:support-compat",
+        "com.android.support:support-core-ui",
+        "com.android.support:support-core-utils",
+    ],
+    maven_install_json = "//:lint_maven_install.json",
+    override_targets = {
+        "com.google.auto.service:auto-service-annotations": "@maven//:com_google_auto_service_auto_service_annotations",
+    },
+    repositories = [
+        "https://repo.maven.apache.org/maven2/",
+    ],
+    resolve_timeout = 1000,
+    version_conflict_policy = "pinned",
+)
+
+load("@lint_maven//:defs.bzl", lint_maven_pinned_maven_install = "pinned_maven_install")
+
+lint_maven_pinned_maven_install()
+
+maven_install(
     name = "maven",
     artifacts = DAGGER_ARTIFACTS + GRAB_BAZEL_COMMON_ARTIFACTS + [
         "androidx.activity:activity-compose:1.7.2",
