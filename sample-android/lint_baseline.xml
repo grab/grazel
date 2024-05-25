@@ -5,7 +5,7 @@
         id="LocaleFolder"
         message="The locale folder &quot;`id`&quot; should be called &quot;`in`&quot; instead; see the `java.util.Locale` documentation">
         <location
-            file="../../../../android-armeabi-v7a-fastbuild/bin/sample-android/sample-android-demo-free-debug_res/out/res/values-id"/>
+            file="../../../../armeabi-v7a-fastbuild-android-ST-5b74a929aefd/bin/sample-android/sample-android-demo-free-debug_res/out/res/values-id"/>
     </issue>
 
     <issue
@@ -14,7 +14,7 @@
         errorLine1="    &lt;EditText"
         errorLine2="     ~~~~~~~~">
         <location
-            file="../../../../android-armeabi-v7a-fastbuild/bin/sample-android/sample-android-demo-free-debug_res/out/res/layout/activity_main.xml"
+            file="../../../../armeabi-v7a-fastbuild-android-ST-5b74a929aefd/bin/sample-android/sample-android-demo-free-debug_res/out/res/layout/activity_main.xml"
             line="73"
             column="6"/>
     </issue>
@@ -67,7 +67,7 @@
         errorLine1="&lt;string name=&quot;overridable_resource1&quot;>Overridable resource - From free&lt;/string>"
         errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
-            file="../../../../android-armeabi-v7a-fastbuild/bin/sample-android/sample-android-demo-free-debug_res/out/res/values-id/values.xml"
+            file="../../../../armeabi-v7a-fastbuild-android-ST-5b74a929aefd/bin/sample-android/sample-android-demo-free-debug_res/out/res/values-id/values.xml"
             line="5"
             column="9"/>
     </issue>
@@ -100,7 +100,7 @@
         errorLine1="        &lt;string name=&quot;type&quot;>debug&lt;/string>"
         errorLine2="                ~~~~~~~~~~~">
         <location
-            file="../../../../android-armeabi-v7a-fastbuild/bin/sample-android/src/main/res/values/gen_strings_sample-android-demo-free-debug_res_value.xml"
+            file="../../../../armeabi-v7a-fastbuild-android-ST-5b74a929aefd/bin/sample-android/src/main/res/values/gen_strings_sample-android-demo-free-debug_res_value.xml"
             line="4"
             column="17"/>
     </issue>
@@ -111,7 +111,7 @@
         errorLine1="        &lt;string name=&quot;flavor&quot;>free&lt;/string>"
         errorLine2="                ~~~~~~~~~~~~~">
         <location
-            file="../../../../android-armeabi-v7a-fastbuild/bin/sample-android/src/main/res/values/gen_strings_sample-android-demo-free-debug_res_value.xml"
+            file="../../../../armeabi-v7a-fastbuild-android-ST-5b74a929aefd/bin/sample-android/src/main/res/values/gen_strings_sample-android-demo-free-debug_res_value.xml"
             line="5"
             column="17"/>
     </issue>
@@ -122,7 +122,7 @@
         errorLine1="&lt;string name=&quot;overridable_resource1&quot;>Overridable resource - From free&lt;/string>"
         errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
-            file="../../../../android-armeabi-v7a-fastbuild/bin/sample-android/sample-android-demo-free-debug_res/out/res/values-id/values.xml"
+            file="../../../../armeabi-v7a-fastbuild-android-ST-5b74a929aefd/bin/sample-android/sample-android-demo-free-debug_res/out/res/values-id/values.xml"
             line="5"
             column="9"/>
     </issue>
@@ -133,7 +133,7 @@
         errorLine1="&lt;adaptive-icon xmlns:android=&quot;http://schemas.android.com/apk/res/android&quot;>"
         errorLine2="^">
         <location
-            file="../../../../android-armeabi-v7a-fastbuild/bin/sample-android/sample-android-demo-free-debug_res/out/res/mipmap-anydpi-v26/ic_launcher.xml"
+            file="../../../../armeabi-v7a-fastbuild-android-ST-5b74a929aefd/bin/sample-android/sample-android-demo-free-debug_res/out/res/mipmap-anydpi-v26/ic_launcher.xml"
             line="17"
             column="1"/>
     </issue>
@@ -144,7 +144,7 @@
         errorLine1="&lt;adaptive-icon xmlns:android=&quot;http://schemas.android.com/apk/res/android&quot;>"
         errorLine2="^">
         <location
-            file="../../../../android-armeabi-v7a-fastbuild/bin/sample-android/sample-android-demo-free-debug_res/out/res/mipmap-anydpi-v26/ic_launcher_round.xml"
+            file="../../../../armeabi-v7a-fastbuild-android-ST-5b74a929aefd/bin/sample-android/sample-android-demo-free-debug_res/out/res/mipmap-anydpi-v26/ic_launcher_round.xml"
             line="17"
             column="1"/>
     </issue>
@@ -155,7 +155,7 @@
         errorLine1="    &lt;EditText"
         errorLine2="     ~~~~~~~~">
         <location
-            file="../../../../android-armeabi-v7a-fastbuild/bin/sample-android/sample-android-demo-free-debug_res/out/res/layout/activity_main.xml"
+            file="../../../../armeabi-v7a-fastbuild-android-ST-5b74a929aefd/bin/sample-android/sample-android-demo-free-debug_res/out/res/layout/activity_main.xml"
             line="73"
             column="6"/>
     </issue>
@@ -166,7 +166,7 @@
         errorLine1="    &lt;EditText"
         errorLine2="     ~~~~~~~~">
         <location
-            file="../../../../android-armeabi-v7a-fastbuild/bin/sample-android/sample-android-demo-free-debug_res/out/res/layout/activity_main.xml"
+            file="../../../../armeabi-v7a-fastbuild-android-ST-5b74a929aefd/bin/sample-android/sample-android-demo-free-debug_res/out/res/layout/activity_main.xml"
             line="73"
             column="6"/>
     </issue>
@@ -177,7 +177,7 @@
         errorLine1="    &lt;EditText"
         errorLine2="     ~~~~~~~~">
         <location
-            file="../../../../android-armeabi-v7a-fastbuild/bin/sample-android/sample-android-demo-free-debug_res/out/res/layout/activity_main.xml"
+            file="../../../../armeabi-v7a-fastbuild-android-ST-5b74a929aefd/bin/sample-android/sample-android-demo-free-debug_res/out/res/layout/activity_main.xml"
             line="73"
             column="6"/>
     </issue>
@@ -206,7 +206,7 @@
         errorLine1="        android:text=&quot;Hello World from Grazel!&quot;"
         errorLine2="        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~">
         <location
-            file="../../../../android-armeabi-v7a-fastbuild/bin/sample-android/sample-android-demo-free-debug_res/out/res/layout/activity_main.xml"
+            file="../../../../armeabi-v7a-fastbuild-android-ST-5b74a929aefd/bin/sample-android/sample-android-demo-free-debug_res/out/res/layout/activity_main.xml"
             line="29"
             column="9"/>
     </issue>
