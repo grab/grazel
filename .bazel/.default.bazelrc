@@ -18,7 +18,7 @@ common --repo_env=RJE_VERBOSE=true
 
 # Resources
 # Resources
-common --local_cpu_resources=HOST_CPUS*.75 # Android actions start their own threads which can overwhelm the system
+common --local_resources=cpu=HOST_CPUS*.75 # Android actions start their own threads which can overwhelm the system
 
 # Workers
 common --worker_verbose
