@@ -28,6 +28,7 @@ plugins {
     alias(libs.plugins.kotlin.parcelize) apply false
     alias(libs.plugins.google.mobile.services) apply false
     alias(libs.plugins.firebase.crashlytics) apply false
+    alias(libs.plugins.detekt) apply false
     id "idea"
     id "com.grab.grazel"
 }
@@ -99,7 +100,7 @@ grazel {
     rules {
         bazelCommon {
             gitRepository {
-                commit = "b3ced63a493c8990e1ab410e645111aa25fb7df7"
+                commit = "43dd907b72d07da8fc148eb0f4094da1419c52e7"
                 remote = "https://github.com/grab/grab-bazel-common.git"
             }
             toolchains {

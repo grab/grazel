@@ -25,7 +25,7 @@ pluginManagement {
     }
 }
 plugins {
-    id "com.gradle.enterprise"
+//    id "com.gradle.enterprise"
 }
 rootProject.name = "grazel"
 

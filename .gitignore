@@ -1,7 +1,7 @@
 *.iml
 .gradle
 .fleet
-.idea/caches
+.idea
 .idea/libraries
 .idea/encodings.xml
 .idea/gradle.xml

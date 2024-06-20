@@ -25,6 +25,7 @@ import com.grab.grazel.bazel.rules.androidNdkRepository
 import com.grab.grazel.bazel.rules.androidSdkRepository
 import com.grab.grazel.bazel.rules.bazelCommonRepository
 import com.grab.grazel.bazel.rules.daggerWorkspaceRules
+import com.grab.grazel.bazel.rules.detektToolchain
 import com.grab.grazel.bazel.rules.kotlinCompiler
 import com.grab.grazel.bazel.rules.kotlinRepository
 import com.grab.grazel.bazel.rules.loadBazelCommonArtifacts
@@ -154,6 +155,8 @@ internal class WorkspaceBuilder(
             bazelCommonRepo,
             buildifier.releaseVersion,
         )
+
+        detektToolchain()
     }
 
     private fun StatementsBuilder.toolsAndroid() {

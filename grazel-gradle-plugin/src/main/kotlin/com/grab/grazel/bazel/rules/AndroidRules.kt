@@ -24,8 +24,10 @@ import com.grab.grazel.bazel.starlark.asString
 import com.grab.grazel.bazel.starlark.glob
 import com.grab.grazel.bazel.starlark.load
 import com.grab.grazel.bazel.starlark.quote
+import com.grab.grazel.bazel.starlark.toDetektOptionsStatement
 import com.grab.grazel.bazel.starlark.toObject
 import com.grab.grazel.migrate.android.BuildConfigData
+import com.grab.grazel.migrate.android.DetektConfigData
 import com.grab.grazel.migrate.android.LintConfigData
 import com.grab.grazel.migrate.android.ResValuesData
 
@@ -140,6 +142,7 @@ internal fun StatementsBuilder.androidBinary(
     assetsDir: String? = null,
     buildConfigData: BuildConfigData,
     lintConfigData: LintConfigData? = null,
+    detektConfigData: DetektConfigData? = null,
     resConfigFilters: Set<String> = emptySet(),
 ) {
     load("@$GRAB_BAZEL_COMMON//rules:defs.bzl", "android_binary")
@@ -186,9 +189,12 @@ internal fun StatementsBuilder.androidBinary(
         if (!resValuesData.isEmpty) {
             "res_values" `=` resValuesData.merged.toObject(quoteKeys = true, quoteValues = true)
         }
-
         if (lintConfigData?.merged?.isNotEmpty() == true) {
             "lint_options" `=` lintConfigData.merged.toObject()
+        }
+        if (detektConfigData?.merged?.isNotEmpty() == true) {
+            load("@$GRAB_BAZEL_COMMON//rules:defs.bzl", "detekt_options")
+            "detekt_options" `=` detektConfigData.merged.toDetektOptionsStatement()
         }
     }
 }
@@ -209,7 +215,8 @@ internal fun StatementsBuilder.androidLibrary(
     assetsDir: String? = null,
     resValuesData: ResValuesData,
     buildConfigData: BuildConfigData,
-    lintConfigData: LintConfigData?
+    lintConfigData: LintConfigData?,
+    detektConfigData: DetektConfigData?,
 ) {
     load("@$GRAB_BAZEL_COMMON//rules:defs.bzl", "android_library")
     rule("android_library") {
@@ -252,6 +259,10 @@ internal fun StatementsBuilder.androidLibrary(
 
         if (lintConfigData?.merged?.isNotEmpty() == true) {
             "lint_options" `=` lintConfigData.merged.toObject()
+        }
+        if (detektConfigData?.merged?.isNotEmpty() == true) {
+            load("@$GRAB_BAZEL_COMMON//rules:defs.bzl", "detekt_options")
+            "detekt_options" `=` detektConfigData.merged.toDetektOptionsStatement()
         }
     }
 }

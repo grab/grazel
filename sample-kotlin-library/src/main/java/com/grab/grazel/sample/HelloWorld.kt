@@ -17,5 +17,7 @@
 package com.grab.grazel.sample
 
 public class HelloWorld {
-
+    fun sayHello() {
+        println("Hello World!")
+    }
 }

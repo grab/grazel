@@ -1,4 +1,4 @@
-load("@grab_bazel_common//rules:defs.bzl", "android_library", "android_unit_test")
+load("@grab_bazel_common//rules:defs.bzl", "android_library", "android_unit_test", "detekt_options")
 
 android_library(
     name = "sample-android-library-demo-free-debug",
@@ -6,6 +6,14 @@ android_library(
         "src/main/java/com/grab/grazel/android/sample/SampleViewModel.kt",
     ]),
     custom_package = "com.grab.grazel.android.sample.lib",
+    detekt_options = detekt_options(
+        baseline = "detekt-baseline.xml",
+        all_rules = True,
+        cfgs = ["//:detekt-config.yml"],
+        detekt_checks = ["@detekt_maven//:ru_kode_detekt_rules_compose"],
+        enabled = True,
+        parallel = True,
+    ),
     enable_data_binding = True,
     lint_options = {
         "enabled": True,
@@ -30,6 +38,14 @@ android_library(
         "src/main/java/com/grab/grazel/android/sample/SampleViewModel.kt",
     ]),
     custom_package = "com.grab.grazel.android.sample.lib",
+    detekt_options = detekt_options(
+        baseline = "detekt-baseline.xml",
+        all_rules = True,
+        cfgs = ["//:detekt-config.yml"],
+        detekt_checks = ["@detekt_maven//:ru_kode_detekt_rules_compose"],
+        enabled = True,
+        parallel = True,
+    ),
     enable_data_binding = True,
     lint_options = {
         "enabled": True,
@@ -54,6 +70,14 @@ android_library(
         "src/main/java/com/grab/grazel/android/sample/SampleViewModel.kt",
     ]),
     custom_package = "com.grab.grazel.android.sample.lib",
+    detekt_options = detekt_options(
+        baseline = "detekt-baseline.xml",
+        all_rules = True,
+        cfgs = ["//:detekt-config.yml"],
+        detekt_checks = ["@detekt_maven//:ru_kode_detekt_rules_compose"],
+        enabled = True,
+        parallel = True,
+    ),
     enable_data_binding = True,
     lint_options = {
         "enabled": True,
@@ -78,6 +102,14 @@ android_library(
         "src/main/java/com/grab/grazel/android/sample/SampleViewModel.kt",
     ]),
     custom_package = "com.grab.grazel.android.sample.lib",
+    detekt_options = detekt_options(
+        baseline = "detekt-baseline.xml",
+        all_rules = True,
+        cfgs = ["//:detekt-config.yml"],
+        detekt_checks = ["@detekt_maven//:ru_kode_detekt_rules_compose"],
+        enabled = True,
+        parallel = True,
+    ),
     enable_data_binding = True,
     lint_options = {
         "enabled": True,

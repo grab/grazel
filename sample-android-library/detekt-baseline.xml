@@ -1,0 +1,7 @@
+<?xml version="1.0" ?>
+<SmellBaseline>
+  <ManuallySuppressedIssues></ManuallySuppressedIssues>
+  <CurrentIssues>
+    <ID>NewLineAtEndOfFile:SampleViewModel.kt$com.grab.grazel.android.sample.SampleViewModel.kt</ID>
+  </CurrentIssues>
+</SmellBaseline>

@@ -42,6 +42,17 @@ fun StatementsBuilder.toolAndroidRepository(
 }
 
 /**
+ * rules detekt is coming from bazel common
+ */
+fun StatementsBuilder.detektToolchain() {
+    load(
+        "@rules_detekt//detekt:toolchains.bzl",
+        "rules_detekt_toolchains"
+    )
+    add("rules_detekt_toolchains()")
+}
+
+/**
  * Adds a Google services XML target required by crashlytics and other
  * google services
  *

@@ -36,6 +36,7 @@ internal interface AndroidTarget : BazelBuildTarget {
     val assetsGlob: List<String>
     val assetsDir: String?
     val lintConfigData: LintConfigData?
+    val detektConfigData: DetektConfigData?
 }
 
 internal data class AndroidLibraryTarget(
@@ -56,6 +57,7 @@ internal data class AndroidLibraryTarget(
     override val assetsDir: String? = null,
     override val sortKey: String = "0$name",
     override val lintConfigData: LintConfigData? = null,
+    override val detektConfigData: DetektConfigData? = null,
 ) : AndroidTarget {
     override fun statements(builder: StatementsBuilder) = builder {
         androidLibrary(
@@ -74,6 +76,7 @@ internal data class AndroidLibraryTarget(
             buildConfigData = buildConfigData,
             resValuesData = resValuesData,
             lintConfigData = lintConfigData,
+            detektConfigData = detektConfigData,
         )
     }
 }
@@ -96,6 +99,7 @@ internal data class AndroidBinaryTarget(
     override val assetsDir: String? = null,
     override val sortKey: String = "0$name",
     override val lintConfigData: LintConfigData? = null,
+    override val detektConfigData: DetektConfigData? = null,
     val crunchPng: Boolean = false,
     val multidex: Multidex = Multidex.Native,
     val debug: Boolean = true,
@@ -129,6 +133,7 @@ internal data class AndroidBinaryTarget(
             buildConfigData = buildConfigData,
             assetsDir = assetsDir,
             lintConfigData = lintConfigData,
+            detektConfigData = detektConfigData
         )
     }
 }

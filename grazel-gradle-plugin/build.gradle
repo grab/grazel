@@ -82,7 +82,7 @@ dependencies {
     implementation platform("org.jetbrains.kotlin:kotlin-bom")
     implementation libs.kotlin.gradle.plugin
     compileOnly libs.android.gradle.plugin
-
+    compileOnly libs.detekt.gradle.plugin
     implementation libs.google.guava
     implementation libs.picnic
 

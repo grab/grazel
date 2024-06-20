@@ -27,7 +27,7 @@ load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository")
 
 git_repository(
     name = "grab_bazel_common",
-    commit = "b3ced63a493c8990e1ab410e645111aa25fb7df7",
+    commit = "43dd907b72d07da8fc148eb0f4094da1419c52e7",
     remote = "https://github.com/grab/grab-bazel-common.git",
 )
 
@@ -45,6 +45,10 @@ bazel_common_setup(
 load("@grab_bazel_common//rules:maven.bzl", "pin_bazel_common_dependencies")
 
 pin_bazel_common_dependencies()
+
+load("@rules_detekt//detekt:toolchains.bzl", "rules_detekt_toolchains")
+
+rules_detekt_toolchains()
 
 DAGGER_TAG = "2.47"
 
@@ -236,6 +240,46 @@ maven_install(
 load("@debug_maven//:defs.bzl", debug_maven_pinned_maven_install = "pinned_maven_install")
 
 debug_maven_pinned_maven_install()
+
+maven_install(
+    name = "detekt_maven",
+    artifacts = [
+        "org.jetbrains.kotlin:kotlin-stdlib-common:1.7.21",
+        "org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.7.21",
+        "org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.7.21",
+        "org.jetbrains.kotlin:kotlin-stdlib:1.7.21",
+        "org.jetbrains:annotations:13.0",
+        "ru.kode:detekt-rules-compose:1.3.0",
+    ],
+    excluded_artifacts = ["androidx.test.espresso:espresso-contrib"],
+    fail_if_repin_required = False,
+    fail_on_missing_checksum = False,
+    jetify = True,
+    jetify_include_list = [
+        "com.android.support:cardview-v7",
+        "com.android.support:support-annotations",
+        "com.android.support:support-compat",
+        "com.android.support:support-core-ui",
+        "com.android.support:support-core-utils",
+    ],
+    maven_install_json = "//:detekt_maven_install.json",
+    override_targets = {
+        "org.jetbrains.kotlin:kotlin-stdlib": "@maven//:org_jetbrains_kotlin_kotlin_stdlib",
+        "org.jetbrains.kotlin:kotlin-stdlib-common": "@maven//:org_jetbrains_kotlin_kotlin_stdlib_common",
+        "org.jetbrains.kotlin:kotlin-stdlib-jdk7": "@maven//:org_jetbrains_kotlin_kotlin_stdlib_jdk7",
+        "org.jetbrains.kotlin:kotlin-stdlib-jdk8": "@maven//:org_jetbrains_kotlin_kotlin_stdlib_jdk8",
+        "org.jetbrains:annotations": "@maven//:org_jetbrains_annotations",
+    },
+    repositories = [
+        "https://repo.maven.apache.org/maven2/",
+    ],
+    resolve_timeout = 1000,
+    version_conflict_policy = "pinned",
+)
+
+load("@detekt_maven//:defs.bzl", detekt_maven_pinned_maven_install = "pinned_maven_install")
+
+detekt_maven_pinned_maven_install()
 
 maven_install(
     name = "lint_maven",

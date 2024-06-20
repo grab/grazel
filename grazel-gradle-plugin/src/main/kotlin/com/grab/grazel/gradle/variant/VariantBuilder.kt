@@ -1,12 +1,15 @@
 package com.grab.grazel.gradle.variant
 
+import com.grab.grazel.gradle.LINT_PLUGIN_ID
 import com.grab.grazel.gradle.isAndroid
 import com.grab.grazel.gradle.isJvm
 import com.grab.grazel.gradle.variant.VariantType.AndroidBuild
 import com.grab.grazel.gradle.variant.VariantType.AndroidTest
 import com.grab.grazel.gradle.variant.VariantType.JvmBuild
 import com.grab.grazel.gradle.variant.VariantType.Lint
+import com.grab.grazel.gradle.variant.VariantType.Detekt
 import com.grab.grazel.gradle.variant.VariantType.Test
+import com.grab.grazel.migrate.android.DETEKT_PLUGIN_ID
 import org.gradle.api.Project
 import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
@@ -70,7 +73,12 @@ constructor(
                     ),
                     AndroidDefaultVariant(
                         project = project,
-                        variantType = VariantType.Lint,
+                        variantType = Lint,
+                        ignoreKeywords = flavorsBuildTypes
+                    ),
+                    AndroidDefaultVariant(
+                        project = project,
+                        variantType = Detekt,
                         ignoreKeywords = flavorsBuildTypes
                     )
                 )
@@ -100,16 +108,36 @@ constructor(
                     .sortedBy { it.name.length }
                     .toSet()
             } else if (project.isJvm) {
-                setOf<Variant<*>>(
+                val variants = mutableSetOf<JvmVariant>()
+                if (project.plugins.hasPlugin(LINT_PLUGIN_ID)) {
+                    variants.add(
+                        JvmVariant(
+                            project = project,
+                            variantType = Lint
+                        )
+                    )
+                }
+                if (project.plugins.hasPlugin(DETEKT_PLUGIN_ID)) {
+                    variants.add(
+                        JvmVariant(
+                            project = project,
+                            variantType = Detekt
+                        )
+                    )
+                }
+                variants.add(
                     JvmVariant(
                         project = project,
                         variantType = JvmBuild
-                    ),
+                    )
+                )
+                variants.add(
                     JvmVariant(
                         project = project,
                         variantType = Test
                     )
                 )
+                variants
             } else emptySet()
             variantCache[project.path] = variants
             return variants
@@ -152,6 +180,15 @@ constructor(
                         ignoreKeywords = flavorsBuildTypes
                     )
                 )
+                if(project.plugins.hasPlugin(DETEKT_PLUGIN_ID)) {
+                    action(
+                        AndroidDefaultVariant(
+                            project = project,
+                            variantType = Detekt,
+                            ignoreKeywords = flavorsBuildTypes
+                        )
+                    )
+                }
 
                 variantDataSource.migratableVariants(project) { variant ->
                     action(AndroidVariant(project, variant))
@@ -166,7 +203,7 @@ constructor(
                         .asSequence()
                         .flatMap { buildType ->
                             VariantType.values()
-                                .filter { it != JvmBuild && it != Lint }
+                                .filter { it != JvmBuild && it != Lint && it != Detekt }
                                 .map { variantType ->
                                     AndroidBuildType(
                                         project = project,
@@ -181,7 +218,7 @@ constructor(
                     VariantType
                         .values()
                         .asSequence()
-                        .filter { it != JvmBuild && it != Lint }
+                        .filter { it != JvmBuild && it != Lint && it != Detekt }
                         .flatMap { variantType ->
                             flavors.map { flavor ->
                                 AndroidFlavor(
@@ -197,6 +234,9 @@ constructor(
                 action(JvmVariant(project = project, variantType = JvmBuild))
                 action(JvmVariant(project = project, variantType = Test))
                 action(JvmVariant(project = project, variantType = Lint))
+                if(project.plugins.hasPlugin(DETEKT_PLUGIN_ID)) {
+                    action(JvmVariant(project = project, variantType = Detekt))
+                }
             }
         }
     }

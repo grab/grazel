@@ -126,8 +126,6 @@ constructor(
             deps.calculateDirectDependencyTags(name)
         } else emptyList()
 
-        val lintConfigs = lintConfigs(extension.lintOptions, project)
-
         return AndroidLibraryData(
             name = name + matchedVariant.nameSuffix,
             srcs = srcs,
@@ -143,7 +141,8 @@ constructor(
             resValuesData = extension.extractResValue(matchedVariant),
             deps = deps.sorted(),
             tags = tags.sorted(),
-            lintConfigData = lintConfigs
+            lintConfigData = lintConfigs(extension.lintOptions, project),
+            detektConfigData = detektConfig(project),
         )
     }
 
@@ -198,8 +197,6 @@ constructor(
                 .toList()
         ) ?: ""
 
-        val lintConfigs = lintConfigs(extension.lintOptions, project)
-
         val resourceConfiguration = matchedVariant.variant
             .productFlavors
             .flatMap { it.resourceConfigurations }
@@ -218,8 +215,9 @@ constructor(
             hasCrashlytics = project.hasCrashlytics,
             compose = project.hasCompose,
             databinding = project.hasDatabinding,
-            lintConfigData = lintConfigs,
-            resConfigs = resourceConfiguration
+            lintConfigData = lintConfigs(extension.lintOptions, project),
+            resConfigs = resourceConfiguration,
+            detektConfigData = detektConfig(project)
         )
     }
 }
