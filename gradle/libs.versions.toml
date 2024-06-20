@@ -14,6 +14,8 @@ activity-compose = "1.7.2"
 annotation-jvm = "1.6.0"
 crashlytics = "2.9.9"
 dagger = "2.47"
+detekt-gradle-plugin = "1.23.6"
+detekt-rules-compose-version = "1.3.0"
 dokka = "1.4.32"
 emoji2 = "1.3.0"
 google-services = "4.3.15"
@@ -39,6 +41,7 @@ slack-lint-checks = "0.2.3"
 timber = "5.0.1"
 auto-service = "1.1.1"
 truth = "1.1.3"
+detekt = "1.23.6"
 
 [libraries]
 android-gradle-plugin = { module = "com.android.tools.build:gradle", version.ref = "android-gradle-plugin" }
@@ -72,6 +75,7 @@ androidx-compose-animation-core = { module = "androidx.compose.animation:animati
 androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "activity-compose" }
 databinding-common = { module = "androidx.databinding:databinding-common", version.ref = "android-gradle-plugin" }
 databinding-runtime = { module = "androidx.databinding:databinding-runtime", version.ref = "android-gradle-plugin" }
+detekt-gradle-plugin = { module = "io.gitlab.arturbosch.detekt:detekt-gradle-plugin", version.ref = "detekt-gradle-plugin" }
 dokka-gradle-plugin = { module = "org.jetbrains.dokka:dokka-gradle-plugin", version.ref = "dokka" }
 google-dagger = { module = "com.google.dagger:dagger", version.ref = "dagger" }
 google-dagger-compiler = { module = "com.google.dagger:dagger-compiler", version.ref = "dagger" }
@@ -79,6 +83,7 @@ google-guava = { module = "com.google.guava:guava", version.ref = "guava" }
 google-truth = { module = "com.google.truth:truth", version.ref = "truth" }
 javapoet = { module = "com.squareup:javapoet", version.ref = "javapoet" }
 junit = { module = "junit:junit", version.ref = "junit" }
+kode-detekt-rules-compose = { module = "ru.kode:detekt-rules-compose", version.ref = "detekt-rules-compose-version" }
 kotlin-gradle-plugin = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", version.ref = "kotlin" }
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
 kotlin-serialization = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlin-serialization" }
@@ -108,3 +113,4 @@ kotlin-parcelize = { id = "org.jetbrains.kotlin.plugin.parcelize", version.ref =
 kotlin-dsl = { id = "org.gradle.kotlin.kotlin-dsl", version.ref = "kotlin-dsl" }
 gradle-publish = { id = "com.gradle.plugin-publish", version.ref = "gradle-plugin-publish" }
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
+detekt = { id = "io.gitlab.arturbosch.detekt", version.ref = "detekt" }

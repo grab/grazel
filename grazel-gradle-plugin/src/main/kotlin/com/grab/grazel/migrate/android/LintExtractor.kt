@@ -20,31 +20,16 @@ import com.android.builder.model.LintOptions
 import com.grab.grazel.bazel.starlark.BazelDependency
 import com.grab.grazel.bazel.starlark.BazelDependency.FileDependency
 import com.grab.grazel.gradle.LINT_PLUGIN_ID
+import com.grab.grazel.migrate.dependencies.getDependencies
 import org.gradle.api.Project
 import org.gradle.api.artifacts.ProjectDependency
 import org.gradle.kotlin.dsl.the
 
 private const val LINT_CHECKS_CONFIGURATION_NAME = "lintChecks"
-private const val Lint_MAVEN_REPO = "lint_maven"
+private const val LINT_MAVEN_REPO = "lint_maven"
 
 fun Project.customLintRulesTargets(): List<BazelDependency>? {
-    return configurations.asSequence().filter { it.name.contains(LINT_CHECKS_CONFIGURATION_NAME) }
-        .flatMap { lintChecksConfig ->
-            lintChecksConfig
-                .dependencies
-                .asSequence()
-                .map {
-                    if (it is ProjectDependency) {
-                        BazelDependency.ProjectDependency(it.dependencyProject)
-                    } else {
-                        BazelDependency.MavenDependency(
-                            group = it.group!!,
-                            name = it.name,
-                            repo = Lint_MAVEN_REPO
-                        )
-                    }
-                }
-        }.let { it.toList().ifEmpty { null } }
+    return getDependencies(LINT_CHECKS_CONFIGURATION_NAME, LINT_MAVEN_REPO)
 }
 
 internal fun lintConfigs(project: Project): LintConfigData {
@@ -63,7 +48,7 @@ internal fun lintConfigs(project: Project): LintConfigData {
         )
     } else {
         LintConfigData(
-            enabled = true, // enable Lint by default even when its not enabled in gradle
+            enabled = false,
             lintConfig = null,
             baselinePath = null,
             lintChecks = project.customLintRulesTargets()
@@ -75,7 +60,7 @@ internal fun lintConfigs(
     lintOptions: com.android.build.gradle.internal.dsl.LintOptions,
     project: Project
 ) = LintConfigData(
-    enabled = true, // enable lint for all targets by default
+    enabled = true,
     lintConfig = lintOptions.lintConfig?.let {
         FileDependency(
             file = it,

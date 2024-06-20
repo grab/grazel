@@ -56,6 +56,9 @@ internal class RootBazelFileBuilder(
         if (gradleProjectInfo.rootLintXml.exists()) {
             exportsFiles(gradleProjectInfo.rootLintXml.name)
         }
+        if (gradleProjectInfo.rootDetektYml.exists()) {
+            exportsFiles(gradleProjectInfo.rootDetektYml.name)
+        }
     }
 
     private fun StatementsBuilder.setupKotlin() {

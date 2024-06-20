@@ -27,6 +27,7 @@ import com.grab.grazel.gradle.dependencies.DependencyGraphs
 import com.grab.grazel.gradle.dependencies.GradleDependencyToBazelDependency
 import com.grab.grazel.gradle.hasKotlinAndroidExtensions
 import com.grab.grazel.migrate.android.SourceSetType
+import com.grab.grazel.migrate.android.detektConfig
 import com.grab.grazel.migrate.android.filterSourceSetPaths
 import com.grab.grazel.migrate.android.lintConfigs
 import com.grab.grazel.migrate.dependencies.calculateDirectDependencyTags
@@ -82,6 +83,7 @@ internal class DefaultKotlinProjectDataExtractor
             deps = deps.replaceAutoService(),
             tags = tags,
             lintConfigData = lintConfigs(project),
+            detektConfigData = detektConfig(project),
         )
     }
 

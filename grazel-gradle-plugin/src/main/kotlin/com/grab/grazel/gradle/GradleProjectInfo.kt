@@ -38,6 +38,7 @@ interface GradleProjectInfo {
     val hasAndroidExtension: Boolean
     val hasGooglePlayServices: Boolean
     val rootLintXml: File // TODO(arun) Implementing here due to lack of better place for root project data.
+    val rootDetektYml: File
 }
 
 internal class DefaultGradleProjectInfo(
@@ -90,4 +91,6 @@ internal class DefaultGradleProjectInfo(
     override val rootLintXml: File by lazy {
         rootProject.file("lint.xml")
     }
+    override val rootDetektYml: File
+        get() = rootProject.file("detekt-config.yml")
 }

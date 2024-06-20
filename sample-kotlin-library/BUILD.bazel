@@ -1,10 +1,21 @@
-load("@grab_bazel_common//rules:defs.bzl", "kotlin_library", "kotlin_test")
+load("@grab_bazel_common//rules:defs.bzl", "detekt_options", "kotlin_library", "kotlin_test")
 
 kotlin_library(
     name = "sample-kotlin-library",
     srcs = glob([
         "src/main/java/com/grab/grazel/sample/HelloWorld.kt",
     ]),
+    detekt_options = detekt_options(
+        baseline = "detekt-baseline.xml",
+        all_rules = True,
+        auto_correct = True,
+        build_upon_default_config = True,
+        cfgs = ["//:detekt-config.yml"],
+        detekt_checks = ["@detekt_maven//:ru_kode_detekt_rules_compose"],
+        disable_default_rule_sets = True,
+        enabled = True,
+        parallel = True,
+    ),
     lint_options = {
         "enabled": True,
         "baseline": "lint-baseline-kotlin.xml",

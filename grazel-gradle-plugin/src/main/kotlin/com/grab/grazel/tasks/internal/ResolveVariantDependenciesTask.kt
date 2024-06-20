@@ -224,6 +224,12 @@ internal abstract class ResolveVariantDependenciesTask : DefaultTask() {
             rootResolveDependenciesTask: TaskProvider<Task>,
             projectResolveDependenciesTask: TaskProvider<Task>,
         ) {
+            // there is in issue with variant.compileConfiguration and detektPlugin configuration
+            // here, when we use detektPlugin in pure kotlin modules variant.compileConfiguration
+            // doesn't contain detektPlugin configuration. which causes to fail on recognizing
+            // detekt plugins dependencies. which will effect on generating workspace file and maven
+            // repositories. this error won't be issue if we use same detekt plugins for kotlin and
+            // android modules.
             val compileConfigurationProvider = project.provider { variant.compileConfiguration }
 
             val compileConfigurationComponents = compileConfigurationProvider.map { configs ->

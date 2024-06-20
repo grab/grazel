@@ -153,7 +153,7 @@ class DefaultVariantBuilderTest {
     @Test
     fun `assert jvm variants are built`() {
         val variants = variantBuilder.build(jvmProject)
-        assertEquals(2, variants.size)
+        assertEquals(3, variants.size)
         assertTrue("No Android variants are built for Jvm project") {
             variants.none { it is AndroidFlavor || it is AndroidBuildType || it is AndroidVariant }
         }

@@ -17,6 +17,7 @@
 package com.grab.grazel.migrate.kotlin
 
 import com.grab.grazel.bazel.starlark.BazelDependency
+import com.grab.grazel.migrate.android.DetektConfigData
 import com.grab.grazel.migrate.android.LintConfigData
 
 data class KotlinProjectData(
@@ -25,5 +26,6 @@ data class KotlinProjectData(
     val res: List<String>,
     val deps: List<BazelDependency>,
     val tags: List<String>,
-    val lintConfigData: LintConfigData
+    val lintConfigData: LintConfigData,
+    val detektConfigData: DetektConfigData,
 )

@@ -17,6 +17,7 @@
 package com.grab.grazel.bazel.starlark
 
 import com.grab.grazel.bazel.starlark.AssignmentOp.COLON
+import com.grab.grazel.bazel.starlark.AssignmentOp.EQUAL
 import java.io.PrintWriter
 
 class ObjectStatement(private val args: List<AssignStatement>) : Assignee {
@@ -75,7 +76,11 @@ fun Map<*, *>.toObject(
  * Converts the given `List<Field>` to bazel dict.
  */
 fun List<StarlarkMapEntry>.toObject(): ObjectStatement = obj {
-    forEach { field ->
+    buildAssignments(this@toObject)
+}
+
+private fun AssignmentBuilder.buildAssignments(entries: List<StarlarkMapEntry>) {
+    entries.forEach { field ->
         val key = if (field.quoteKeys) {
             field.name.quote
         } else {
@@ -89,6 +94,11 @@ fun List<StarlarkMapEntry>.toObject(): ObjectStatement = obj {
         key `=` value
     }
 }
+
+fun List<StarlarkMapEntry>.toDetektOptionsStatement(): FunctionStatement = function("detekt_options") {
+    buildAssignments(this@toDetektOptionsStatement)
+}
+
 
 /**
  * field model for starlark

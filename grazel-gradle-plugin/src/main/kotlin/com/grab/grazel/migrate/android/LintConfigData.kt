@@ -22,10 +22,10 @@ import com.grab.grazel.bazel.starlark.quote
 import java.util.Locale
 
 data class LintConfigData(
-    val enabled: Boolean = true,
+    val enabled: Boolean = false,
     val lintConfig: BazelDependency? = null,
     val baselinePath: String? = null,
-    val lintChecks: List<BazelDependency>? = null
+    val lintChecks: List<BazelDependency>? = null,
 ) {
 
     private fun lintChecksString(): String? {

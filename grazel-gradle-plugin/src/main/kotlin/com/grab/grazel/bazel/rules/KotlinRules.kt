@@ -27,10 +27,12 @@ import com.grab.grazel.bazel.starlark.asString
 import com.grab.grazel.bazel.starlark.glob
 import com.grab.grazel.bazel.starlark.load
 import com.grab.grazel.bazel.starlark.quote
+import com.grab.grazel.bazel.starlark.toDetektOptionsStatement
 import com.grab.grazel.bazel.starlark.toObject
 import com.grab.grazel.extension.JavaCOptions
 import com.grab.grazel.extension.KotlinCOptions
 import com.grab.grazel.extension.KotlinToolChain
+import com.grab.grazel.migrate.android.DetektConfigData
 
 /**
  * `WORKSPACE` rule that registers the given [repositoryRule].
@@ -150,6 +152,7 @@ fun StatementsBuilder.ktLibrary(
     assetsDir: String? = null,
     tags: List<String> = emptyList(),
     lintConfigData: LintConfigData? = null,
+    detektConfigData: DetektConfigData? = null,
 ) {
     load("@$GRAB_BAZEL_COMMON//rules:defs.bzl", "kotlin_library")
 
@@ -191,9 +194,12 @@ fun StatementsBuilder.ktLibrary(
         if (lintConfigData?.merged?.isNotEmpty() == true) {
             "lint_options" `=` lintConfigData.merged.toObject()
         }
+        if (detektConfigData?.merged?.isNotEmpty() == true) {
+            load("@$GRAB_BAZEL_COMMON//rules:defs.bzl", "detekt_options")
+            "detekt_options" `=` detektConfigData.merged.toDetektOptionsStatement()
+        }
     }
 }
-
 
 fun StatementsBuilder.kotlinTest(
     name: String,

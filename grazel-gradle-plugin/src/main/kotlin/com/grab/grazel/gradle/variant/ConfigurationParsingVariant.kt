@@ -5,8 +5,10 @@ import com.grab.grazel.gradle.variant.VariantType.AndroidBuild
 import com.grab.grazel.gradle.variant.VariantType.AndroidTest
 import com.grab.grazel.gradle.variant.VariantType.JvmBuild
 import com.grab.grazel.gradle.variant.VariantType.Lint
+import com.grab.grazel.gradle.variant.VariantType.Detekt
 import com.grab.grazel.gradle.variant.VariantType.Test
 import com.grab.grazel.util.addTo
+import io.gitlab.arturbosch.detekt.CONFIGURATION_DETEKT_PLUGINS
 import org.gradle.api.artifacts.Configuration
 import org.gradle.api.artifacts.ConfigurationContainer
 
@@ -79,7 +81,7 @@ interface ConfigurationParsingVariant<T> : Variant<T> {
                     AndroidBuild -> configName.startsWith("kapt${namePattern.capitalize()}")
                     AndroidTest -> configName.startsWith("kaptAndroidTest${basePattern.capitalize()}")
                     Test -> configName.startsWith("kaptTest${basePattern.capitalize()}")
-                    VariantType.Lint -> false
+                    Lint, Detekt -> false
                     JvmBuild -> error("Invalid variant type ${JvmBuild.name} for Android variant")
                 }
             }.addTo(this)
@@ -109,6 +111,7 @@ interface ConfigurationParsingVariant<T> : Variant<T> {
                     || configName == "test${basePattern}Implementation$dm".toLowerCase()
 
                 Lint -> configName == "lintChecks".toLowerCase()
+                Detekt -> configName == CONFIGURATION_DETEKT_PLUGINS.toLowerCase()
 
                 else -> error("$JvmBuild invalid for build type runtime configuration")
             }
@@ -123,6 +126,7 @@ interface ConfigurationParsingVariant<T> : Variant<T> {
         || contains("UnitTest")
 
     fun String.isLint() = startsWith("lintChecks")
+    fun String.isDetekt() = startsWith(CONFIGURATION_DETEKT_PLUGINS)
 
     fun String.isTest() = isAndroidTest() || isUnitTest() || contains("Test")
 }

@@ -16,14 +16,25 @@
 plugins {
     id("kotlin")
     id("com.android.lint")
+    id("io.gitlab.arturbosch.detekt")
 }
 
 lint {
     baseline file("lint-baseline-kotlin.xml")
 }
 
+detekt {
+    config = files("$rootDir/detekt-config.yml")
+    parallel = true
+    buildUponDefaultConfig = true
+    allRules = true
+    disableDefaultRuleSets = true
+    autoCorrect = true
+}
+
 dependencies {
     implementation fileTree(dir: "libs", include: ["*.jar"])
     lintChecks libs.slack.lint.checks
+    detektPlugins(libs.kode.detekt.rules.compose)
     testImplementation libs.junit
 }

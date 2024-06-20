@@ -31,3 +31,5 @@ parcelize_rules()
 configure_common_toolchains()
 
 exports_files(["lint.xml"])
+
+exports_files(["detekt-config.yml"])
