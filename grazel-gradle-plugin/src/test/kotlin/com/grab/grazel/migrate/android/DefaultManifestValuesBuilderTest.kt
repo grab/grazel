@@ -52,6 +52,7 @@ class DefaultManifestValuesBuilderTest : GrazelPluginTest() {
                 apply(ANDROID_LIBRARY_PLUGIN)
             }
             extensions.configure<LibraryExtension> {
+                namespace = "test"
                 defaultConfig {
                     compileSdkVersion(29)
                     manifestPlaceholders.putAll(setOf("libraryPlaceholder" to "true"))
@@ -69,6 +70,7 @@ class DefaultManifestValuesBuilderTest : GrazelPluginTest() {
                 apply(ANDROID_APPLICATION_PLUGIN)
             }
             extensions.configure<AppExtension> {
+                namespace = "test"
                 defaultConfig {
                     applicationId = "com.test.grazel"
                     compileSdkVersion(29)

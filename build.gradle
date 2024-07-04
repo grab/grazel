@@ -13,14 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
-
-import com.android.build.gradle.BaseExtension
-
 buildscript {
     apply from: "constants.gradle"
 }
 plugins {
+    id "com.grab.grazel.build.common"
     alias(libs.plugins.android.application) apply false
     alias(libs.plugins.android.library) apply false
     alias(libs.plugins.kotlin.android) apply false
@@ -48,34 +45,6 @@ allprojects {
             force "com.google.dagger:dagger-compiler:2.47"
         }
     }
-
-    // TODO(arun) Move these to convention plugins
-    plugins.withType(com.android.build.gradle.BasePlugin).configureEach { plugin ->
-        (project.extensions.getByName("android") as BaseExtension).with {
-            compileOptions {
-                sourceCompatibility = JavaVersion.VERSION_11
-                targetCompatibility = JavaVersion.VERSION_11
-            }
-            lint {
-                lintConfig = rootProject.file("lint.xml")
-            }
-        }
-    }
-
-    tasks.withType(JavaCompile).configureEach { task ->
-        task.sourceCompatibility = JavaVersion.VERSION_11
-        task.targetCompatibility = JavaVersion.VERSION_11
-    }
-
-    tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompilationTask.class).configureEach {
-        compilerOptions.jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_11)
-        compilerOptions.languageVersion = org.jetbrains.kotlin.gradle.dsl.KotlinVersion.KOTLIN_1_7
-    }
-}
-
-tasks.named("wrapper") {
-    gradleVersion = libs.versions.gradle.wrapper.get()
-    distributionType = Wrapper.DistributionType.ALL
 }
 
 grazel {
@@ -120,7 +89,7 @@ grazel {
             }
         }
         mavenInstall {
-             httpArchiveRepository {
+            httpArchiveRepository {
                 sha256 = "d31e369b854322ca5098ea12c69d7175ded971435e55c18dd9dd5f29cc5249ac"
                 stripPrefix = "rules_jvm_external-5.3"
                 url = String.format("https://github.com/bazelbuild/rules_jvm_external/releases/download/%s/rules_jvm_external-%s.tar.gz", "5.3", "5.3")
@@ -166,7 +135,7 @@ grazel {
                 abiJars = true
                 multiplexWorkers = true
                 languageVersion = "1.7"
-                jvmTarget = "11"
+                jvmTarget = "17"
             }
         }
         dagger {

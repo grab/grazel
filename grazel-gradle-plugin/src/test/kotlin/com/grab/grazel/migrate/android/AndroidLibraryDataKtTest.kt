@@ -18,12 +18,14 @@ package com.grab.grazel.migrate.android
 
 import com.android.build.gradle.AppExtension
 import com.grab.grazel.GrazelPluginTest
+import com.grab.grazel.bazel.rules.resValue
 import com.grab.grazel.buildProject
 import com.grab.grazel.gradle.ANDROID_APPLICATION_PLUGIN
 import com.grab.grazel.gradle.variant.MatchedVariant
 import com.grab.grazel.util.addGrazelExtension
 import com.grab.grazel.util.doEvaluate
 import com.grab.grazel.util.truth
+import org.codehaus.groovy.runtime.ArrayTypeUtils.dimension
 import org.gradle.api.Project
 import org.gradle.kotlin.dsl.configure
 import org.gradle.kotlin.dsl.the
@@ -46,6 +48,7 @@ class AndroidLibraryDataKtTest : GrazelPluginTest() {
                 apply(ANDROID_APPLICATION_PLUGIN)
             }
             extensions.configure<AppExtension> {
+                namespace = "test"
                 defaultConfig {
                     compileSdkVersion(compilerSdkVersion)
                 }

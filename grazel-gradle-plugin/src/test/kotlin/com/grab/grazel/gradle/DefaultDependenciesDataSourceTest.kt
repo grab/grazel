@@ -72,6 +72,7 @@ class DefaultDependenciesDataSourceTest {
                 mavenCentral()
             }
             configure<AppExtension> {
+                namespace = "test"
                 compileSdkVersion(30)
             }
             configureProject(this)

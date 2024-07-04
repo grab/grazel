@@ -13,30 +13,25 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
-import org.gradle.api.internal.classpath.ModuleRegistry
-import org.gradle.api.internal.project.ProjectInternal
-
-
 buildscript {
     apply from: "../constants.gradle"
     dependencies {
         classpath libs.kotlin.gradle.plugin
         classpath libs.nexus.gradle.publish.plugin
-        classpath libs.dokka.gradle.plugin
     }
 }
 
 plugins {
     id "java-gradle-plugin"
+    id "com.grab.grazel.build.common"
     alias(libs.plugins.kotlin.dsl)
+    alias(libs.plugins.dokka.gradle.plugin)
     alias(libs.plugins.gradle.publish)
     alias(libs.plugins.kotlin.serialization)
+    alias(libs.plugins.kotlin.kapt)
     id "maven-publish"
     id "idea"
 }
-apply plugin: "kotlin-kapt"
-
 apply from: "gradle-scripts/functional-test.gradle"
 apply from: "gradle/publish-root-config.gradle"
 apply from: "gradle/publishing.gradle"
@@ -44,11 +39,6 @@ apply from: "gradle/publishing.gradle"
 group = groupId
 version = versionName
 description = "A Gradle plugin to automate Bazel migration for Android projects"
-
-repositories {
-    google()
-    mavenCentral()
-}
 
 idea {
     module {
@@ -62,7 +52,7 @@ pluginBundle {
     website = project.findProperty("website")
     vcsUrl = project.findProperty("website")
     description = project.description
-    tags = ["bazel migration", "buildscript generation", "automation"]
+    tags = ["bazel migration", "buildscript generation", "automation", "bazel"]
     mavenCoordinates {
         groupId = project.group
         artifactId = project.name
@@ -98,30 +88,11 @@ dependencies {
     testImplementation libs.junit
     testImplementation libs.kotlin.test
     testImplementation libs.android.gradle.plugin
-    testImplementation gradleTestKit()
     testImplementation libs.mockito.kotlin
-
-    /**
-     * In Gradle 6.7-rc-1 BuildEventsListenerRegistry service is not created in we need it in order
-     * to instantiate AGP. This creates a fake one and injects it
-     * https://issuetracker.google.com/issues/193859160
-     * https://github.com/gradle/gradle/issues/17783
-     */
-    def toolingApiBuildersJar = (project as ProjectInternal).services.get(ModuleRegistry.class)
-        .getModule("gradle-tooling-api-builders")
-        .classpath
-        .asFiles
-        .first()
-    testRuntimeOnly(files(toolingApiBuildersJar))
-}
-
-tasks.withType(JavaCompile).configureEach {
-    sourceCompatibility = JavaVersion.VERSION_11
-    targetCompatibility = JavaVersion.VERSION_11
+    testImplementation gradleTestKit()
 }
 
 tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompilationTask.class).configureEach {
-    compilerOptions.jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_11)
     compilerOptions.freeCompilerArgs.add("-Xopt-in=kotlin.ExperimentalStdlibApi")
 }
 

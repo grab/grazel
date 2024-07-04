@@ -316,7 +316,7 @@ class FakeProject(private val name: String) : Project {
         TODO("Not yet implemented")
     }
 
-    override fun <T : Any?> provider(value: Callable<T>): Provider<T> {
+    override fun <T : Any?> provider(value: Callable<out T?>): Provider<T> {
         TODO("Not yet implemented")
     }
 
@@ -576,6 +576,10 @@ class FakeProject(private val name: String) : Project {
     }
 
     override fun getComponents(): SoftwareComponentContainer {
+        TODO("Not yet implemented")
+    }
+
+    override fun components(configuration: Action<in SoftwareComponentContainer>) {
         TODO("Not yet implemented")
     }
 

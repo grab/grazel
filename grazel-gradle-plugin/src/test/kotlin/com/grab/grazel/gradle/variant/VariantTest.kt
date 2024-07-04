@@ -50,7 +50,7 @@ class VariantTest {
 
         androidVariant(appExtension.applicationVariants.first()).let { buildVariant ->
             assertEquals(
-                28,
+                26,
                 buildVariant.variantConfigurations.size,
                 "Variant configuration parsed for build variant"
             )
@@ -81,7 +81,7 @@ class VariantTest {
         val allConfigurations = androidProject.configurations.map { it.name }
 
         assertEquals(
-            254,
+            253,
             (allConfigurations - parsedConfigurations).size,
             "Remaining unparsed configurations size at 254"
         )

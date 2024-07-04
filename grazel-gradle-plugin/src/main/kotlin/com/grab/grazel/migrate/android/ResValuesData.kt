@@ -20,6 +20,7 @@ import com.android.build.gradle.BaseExtension
 import com.android.builder.model.Version.ANDROID_GRADLE_PLUGIN_VERSION
 import com.grab.grazel.gradle.variant.MatchedVariant
 import com.grab.grazel.util.merge
+import org.gradle.util.internal.VersionNumber
 
 data class ResValuesData(
     val stringValues: Map<String, String> = emptyMap()
@@ -60,10 +61,9 @@ internal fun BaseExtension.extractResValue(
  * output: generated_value
  */
 private fun getKeyValue(key: String): String {
-    val agpVersion = ANDROID_GRADLE_PLUGIN_VERSION.split(".")
-    val majorVersion = agpVersion[0].toInt()
-    val minorVersion = agpVersion[1].toInt()
-    return if (majorVersion >= 7 && minorVersion >= 2) {
+    val agpVersion = VersionNumber.parse(ANDROID_GRADLE_PLUGIN_VERSION)
+    val baseAgpVersion = VersionNumber.parse("7.2.2")
+    return if (agpVersion >= baseAgpVersion) {
         key.split("/").last()
     } else {
         key

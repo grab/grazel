@@ -45,6 +45,7 @@ class DefaultAndroidLibraryDataExtractorTest {
                 apply(KOTLIN_KAPT)
             }
             configure<AppExtension> {
+                namespace = "test"
                 defaultConfig {
                     compileSdkVersion(32)
                 }
@@ -61,6 +62,7 @@ class DefaultAndroidLibraryDataExtractorTest {
                 apply(KOTLIN_KAPT)
             }
             configure<LibraryExtension> {
+                namespace = "test"
                 defaultConfig {
                     compileSdkVersion(32)
                 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 Grabtaxi Holdings PTE LTD (GRAB)
+ * Copyright 2024 Grabtaxi Holdings PTE LTD (GRAB)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,21 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package com.grab.grazel.build
 
-plugins {
-    alias(libs.plugins.android.library)
-    alias(libs.plugins.kotlin.android)
-    alias(libs.plugins.kotlin.parcelize)
-}
+import com.grab.grazel.build.android.configureAndroid
+import com.grab.grazel.build.gradle.ConfigurablePlugin
+import com.grab.grazel.build.jvm.configureJvm
 
-android {
-    buildToolsVersion "33.0.1"
-    buildFeatures {
-        viewBinding true
-    }
-    namespace "com.grab.grazel.android.sample.lib"
-}
-
-dependencies {
-    testImplementation libs.junit
-}
+public class BuildLogicPlugin : ConfigurablePlugin({
+    configureJvm()
+    configureAndroid()
+})

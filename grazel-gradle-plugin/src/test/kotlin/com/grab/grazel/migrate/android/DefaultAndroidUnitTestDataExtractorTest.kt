@@ -73,6 +73,7 @@ class DefaultAndroidUnitTestDataExtractorTest : GrazelPluginTest() {
                 apply(KOTLIN_ANDROID_PLUGIN)
             }
             extensions.configure<LibraryExtension> {
+                namespace = "test"
                 defaultConfig {
                     compileSdkVersion(30)
                 }
