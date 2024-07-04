@@ -43,12 +43,13 @@ internal class DefaultAndroidManifestParser @Inject constructor() : AndroidManif
         extension: BaseExtension,
         androidSourceSets: List<AndroidSourceSet>
     ): String? {
-        val packageName = extension.defaultConfig.applicationId // TODO(arun) Handle suffixes
+        val packageName = extension.defaultConfig.applicationId ?: extension.namespace
         return if (packageName == null) {
             // Try parsing from AndroidManifest.xml
             val manifestFile = androidManifestFile(androidSourceSets) ?: return null
             XmlSlurper().parse(manifestFile)
                 .list()
+                .asSequence()
                 .filterIsInstance<NodeChild>()
                 .firstOrNull { it.name() == "manifest" }
                 ?.attributes()?.get("package")?.toString()

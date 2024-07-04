@@ -56,9 +56,9 @@ android_binary(
     multidex = "native",
     res_values = {
         "strings": {
-            "string/generated_value": "This string was generated with resValue",
-            "string/type": "debug",
-            "string/flavor": "free",
+            "generated_value": "This string was generated with resValue",
+            "type": "debug",
+            "flavor": "free",
         },
     },
     resource_configuration_filters = [
@@ -166,9 +166,9 @@ android_binary(
     multidex = "native",
     res_values = {
         "strings": {
-            "string/generated_value": "This string was generated with resValue",
-            "string/type": "debug",
-            "string/flavor": "paid",
+            "generated_value": "This string was generated with resValue",
+            "type": "debug",
+            "flavor": "paid",
         },
     },
     resource_configuration_filters = [
@@ -276,9 +276,9 @@ android_binary(
     multidex = "native",
     res_values = {
         "strings": {
-            "string/generated_value": "This string was generated with resValue",
-            "string/type": "debug",
-            "string/flavor": "free",
+            "generated_value": "This string was generated with resValue",
+            "type": "debug",
+            "flavor": "free",
         },
     },
     resource_configuration_filters = [
@@ -386,9 +386,9 @@ android_binary(
     multidex = "native",
     res_values = {
         "strings": {
-            "string/generated_value": "This string was generated with resValue",
-            "string/type": "debug",
-            "string/flavor": "paid",
+            "generated_value": "This string was generated with resValue",
+            "type": "debug",
+            "flavor": "paid",
         },
     },
     resource_configuration_filters = [

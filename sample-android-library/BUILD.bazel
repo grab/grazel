@@ -5,7 +5,7 @@ android_library(
     srcs = glob([
         "src/main/java/com/grab/grazel/android/sample/SampleViewModel.kt",
     ]),
-    custom_package = "",
+    custom_package = "com.grab.grazel.android.sample.lib",
     enable_data_binding = True,
     lint_options = {
         "enabled": True,
@@ -25,7 +25,7 @@ android_library(
     srcs = glob([
         "src/main/java/com/grab/grazel/android/sample/SampleViewModel.kt",
     ]),
-    custom_package = "",
+    custom_package = "com.grab.grazel.android.sample.lib",
     enable_data_binding = True,
     lint_options = {
         "enabled": True,
@@ -45,7 +45,7 @@ android_library(
     srcs = glob([
         "src/main/java/com/grab/grazel/android/sample/SampleViewModel.kt",
     ]),
-    custom_package = "",
+    custom_package = "com.grab.grazel.android.sample.lib",
     enable_data_binding = True,
     lint_options = {
         "enabled": True,
@@ -65,7 +65,7 @@ android_library(
     srcs = glob([
         "src/main/java/com/grab/grazel/android/sample/SampleViewModel.kt",
     ]),
-    custom_package = "",
+    custom_package = "com.grab.grazel.android.sample.lib",
     enable_data_binding = True,
     lint_options = {
         "enabled": True,
@@ -88,7 +88,7 @@ android_unit_test(
     associates = [
         "//sample-android-library:sample-android-library-demo-free-debug_kt",
     ],
-    custom_package = "",
+    custom_package = "com.grab.grazel.android.sample.lib",
     resources = glob([
         "src/test/resources/**",
     ]),
@@ -110,7 +110,7 @@ android_unit_test(
     associates = [
         "//sample-android-library:sample-android-library-demo-paid-debug_kt",
     ],
-    custom_package = "",
+    custom_package = "com.grab.grazel.android.sample.lib",
     resources = glob([
         "src/test/resources/**",
     ]),
@@ -132,7 +132,7 @@ android_unit_test(
     associates = [
         "//sample-android-library:sample-android-library-full-free-debug_kt",
     ],
-    custom_package = "",
+    custom_package = "com.grab.grazel.android.sample.lib",
     resources = glob([
         "src/test/resources/**",
     ]),
@@ -154,7 +154,7 @@ android_unit_test(
     associates = [
         "//sample-android-library:sample-android-library-full-paid-debug_kt",
     ],
-    custom_package = "",
+    custom_package = "com.grab.grazel.android.sample.lib",
     resources = glob([
         "src/test/resources/**",
     ]),
