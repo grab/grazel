@@ -6,20 +6,11 @@ import org.gradle.workers.ProcessWorkerSpec
 import org.gradle.workers.WorkAction
 import org.gradle.workers.WorkParameters
 import org.gradle.workers.WorkQueue
-import org.gradle.workers.WorkerConfiguration
 import org.gradle.workers.WorkerExecutor
 import org.gradle.workers.WorkerSpec
 
-class FakeWorkerExecutor(
-) : WorkerExecutor {
+class FakeWorkerExecutor : WorkerExecutor {
     val workQueue = FakeWorkQueue()
-
-    override fun submit(
-        actionClass: Class<out Runnable>?,
-        configAction: Action<in WorkerConfiguration>?
-    ) {
-        // no-op
-    }
 
     override fun noIsolation() = workQueue
 

@@ -27,10 +27,10 @@ plugins {
     alias(libs.plugins.dokka.gradle.plugin)
     alias(libs.plugins.gradle.publish)
     alias(libs.plugins.kotlin.serialization)
+    alias(libs.plugins.kotlin.kapt)
     id "maven-publish"
     id "idea"
 }
-apply plugin: "kotlin-kapt"
 apply from: "gradle-scripts/functional-test.gradle"
 apply from: "gradle/publish-root-config.gradle"
 apply from: "gradle/publishing.gradle"
@@ -38,11 +38,6 @@ apply from: "gradle/publishing.gradle"
 group = groupId
 version = versionName
 description = "A Gradle plugin to automate Bazel migration for Android projects"
-
-repositories {
-    google()
-    mavenCentral()
-}
 
 idea {
     module {
