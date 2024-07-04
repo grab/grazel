@@ -14,11 +14,12 @@
   ~ limitations under the License.
   -->
 
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.grab.grazel.android.flavor">
 
     <application>
         <activity
             android:name=".FlavorActivity"
-            android:exported="true"/>
+            android:exported="true" />
     </application>
 </manifest>
