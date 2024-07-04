@@ -62,7 +62,7 @@ android {
             ]
         }
     }
-    namespace 'com.grab.grazel.android.flavor'
+    namespace "com.grab.grazel.android.flavor"
 }
 
 dependencies {
