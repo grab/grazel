@@ -21,14 +21,11 @@ plugins {
 }
 
 android {
-    compileSdkVersion 33
     buildToolsVersion "33.0.1"
-    defaultConfig {
-        minSdkVersion 21
-    }
     buildFeatures {
         viewBinding true
     }
+    namespace 'com.grab.grazel.android.sample.lib'
 }
 
 dependencies {

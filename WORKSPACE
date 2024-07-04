@@ -314,11 +314,11 @@ maven_install(
         "androidx.core:core:1.10.1",
         "androidx.cursoradapter:cursoradapter:1.0.0",
         "androidx.customview:customview:1.0.0",
-        "androidx.databinding:databinding-adapters:7.2.2",
-        "androidx.databinding:databinding-common:7.2.2",
-        "androidx.databinding:databinding-ktx:7.2.2",
-        "androidx.databinding:databinding-runtime:7.2.2",
-        "androidx.databinding:viewbinding:7.2.2",
+        "androidx.databinding:databinding-adapters:8.1.4",
+        "androidx.databinding:databinding-common:8.1.4",
+        "androidx.databinding:databinding-ktx:8.1.4",
+        "androidx.databinding:databinding-runtime:8.1.4",
+        "androidx.databinding:viewbinding:8.1.4",
         "androidx.drawerlayout:drawerlayout:1.0.0",
         "androidx.emoji2:emoji2:1.3.0",
         "androidx.fragment:fragment:1.3.6",
@@ -466,7 +466,7 @@ test_maven_pinned_maven_install()
 
 android_sdk_repository(
     name = "androidsdk",
-    api_level = 33,
+    api_level = 34,
     build_tools_version = "33.0.1",
 )
 

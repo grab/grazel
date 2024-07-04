@@ -6,7 +6,7 @@ android_library(
         "src/main/java/com/grab/grazel/android/flavor/**/*.kt",
         "src/demo/java/com/grab/grazel/android/flavor/HelloFlavorMessage.kt",
     ]),
-    custom_package = "com.grab.grazel.android.flavor",
+    custom_package = "",
     enable_compose = True,
     enable_data_binding = True,
     lint_options = {
@@ -16,7 +16,7 @@ android_library(
     manifest = "src/main/AndroidManifest.xml",
     res_values = {
         "strings": {
-            "generated_value": "generated",
+            "string/generated_value": "generated",
         },
     },
     resources = {
@@ -47,7 +47,7 @@ android_library(
         "src/main/java/com/grab/grazel/android/flavor/**/*.kt",
         "src/demo/java/com/grab/grazel/android/flavor/HelloFlavorMessage.kt",
     ]),
-    custom_package = "com.grab.grazel.android.flavor",
+    custom_package = "",
     enable_compose = True,
     enable_data_binding = True,
     lint_options = {
@@ -57,7 +57,7 @@ android_library(
     manifest = "src/main/AndroidManifest.xml",
     res_values = {
         "strings": {
-            "generated_value": "generated",
+            "string/generated_value": "generated",
         },
     },
     resources = {
@@ -86,7 +86,7 @@ android_library(
         "src/main/java/com/grab/grazel/android/flavor/**/*.kt",
         "src/full/java/com/grab/grazel/android/flavor/HelloFlavorMessage.kt",
     ]),
-    custom_package = "com.grab.grazel.android.flavor",
+    custom_package = "",
     enable_compose = True,
     enable_data_binding = True,
     lint_options = {
@@ -96,7 +96,7 @@ android_library(
     manifest = "src/main/AndroidManifest.xml",
     res_values = {
         "strings": {
-            "generated_value": "generated",
+            "string/generated_value": "generated",
         },
     },
     resources = {
@@ -127,7 +127,7 @@ android_library(
         "src/main/java/com/grab/grazel/android/flavor/**/*.kt",
         "src/full/java/com/grab/grazel/android/flavor/HelloFlavorMessage.kt",
     ]),
-    custom_package = "com.grab.grazel.android.flavor",
+    custom_package = "",
     enable_compose = True,
     enable_data_binding = True,
     lint_options = {
@@ -137,7 +137,7 @@ android_library(
     manifest = "src/main/AndroidManifest.xml",
     res_values = {
         "strings": {
-            "generated_value": "generated",
+            "string/generated_value": "generated",
         },
     },
     resources = {

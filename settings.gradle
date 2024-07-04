@@ -19,13 +19,13 @@ pluginManagement {
         mavenCentral()
         google()
     }
+    includeBuild("build-logic")
     includeBuild("grazel-gradle-plugin")
-    plugins {
-        id "com.gradle.enterprise" version "3.6.3"
-    }
 }
 plugins {
-    id "com.gradle.enterprise"
+    id("com.gradle.enterprise") version "3.6.3"
+    id("org.gradle.toolchains.foojay-resolver-convention") version "0.8.0"
+    id("com.android.settings") version "8.1.4"
 }
 rootProject.name = "grazel"
 
@@ -36,6 +36,11 @@ dependencyResolutionManagement {
         google()
         mavenCentral()
     }
+}
+
+android {
+    compileSdk 34
+    minSdk 21
 }
 
 include(":sample-android")
