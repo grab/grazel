@@ -23,6 +23,7 @@ buildscript {
 
 plugins {
     id "java-gradle-plugin"
+    id "com.grab.grazel.build.common"
     alias(libs.plugins.kotlin.dsl)
     alias(libs.plugins.dokka.gradle.plugin)
     alias(libs.plugins.gradle.publish)
