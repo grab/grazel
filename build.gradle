@@ -135,7 +135,7 @@ grazel {
                 abiJars = true
                 multiplexWorkers = true
                 languageVersion = "1.7"
-                jvmTarget = "11"
+                jvmTarget = "17"
             }
         }
         dagger {

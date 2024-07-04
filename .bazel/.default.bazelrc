@@ -28,9 +28,12 @@ common --experimental_worker_for_repo_fetching=platform
 
 # JAVA - START
 common --experimental_strict_java_deps=off # Turn off strict java deps
-common --java_runtime_version=remotejdk_11 # Use inbuilt Java 11 for hermeticity
-common --tool_java_runtime_version=remotejdk_11
-common --jvmopt="-Djava.locale.providers=COMPAT,SPI" # Use Java 8 default locale provider
+common --java_runtime_version=remotejdk_17 # Use inbuilt Java 17 for hermeticity
+common --tool_java_runtime_version=remotejdk_17
+common --tool_java_language_version=17
+common --java_language_version=17
+## See https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/util/Locale.html#legacy_language_codes
+build --jvmopt="-Djava.locale.providers=COMPAT,SPI -Djava.locale.useOldISOCodes=true" # Use Java 8 default locale provider
 common --experimental_java_classpath=bazel 
 common --experimental_java_header_input_pruning
 # JAVA - END
