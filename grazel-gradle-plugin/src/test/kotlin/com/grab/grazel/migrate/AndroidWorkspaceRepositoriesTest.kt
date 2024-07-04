@@ -116,6 +116,7 @@ class AndroidWorkspaceRepositoriesTest : GrazelPluginTest() {
                 apply(ANDROID_APPLICATION_PLUGIN)
             }
             extensions.configure<AppExtension> {
+                namespace = "test"
                 defaultConfig {
                     compileSdkVersion(29)
                     buildToolsVersion("29.0.3")

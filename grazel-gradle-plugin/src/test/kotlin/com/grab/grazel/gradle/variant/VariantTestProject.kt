@@ -31,6 +31,7 @@ fun setupAndroidVariantProject(androidProject: Project) {
             mavenCentral()
         }
         configure<AppExtension> {
+            namespace = "test"
             defaultConfig {
                 compileSdkVersion(32)
             }

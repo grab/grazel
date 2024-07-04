@@ -67,6 +67,7 @@ class ResolvedComponentsVisitorTest {
                 mavenCentral()
             }
             configure<AppExtension> {
+                namespace = "test"
                 compileSdkVersion(30)
             }
             dependencies {

@@ -55,6 +55,7 @@ class BuildConfigFieldsTest : GrazelPluginTest() {
                 apply(ANDROID_APPLICATION_PLUGIN)
             }
             extensions.configure<AppExtension> {
+                namespace = "test"
                 defaultConfig {
                     compileSdkVersion(29)
                     versionCode = 1
@@ -64,7 +65,7 @@ class BuildConfigFieldsTest : GrazelPluginTest() {
                     buildConfigField("boolean", "SOME_BOOLEAN", "false")
                     buildConfigField("String", "SOME_STRING", "\"Something\"")
                 }
-
+                buildFeatures.buildConfig = true
             }
             doEvaluate()
         }

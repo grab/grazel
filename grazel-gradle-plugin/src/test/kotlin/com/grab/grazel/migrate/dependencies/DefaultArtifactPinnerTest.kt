@@ -61,6 +61,7 @@ class DefaultArtifactPinnerTest {
                 apply(ANDROID_APPLICATION_PLUGIN)
             }
             extensions.configure<AppExtension> {
+                namespace = "test"
                 defaultConfig {
                     compileSdkVersion(23)
                 }

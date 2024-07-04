@@ -28,6 +28,7 @@ import com.grab.grazel.util.addGrazelExtension
 import com.grab.grazel.util.assertErrorMessage
 import com.grab.grazel.util.createGrazelComponent
 import com.grab.grazel.util.doEvaluate
+import org.codehaus.groovy.runtime.ArrayTypeUtils.dimension
 import org.gradle.api.Project
 import org.gradle.kotlin.dsl.configure
 import org.gradle.kotlin.dsl.dependencies
@@ -57,6 +58,7 @@ internal class DefaultVariantMatcherTest {
                 apply(KOTLIN_KAPT)
             }
             configure<AppExtension> {
+                namespace = "test"
                 defaultConfig {
                     compileSdkVersion(32)
                 }
@@ -73,6 +75,7 @@ internal class DefaultVariantMatcherTest {
                 apply(KOTLIN_KAPT)
             }
             configure<LibraryExtension> {
+                namespace = "test"
                 defaultConfig {
                     compileSdkVersion(32)
                 }

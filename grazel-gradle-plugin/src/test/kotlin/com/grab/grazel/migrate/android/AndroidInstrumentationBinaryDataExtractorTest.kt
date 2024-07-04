@@ -112,6 +112,7 @@ class AndroidInstrumentationBinaryDataExtractorTest : GrazelPluginTest() {
                 apply(KOTLIN_ANDROID_PLUGIN)
             }
             extensions.configure<AppExtension> {
+                namespace = "test"
                 defaultConfig {
                     applicationId = "com.example.androidlibrary"
                     compileSdkVersion(31)
