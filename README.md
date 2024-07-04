@@ -62,7 +62,7 @@ dependencies {
 }
 ```
 
-Grazel"s `migrateToBazel` task generates the following build script:
+Grazel's `migrateToBazel` task generates the following build script:
 
 ```python
 load("@io_bazel_rules_kotlin//kotlin:kotlin.bzl", "kt_android_library")
