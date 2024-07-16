@@ -308,7 +308,7 @@ class VariantTest {
     )
 
     @Test
-    fun `assert android non extends from are parsed`() {
+    fun `assert android non variant extendsfrom are parsed`() {
         setupAndroidVariantProject(androidProject)
 
         androidBuildType(
@@ -326,6 +326,8 @@ class VariantTest {
             assertThat(androidTestVariant.extendsFrom).containsExactly(
                 "default",
                 "debug",
+                "test",
+                "androidTest"
             )
         }
         androidBuildType(
