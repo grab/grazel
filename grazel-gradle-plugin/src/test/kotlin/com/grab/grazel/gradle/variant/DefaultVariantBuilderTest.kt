@@ -102,7 +102,7 @@ class DefaultVariantBuilderTest {
             variants = androidVariants.filter { it.variantType == VariantType.Test },
             size = 2,
             message = "BuiltType build variants are built",
-            "debugTest", "releaseTest"
+            "debugUnitTest", "releaseUnitTest"
         )
 
         assertEquals(
@@ -133,7 +133,7 @@ class DefaultVariantBuilderTest {
             variants = flavorVariants.filter { it.variantType == VariantType.Test },
             size = 2,
             message = "Flavor test variants are built",
-            "paidTest", "freeTest"
+            "paidUnitTest", "freeUnitTest"
         )
 
         assert(

@@ -24,6 +24,7 @@ import com.grab.grazel.gradle.dependencies.model.ResolvedDependency
 import com.grab.grazel.gradle.variant.Variant
 import com.grab.grazel.gradle.variant.VariantBuilder
 import com.grab.grazel.gradle.variant.isBase
+import com.grab.grazel.gradle.variant.isTest
 import com.grab.grazel.util.Json
 import com.grab.grazel.util.dependsOn
 import com.grab.grazel.util.fromJson
@@ -33,6 +34,7 @@ import org.gradle.api.DefaultTask
 import org.gradle.api.Project
 import org.gradle.api.Task
 import org.gradle.api.artifacts.ExternalDependency
+import org.gradle.api.artifacts.ProjectDependency
 import org.gradle.api.artifacts.result.ResolvedComponentResult
 import org.gradle.api.file.RegularFile
 import org.gradle.api.file.RegularFileProperty
@@ -171,6 +173,7 @@ internal abstract class ResolveVariantDependenciesTask : DefaultTask() {
         internal fun register(
             rootProject: Project,
             variantBuilderProvider: Lazy<VariantBuilder>,
+            limitDependencyResolutionParallelism: Property<Boolean>,
             subprojectTaskConfigure: (TaskProvider<ResolveVariantDependenciesTask>) -> Unit
         ) {
             // Register a lifecycle to aggregate all subproject tasks
@@ -189,15 +192,20 @@ internal abstract class ResolveVariantDependenciesTask : DefaultTask() {
                     // First pass to create all tasks
                     variantBuilder.onVariants(project) { variant ->
                         processVariant(
-                            project,
-                            variant,
-                            rootResolveDependenciesTask,
-                            projectResolveDependenciesTask
+                            project = project,
+                            variant = variant,
+                            rootResolveDependenciesTask = rootResolveDependenciesTask,
+                            projectResolveDependenciesTask = projectResolveDependenciesTask
                         )
                     }
                     // Second pass to establish inter-dependencies based on extendsFrom property
                     variantBuilder.onVariants(project) { variant ->
-                        configureVariantTaskDependencies(project, variant, subprojectTaskConfigure)
+                        configureVariantTaskDependencies(
+                            project = project,
+                            variant = variant,
+                            limitDependencyResolutionParallelism = limitDependencyResolutionParallelism,
+                            subprojectTaskConfigure = subprojectTaskConfigure
+                        )
                     }
                 }
             }
@@ -225,10 +233,6 @@ internal abstract class ResolveVariantDependenciesTask : DefaultTask() {
             projectResolveDependenciesTask: TaskProvider<Task>,
         ) {
             val compileConfigurationProvider = project.provider { variant.compileConfiguration }
-
-            val compileConfigurationComponents = compileConfigurationProvider.map { configs ->
-                configs.map { it.incoming.resolutionResult.root }.toList()
-            }
 
             val externalDependencies = compileConfigurationProvider.map { configs ->
                 configs
@@ -259,7 +263,11 @@ internal abstract class ResolveVariantDependenciesTask : DefaultTask() {
                 ) {
                     variantName.set(variant.name)
                     base.set(variant.isBase)
-                    compileConfiguration.set(compileConfigurationComponents)
+
+                    variant.compileConfiguration.forEach {
+                        compileConfiguration.add(it.incoming.resolutionResult.rootComponent)
+                    }
+
                     compileDirectDependencies.set(directDependenciesCompile)
                     compileExcludeRules.set(excludeRulesCompile)
                     resolvedDependencies.set(resolvedDependenciesJson)
@@ -272,23 +280,39 @@ internal abstract class ResolveVariantDependenciesTask : DefaultTask() {
         private fun configureVariantTaskDependencies(
             project: Project,
             variant: Variant<*>,
+            limitDependencyResolutionParallelism: Property<Boolean>,
             subprojectTaskConfigure: (TaskProvider<ResolveVariantDependenciesTask>) -> Unit
         ) {
             val tasks = project.tasks
-            val taskName = variant.name + "ResolveDependencies"
-            val resolveTask = tasks.named<ResolveVariantDependenciesTask>(taskName)
-            resolveTask.configure {
+            val variantResolveTaskName = variant.name + "ResolveDependencies"
+            val resolveTask = tasks.named<ResolveVariantDependenciesTask>(variantResolveTaskName) {
                 val variantTask = this
                 variant.extendsFrom.forEach { extends ->
-                    try {
-                        val extendsTasksName = extends + "ResolveDependencies"
-                        val extendsTask = tasks.named<ResolveVariantDependenciesTask>(
-                            extendsTasksName
-                        )
-                        variantTask.baseDependenciesJsons.add(extendsTask.flatMap { it.resolvedDependencies })
-                    } catch (e: Exception) {
-                        // TODO(arun) Handle gracefully
-                    }
+                    val extendsTasksName = extends + "ResolveDependencies"
+                    val extendsTask = tasks.named<ResolveVariantDependenciesTask>(
+                        extendsTasksName
+                    )
+                    variantTask.baseDependenciesJsons.add(extendsTask.flatMap { it.resolvedDependencies })
+                }
+            }
+
+            if (!variant.variantType.isTest && limitDependencyResolutionParallelism.get()) {
+                // Make dependency resolution task of this project dependent on successor projects
+                variant.compileConfiguration.forEach { configuration ->
+                    configuration.allDependencies
+                        .asSequence()
+                        .filterIsInstance<ProjectDependency>()
+                        .map { it.dependencyProject }
+                        .filter { it != project }
+                        .forEach { depProject ->
+                            resolveTask.configure {
+                                dependsOn(depProject.tasks.named("defaultResolveDependencies"))
+                                try {
+                                    dependsOn(depProject.tasks.named(variantResolveTaskName))
+                                } catch (ignore: Exception) {
+                                }
+                            }
+                        }
                 }
             }
             subprojectTaskConfigure(resolveTask)

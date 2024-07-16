@@ -31,6 +31,7 @@ import org.gradle.api.artifacts.Configuration
  */
 interface Variant<T> {
     val name: String
+
     val backingVariant: T
 
     val project: Project
@@ -95,12 +96,15 @@ fun BaseVariant.toVariantType(): VariantType = when (this) {
 
 val Variant<*>.isBase get() = name == DEFAULT_VARIANT
 
+val Variant<*>.id get() = name + variantType.toString()
+
 /**
  * Bridge function to map [ConfigurationScope] to [VariantType]
  * Not required once fully migrated to [Variant] APIs
  *
  * @return whether this [VariantType] corresponds to [ConfigurationScope]
  */
+@Deprecated(message = "Deprecated, new code should use Variant API directly")
 fun VariantType.isConfigScope(
     project: Project,
     configurationScope: ConfigurationScope

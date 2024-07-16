@@ -18,6 +18,7 @@ package com.grab.grazel
 
 import com.grab.grazel.extension.AndroidExtension
 import com.grab.grazel.extension.DependenciesExtension
+import com.grab.grazel.extension.ExperimentsExtension
 import com.grab.grazel.extension.HybridExtension
 import com.grab.grazel.extension.RulesExtension
 import groovy.lang.Closure
@@ -54,6 +55,8 @@ open class GrazelExtension(
     val rules = RulesExtension(rootProject.objects)
 
     val hybrid = HybridExtension(rootProject.objects)
+
+    val experiments = ExperimentsExtension(rootProject.objects)
 
     /**
      * Android specific configuration used to configure parameters for android_binary or other android related
@@ -188,6 +191,37 @@ open class GrazelExtension(
      */
     fun hybrid(closure: Closure<*>) {
         closure.delegate = hybrid
+        closure.call()
+    }
+
+    /**
+     * Extension to configure experiments
+     *
+     * ```
+     * experiments {
+     *
+     * }
+     * ```
+     * @see ExperimentsExtension
+     * @param block Configuration block with [ExperimentsExtension] as the receiver
+     */
+    fun experiments(block: ExperimentsExtension.() -> Unit) {
+        block(experiments)
+    }
+
+    /**
+     * Extension to configure experiments
+     *
+     * ```
+     * experiments {
+     *
+     * }
+     * ```
+     * @see ExperimentsExtension
+     * @param closure Closure block with [ExperimentsExtension] as the delegate
+     */
+    fun experiments(closure: Closure<*>) {
+        closure.delegate = experiments
         closure.call()
     }
 }

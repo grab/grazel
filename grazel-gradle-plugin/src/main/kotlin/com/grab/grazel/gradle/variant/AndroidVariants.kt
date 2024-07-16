@@ -93,13 +93,25 @@ abstract class AndroidNonVariant<T>(
 
     override val name
         get() = backingVariant.name + when (variantType) {
-            AndroidTest -> AndroidTest.name
-            Test -> Test.name
+            AndroidTest, Test -> variantType.testSuffix
             Lint -> Lint.name
             else -> ""
         }
 
     override val baseName get() = backingVariant.name.capitalize()
+
+    override val extendsFrom: Set<String> by lazy {
+        buildList {
+            add(DEFAULT_VARIANT)
+            if (variantType.isTest) {
+                add(backingVariant.name)
+                add(TEST_VARIANT)
+                if (variantType.isAndroidTest) {
+                    add(ANDROID_TEST_VARIANT)
+                }
+            }
+        }.toSet()
+    }
 
     override val variantConfigurations: Set<Configuration>
         get() = super.variantConfigurations
@@ -159,13 +171,7 @@ class AndroidBuildType(
     backingVariant = backingVariant,
     variantType = variantType,
     toIgnoreKeywords = flavors
-) {
-    override val extendsFrom: Set<String> = buildList {
-        add(DEFAULT_VARIANT)
-        if (variantType.isTest) add(backingVariant.name)
-        if (variantType == Test) add(TEST_VARIANT)
-    }.toSet()
-}
+)
 
 /**
  * A [Variant] implementation to denote a [ProductFlavor] with [toIgnoreKeywords] set to buildTypes
@@ -187,13 +193,7 @@ class AndroidFlavor(
     backingVariant = backingVariant,
     variantType = variantType,
     toIgnoreKeywords = buildTypes
-) {
-    override val extendsFrom: Set<String> = buildList {
-        add(DEFAULT_VARIANT)
-        if (variantType.isTest) add(backingVariant.name)
-        if (variantType == Test) add(TEST_VARIANT)
-    }.toSet()
-}
+)
 
 data class DefaultVariantData(
     val project: Project,
@@ -225,6 +225,7 @@ class AndroidDefaultVariant(
     override val backingVariant: DefaultVariantData get() = defaultVariantData
     override val project: Project get() = defaultVariantData.project
     override val variantType: VariantType get() = defaultVariantData.variantType
+
     override val extendsFrom: Set<String> = buildSet {
         if (variantType.isTest) add(DEFAULT_VARIANT)
         if (variantType.isAndroidTest) add(TEST_VARIANT)
