@@ -280,15 +280,11 @@ internal abstract class ResolveVariantDependenciesTask : DefaultTask() {
             resolveTask.configure {
                 val variantTask = this
                 variant.extendsFrom.forEach { extends ->
-                    try {
-                        val extendsTasksName = extends + "ResolveDependencies"
-                        val extendsTask = tasks.named<ResolveVariantDependenciesTask>(
-                            extendsTasksName
-                        )
-                        variantTask.baseDependenciesJsons.add(extendsTask.flatMap { it.resolvedDependencies })
-                    } catch (e: Exception) {
-                        // TODO(arun) Handle gracefully
-                    }
+                    val extendsTasksName = extends + "ResolveDependencies"
+                    val extendsTask = tasks.named<ResolveVariantDependenciesTask>(
+                        extendsTasksName
+                    )
+                    variantTask.baseDependenciesJsons.add(extendsTask.flatMap { it.resolvedDependencies })
                 }
             }
             subprojectTaskConfigure(resolveTask)

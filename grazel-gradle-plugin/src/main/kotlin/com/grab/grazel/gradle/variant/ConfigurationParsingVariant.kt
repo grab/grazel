@@ -79,7 +79,7 @@ interface ConfigurationParsingVariant<T> : Variant<T> {
                     AndroidBuild -> configName.startsWith("kapt${namePattern.capitalize()}")
                     AndroidTest -> configName.startsWith("kaptAndroidTest${basePattern.capitalize()}")
                     Test -> configName.startsWith("kaptTest${basePattern.capitalize()}")
-                    VariantType.Lint -> false
+                    Lint -> false
                     JvmBuild -> error("Invalid variant type ${JvmBuild.name} for Android variant")
                 }
             }.addTo(this)

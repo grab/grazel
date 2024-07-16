@@ -70,7 +70,7 @@ constructor(
                     ),
                     AndroidDefaultVariant(
                         project = project,
-                        variantType = VariantType.Lint,
+                        variantType = Lint,
                         ignoreKeywords = flavorsBuildTypes
                     )
                 )
@@ -96,7 +96,7 @@ constructor(
                     }
                 (parsedAndroidVariants + defaultVariants)
                     .asSequence()
-                    .distinctBy { it.name + it.variantType }
+                    .distinctBy { it.id }
                     .sortedBy { it.name.length }
                     .toSet()
             } else if (project.isJvm) {
@@ -118,80 +118,77 @@ constructor(
 
     override fun onVariants(project: Project, action: (Variant<*>) -> Unit) {
         project.afterEvaluate {
+            val variantCache = ConcurrentHashMap<String, Variant<*>>()
             if (project.isAndroid) {
-                val flavors = variantDataSource.getFlavors(project)
-                val flavorNames = flavors.map { it.name }.toSet()
-                val buildTypes = variantDataSource.getBuildTypes(project)
-                val buildTypeNames = buildTypes.map { it.name }.toSet()
-                val flavorsBuildTypes = (flavorNames + buildTypeNames).toSet()
-                action(
+                val allFlavors = variantDataSource.getFlavors(project)
+                val allFlavorNames = allFlavors.map { it.name }.toSet()
+                val allBuildTypes = variantDataSource.getBuildTypes(project)
+                val allBuildTypeNames = allBuildTypes.map { it.name }.toSet()
+                val allFlavorBuildTypes = (allFlavorNames + allBuildTypeNames).toSet()
+
+                fun variantAction(variant: Variant<*>) {
+                    if (!variantCache.containsKey(variant.id)) {
+                        action(variant)
+                        variantCache[variant.id] = variant
+                    }
+                }
+
+                variantAction(
                     AndroidDefaultVariant(
                         project = project,
                         variantType = AndroidBuild,
-                        ignoreKeywords = flavorsBuildTypes
+                        ignoreKeywords = allFlavorBuildTypes
                     )
                 )
-                action(
+                variantAction(
                     AndroidDefaultVariant(
                         project = project,
                         variantType = Test,
-                        ignoreKeywords = flavorsBuildTypes
+                        ignoreKeywords = allFlavorBuildTypes
                     )
                 )
-                action(
+                variantAction(
                     AndroidDefaultVariant(
                         project = project,
                         variantType = AndroidTest,
-                        ignoreKeywords = flavorsBuildTypes
+                        ignoreKeywords = allFlavorBuildTypes
                     )
                 )
-                action(
+                variantAction(
                     AndroidDefaultVariant(
                         project = project,
                         variantType = Lint,
-                        ignoreKeywords = flavorsBuildTypes
+                        ignoreKeywords = allFlavorBuildTypes
                     )
                 )
 
                 variantDataSource.migratableVariants(project) { variant ->
                     action(AndroidVariant(project, variant))
-                }
-
-
-                if (flavors.isNotEmpty()) {
-                    // Special case, if this module does not have flavors declared then variants
-                    // will be just buildTypes. Since we already would have passed buildType variants
-                    // above we don't need to pass it again here.
-                    buildTypes
-                        .asSequence()
-                        .flatMap { buildType ->
-                            VariantType.values()
-                                .filter { it != JvmBuild && it != Lint }
-                                .map { variantType ->
+                    if (allFlavors.isNotEmpty()) {
+                        VariantType.values()
+                            .asSequence()
+                            .filter { it != JvmBuild && it != Lint }
+                            .forEach { variantType ->
+                                variantAction(
                                     AndroidBuildType(
                                         project = project,
-                                        backingVariant = buildType,
+                                        backingVariant = variant.buildType,
                                         variantType = variantType,
-                                        flavors = flavorNames
+                                        flavors = allFlavorNames
+                                    )
+                                )
+                                variant.productFlavors.forEach { flavor ->
+                                    variantAction(
+                                        AndroidFlavor(
+                                            project = project,
+                                            backingVariant = flavor,
+                                            variantType = variantType,
+                                            buildTypes = allBuildTypeNames
+                                        )
                                     )
                                 }
-                        }.distinctBy { it.name + it.variantType }
-                        .forEach(action)
-
-                    VariantType
-                        .values()
-                        .asSequence()
-                        .filter { it != JvmBuild && it != Lint }
-                        .flatMap { variantType ->
-                            flavors.map { flavor ->
-                                AndroidFlavor(
-                                    project,
-                                    flavor,
-                                    variantType,
-                                    buildTypeNames
-                                )
                             }
-                        }.forEach(action)
+                    }
                 }
             } else if (project.isJvm) {
                 action(JvmVariant(project = project, variantType = JvmBuild))
@@ -199,5 +196,6 @@ constructor(
                 action(JvmVariant(project = project, variantType = Lint))
             }
         }
+        variantCache.clear()
     }
 }
