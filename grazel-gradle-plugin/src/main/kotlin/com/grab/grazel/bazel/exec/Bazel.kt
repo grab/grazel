@@ -62,7 +62,11 @@ internal fun ExecOperations.bazelCommand(
         add("--noshow_progress")
         add("--color=yes")
     }
-    logger.quiet("${"Running".ansiGreen} ${commands.joinToString(separator = " ").ansiYellow}")
+    logger.quiet(
+        "${"Running".ansiGreen} ${
+            commands.toList().dropLast(2).joinToString(separator = " ").ansiYellow
+        }"
+    )
     return exec {
         commandLine(*commands.toTypedArray())
         standardOutput = outputStream ?: LogOutputStream(logger, LogLevel.QUIET)

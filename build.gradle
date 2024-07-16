@@ -143,6 +143,9 @@ grazel {
             sha = "154cdfa4f6f552a9873e2b4448f7a80415cb3427c4c771a50c6a8a8b434ffd0a"
         }
     }
+    experiments {
+        limitDependencyResolutionParallelism.set(true)
+    }
 }
 
 idea {
