@@ -137,6 +137,9 @@ grazel {
                 languageVersion = "1.7"
                 jvmTarget = "17"
             }
+            // Enable to add tags in generated tags that can be used to do classpath reduction
+            // for build performance.
+            enabledTransitiveReduction = false
         }
         dagger {
             tag = "2.47"

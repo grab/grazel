@@ -123,7 +123,14 @@ constructor(
             ?.let(::relativePath)
 
         val tags = if (grazelExtension.rules.kotlin.enabledTransitiveReduction) {
-            deps.calculateDirectDependencyTags(name)
+            val transitiveMavenDeps = dependenciesDataSource.collectTransitiveMavenDeps(
+                project = project,
+                buildGraphType = BuildGraphType(BUILD, matchedVariant.variant)
+            )
+            calculateDirectDependencyTags(
+                self = name,
+                deps = deps + transitiveMavenDeps
+            )
         } else emptyList()
 
         val lintConfigs = lintConfigs(extension.lintOptions, project)

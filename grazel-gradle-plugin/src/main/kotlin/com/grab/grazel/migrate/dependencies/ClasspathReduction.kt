@@ -17,10 +17,18 @@
 package com.grab.grazel.migrate.dependencies
 
 import com.grab.grazel.bazel.starlark.BazelDependency
+import com.grab.grazel.bazel.starlark.BazelDependency.MavenDependency
+import com.grab.grazel.bazel.starlark.BazelDependency.ProjectDependency
 
-fun List<BazelDependency>.calculateDirectDependencyTags(self: String) = asSequence()
-    .filterIsInstance<BazelDependency.ProjectDependency>()
-    .map { "@direct${it}" }
-    .toMutableList()
+fun calculateDirectDependencyTags(
+    self: String,
+    deps: List<BazelDependency>
+) = deps.asSequence().mapNotNull {
+    when (it) {
+        is ProjectDependency -> "@direct${it}"
+        is MavenDependency -> it.copy(repo = "maven").toString()
+        else -> null
+    }
+}.toMutableList()
     .also { it.add("@self//$self") }
     .sorted()
