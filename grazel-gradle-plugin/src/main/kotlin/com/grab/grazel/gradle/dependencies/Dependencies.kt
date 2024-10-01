@@ -22,6 +22,7 @@ import com.grab.grazel.bazel.rules.ANNOTATION_ARTIFACT
 import com.grab.grazel.bazel.rules.DAGGER_GROUP
 import com.grab.grazel.bazel.rules.DATABINDING_GROUP
 import com.grab.grazel.bazel.starlark.BazelDependency
+import com.grab.grazel.bazel.starlark.BazelDependency.MavenDependency
 import com.grab.grazel.bazel.starlark.BazelDependency.StringDependency
 import com.grab.grazel.gradle.ConfigurationDataSource
 import com.grab.grazel.gradle.ConfigurationScope
@@ -66,8 +67,13 @@ internal data class MavenArtifact(
     val group: String?,
     val name: String?,
     val version: String? = null,
-) {
+) : Comparable<MavenArtifact> {
     val id get() = "$group:$name"
+
+    override fun compareTo(other: MavenArtifact): Int {
+        return toString().compareTo(other.toString())
+    }
+
     override fun toString() = "$group:$name:$version"
 }
 
@@ -121,6 +127,15 @@ internal interface DependenciesDataSource {
         project: Project,
         buildGraphType: BuildGraphType
     ): List<BazelDependency>
+
+    /**
+     * Collects all transitive maven dependencies for the given [buildGraphType]. Similar to
+     * [collectMavenDeps]
+     */
+    fun collectTransitiveMavenDeps(
+        project: Project,
+        buildGraphType: BuildGraphType
+    ): Set<MavenDependency>
 }
 
 @Singleton
@@ -208,23 +223,7 @@ internal class DefaultDependenciesDataSource @Inject constructor(
         project: Project,
         buildGraphType: BuildGraphType
     ): List<BazelDependency> {
-        val variants = variantBuilder.build(project).groupBy(Variant<*>::name)
-        val inputVariant = buildGraphType.variant
-        // From input variant map to Grazel variant
-        val grazelVariant: Variant<*> = when {
-            inputVariant != null -> variants[inputVariant.name]!!.first {
-                it.variantType.isConfigScope(project, buildGraphType.configurationScope)
-            }
-            // Input variant is null, probably legacy code path assumes non android project has no
-            // variants. To compensate, map it to `default` or `test` based on
-            // BuildGraphType.configurationScope
-            // This will no longer needed after migrating legacy code path to use variants
-            else -> when (buildGraphType.configurationScope) {
-                TEST -> variants[TEST_VARIANT]!!.first()
-                else -> variants[DEFAULT_VARIANT]!!.first()
-            }
-        }
-
+        val grazelVariant: Variant<*> = findGrazelVariant(project, buildGraphType)
         return grazelVariant.migratableConfigurations
             .asSequence()
             .flatMap { it.allDependencies.filterIsInstance<ExternalDependency>() }
@@ -245,14 +244,61 @@ internal class DefaultDependenciesDataSource @Inject constructor(
                     DAGGER_GROUP -> StringDependency("//:dagger")
                     else -> dependencyResolutionService.get().get(
                         variants = variantHierarchy,
-                        group = dependency.group,
-                        name = dependency.name
+                        group = dependency.group!!,
+                        name = dependency.name!!
                     ) ?: run {
                         error("$dependency cant be found for migrating ${project.name}")
                     }
                 }
             }.distinct()
             .toList()
+    }
+
+    override fun collectTransitiveMavenDeps(
+        project: Project,
+        buildGraphType: BuildGraphType
+    ): Set<MavenDependency> {
+        val grazelVariant: Variant<*> = findGrazelVariant(project, buildGraphType)
+        return grazelVariant.migratableConfigurations
+            .asSequence()
+            .map { it.incoming.resolutionResult.root }
+            .flatMapTo(TreeSet()) { rootNode ->
+                // Using ResolvedComponentsVisitor is redundant here since the work would
+                // already be done by the time we reach here by resolveVariantDependenciesTask.
+                // But for simplicity we visit components again.
+                // TODO(arun) Optimize this and read resolved components as Task input.
+                ResolvedComponentsVisitor().visit(rootNode) { (component, _, _, _) ->
+                    val version = component.moduleVersion!!
+                    MavenArtifact(
+                        group = version.group,
+                        name = version.name,
+                    )
+                }
+            }.map { MavenDependency(group = it.group!!, name = it.name!!) }
+            .toSortedSet()
+    }
+
+    private fun findGrazelVariant(
+        project: Project,
+        buildGraphType: BuildGraphType
+    ): Variant<*> {
+        val variants = variantBuilder.build(project).groupBy(Variant<*>::name)
+        val inputVariant = buildGraphType.variant
+        // From input variant map to Grazel variant
+        val grazelVariant: Variant<*> = when {
+            inputVariant != null -> variants[inputVariant.name]!!.first {
+                it.variantType.isConfigScope(project, buildGraphType.configurationScope)
+            }
+            // Input variant is null, probably legacy code path assumes non android project has no
+            // variants. To compensate, map it to `default` or `test` based on
+            // BuildGraphType.configurationScope
+            // This will no longer needed after migrating legacy code path to use variants
+            else -> when (buildGraphType.configurationScope) {
+                TEST -> variants[TEST_VARIANT]!!.first()
+                else -> variants[DEFAULT_VARIANT]!!.first()
+            }
+        }
+        return grazelVariant
     }
 
     /**

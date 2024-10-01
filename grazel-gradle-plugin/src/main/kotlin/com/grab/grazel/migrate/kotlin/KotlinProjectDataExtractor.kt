@@ -72,7 +72,11 @@ internal class DefaultKotlinProjectDataExtractor
         ) + project.androidJarDeps() + project.kotlinParcelizeDeps()
 
         val tags = if (kotlinExtension.enabledTransitiveReduction) {
-            deps.calculateDirectDependencyTags(self = name)
+            val transitiveMavenDeps = dependenciesDataSource.collectTransitiveMavenDeps(
+                project = project,
+                buildGraphType = BuildGraphType(ConfigurationScope.BUILD)
+            )
+            calculateDirectDependencyTags(self = name, deps = deps + transitiveMavenDeps)
         } else emptyList()
 
         return KotlinProjectData(
