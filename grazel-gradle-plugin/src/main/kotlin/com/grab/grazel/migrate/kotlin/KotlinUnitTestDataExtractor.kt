@@ -88,7 +88,11 @@ internal class DefaultKotlinUnitTestDataExtractor @Inject constructor(
         }
 
         val tags = if (kotlinExtension.enabledTransitiveReduction) {
-            deps.calculateDirectDependencyTags(name)
+            val transitiveMavenDeps = dependenciesDataSource.collectTransitiveMavenDeps(
+                project = project,
+                buildGraphType = BuildGraphType(ConfigurationScope.TEST)
+            )
+            calculateDirectDependencyTags(name, deps + transitiveMavenDeps)
         } else emptyList()
 
         return UnitTestData(
