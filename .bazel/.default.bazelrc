@@ -1,12 +1,15 @@
 # BzlMod
 common --enable_bzlmod=false
 
-# Cache
+# Cache setup
 common --disk_cache=bazel-cache
+common --remote_cache_compression=true
+common --remote_upload_local_results=false # Don't upload results by default
 startup --digest_function=blake3
-common --experimental_action_cache_store_output_metadata
+common --experimental_remote_cache_eviction_retries=10
 common --modify_execution_info=JavaDeployJar=+no-remote-cache # Don't cache Java deploy jar which is huge in size
 common --remote_cache_compression=true
+common --experimental_disk_cache_gc_max_size=4G
 
 # Error config
 common --verbose_failures
@@ -16,15 +19,11 @@ common --incompatible_strict_action_env
 common --reuse_sandbox_directories
 common --repo_env=RJE_VERBOSE=true
 
-# Resources
+# JVM External rules
+common --@rules_jvm_external//settings:stamp_manifest=False
+
 # Resources
 common --local_resources=cpu=HOST_CPUS*.75 # Android actions start their own threads which can overwhelm the system
-
-# Workers
-common --worker_verbose
-common --experimental_worker_multiplex
-common --experimental_shrink_worker_pool
-common --experimental_worker_for_repo_fetching=platform
 
 # JAVA - START
 common --experimental_strict_java_deps=off # Turn off strict java deps
@@ -39,6 +38,7 @@ common --experimental_java_header_input_pruning
 # JAVA - END
 
 # Android
+common --fat_apk_cpu=arm64-v8a,x86
 common --experimental_google_legacy_api
 common --noincompatible_enable_android_toolchain_resolution
 common --noincompatible_enable_cc_toolchain_resolution
@@ -54,30 +54,53 @@ common --output_library_merged_assets=false # Turn off asset merging artifact
 # common --experimental_use_package_aware_rtxt=true # Use package aware R.txt files (required for databinding)
 # common --define=nontransitive_r_class=1 # Adapt bazel common rules for non transitive R class
 
+# Workers
+common --worker_verbose
+common --worker_multiplex
+common --experimental_shrink_worker_pool
+common --experimental_worker_for_repo_fetching=platform
+common --experimental_collect_worker_data_in_profiler
+
+## Android Resource Workers
 common --experimental_persistent_aar_extractor
-common --persistent_multiplex_android_tools
 common --persistent_android_dex_desugar
+common --persistent_android_resource_processor
+common --persistent_android_dex_desugar
+common --persistent_multiplex_android_dex_desugar
+common --persistent_multiplex_android_resource_processor
+common --persistent_multiplex_android_tools
+
+# Action Strategies
+common --strategy=AARGenerator=worker
 common --strategy=DatabindingStubs=worker
-common --worker_max_instances=Javac=1
-common --worker_max_instances=KotlinCompile=1
-common --worker_max_instances=KotlinKapt=1
+common --modify_execution_info=GenerateDataBindingBaseClasses=+supports-multiplex-workers=1
+## Java Workers
+common --strategy=KotlinCompile=worker
+common --strategy=Javac=worker
+# common --strategy=Turbine=worker
+## Worker configuration to avoid CPU thrashing https://github.com/bazelbuild/bazel/issues/8586#issuecomment-500070549
+common --worker_max_instances=Aapt2Optimize=1
 common --worker_max_instances=AaptPackage=1
-common --worker_max_instances=AndroidResourceParser=1
+common --worker_max_instances=AndroidAapt2=1
+common --worker_max_instances=AndroidAssetMerger=1
+common --worker_max_instances=AndroidCompiledResourceMerger=1
 common --worker_max_instances=AndroidResourceCompiler=1
+common --worker_max_instances=AndroidResourceMerger=1
+common --worker_max_instances=AndroidResourceParser=1
 common --worker_max_instances=AndroidResourceValidator=1
 common --worker_max_instances=AndroidLintAnalyze=1
 common --worker_max_instances=AndroidLint=1
-common --worker_max_instances=RClassGenerator=1
-common --worker_max_instances=AndroidAapt2=1
-common --worker_max_instances=AndroidAssetMerger=1
-common --worker_max_instances=AndroidResourceMerger=1
-common --worker_max_instances=AndroidCompiledResourceMerger=1
-common --worker_max_instances=Aapt2Optimize=1
+common --worker_max_instances=BuildConfigGenerationWorker=1
 common --worker_max_instances=DatabindingStubs=1
-common --worker_max_instances=GenerateDataBindingBaseClasses=1
-common --worker_max_instances=DexBuilder=1
+common --worker_max_instances=DatabindingWorker=1
 common --worker_max_instances=Desugar=1
-
-# JVM
-common --strategy=KotlinCompile=worker
-common --strategy=Javac=worker
+common --worker_max_instances=DexBuilder=1
+common --worker_max_instances=GenerateDataBindingBaseClasses=1
+common --worker_max_instances=Javac=1
+common --worker_max_instances=JdepsMerge=1
+common --worker_max_instances=KotlinCompile=1
+common --worker_max_instances=KotlinKapt=1
+common --worker_max_instances=MergeSourceSets=1
+common --worker_max_instances=ProcessDatabinding=1
+common --worker_max_instances=RClassGenerator=1
+common --worker_max_instances=Turbine=1

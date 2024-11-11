@@ -120,10 +120,8 @@ constructor(
                     manifest = androidLibraryData.manifestFile,
                     manifestValues = androidBinaryData.manifestValues,
                     resConfigFilters = androidBinaryData.resConfigs,
-                    resDirs = androidLibraryData.res,
+                    resourceSets = androidLibraryData.resourceSets,
                     resValuesData = androidLibraryData.resValuesData,
-                    assetsGlob = androidLibraryData.assets,
-                    assetsDir = androidLibraryData.assetsDir,
                     buildConfigData = androidLibraryData.buildConfigData,
                     lintConfigData = androidLibraryData.lintConfigData,
                 )

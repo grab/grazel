@@ -155,7 +155,7 @@ idea {
     module {
         excludeDirs += [
             file("bazel-bin"),
-            file("bazel-grazel"),
+            file("bazel-" + projectDir.name),
             file("bazel-cache"),
             file("bazel-out"),
             file("bazel-testlogs"),

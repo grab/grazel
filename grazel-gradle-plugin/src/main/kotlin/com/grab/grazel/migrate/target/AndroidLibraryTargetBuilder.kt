@@ -90,7 +90,7 @@ constructor(
 private fun AndroidLibraryData.toAndroidLibTarget() = AndroidLibraryTarget(
     name = name,
     srcs = srcs,
-    resDirs = res,
+    resourceSets = resourceSets,
     deps = deps,
     enableDataBinding = databinding,
     enableCompose = compose,
@@ -98,8 +98,6 @@ private fun AndroidLibraryData.toAndroidLibTarget() = AndroidLibraryTarget(
     buildConfigData = buildConfigData,
     packageName = packageName,
     manifest = manifestFile,
-    assetsGlob = assets,
-    assetsDir = assetsDir,
     tags = tags,
     lintConfigData = lintConfigData
 )
