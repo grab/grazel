@@ -7,10 +7,6 @@ android_binary(
     srcs = glob([
         "src/main/java/com/grab/grazel/android/sample/**/*.kt",
     ]),
-    assets = glob([
-        "src/main/assets/assert-file.png",
-    ]),
-    assets_dir = "src/main/assets",
     build_config = {
         "strings": {
             "SOME_STRING": "Something",
@@ -74,12 +70,18 @@ android_binary(
         "vi",
         "zh",
     ],
-    resources = {
-        "src/main/res-debug": {
+    resource_sets = {
+        "debug": {
+            "res": "src/main/res-debug",
+            "manifest": "src/debug/AndroidManifest.xml",
         },
-        "src/free/res": {
+        "free": {
+            "res": "src/free/res",
         },
-        "src/main/res": {
+        "main": {
+            "res": "src/main/res",
+            "assets": "src/main/assets",
+            "manifest": "src/main/AndroidManifest.xml",
         },
     },
     visibility = [
@@ -117,10 +119,6 @@ android_binary(
     srcs = glob([
         "src/main/java/com/grab/grazel/android/sample/**/*.kt",
     ]),
-    assets = glob([
-        "src/main/assets/assert-file.png",
-    ]),
-    assets_dir = "src/main/assets",
     build_config = {
         "strings": {
             "SOME_STRING": "Something",
@@ -184,12 +182,18 @@ android_binary(
         "vi",
         "zh",
     ],
-    resources = {
-        "src/main/res-debug": {
+    resource_sets = {
+        "debug": {
+            "res": "src/main/res-debug",
+            "manifest": "src/debug/AndroidManifest.xml",
         },
-        "src/paid/res": {
+        "paid": {
+            "res": "src/paid/res",
         },
-        "src/main/res": {
+        "main": {
+            "res": "src/main/res",
+            "assets": "src/main/assets",
+            "manifest": "src/main/AndroidManifest.xml",
         },
     },
     visibility = [
@@ -227,10 +231,6 @@ android_binary(
     srcs = glob([
         "src/main/java/com/grab/grazel/android/sample/**/*.kt",
     ]),
-    assets = glob([
-        "src/main/assets/assert-file.png",
-    ]),
-    assets_dir = "src/main/assets",
     build_config = {
         "strings": {
             "SOME_STRING": "Something",
@@ -294,12 +294,18 @@ android_binary(
         "vi",
         "zh",
     ],
-    resources = {
-        "src/main/res-debug": {
+    resource_sets = {
+        "debug": {
+            "res": "src/main/res-debug",
+            "manifest": "src/debug/AndroidManifest.xml",
         },
-        "src/free/res": {
+        "free": {
+            "res": "src/free/res",
         },
-        "src/main/res": {
+        "main": {
+            "res": "src/main/res",
+            "assets": "src/main/assets",
+            "manifest": "src/main/AndroidManifest.xml",
         },
     },
     visibility = [
@@ -337,10 +343,6 @@ android_binary(
     srcs = glob([
         "src/main/java/com/grab/grazel/android/sample/**/*.kt",
     ]),
-    assets = glob([
-        "src/main/assets/assert-file.png",
-    ]),
-    assets_dir = "src/main/assets",
     build_config = {
         "strings": {
             "SOME_STRING": "Something",
@@ -404,12 +406,18 @@ android_binary(
         "vi",
         "zh",
     ],
-    resources = {
-        "src/main/res-debug": {
+    resource_sets = {
+        "debug": {
+            "res": "src/main/res-debug",
+            "manifest": "src/debug/AndroidManifest.xml",
         },
-        "src/paid/res": {
+        "paid": {
+            "res": "src/paid/res",
         },
-        "src/main/res": {
+        "main": {
+            "res": "src/main/res",
+            "assets": "src/main/assets",
+            "manifest": "src/main/AndroidManifest.xml",
         },
     },
     visibility = [

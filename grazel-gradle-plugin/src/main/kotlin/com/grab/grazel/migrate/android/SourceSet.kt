@@ -17,7 +17,14 @@
 package com.grab.grazel.migrate.android
 
 import com.android.build.gradle.api.AndroidSourceSet
-import com.grab.grazel.migrate.android.PathResolveMode.*
+import com.android.build.gradle.internal.utils.toImmutableSet
+import com.grab.grazel.migrate.android.PathResolveMode.DIRECTORY
+import com.grab.grazel.migrate.android.PathResolveMode.FILES
+import com.grab.grazel.migrate.android.SourceSetType.ASSETS
+import com.grab.grazel.migrate.android.SourceSetType.JAVA
+import com.grab.grazel.migrate.android.SourceSetType.JAVA_KOTLIN
+import com.grab.grazel.migrate.android.SourceSetType.KOTLIN
+import com.grab.grazel.migrate.android.SourceSetType.RESOURCES
 import com.grab.grazel.util.commonPath
 import org.gradle.api.Project
 import java.io.File
@@ -50,6 +57,52 @@ enum class PathResolveMode {
      */
     FILES
 }
+
+internal fun AndroidSourceSet.toResourceSet(
+    project: Project
+): Set<BazelSourceSet> {
+    val manifestPath = manifest.srcFile.takeIf { it.exists() }?.let(project::relativePath)
+
+    fun File.isValid() = exists() && walk().drop(1).any()
+    val resources = res.srcDirs.filter(File::isValid)
+    val assets = assets.srcDirs.filter(File::isValid)
+
+    return if (resources.size == 1 && assets.size == 1) {
+        // Happy path, most modules would be like this with one single res and assets dir.
+        setOf(
+            BazelSourceSet(
+                name = name,
+                res = project.relativePath(resources.first()),
+                assets = project.relativePath(assets.first()),
+                manifest = manifestPath
+            )
+        )
+    } else {
+        // Special case: res and assets have custom dirs, hence manually map each of them as a source
+        // set dir for Bazel.
+        return LinkedHashSet<BazelSourceSet>().apply {
+            resources.mapIndexedTo(this) { index, resDir ->
+                val sourceSetManifest = if (index == 0) manifestPath else null
+                BazelSourceSet(
+                    name = name,
+                    res = project.relativePath(resDir),
+                    assets = null,
+                    manifest = sourceSetManifest,
+                )
+            }
+            assets.mapIndexedTo(this) { index, assets ->
+                val sourceSetManifest = if (index == 0) manifestPath else null
+                BazelSourceSet(
+                    name = name,
+                    res = null,
+                    assets = project.relativePath(assets),
+                    manifest = sourceSetManifest,
+                )
+            }
+        }.toImmutableSet()
+    }
+}
+
 
 /**
  * Given a list of directories specified by `dirs` and list of file patterns specified by `patterns`
@@ -96,17 +149,15 @@ internal fun Project.androidSources(
 ): Sequence<String> {
     val sourceSetChoosers: AndroidSourceSet.() -> Sequence<File> =
         when (sourceSetType) {
-            SourceSetType.JAVA, SourceSetType.JAVA_KOTLIN, SourceSetType.KOTLIN -> {
+            JAVA, JAVA_KOTLIN, KOTLIN -> {
                 { java.srcDirs.asSequence() }
             }
 
-            SourceSetType.RESOURCES -> {
-                {
-                    res.srcDirs.asSequence()
-                }
+            RESOURCES -> {
+                { res.srcDirs.asSequence() }
             }
 
-            SourceSetType.ASSETS -> {
+            ASSETS -> {
                 {
                     assets.srcDirs
                         .asSequence()

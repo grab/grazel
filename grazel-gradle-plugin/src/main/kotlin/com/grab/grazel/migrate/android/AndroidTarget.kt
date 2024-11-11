@@ -28,7 +28,7 @@ internal interface AndroidTarget : BazelBuildTarget {
     val enableDataBinding: Boolean
     val enableCompose: Boolean
     val projectName: String
-    val resDirs: List<String>
+    val resourceSets: Set<BazelSourceSet>
     val resValuesData: ResValuesData
     val buildConfigData: BuildConfigData
     val packageName: String
@@ -47,7 +47,7 @@ internal data class AndroidLibraryTarget(
     override val enableDataBinding: Boolean = false,
     override val enableCompose: Boolean = false,
     override val projectName: String = name,
-    override val resDirs: List<String>,
+    override val resourceSets: Set<BazelSourceSet> = emptySet(),
     override val resValuesData: ResValuesData = ResValuesData(),
     override val buildConfigData: BuildConfigData = BuildConfigData(),
     override val packageName: String,
@@ -65,7 +65,7 @@ internal data class AndroidLibraryTarget(
             enableDataBinding = enableDataBinding,
             enableCompose = enableCompose,
             srcsGlob = srcs,
-            resources = buildResources(resDirs),
+            resorceSets = buildResources(resourceSets),
             visibility = visibility,
             deps = deps,
             tags = tags,
@@ -87,7 +87,7 @@ internal data class AndroidBinaryTarget(
     override val enableDataBinding: Boolean = false,
     override val enableCompose: Boolean = false,
     override val projectName: String = name,
-    override val resDirs: List<String>,
+    override val resourceSets: Set<BazelSourceSet> = emptySet(),
     override val resValuesData: ResValuesData = ResValuesData(),
     override val buildConfigData: BuildConfigData = BuildConfigData(),
     override val packageName: String,
@@ -122,7 +122,7 @@ internal data class AndroidBinaryTarget(
             manifest = manifest,
             manifestValues = manifestValues,
             resConfigFilters = resConfigFilters,
-            resources = buildResources(resDirs),
+            resourceSets = buildResources(resourceSets),
             resValuesData = resValuesData,
             deps = deps,
             assetsGlob = assetsGlob,

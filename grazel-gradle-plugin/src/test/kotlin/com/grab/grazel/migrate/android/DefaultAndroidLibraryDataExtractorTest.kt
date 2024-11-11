@@ -14,12 +14,14 @@ import com.grab.grazel.gradle.variant.MatchedVariant
 import com.grab.grazel.util.addGrazelExtension
 import com.grab.grazel.util.createGrazelComponent
 import com.grab.grazel.util.doEvaluate
+import com.grab.grazel.util.truth
 import org.gradle.api.Project
 import org.gradle.api.provider.Provider
 import org.gradle.kotlin.dsl.configure
 import org.gradle.kotlin.dsl.dependencies
 import org.gradle.kotlin.dsl.the
 import org.junit.Test
+import java.nio.file.Files
 import kotlin.test.assertEquals
 
 class DefaultAndroidLibraryDataExtractorTest {
@@ -37,6 +39,7 @@ class DefaultAndroidLibraryDataExtractorTest {
             it.addGrazelExtension()
         }
         appProject = buildProject("android", rootProject)
+        createSources()
         libraryProject = buildProject("lib", rootProject)
         with(appProject) {
             with(plugins) {
@@ -89,6 +92,16 @@ class DefaultAndroidLibraryDataExtractorTest {
             ))
     }
 
+    private fun createSources() {
+        val resMain = appProject.file("src/main/res")
+        resMain.toPath().let {
+            Files.createDirectories(it)
+            val values = it.resolve("values")
+            Files.createDirectories(values)
+            values.resolve("values.xml").toFile().writeText("")
+        }
+    }
+
     private fun debugVariant(): MatchedVariant {
         val variant = appProject.the<AppExtension>()
             .applicationVariants
@@ -126,5 +139,25 @@ class DefaultAndroidLibraryDataExtractorTest {
             true,
             androidLibraryDataExtractor.extract(appProject, debugVariant()).databinding
         )
+    }
+
+    @Test
+    fun `assert resource sets are calulcated for android binary only when file exists`() {
+        configure()
+        val resourceSets = androidLibraryDataExtractor
+            .extract(appProject, debugVariant())
+            .resourceSets
+        resourceSets.truth {
+            containsExactly(
+                BazelSourceSet(
+                    name = "main",
+                    res = "src/main/res",
+                    assets = null,
+                    manifest = null
+                )
+            )
+            containsNoDuplicates()
+            hasSize(1)
+        }
     }
 }
