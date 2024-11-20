@@ -112,8 +112,14 @@ constructor(
         val srcs = androidSources(migratableSourceSets, JAVA_KOTLIN).toList()
 
         val resourceSets = migratableSourceSets.flatMap { it.toResourceSet(project) }
+            .filterNot(BazelSourceSet::isEmpty)
             .reversed()
             .toSet()
+            .let { resourcesSets ->
+                if (resourcesSets.size == 1 && resourcesSets.all { !it.hasResources }) {
+                    emptySet()
+                } else resourcesSets
+            }
 
         val manifestFile = androidManifestParser
             .androidManifestFile(migratableSourceSets)

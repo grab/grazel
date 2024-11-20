@@ -24,7 +24,10 @@ internal data class BazelSourceSet(
     val res: String?,
     val assets: String?,
     val manifest: String?,
-)
+) {
+    val isEmpty: Boolean = res == null && assets == null && manifest == null
+    val hasResources: Boolean = res != null || assets != null
+}
 
 internal interface AndroidData {
     val name: String

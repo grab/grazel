@@ -27,7 +27,7 @@ load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository")
 
 git_repository(
     name = "grab_bazel_common",
-    commit = "93a0875d12a7e223221390505b04deff76ea3845",
+    commit = "9b0439127d50741c2f19d8df9932d6338f763dab",
     remote = "https://github.com/grab/grab-bazel-common.git",
 )
 
@@ -400,6 +400,7 @@ maven_install(
         "android.arch.lifecycle:livedata-core",
         "android.arch.lifecycle:runtime",
         "android.arch.lifecycle:viewmodel",
+        "androidx.fragment:fragment",
         "com.android.databinding:baseLibrary",
         "com.android.support:animated-vector-drawable",
         "com.android.support:cardview-v7",
@@ -413,7 +414,6 @@ maven_install(
         "com.android.support:support-compat",
         "com.android.support:support-core-ui",
         "com.android.support:support-core-utils",
-        "com.android.support:support-fragment",
         "com.android.support:support-vector-drawable",
         "com.android.support:versionedparcelable",
         "com.android.support:viewpager",

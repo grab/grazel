@@ -61,19 +61,18 @@ enum class PathResolveMode {
 internal fun AndroidSourceSet.toResourceSet(
     project: Project
 ): Set<BazelSourceSet> {
-    val manifestPath = manifest.srcFile.takeIf { it.exists() }?.let(project::relativePath)
-
     fun File.isValid() = exists() && walk().drop(1).any()
+    val manifestPath = manifest.srcFile.takeIf { it.exists() }?.let(project::relativePath)
     val resources = res.srcDirs.filter(File::isValid)
     val assets = assets.srcDirs.filter(File::isValid)
 
-    return if (resources.size == 1 && assets.size == 1) {
+    return if (resources.size <= 1 && assets.size <= 1) {
         // Happy path, most modules would be like this with one single res and assets dir.
         setOf(
             BazelSourceSet(
                 name = name,
-                res = project.relativePath(resources.first()),
-                assets = project.relativePath(assets.first()),
+                res = resources.firstOrNull()?.let(project::relativePath),
+                assets = assets.firstOrNull()?.let(project::relativePath),
                 manifest = manifestPath
             )
         )
@@ -82,6 +81,8 @@ internal fun AndroidSourceSet.toResourceSet(
         // set dir for Bazel.
         return LinkedHashSet<BazelSourceSet>().apply {
             resources.mapIndexedTo(this) { index, resDir ->
+                // No need to duplicate manifest across res directories for same source set, assign to
+                // first entry alone
                 val sourceSetManifest = if (index == 0) manifestPath else null
                 BazelSourceSet(
                     name = name,
@@ -91,6 +92,8 @@ internal fun AndroidSourceSet.toResourceSet(
                 )
             }
             assets.mapIndexedTo(this) { index, assets ->
+                // No need to duplicate manifest across res directories for same source set, assign to
+                // first entry alone
                 val sourceSetManifest = if (index == 0) manifestPath else null
                 BazelSourceSet(
                     name = name,
