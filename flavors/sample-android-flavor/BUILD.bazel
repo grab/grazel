@@ -28,7 +28,6 @@ android_library(
         },
         "main": {
             "res": "src/main/res",
-            "assets": "src/main/assets",
             "manifest": "src/main/AndroidManifest.xml",
         },
     },
@@ -71,7 +70,6 @@ android_library(
         },
         "main": {
             "res": "src/main/res",
-            "assets": "src/main/assets",
             "manifest": "src/main/AndroidManifest.xml",
         },
     },
@@ -117,7 +115,6 @@ android_library(
         },
         "main": {
             "res": "src/main/res",
-            "assets": "src/main/assets",
             "manifest": "src/main/AndroidManifest.xml",
         },
     },
@@ -160,7 +157,6 @@ android_library(
         },
         "main": {
             "res": "src/main/res",
-            "assets": "src/main/assets",
             "manifest": "src/main/AndroidManifest.xml",
         },
     },

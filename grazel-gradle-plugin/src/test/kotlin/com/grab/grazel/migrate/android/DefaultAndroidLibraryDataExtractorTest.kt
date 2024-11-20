@@ -22,6 +22,7 @@ import org.gradle.kotlin.dsl.dependencies
 import org.gradle.kotlin.dsl.the
 import org.junit.Test
 import java.nio.file.Files
+import kotlin.io.path.writeText
 import kotlin.test.assertEquals
 
 class DefaultAndroidLibraryDataExtractorTest {
@@ -53,6 +54,9 @@ class DefaultAndroidLibraryDataExtractorTest {
                     compileSdkVersion(32)
                 }
                 app(this)
+                sourceSets.named("main").configure {
+                    res.srcDirs("src/main/res-extra")
+                }
             }
             dependencies {
                 add("implementation", libraryProject)
@@ -93,13 +97,21 @@ class DefaultAndroidLibraryDataExtractorTest {
     }
 
     private fun createSources() {
-        val resMain = appProject.file("src/main/res")
-        resMain.toPath().let {
-            Files.createDirectories(it)
-            val values = it.resolve("values")
-            Files.createDirectories(values)
-            values.resolve("values.xml").toFile().writeText("")
-        }
+        appProject.file("src/main/res/values")
+            .toPath()
+            .also(Files::createDirectories)
+            .resolve("values.xml")
+            .writeText("")
+        appProject.file("src/debug")
+            .toPath()
+            .also(Files::createDirectories)
+            .resolve("AndroidManifest.xml")
+            .writeText("<manifest package=\"grazel\" />")
+        appProject.file("src/main/res-extra/values")
+            .toPath()
+            .also(Files::createDirectories)
+            .resolve("values.xml")
+            .writeText("")
     }
 
     private fun debugVariant(): MatchedVariant {
@@ -142,13 +154,25 @@ class DefaultAndroidLibraryDataExtractorTest {
     }
 
     @Test
-    fun `assert resource sets are calulcated for android binary only when file exists`() {
+    fun `assert resource sets are calculated correctly for variants`() {
         configure()
         val resourceSets = androidLibraryDataExtractor
             .extract(appProject, debugVariant())
             .resourceSets
         resourceSets.truth {
             containsExactly(
+                BazelSourceSet(
+                    name = "debug",
+                    res = null,
+                    assets = null,
+                    manifest = "src/debug/AndroidManifest.xml"
+                ),
+                BazelSourceSet(
+                    name = "main",
+                    res = "src/main/res-extra",
+                    assets = null,
+                    manifest = null,
+                ),
                 BazelSourceSet(
                     name = "main",
                     res = "src/main/res",
@@ -157,7 +181,7 @@ class DefaultAndroidLibraryDataExtractorTest {
                 )
             )
             containsNoDuplicates()
-            hasSize(1)
+            hasSize(3)
         }
     }
 }
