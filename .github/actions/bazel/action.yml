@@ -10,16 +10,23 @@ inputs:
 runs:
     using: "composite"
     steps:
+        -   name: Set Bazel version
+            shell: bash
+            run: echo "USE_BAZEL_VERSION=$(cat .bazelversion)" >> $GITHUB_ENV
+
         -   name: Setup Bazelisk
-            uses: bazelbuild/setup-bazelisk@v2
+            uses: bazelbuild/setup-bazelisk@v3
         -   name: Install JDK 17
-            uses: actions/setup-java@v3
+            uses: actions/setup-java@v4
             with:
                 distribution: "zulu"
                 java-version: "17"
 
+        -   name: Setup Android SDK
+            uses: ./.github/actions/android
+
         -   name: Mount bazel cache
-            uses: actions/cache@v3
+            uses: actions/cache@v4
             with:
                 path: "bazel-cache"
                 key: ${{ inputs.cache-key }}
