@@ -21,17 +21,15 @@ import com.grab.grazel.gradle.variant.DEFAULT_VARIANT
 import com.grab.grazel.migrate.dependencies.toMavenRepoName
 import java.util.concurrent.ConcurrentHashMap
 
-/**
- * Data structure to hold information about generated maven repositories in `WORKSPACE`
- */
+/** Data structure to hold information about generated maven repositories in `WORKSPACE` */
 internal interface MavenInstallStore : AutoCloseable {
     /**
-     * For a given variant hierarchy and `group` and `name`, the function will try to look
-     * for the dependency in each of the variant hierarchy and return the first one found.
+     * For a given variant hierarchy and `group` and `name`, the function will try to look for the
+     * dependency in each of the variant hierarchy and return the first one found.
      *
-     * For example, if `androidx.activity:activity` is given and it was categorized
-     * under `@maven` repository then will return `@maven//:androidx_activity_activity`
-     * in form of [MavenDependency]
+     * For example, if `androidx.activity:activity` is given and it was categorized under
+     * `@maven` repository then will return `@maven//:androidx_activity_activity` in form of
+     * [MavenDependency]
      */
     operator fun get(variants: Set<String>, group: String, name: String): MavenDependency?
 

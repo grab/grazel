@@ -66,7 +66,7 @@ constructor(
             workspaceFile = workspaceFile.get().asFile,
             workspaceDependencies = dependencyResolutionService
                 .get()
-                .get(workspaceDependencies.get().asFile),
+                .init(workspaceDependencies.get().asFile),
             gradleServices = gradleServices,
             logger = logger
         )

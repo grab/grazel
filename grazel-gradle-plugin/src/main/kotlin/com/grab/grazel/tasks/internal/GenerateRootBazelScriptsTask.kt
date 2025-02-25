@@ -82,7 +82,7 @@ constructor(
             .filter { migrationChecker.get().canMigrate(it) }
         val workspaceDependencies = dependencyResolutionService
             .get()
-            .get(workspaceDependencies.get().asFile)
+            .init(workspaceDependencies.get().asFile)
 
         val gradleProjectInfo: GradleProjectInfo = gradleProjectInfoFactory.get()
             .create(workspaceDependencies)
