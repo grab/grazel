@@ -12,6 +12,7 @@ import com.grab.grazel.gradle.dependencies.model.WorkspaceDependencies
 import com.grab.grazel.gradle.variant.DEFAULT_VARIANT
 import com.grab.grazel.util.BUILD_BAZEL
 import com.grab.grazel.util.NoOpProgressLogger
+import com.grab.grazel.util.ROOT_PATH
 import com.grab.grazel.util.WORKSPACE
 import com.grab.grazel.util.addGrazelExtension
 import com.grab.grazel.util.assertNoThrow
@@ -26,6 +27,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
 import java.io.File
+import kotlin.io.path.copyTo
 import kotlin.test.assertTrue
 
 class DefaultArtifactPinnerTest {
@@ -50,6 +52,8 @@ class DefaultArtifactPinnerTest {
         rootProject.file(WORKSPACE).writeText("")
         rootProject.file(BUILD_BAZEL).writeText("")
         rootProject.file("maven_install.json").writeText("")
+        rootProject.file(".bazelrc").writeText("common --enable_bzlmod=false")
+        ROOT_PATH.resolve(".bazelversion").copyTo(rootProject.file(".bazelversion").toPath())
 
         artifactPinner = rootProject
             .createGrazelComponent()
