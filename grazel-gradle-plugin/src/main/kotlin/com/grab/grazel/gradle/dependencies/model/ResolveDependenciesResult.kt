@@ -121,7 +121,8 @@ internal data class OverrideTarget(
 
 @Serializable
 internal data class WorkspaceDependencies(
-    val result: Map<String, List<ResolvedDependency>>
+    val result: Map<String, List<ResolvedDependency>>,
+    val transitiveClasspath: Map<String, Set<String>> = emptyMap()
 )
 
 /**

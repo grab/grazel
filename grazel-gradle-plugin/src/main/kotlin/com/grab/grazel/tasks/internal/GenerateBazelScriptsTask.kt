@@ -73,7 +73,7 @@ constructor(
         val bazelIgnoreFile = project.file(BUILD_BAZEL_IGNORE)
 
         dependencyResolutionService.get()
-            .get(workspaceDependencies.get().asFile)
+            .init(workspaceDependencies.get().asFile)
 
         // Check if current project can be migrated
         if (migrationChecker.get().canMigrate(project)) {

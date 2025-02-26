@@ -25,9 +25,9 @@ import org.gradle.api.artifacts.result.ResolutionResult
 import org.gradle.api.artifacts.result.ResolvedComponentResult
 import org.gradle.api.artifacts.result.ResolvedDependencyResult
 import org.gradle.api.internal.artifacts.result.DefaultResolvedComponentResult
-import java.util.*
 
 private typealias Node = ResolvedComponentResult
+private typealias DefaultNode = DefaultResolvedComponentResult
 
 /**
  * Visitor to flatten all components (including transitives) from a root [ResolvedComponentResult].
@@ -49,8 +49,7 @@ internal class ResolvedComponentsVisitor {
     }
 
     private val Node.isProject get() = toString().startsWith("project :")
-    private val Node.repository
-        get() = (this as? DefaultResolvedComponentResult)?.repositoryName ?: ""
+    private val Node.repository get() = (this as? DefaultNode)?.repositoryName ?: ""
     private val Node.shortId get() = toString().substringBeforeLast(":")
 
     private val ComponentSelector.isLegacySupportLibrary
@@ -67,13 +66,20 @@ internal class ResolvedComponentsVisitor {
         ) = component.toString().compareTo(other.component.toString())
     }
 
-    /**
-     * Holder to collect dependency information for a [Node]
-     */
+    /** Holder to collect dependency information for a [Node] */
     data class DependencyResult(
         val dependency: Node,
         val requiresJetifier: Boolean,
         val unjetifiedSource: String?
+    ) : Comparable<DependencyResult> {
+        override fun compareTo(
+            other: DependencyResult
+        ) = dependency.toString().compareTo(other.dependency.toString())
+    }
+
+    private data class DFSResult(
+        val dependencies: Set<DependencyResult>,
+        val requiresJetifier: Boolean
     )
 
     /**
@@ -89,25 +95,24 @@ internal class ResolvedComponentsVisitor {
         logger: (message: String) -> Unit = { },
         transform: (visitResult: VisitResult) -> T?
     ): Set<T> {
-        val allDependenciesMap = mutableMapOf<Node, MutableSet<DependencyResult>>()
-        val visited = mutableSetOf<Node>()
-        val result = TreeSet<T>(compareBy { it })
+        val dfsResults = hashMapOf<Node, DFSResult>()
+        val visited = hashSetOf<Node>()
+        val result = sortedSetOf<T>()
 
         /**
-         * Do a depth-first visit to collect all transitive dependencies
-         *
-         * @param node Current component node
-         * @param level The current traversal depth
+         * Do a depth-first visit to collect all transitive dependencies and track jetifier
+         * requirements
          */
-        fun dfs(node: Node, level: Int = 0) {
-            if (node in visited) return
+        fun dfs(node: Node, level: Int = 0): DFSResult {
+            if (node in visited) {
+                return dfsResults[node] ?: DFSResult(emptySet(), false)
+            }
             visited.add(node)
             printIndented(level, node.toString(), logger)
 
-            // Collection to collect all transitive dependencies
-            val allDependencies = TreeSet<DependencyResult>(
-                compareBy { it.dependency.toString() }
-            )
+            var requiresJetifier = false
+            val allDependencies = hashSetOf<DependencyResult>()
+
             node.dependencies
                 .asSequence()
                 .filterIsInstance<ResolvedDependencyResult>()
@@ -115,21 +120,22 @@ internal class ResolvedComponentsVisitor {
                 .filter { (selected, _) -> !selected.isProject }
                 .filter { (dep, _) -> IGNORED_ARTIFACTS.none { dep.toString().startsWith(it) } }
                 .forEach { (directDependency, requested) ->
-                    dfs(directDependency, level + 1)
+                    val childResult = dfs(directDependency, level + 1)
+                    val directDepResult = DependencyResult(
+                        dependency = directDependency,
+                        requiresJetifier = requested.isLegacySupportLibrary,
+                        unjetifiedSource = JetifiedArtifacts[directDependency.shortId]
+                    )
+                    allDependencies.add(directDepResult)
+                    allDependencies.addAll(childResult.dependencies)
 
-                    allDependencies.add(
-                        DependencyResult(
-                            dependency = directDependency,
-                            requiresJetifier = requested.isLegacySupportLibrary,
-                            unjetifiedSource = JetifiedArtifacts[directDependency.shortId]
-                        )
-                    )
-                    allDependencies.addAll(
-                        allDependenciesMap[directDependency] ?: emptySet()
-                    )
+                    requiresJetifier = requiresJetifier ||
+                        directDepResult.requiresJetifier ||
+                        childResult.requiresJetifier
                 }
 
-            allDependenciesMap[node] = allDependencies
+            val dfsResult = DFSResult(allDependencies, requiresJetifier)
+            dfsResults[node] = dfsResult
 
             if (!node.isProject) {
                 transform(
@@ -137,14 +143,14 @@ internal class ResolvedComponentsVisitor {
                         component = node,
                         repository = node.repository,
                         transitiveDeps = allDependencies,
-                        requiresJetifier = allDependencies.any { it.requiresJetifier }
+                        requiresJetifier = requiresJetifier
                     )
                 )?.let(result::add)
             }
+            return dfsResult
         }
+
         dfs(root)
-        allDependenciesMap.clear()
-        visited.clear()
         return result
     }
 

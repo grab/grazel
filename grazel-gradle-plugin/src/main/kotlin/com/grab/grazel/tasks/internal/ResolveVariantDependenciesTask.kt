@@ -25,11 +25,10 @@ import com.grab.grazel.gradle.variant.Variant
 import com.grab.grazel.gradle.variant.VariantBuilder
 import com.grab.grazel.gradle.variant.isBase
 import com.grab.grazel.gradle.variant.isTest
-import com.grab.grazel.util.Json
 import com.grab.grazel.util.dependsOn
 import com.grab.grazel.util.fromJson
+import com.grab.grazel.util.writeJson
 import dagger.Lazy
-import kotlinx.serialization.encodeToString
 import org.gradle.api.DefaultTask
 import org.gradle.api.Project
 import org.gradle.api.Task
@@ -127,7 +126,7 @@ internal abstract class ResolveVariantDependenciesTask : DefaultTask() {
                     )
                 } else null
             }.asSequence()
-        }.filter { if (removeTransitives) it.direct else true }.toSet()
+        }.filter { if (removeTransitives) it.direct else true }.toSortedSet()
 
     @TaskAction
     fun action() {
@@ -137,9 +136,7 @@ internal abstract class ResolveVariantDependenciesTask : DefaultTask() {
                 // is considered direct dependencies, hence parse it add to [directDependenciesMap]
                 baseDependenciesJsons.get()
                     .stream()
-                    .parallel()
                     .map<ResolveDependenciesResult>(::fromJson)
-                    .sequential()
                     .asSequence()
                     .flatMap { it.dependencies.getValue(COMPILE.name) }
                     .groupBy(ResolvedDependency::shortId, ResolvedDependency::direct)
@@ -164,9 +161,7 @@ internal abstract class ResolveVariantDependenciesTask : DefaultTask() {
                 )
             }
         )
-        resolvedDependencies.get()
-            .asFile
-            .writeText(Json.encodeToString(resolvedDependenciesResult))
+        writeJson(resolvedDependenciesResult, resolvedDependencies.get())
     }
 
     companion object {

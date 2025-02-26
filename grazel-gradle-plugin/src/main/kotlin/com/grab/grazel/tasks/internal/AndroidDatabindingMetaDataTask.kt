@@ -45,6 +45,7 @@ constructor(
     fun action() {
         val databindingPackageInfo = dependenciesDataSource.get()
             .dependencyArtifactMap(rootProject = project.rootProject, fileExtension = "aar")
+            .asSequence()
             .map { (artifact, file) ->
                 val mavenId = listOf(".", "_", ":", "-").fold(artifact.id) { acc, s ->
                     acc.replace(s, "_")

@@ -17,10 +17,15 @@
 package com.grab.grazel.tasks.internal
 
 import com.grab.grazel.gradle.dependencies.ComputeWorkspaceDependencies
+import com.grab.grazel.gradle.dependencies.DefaultDependencyResolutionService
 import com.grab.grazel.gradle.variant.VariantBuilder
-import com.grab.grazel.util.Json
+import com.grab.grazel.util.GradleProvider
+import com.grab.grazel.util.writeJson
 import dagger.Lazy
-import kotlinx.serialization.encodeToString
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.runBlocking
 import org.gradle.api.DefaultTask
 import org.gradle.api.Project
 import org.gradle.api.file.RegularFile
@@ -29,6 +34,7 @@ import org.gradle.api.provider.ListProperty
 import org.gradle.api.provider.Property
 import org.gradle.api.tasks.CacheableTask
 import org.gradle.api.tasks.InputFiles
+import org.gradle.api.tasks.Internal
 import org.gradle.api.tasks.OutputFile
 import org.gradle.api.tasks.PathSensitive
 import org.gradle.api.tasks.PathSensitivity
@@ -37,10 +43,13 @@ import org.gradle.api.tasks.TaskProvider
 import org.gradle.kotlin.dsl.register
 
 @CacheableTask
-abstract class ComputeWorkspaceDependenciesTask : DefaultTask() {
+internal abstract class ComputeWorkspaceDependenciesTask : DefaultTask() {
     @get:InputFiles
     @get:PathSensitive(PathSensitivity.RELATIVE)
     abstract val compileDependenciesJsons: ListProperty<RegularFile>
+
+    @get:Internal
+    abstract val dependencyResolutionService: Property<DefaultDependencyResolutionService>
 
     @get:OutputFile
     abstract val workspaceDependencies: RegularFileProperty
@@ -53,7 +62,15 @@ abstract class ComputeWorkspaceDependenciesTask : DefaultTask() {
     @TaskAction
     fun action() {
         val result = ComputeWorkspaceDependencies().compute(compileDependenciesJsons.get())
-        workspaceDependencies.asFile.get().writeText(Json.encodeToString(result))
+        runBlocking {
+            val populateCache = async(Dispatchers.Default) {
+                dependencyResolutionService.get().populateCache(result)
+            }
+            val writeResult = async(Dispatchers.IO) {
+                writeJson(result, workspaceDependencies.get())
+            }
+            awaitAll<Any>(populateCache, writeResult)
+        }
     }
 
     companion object {
@@ -62,12 +79,14 @@ abstract class ComputeWorkspaceDependenciesTask : DefaultTask() {
             rootProject: Project,
             variantBuilderProvider: Lazy<VariantBuilder>,
             limitDependencyResolutionParallelism: Property<Boolean>,
+            dependencyResolutionService: GradleProvider<DefaultDependencyResolutionService>,
         ): TaskProvider<ComputeWorkspaceDependenciesTask> {
             val computeTask = rootProject.tasks
                 .register<ComputeWorkspaceDependenciesTask>(TASK_NAME) {
                     workspaceDependencies.set(
-                        rootProject.layout.buildDirectory.file("grazel/mergedDependencies.json")
+                        rootProject.layout.buildDirectory.file("grazel/dependencies.json")
                     )
+                    this.dependencyResolutionService.set(dependencyResolutionService)
                 }
             ResolveVariantDependenciesTask.register(
                 rootProject,

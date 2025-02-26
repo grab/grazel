@@ -23,6 +23,7 @@ import com.grab.grazel.buildProject
 import com.grab.grazel.gradle.ConfigurationScope.BUILD
 import com.grab.grazel.gradle.dependencies.BuildGraphType
 import com.grab.grazel.gradle.dependencies.DefaultDependenciesDataSource
+import com.grab.grazel.gradle.dependencies.DefaultDependencyResolutionService
 import com.grab.grazel.gradle.dependencies.DependencyResolutionService
 import com.grab.grazel.gradle.dependencies.IGNORED_ARTIFACT_GROUPS
 import com.grab.grazel.gradle.dependencies.MavenArtifact
@@ -100,7 +101,7 @@ class DefaultDependenciesDataSourceTest {
             dependencyResolutionService = grazelComponent
                 .dependencyResolutionService()
                 .get().apply {
-                    populateCache(
+                    populateMavenStore(
                         workspaceDependencies = WorkspaceDependencies(
                             result = buildMap {
                                 put(
@@ -212,5 +213,52 @@ class DefaultDependenciesDataSourceTest {
                 assertTrue(deps.any { it.toString() == "//:dagger" })
                 assertTrue(deps.none { "com.google.dagger" in it.toString() })
             })
+    }
+
+    @Test
+    fun `assert collectTransitiveMavenDeps returns transitive dependencies`() {
+        configure()
+        val debugVariant = androidProject.the<AppExtension>()
+            .applicationVariants
+            .first { it.name == "debug" }!!
+
+        // Mock the dependency resolution service to return transitive dependencies
+        (dependencyResolutionService as DefaultDependencyResolutionService).apply {
+            populateTransitiveDependenciesStore(
+                WorkspaceDependencies(
+                    result = emptyMap(),
+                    transitiveClasspath = mapOf(
+                        "com.android.support:appcompat-v7" to setOf(
+                            "com.android.support:support-v4:28.0.0",
+                            "com.android.support:support-annotations:28.0.0"
+                        ),
+                        "com.google.dagger:dagger" to setOf(
+                            "javax.inject:javax.inject:1"
+                        )
+                    )
+                )
+            )
+        }
+
+        val transitiveDeps = dependenciesDataSource.collectTransitiveMavenDeps(
+            androidProject,
+            BuildGraphType(BUILD, debugVariant)
+        )
+
+        // Assert we have the expected transitive dependencies
+        assertTrue(
+            transitiveDeps.isNotEmpty(),
+            "collectTransitiveMavenDeps returns transitive dependencies"
+        )
+
+        // Assert specific transitive dependencies are included
+        assertTrue(
+            transitiveDeps.any { it.group == "com.android.support" && it.name == "support-v4" },
+            "Expected transitive dependency com.android.support:support-v4 not found"
+        )
+        assertTrue(
+            transitiveDeps.any { it.group == "javax.inject" && it.name == "javax.inject" },
+            "Expected transitive dependency javax.inject:javax.inject not found"
+        )
     }
 }
