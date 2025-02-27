@@ -29,6 +29,7 @@ import com.grab.grazel.gradle.ConfigurationScope
 import com.grab.grazel.gradle.ConfigurationScope.TEST
 import com.grab.grazel.gradle.configurationScopes
 import com.grab.grazel.gradle.hasDatabinding
+import com.grab.grazel.gradle.hasKotlinAndroidExtensions
 import com.grab.grazel.gradle.variant.AndroidVariant
 import com.grab.grazel.gradle.variant.AndroidVariantsExtractor
 import com.grab.grazel.gradle.variant.DEFAULT_VARIANT
@@ -39,6 +40,7 @@ import com.grab.grazel.gradle.variant.isConfigScope
 import com.grab.grazel.gradle.variant.isTest
 import com.grab.grazel.gradle.variant.migratableConfigurations
 import com.grab.grazel.util.GradleProvider
+import com.grab.grazel.util.addTo
 import org.gradle.api.Project
 import org.gradle.api.artifacts.Configuration
 import org.gradle.api.artifacts.Dependency
@@ -60,9 +62,12 @@ internal val IGNORED_ARTIFACT_GROUPS = listOf(
     "org.jetbrains.kotlin"
 )
 
-/**
- * Simple data holder for a Maven artifact containing its group, name and version.
- */
+internal val PARCELIZE_DEPS = listOf(
+    MavenDependency(group = "org.jetbrains.kotlin", name = "kotlin-parcelize-runtime"),
+    MavenDependency(group = "org.jetbrains.kotlin", name = "kotlin-android-extensions-runtime"),
+)
+
+/** Simple data holder for a Maven artifact containing its group, name and version. */
 internal data class MavenArtifact(
     val group: String?,
     val name: String?,
@@ -84,23 +89,22 @@ internal data class ArtifactsConfig(
 
 internal interface DependenciesDataSource {
     /**
-     * Return the project's project (module) dependencies before the resolution strategy and any other custom
-     * substitutions by Gradle
+     * Return the project's project (module) dependencies before the resolution strategy and any
+     * other custom substitutions by Gradle
      */
     fun projectDependencies(
         project: Project,
         vararg scopes: ConfigurationScope
     ): Sequence<Pair<Configuration, ProjectDependency>>
 
-    /**
-     * @return true if the project has any private dependencies in any configuration
-     */
+    /** @return true if the project has any private dependencies in any configuration */
     @Deprecated("No longer supported")
     fun hasDepsFromUnsupportedRepositories(project: Project): Boolean
 
     /**
-     * Verify if the project has any dependencies that are meant to be ignored. For example, if the [Project] uses any
-     * dependency that was excluded via [GrazelExtension] then this method will return `true`.
+     * Verify if the project has any dependencies that are meant to be ignored. For example, if the
+     * [Project] uses any dependency that was excluded via [GrazelExtension] then this method will
+     * return `true`.
      *
      * @param project the project to check against.
      */
@@ -108,21 +112,19 @@ internal interface DependenciesDataSource {
     fun hasIgnoredArtifacts(project: Project): Boolean
 
     /**
-     * Returns map of [MavenArtifact] and the corresponding artifact file (aar or jar). Guarantees the
-     * returned file is downloaded and available on disk
+     * Returns map of [MavenArtifact] and the corresponding artifact file (aar or jar). Guarantees
+     * the returned file is downloaded and available on disk
      *
      * @param rootProject The root project instance
      * @param fileExtension The file extension to look for. Use this to reduce the overall number of
-     * values returned
+     *    values returned
      */
     fun dependencyArtifactMap(
         rootProject: Project,
         fileExtension: String? = null
     ): Map<MavenArtifact, File>
 
-    /**
-     * Non project dependencies for the given [buildGraphType]
-     */
+    /** Non project dependencies for the given [buildGraphType] */
     fun collectMavenDeps(
         project: Project,
         buildGraphType: BuildGraphType
@@ -157,14 +159,10 @@ internal class DefaultDependenciesDataSource @Inject constructor(
             }
         }
 
-    /**
-     * @return `true` when the `MavenArtifact` is present is ignored by user.
-     */
+    /** @return `true` when the `MavenArtifact` is present is ignored by user. */
     private val MavenArtifact.isIgnored get() = artifactsConfig.ignoredList.contains(id)
 
-    /**
-     * @return `true` when the `MavenArtifact` is present is excluded by user.
-     */
+    /** @return `true` when the `MavenArtifact` is present is excluded by user. */
     private val MavenArtifact.isExcluded get() = artifactsConfig.excludedList.contains(id)
 
     override fun hasDepsFromUnsupportedRepositories(project: Project): Boolean {
@@ -242,7 +240,7 @@ internal class DefaultDependenciesDataSource @Inject constructor(
                 }
                 when (dependency.group) {
                     DAGGER_GROUP -> StringDependency("//:dagger")
-                    else -> dependencyResolutionService.get().get(
+                    else -> dependencyResolutionService.get().getMavenDependency(
                         variants = variantHierarchy,
                         group = dependency.group!!,
                         name = dependency.name!!
@@ -257,26 +255,24 @@ internal class DefaultDependenciesDataSource @Inject constructor(
     override fun collectTransitiveMavenDeps(
         project: Project,
         buildGraphType: BuildGraphType
-    ): Set<MavenDependency> {
-        val grazelVariant: Variant<*> = findGrazelVariant(project, buildGraphType)
-        return grazelVariant.migratableConfigurations
-            .asSequence()
-            .map { it.incoming.resolutionResult.root }
-            .flatMapTo(TreeSet()) { rootNode ->
-                // Using ResolvedComponentsVisitor is redundant here since the work would
-                // already be done by the time we reach here by resolveVariantDependenciesTask.
-                // But for simplicity we visit components again.
-                // TODO(arun) Optimize this and read resolved components as Task input.
-                ResolvedComponentsVisitor().visit(rootNode) { (component, _, _, _) ->
-                    val version = component.moduleVersion!!
-                    MavenArtifact(
-                        group = version.group,
-                        name = version.name,
-                    )
+    ): Set<MavenDependency> = findGrazelVariant(project, buildGraphType)
+        .migratableConfigurations
+        .asSequence()
+        .flatMap { it.allDependencies.filterIsInstance<ExternalDependency>() }
+        .flatMapTo(TreeSet()) { dep ->
+            buildList {
+                dependencyResolutionService.get()
+                    .getTransitiveDependencies(dep.shortId)
+                    .map {
+                        val (group, name) = it.split(":")
+                        MavenDependency(group = group, name = name)
+                    }.addTo(this)
+                add(MavenDependency(group = dep.module.group, name = dep.module.name))
+                if (project.hasKotlinAndroidExtensions) {
+                    addAll(PARCELIZE_DEPS)
                 }
-            }.map { MavenDependency(group = it.group!!, name = it.name!!) }
-            .toSortedSet()
-    }
+            }
+        }
 
     private fun findGrazelVariant(
         project: Project,
@@ -302,8 +298,9 @@ internal class DefaultDependenciesDataSource @Inject constructor(
     }
 
     /**
-     * Collects first level module dependencies from their resolved configuration. Additionally, excludes any artifacts
-     * that are not meant to be used in Bazel as defined by [IGNORED_ARTIFACT_GROUPS]
+     * Collects first level module dependencies from their resolved configuration. Additionally,
+     * excludes any artifacts that are not meant to be used in Bazel as defined by
+     * [IGNORED_ARTIFACT_GROUPS]
      *
      * @return Sequence of [DefaultResolvedDependency] in the first level
      */
@@ -329,9 +326,10 @@ internal class DefaultDependenciesDataSource @Inject constructor(
         project.firstLevelModuleDependencies()
 
     /**
-     * Collects dependencies from all available configuration in the pre-resolution state i.e without dependency resolutions.
-     * These dependencies would be ideally used for sub targets instead of `WORKSPACE` file since they closely mirror what
-     * was defined in `build.gradle` file.
+     * Collects dependencies from all available configuration in the pre-resolution state i.e
+     * without dependency resolutions. These dependencies would be ideally used for sub targets
+     * instead of `WORKSPACE` file since they closely mirror what was defined in `build.gradle`
+     * file.
      *
      * @return Sequence of `Configuration` and `Dependency`
      */
@@ -347,4 +345,6 @@ internal class DefaultDependenciesDataSource @Inject constructor(
                     .map { dependency -> configuration to dependency }
             }
     }
+
+    private val ExternalDependency.shortId get() = module.group + ":" + module.name
 }

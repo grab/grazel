@@ -83,7 +83,7 @@ class DefaultAndroidLibraryDataExtractorTest {
         dependencyResolutionService = grazelComponent.dependencyResolutionService()
         androidLibraryDataExtractor = grazelComponent.androidLibraryDataExtractor().get()
 
-        dependencyResolutionService.get().populateCache(
+        dependencyResolutionService.get().populateMavenStore(
             workspaceDependencies = WorkspaceDependencies(
                 result = buildMap {
                     put(

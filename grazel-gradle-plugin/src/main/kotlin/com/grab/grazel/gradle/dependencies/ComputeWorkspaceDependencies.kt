@@ -133,18 +133,41 @@ internal class ComputeWorkspaceDependencies {
             ).apply { put(DEFAULT_VARIANT, defaultFlatClasspath) }
             .mapValues { it.value.values.sortedBy(ResolvedDependency::id) }
 
+
+        // Compute the transitive classpath map with shortId as key and list of dependency shortIds as values
+        val transitiveClasspath = reducedClasspath
+            .entries
+            .parallelStream()
+            .flatMap { it.value.values.stream() }
+            .filter(ResolvedDependency::direct)
+            .collect(
+                Collectors.groupingByConcurrent(
+                    ResolvedDependency::shortId,
+                    Collectors.flatMapping({
+                        it.dependencies
+                            .parallelStream()
+                            .map(ResolvedDependency::from)
+                            .map(ResolvedDependency::shortId)
+                    }, Collectors.toCollection { sortedSetOf() })
+                )
+            ).toMap()
+
         // Clear maps to allow GC
         defaultFlatClasspath.clear()
         flattenClasspath.clear()
         reducedClasspath.clear()
         defaultClasspath.clear()
         classPaths.clear()
-        return WorkspaceDependencies(result = reducedFinalClasspath)
+        return WorkspaceDependencies(
+            result = reducedFinalClasspath,
+            transitiveClasspath = transitiveClasspath
+        )
     }
 
     /**
-     * A reducing collector that picks the [ResolvedDependency] with higher [ResolvedDependency.version]
-     * by simple comparison and merges metadata like exclude rules and override targets.
+     * A reducing collector that picks the [ResolvedDependency] with higher
+     * [ResolvedDependency.version] by simple comparison and merges metadata like exclude rules and
+     * override targets.
      */
     private fun maxVersionReducer(): Collector<ResolvedDependency, *, ResolvedDependency> {
         return Collectors.reducing(null) { old, new ->

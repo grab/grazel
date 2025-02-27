@@ -34,7 +34,7 @@ internal const val GRAZEL_TASK_GROUP = "bazel"
 /**
  * [TaskManager] configures relationships and input between various tasks that Grazel registers
  *
- * @param rootProject  The root gradle project instance
+ * @param rootProject The root gradle project instance
  */
 internal class TaskManager
 @Inject
@@ -51,6 +51,7 @@ constructor(
     fun configTasks() {
         val computeWorkspaceDependenciesTask = ComputeWorkspaceDependenciesTask.register(
             rootProject = rootProject,
+            dependencyResolutionService = grazelComponent.dependencyResolutionService(),
             variantBuilderProvider = grazelComponent.variantBuilder(),
             limitDependencyResolutionParallelism = grazelComponent.extension().experiments.limitDependencyResolutionParallelism
         )

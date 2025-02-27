@@ -25,7 +25,8 @@
 .idea/.gitignore
 .idea/rules_kotlin.iml
 !.idea/runConfigurations
-!.idea/runConfigurations.xml
+/.idea/git_toolbox_blame.xml
+/.idea/runConfigurations.xml
 !.idea/.name
 
 /.aswb
@@ -79,3 +80,4 @@ local.bazelrc
 
 # Mkdocs
 site/
+
