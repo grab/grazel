@@ -31,7 +31,7 @@ import com.grab.grazel.gradle.variant.DEFAULT_VARIANT
 import org.gradle.api.artifacts.repositories.PasswordCredentials
 import org.gradle.api.file.ProjectLayout
 import org.gradle.api.internal.artifacts.repositories.DefaultMavenArtifactRepository
-import java.util.*
+import java.util.TreeSet
 import javax.inject.Inject
 
 /**
@@ -52,9 +52,7 @@ constructor(
 
     private val includeCredentials get() = mavenInstallExtension.includeCredentials
 
-    /**
-     * Map of user configured overrides for artifact versions.
-     */
+    /** Map of user configured overrides for artifact versions. */
     private val overrideVersionsMap: Map< /*shortId*/ String, /*version*/ String> by lazy {
         grazelExtension
             .dependencies
@@ -100,6 +98,7 @@ constructor(
                     .mapNotNull { if (it.requiresJetifier) it.shortId else it.jetifierSource }
                     .toList()
                     + mavenInstallExtension.jetifyIncludeList.get()
+                    - mavenInstallExtension.jetifyExcludeList.get().toSet()
                     - DefaultJetifierExclusions
                 ).toSortedSet()
 
