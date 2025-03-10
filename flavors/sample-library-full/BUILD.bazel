@@ -15,6 +15,7 @@ kotlin_library(
 
 kotlin_test(
     name = "sample-library-full-test",
+    size = "medium",
     srcs = glob([
         "src/test/java/com/grab/grazel/flavor2/ModuleNameTest.kt",
     ]),

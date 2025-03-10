@@ -16,6 +16,7 @@
 
 package com.grab.grazel.migrate.android
 
+import com.grab.grazel.bazel.TestSize
 import com.grab.grazel.bazel.starlark.BazelDependency
 
 data class AndroidUnitTestData(
@@ -28,6 +29,7 @@ data class AndroidUnitTestData(
     val associates: List<BazelDependency>,
     val resources: List<String>,
     val compose: Boolean,
+    val testSize: TestSize = TestSize.MEDIUM
 )
 
 internal fun AndroidUnitTestData.toUnitTestTarget() = AndroidUnitTestTarget(
@@ -39,5 +41,6 @@ internal fun AndroidUnitTestData.toUnitTestTarget() = AndroidUnitTestTarget(
     customPackage = customPackage,
     resources = resources,
     tags = tags,
-    compose = compose
+    compose = compose,
+    testSize = testSize,
 )

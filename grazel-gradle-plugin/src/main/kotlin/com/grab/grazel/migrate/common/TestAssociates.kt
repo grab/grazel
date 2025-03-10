@@ -24,14 +24,15 @@ import com.grab.grazel.gradle.isKotlin
 import org.gradle.api.Project
 
 /**
- * For given `project`, calculate the associate target name. This is needed since we have macros like `kt_android_library`
- * or `kt_db_android_library` which are macros and hide the actual kotlin targets differently. This method chooses the correct
- * associate target - which is the Kotlin target based on project type.
+ * For given `project`, calculate the associate target name. This is needed since we have macros
+ * like `kt_android_library` or `kt_db_android_library` which are macros and hide the actual kotlin
+ * targets differently. This method chooses the correct associate target - which is the Kotlin
+ * target based on project type.
  *
  * @param project The project for which associate needs to be calculated
  * @return The associate that was calculated, null otherwise
  */
-internal fun calculateTestAssociate(project: Project, suffix: String = ""): BazelDependency? {
+internal fun calculateTestAssociates(project: Project, suffix: String = ""): BazelDependency? {
     return when {
         project.isKotlin && project.isAndroid -> return StringDependency(
             """${ProjectDependency(project, suffix)}_kt"""

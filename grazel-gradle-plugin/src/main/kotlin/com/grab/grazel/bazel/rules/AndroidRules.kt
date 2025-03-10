@@ -16,6 +16,7 @@
 
 package com.grab.grazel.bazel.rules
 
+import com.grab.grazel.bazel.TestSize
 import com.grab.grazel.bazel.starlark.Assignee
 import com.grab.grazel.bazel.starlark.BazelDependency
 import com.grab.grazel.bazel.starlark.StatementsBuilder
@@ -289,6 +290,7 @@ fun StatementsBuilder.androidUnitTest(
     enableCompose: Boolean = false,
     tags: List<String> = emptyList(),
     resourcesGlob: List<String> = emptyList(),
+    testSize: TestSize = TestSize.MEDIUM,
 ) {
     load("@$GRAB_BAZEL_COMMON//rules:defs.bzl", "android_unit_test")
 
@@ -304,6 +306,7 @@ fun StatementsBuilder.androidUnitTest(
         srcsGlob.notEmpty {
             "srcs" `=` glob(srcsGlob.map(String::quote))
         }
+        "size" `=` testSize.name.lowercase().quote
         "visibility" `=` array(visibility.rule.quote)
         associates.notEmpty {
             "associates" `=` array(associates.map(BazelDependency::toString).map(String::quote))

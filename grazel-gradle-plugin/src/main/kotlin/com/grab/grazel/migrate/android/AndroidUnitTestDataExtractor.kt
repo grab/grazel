@@ -29,7 +29,9 @@ import com.grab.grazel.gradle.variant.AndroidVariantDataSource
 import com.grab.grazel.gradle.variant.MatchedVariant
 import com.grab.grazel.gradle.variant.getMigratableBuildVariants
 import com.grab.grazel.gradle.variant.nameSuffix
-import com.grab.grazel.migrate.common.calculateTestAssociate
+import com.grab.grazel.migrate.android.SourceSetType.JAVA_KOTLIN
+import com.grab.grazel.migrate.common.TestSizeCalculator
+import com.grab.grazel.migrate.common.calculateTestAssociates
 import com.grab.grazel.migrate.dependencies.calculateDirectDependencyTags
 import com.grab.grazel.migrate.kotlin.kotlinParcelizeDeps
 import dagger.Lazy
@@ -46,13 +48,16 @@ internal interface AndroidUnitTestDataExtractor {
 }
 
 @Singleton
-internal class DefaultAndroidUnitTestDataExtractor @Inject constructor(
+internal class DefaultAndroidUnitTestDataExtractor
+@Inject
+constructor(
     private val dependenciesDataSource: DependenciesDataSource,
     private val dependencyGraphsProvider: Lazy<DependencyGraphs>,
     private val androidManifestParser: AndroidManifestParser,
     private val grazelExtension: GrazelExtension,
     private val variantDataSource: AndroidVariantDataSource,
-    private val gradleDependencyToBazelDependency: GradleDependencyToBazelDependency
+    private val gradleDependencyToBazelDependency: GradleDependencyToBazelDependency,
+    private val testSizeCalculator: TestSizeCalculator,
 ) : AndroidUnitTestDataExtractor {
     private val projectDependencyGraphs get() = dependencyGraphsProvider.get()
     private val kotlinExtension: KotlinExtension get() = grazelExtension.rules.kotlin
@@ -66,28 +71,36 @@ internal class DefaultAndroidUnitTestDataExtractor @Inject constructor(
             .asSequence()
             .filterIsInstance<AndroidSourceSet>()
 
-        val srcs = project.unitTestSources(migratableSourceSets).toList()
+        val rawSrcs = unitTestSources(migratableSourceSets)
+        val srcs = rawSrcs
+            .let { srcs -> project.filterSourceSetPaths(srcs, JAVA_KOTLIN.patterns) }
+            .toList()
         val packageName = extractPackageName(project)
-        val additionalSrcSets = project.unitTestNonDefaultSourceSets(migratableSourceSets).toList()
+
+        val additionalSrcSets = rawSrcs
+            .let(project::filterNonDefaultSourceSetDirs)
+            .toList()
+
+        val testSize = testSizeCalculator.calculate(name, rawSrcs.toSet())
 
         val resources = project.unitTestResources(migratableSourceSets).toList()
-        val associate = calculateTestAssociate(project, matchedVariant.nameSuffix)
+        val associate = calculateTestAssociates(project, matchedVariant.nameSuffix)
 
         val deps = projectDependencyGraphs
             .directDependencies(
-                project,
-                BuildGraphType(ConfigurationScope.TEST, matchedVariant.variant)
+                project = project,
+                buildGraphType = BuildGraphType(ConfigurationScope.TEST, matchedVariant.variant)
             ).map { dependent ->
                 gradleDependencyToBazelDependency.map(project, dependent, matchedVariant)
             } +
             dependenciesDataSource.collectMavenDeps(
-                project,
-                BuildGraphType(ConfigurationScope.TEST, matchedVariant.variant)
+                project = project,
+                buildGraphType = BuildGraphType(ConfigurationScope.TEST, matchedVariant.variant)
             ) +
             project.kotlinParcelizeDeps() +
             BazelDependency.ProjectDependency(
-                project,
-                matchedVariant.nameSuffix
+                dependencyProject = project,
+                suffix = matchedVariant.nameSuffix
             )
 
         val tags = if (kotlinExtension.enabledTransitiveReduction) {
@@ -107,7 +120,8 @@ internal class DefaultAndroidUnitTestDataExtractor @Inject constructor(
             customPackage = packageName,
             associates = buildList { associate?.let(::add) },
             resources = resources,
-            compose = project.hasCompose
+            compose = project.hasCompose,
+            testSize = testSize,
         )
     }
 
@@ -118,7 +132,6 @@ internal class DefaultAndroidUnitTestDataExtractor @Inject constructor(
             .flatMap { it.sourceSets.asSequence() }
             .filterIsInstance<AndroidSourceSet>()
             .toList()
-
         return androidManifestParser.parsePackageName(
             project.extensions.getByType(),
             migratableSourceSets
@@ -126,21 +139,12 @@ internal class DefaultAndroidUnitTestDataExtractor @Inject constructor(
     }
 
 
-    private fun Project.unitTestSources(
-        sourceSets: Sequence<AndroidSourceSet>,
-        sourceSetType: SourceSetType = SourceSetType.JAVA_KOTLIN
-    ): Sequence<String> {
+    private fun unitTestSources(
+        sourceSets: Sequence<AndroidSourceSet>
+    ): Sequence<File> {
         val dirs = sourceSets.flatMap { it.java.srcDirs.asSequence() }
         val dirsKotlin = dirs.map { File(it.path.replace("/java", "/kotlin")) }
-        return filterSourceSetPaths(dirs + dirsKotlin, sourceSetType.patterns)
-    }
-
-    private fun Project.unitTestNonDefaultSourceSets(
-        sourceSets: Sequence<AndroidSourceSet>,
-    ): Sequence<String> {
-        val dirs = sourceSets.flatMap { it.java.srcDirs.asSequence() }
-        val dirsKotlin = dirs.map { File(it.path.replace("/java", "/kotlin")) }
-        return filterNonDefaultSourceSetDirs(dirs + dirsKotlin)
+        return (dirs + dirsKotlin)
     }
 }
 

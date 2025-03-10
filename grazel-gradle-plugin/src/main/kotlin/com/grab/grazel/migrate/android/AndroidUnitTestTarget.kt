@@ -16,6 +16,7 @@
 
 package com.grab.grazel.migrate.android
 
+import com.grab.grazel.bazel.TestSize
 import com.grab.grazel.bazel.rules.Visibility
 import com.grab.grazel.bazel.rules.androidUnitTest
 import com.grab.grazel.bazel.starlark.BazelDependency
@@ -34,6 +35,7 @@ internal data class AndroidUnitTestTarget(
     val resources: List<String> = emptyList(),
     val additionalSrcSets: List<String> = emptyList(),
     val compose: Boolean,
+    val testSize: TestSize,
 ) : BazelBuildTarget {
     override fun statements(builder: StatementsBuilder) = builder {
         if (srcs.isNotEmpty()) {
@@ -48,6 +50,7 @@ internal data class AndroidUnitTestTarget(
                 resourcesGlob = resources,
                 enableCompose = compose,
                 additionalSrcSets = additionalSrcSets,
+                testSize = testSize,
             )
         }
     }

@@ -28,7 +28,8 @@ import com.grab.grazel.migrate.android.FORMAT_UNIT_TEST_NAME
 import com.grab.grazel.migrate.android.SourceSetType
 import com.grab.grazel.migrate.android.filterNonDefaultSourceSetDirs
 import com.grab.grazel.migrate.android.filterSourceSetPaths
-import com.grab.grazel.migrate.common.calculateTestAssociate
+import com.grab.grazel.migrate.common.TestSizeCalculator
+import com.grab.grazel.migrate.common.calculateTestAssociates
 import com.grab.grazel.migrate.dependencies.calculateDirectDependencyTags
 import dagger.Lazy
 import org.gradle.api.NamedDomainObjectContainer
@@ -37,6 +38,7 @@ import org.gradle.api.internal.artifacts.dependencies.DefaultSelfResolvingDepend
 import org.gradle.kotlin.dsl.the
 import org.jetbrains.kotlin.gradle.dsl.KotlinJvmProjectExtension
 import org.jetbrains.kotlin.gradle.plugin.KotlinSourceSet
+import java.io.File
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -45,11 +47,14 @@ internal interface KotlinUnitTestDataExtractor {
 }
 
 @Singleton
-internal class DefaultKotlinUnitTestDataExtractor @Inject constructor(
+internal class DefaultKotlinUnitTestDataExtractor
+@Inject
+constructor(
     private val dependenciesDataSource: DependenciesDataSource,
     private val dependencyGraphsProvider: Lazy<DependencyGraphs>,
     private val grazelExtension: GrazelExtension,
-    private val gradleDependencyToBazelDependency: GradleDependencyToBazelDependency
+    private val gradleDependencyToBazelDependency: GradleDependencyToBazelDependency,
+    private val testSizeCalculator: TestSizeCalculator,
 ) : KotlinUnitTestDataExtractor {
 
     private val kotlinExtension: KotlinExtension get() = grazelExtension.rules.kotlin
@@ -60,11 +65,20 @@ internal class DefaultKotlinUnitTestDataExtractor @Inject constructor(
         val name = FORMAT_UNIT_TEST_NAME.format(project.name, "")
         val sourceSets = project.the<KotlinJvmProjectExtension>().sourceSets
 
-        val srcs = project.kotlinTestSources(sourceSets).toList()
-        val additionalSrcSets = project.kotlinTestNonDefaultSourceSets(sourceSets).toList()
+        val rawSrcs = kotlinTestSources(sourceSets)
+        val srcs = rawSrcs
+            .let { project.filterSourceSetPaths(it, SourceSetType.JAVA_KOTLIN.patterns) }
+            .toList()
+        val additionalSrcSets = rawSrcs
+            .let(project::filterNonDefaultSourceSetDirs)
+            .toList()
 
+        val testSize = testSizeCalculator.calculate(
+            name = name,
+            sources = rawSrcs.toSet()
+        )
         val projectDependency = BazelDependency.ProjectDependency(project)
-        val associate = calculateTestAssociate(project)
+        val associate = calculateTestAssociates(project)
 
         val deps: List<BazelDependency> = buildList {
             addAll(
@@ -102,27 +116,17 @@ internal class DefaultKotlinUnitTestDataExtractor @Inject constructor(
             deps = deps.sorted(),
             associates = buildList { associate?.let(::add) },
             hasAndroidJarDep = project.hasAndroidJarDep(),
+            testSize = testSize,
             tags = tags.sorted()
         )
     }
 
-    private fun Project.kotlinTestSources(
+    private fun kotlinTestSources(
         sourceSets: NamedDomainObjectContainer<KotlinSourceSet>
-    ): Sequence<String> {
-        val dirs = sourceSets
-            .asSequence()
-            .filter { it.name.toLowerCase().contains("test") }
-            .flatMap { it.kotlin.srcDirs.asSequence() }
-        return filterSourceSetPaths(dirs, SourceSetType.JAVA_KOTLIN.patterns)
-    }
-
-    private fun Project.kotlinTestNonDefaultSourceSets(
-        sourceSets: NamedDomainObjectContainer<KotlinSourceSet>,
-    ): Sequence<String> = sourceSets
+    ): Sequence<File> = sourceSets
         .asSequence()
-        .filter { it.name.toLowerCase().contains("test") }
+        .filter { it.name.lowercase().contains("test") }
         .flatMap { it.kotlin.srcDirs.asSequence() }
-        .let(::filterNonDefaultSourceSetDirs)
 }
 
 internal fun Project.hasAndroidJarDep(): Boolean {

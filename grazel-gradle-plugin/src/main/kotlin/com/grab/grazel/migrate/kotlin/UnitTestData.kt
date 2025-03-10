@@ -16,6 +16,7 @@
 
 package com.grab.grazel.migrate.kotlin
 
+import com.grab.grazel.bazel.TestSize
 import com.grab.grazel.bazel.starlark.BazelDependency
 import com.grab.grazel.migrate.BazelBuildTarget
 import com.grab.grazel.migrate.android.AndroidUnitTestTarget
@@ -27,6 +28,7 @@ data class UnitTestData(
     val deps: List<BazelDependency>,
     val tags: List<String>,
     val associates: List<BazelDependency>,
+    val testSize: TestSize = TestSize.MEDIUM,
     val hasAndroidJarDep: Boolean = false,
 )
 
@@ -35,12 +37,13 @@ internal fun UnitTestData.toUnitTestTarget(): BazelBuildTarget =
         AndroidUnitTestTarget(
             name = name,
             srcs = srcs,
-            additionalSrcSets = additionalSrcSets,
             deps = deps,
+            tags = tags,
             associates = associates,
             customPackage = "",
-            tags = tags,
+            additionalSrcSets = additionalSrcSets,
             compose = false,
+            testSize = testSize,
         )
     } else {
         UnitTestTarget(
@@ -49,6 +52,7 @@ internal fun UnitTestData.toUnitTestTarget(): BazelBuildTarget =
             additionalSrcSets = additionalSrcSets,
             deps = deps,
             associates = associates,
+            testSize = testSize,
             tags = tags,
         )
     }

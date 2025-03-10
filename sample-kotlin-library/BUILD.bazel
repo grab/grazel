@@ -17,8 +17,9 @@ kotlin_library(
 
 kotlin_test(
     name = "sample-kotlin-library-test",
+    size = "medium",
     srcs = glob([
-        "src/test/java/com/grab/grazel/sample/TestClass1.kt",
+        "src/test/java/com/grab/grazel/sample/SampleTest.kt",
     ]),
     associates = [
         "//sample-kotlin-library:sample-kotlin-library",
