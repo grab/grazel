@@ -16,10 +16,10 @@
 
 package com.grab.grazel.bazel.rules
 
+import com.grab.grazel.bazel.TestSize
 import com.grab.grazel.bazel.rules.Visibility.Public
 import com.grab.grazel.bazel.starlark.Assignee
 import com.grab.grazel.bazel.starlark.BazelDependency
-import com.grab.grazel.migrate.android.LintConfigData
 import com.grab.grazel.bazel.starlark.StatementsBuilder
 import com.grab.grazel.bazel.starlark.add
 import com.grab.grazel.bazel.starlark.array
@@ -31,10 +31,9 @@ import com.grab.grazel.bazel.starlark.toObject
 import com.grab.grazel.extension.JavaCOptions
 import com.grab.grazel.extension.KotlinCOptions
 import com.grab.grazel.extension.KotlinToolChain
+import com.grab.grazel.migrate.android.LintConfigData
 
-/**
- * `WORKSPACE` rule that registers the given [repositoryRule].
- */
+/** `WORKSPACE` rule that registers the given [repositoryRule]. */
 fun StatementsBuilder.kotlinRepository(repositoryRule: BazelRepositoryRule) {
     add(repositoryRule)
     if (repositoryRule is GitRepositoryRule) {
@@ -76,8 +75,8 @@ fun StatementsBuilder.kotlinCompiler(
 }
 
 /**
- * `WORKSPACE` rule to generate Kotlin toolchain rule. If `toolchain.enabled` is set to `false`, will use the default Kotlin
- * otherwise will use the custom toolchain parameters.
+ * `WORKSPACE` rule to generate Kotlin toolchain rule. If `toolchain.enabled` is set to `false`,
+ * will use the default Kotlin otherwise will use the custom toolchain parameters.
  */
 fun StatementsBuilder.registerKotlinToolchain(toolchain: KotlinToolChain) {
     if (toolchain.enabled) {
@@ -204,7 +203,8 @@ fun StatementsBuilder.kotlinTest(
     associates: List<BazelDependency> = emptyList(),
     deps: List<BazelDependency> = emptyList(),
     plugins: List<BazelDependency> = emptyList(),
-    tags: List<String> = emptyList()
+    tags: List<String> = emptyList(),
+    testSize: TestSize = TestSize.MEDIUM,
 ) {
     load("@$GRAB_BAZEL_COMMON//rules:defs.bzl", "kotlin_test")
 
@@ -216,6 +216,7 @@ fun StatementsBuilder.kotlinTest(
         srcsGlob.notEmpty {
             "srcs" `=` glob(srcsGlob.map(String::quote))
         }
+        "size" `=` testSize.name.lowercase().quote
         additionalSrcSets.notEmpty {
             "additional_src_sets" `=` additionalSrcSets.map(String::quote)
         }

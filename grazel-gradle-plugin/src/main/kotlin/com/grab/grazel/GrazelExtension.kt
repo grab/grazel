@@ -21,13 +21,16 @@ import com.grab.grazel.extension.DependenciesExtension
 import com.grab.grazel.extension.ExperimentsExtension
 import com.grab.grazel.extension.HybridExtension
 import com.grab.grazel.extension.RulesExtension
+import com.grab.grazel.extension.TestExtension
 import groovy.lang.Closure
 import org.gradle.api.Project
 
 /**
- * The extension allows to configure various Grazel attributes like migration behavior and generated rules configuration.
+ * The extension allows to configure various Grazel attributes like migration behavior and generated
+ * rules configuration.
  *
  * For example
+ *
  * ```
  * grazel {
  *    android {
@@ -54,13 +57,15 @@ open class GrazelExtension(
 
     val rules = RulesExtension(rootProject.objects)
 
+    val test = TestExtension(rootProject.objects)
+
     val hybrid = HybridExtension(rootProject.objects)
 
     val experiments = ExperimentsExtension(rootProject.objects)
 
     /**
-     * Android specific configuration used to configure parameters for android_binary or other android related
-     * rules
+     * Android specific configuration used to configure parameters for android_binary or other
+     * android related rules
      *
      * ```
      * android {
@@ -78,8 +83,8 @@ open class GrazelExtension(
     }
 
     /**
-     * Android specific configuration used to configure parameters for android_binary or other android related
-     * rules
+     * Android specific configuration used to configure parameters for android_binary or other
+     * android related rules
      *
      * ```
      * android {
@@ -88,6 +93,7 @@ open class GrazelExtension(
      *   ...
      * }
      * ```
+     *
      * @param closure Closue for configuration with [AndroidExtension] instance as the delegate
      * @see AndroidExtension
      */
@@ -97,8 +103,8 @@ open class GrazelExtension(
     }
 
     /**
-     * Dependencies configuration used to control how dependencies should be handled during migration. For example,
-     *
+     * Dependencies configuration used to control how dependencies should be handled during
+     * migration. For example,
      * ```
      * dependencies {
      *   ignoreArtifacts = []
@@ -114,14 +120,15 @@ open class GrazelExtension(
     }
 
     /**
-     * Dependencies configuration used to control how dependencies should be handled during migration. For example,
-     *
+     * Dependencies configuration used to control how dependencies should be handled during
+     * migration. For example,
      * ```
      * dependencies {
      *   ignoreArtifacts = []
      *   ...
      * }
      * ```
+     *
      * @param closure Closure for configuration with [DependenciesExtension] instance as delegate
      * @see DependenciesExtension
      */
@@ -131,7 +138,8 @@ open class GrazelExtension(
     }
 
     /**
-     * Top level rules configuration block to configure various rules. For list of available rule configurations
+     * Top level rules configuration block to configure various rules. For list of available rule
+     * configurations
      *
      * ```
      * rules {
@@ -139,6 +147,7 @@ open class GrazelExtension(
      *   }
      * }
      * ```
+     *
      * @param block Configuration block with [RulesExtension] as the receiver
      * @see RulesExtension
      */
@@ -147,7 +156,8 @@ open class GrazelExtension(
     }
 
     /**
-     * Top level rules configuration block to configure various rules. For list of available rule configurations
+     * Top level rules configuration block to configure various rules. For list of available rule
+     * configurations
      *
      * ```
      * rules {
@@ -155,6 +165,7 @@ open class GrazelExtension(
      *   }
      * }
      * ```
+     *
      * @param closure Closure block for configuration with [RulesExtension] as the delegate
      * @see RulesExtension
      */
@@ -171,8 +182,9 @@ open class GrazelExtension(
      *
      * }
      * ```
-     * @see HybridExtension
+     *
      * @param block Configuration block with [HybridExtension] as the receiver
+     * @see HybridExtension
      */
     fun hybrid(block: HybridExtension.() -> Unit) {
         block(hybrid)
@@ -186,8 +198,9 @@ open class GrazelExtension(
      *
      * }
      * ```
-     * @see HybridExtension
+     *
      * @param closure Closure block with [HybridExtension] as the delegate
+     * @see HybridExtension
      */
     fun hybrid(closure: Closure<*>) {
         closure.delegate = hybrid
@@ -202,8 +215,9 @@ open class GrazelExtension(
      *
      * }
      * ```
-     * @see ExperimentsExtension
+     *
      * @param block Configuration block with [ExperimentsExtension] as the receiver
+     * @see ExperimentsExtension
      */
     fun experiments(block: ExperimentsExtension.() -> Unit) {
         block(experiments)
@@ -217,11 +231,45 @@ open class GrazelExtension(
      *
      * }
      * ```
-     * @see ExperimentsExtension
+     *
      * @param closure Closure block with [ExperimentsExtension] as the delegate
+     * @see ExperimentsExtension
      */
     fun experiments(closure: Closure<*>) {
         closure.delegate = experiments
+        closure.call()
+    }
+
+    /**
+     * Extension to configure test related configurations
+     *
+     * ```
+     * test {
+     *
+     * }
+     * ```
+     *
+     * @param block Configuration block with [TestExtension] as the receiver
+     * @see TestExtension
+     */
+    fun test(block: TestExtension.() -> Unit) {
+        block(test)
+    }
+
+    /**
+     * Extension to configure test related configurations
+     *
+     * ```
+     * test {
+     *
+     * }
+     * ```
+     *
+     * @param closure Closure block with [TestExtension] as the delegate
+     * @see TestExtension
+     */
+    fun test(closure: Closure<*>) {
+        closure.delegate = test
         closure.call()
     }
 }

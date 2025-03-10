@@ -1,5 +1,5 @@
 /*
- * Copyright 2022 Grabtaxi Holdings PTE LTD (GRAB)
+ * Copyright 2025 Grabtaxi Holdings PTE LTD (GRAB)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,22 +14,10 @@
  * limitations under the License.
  */
 
-package com.grab.grazel.android.sample
+package com.grab.grazel.bazel
 
-import org.junit.Assert.assertEquals
-import org.junit.Test
+// TODO(arun) Move all bazel type definitions here
 
-class FoolTest {
-
-    @Test
-    fun method1() {
-        println("Class 1 test 1")
-        assertEquals(4, 2 + 2)
-    }
-
-    @Test
-    fun method2() {
-        println("Class 1 test 2")
-        assertEquals(6, 4 + 2)
-    }
+enum class TestSize {
+    SMALL, MEDIUM, LARGE, ENORMOUS
 }

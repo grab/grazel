@@ -16,6 +16,7 @@
 
 package com.grab.grazel.migrate.kotlin
 
+import com.grab.grazel.bazel.TestSize
 import com.grab.grazel.bazel.rules.Visibility
 import com.grab.grazel.bazel.rules.kotlinTest
 import com.grab.grazel.bazel.starlark.BazelDependency
@@ -31,6 +32,7 @@ internal data class UnitTestTarget(
     override val sortKey: String = "1$name",
     val associates: List<BazelDependency> = emptyList(),
     val additionalSrcSets: List<String> = emptyList(),
+    val testSize: TestSize = TestSize.MEDIUM,
 ) : BazelBuildTarget {
     override fun statements(builder: StatementsBuilder) = builder {
         if (srcs.isNotEmpty()) {
@@ -39,6 +41,7 @@ internal data class UnitTestTarget(
                 srcsGlob = srcs,
                 additionalSrcSets = additionalSrcSets,
                 deps = deps,
+                testSize = testSize,
                 visibility = visibility,
                 associates = associates,
                 tags = tags

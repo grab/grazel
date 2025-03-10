@@ -34,6 +34,7 @@ import com.grab.grazel.gradle.variant.DefaultAndroidVariantDataSource
 import com.grab.grazel.gradle.variant.DefaultAndroidVariantsExtractor
 import com.grab.grazel.gradle.variant.DefaultVariantBuilder
 import com.grab.grazel.gradle.variant.MatchedVariant
+import com.grab.grazel.migrate.common.TestSizeCalculator
 import com.grab.grazel.util.doEvaluate
 import org.gradle.api.Project
 import org.gradle.kotlin.dsl.configure
@@ -112,13 +113,15 @@ class DefaultAndroidUnitTestDataExtractorTest : GrazelPluginTest() {
         val dependencyGraphs = FakeDependencyGraphs()
         val androidManifestParser: AndroidManifestParser = DefaultAndroidManifestParser()
 
+        val extension = GrazelExtension(rootProject)
         defaultAndroidUnitTestDataExtractor = DefaultAndroidUnitTestDataExtractor(
             dependenciesDataSource = dependenciesDataSource,
             dependencyGraphsProvider = { dependencyGraphs },
             androidManifestParser = androidManifestParser,
             variantDataSource = variantDataSource,
-            grazelExtension = GrazelExtension(rootProject),
-            gradleDependencyToBazelDependency = gradleDependencyToBazelDependency
+            grazelExtension = extension,
+            gradleDependencyToBazelDependency = gradleDependencyToBazelDependency,
+            testSizeCalculator = TestSizeCalculator(extension)
         )
     }
 

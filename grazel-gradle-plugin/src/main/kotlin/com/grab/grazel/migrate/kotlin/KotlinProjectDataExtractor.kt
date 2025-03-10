@@ -27,6 +27,11 @@ import com.grab.grazel.gradle.dependencies.DependencyGraphs
 import com.grab.grazel.gradle.dependencies.GradleDependencyToBazelDependency
 import com.grab.grazel.gradle.hasKotlinAndroidExtensions
 import com.grab.grazel.migrate.android.SourceSetType
+import com.grab.grazel.migrate.android.SourceSetType.ASSETS
+import com.grab.grazel.migrate.android.SourceSetType.JAVA
+import com.grab.grazel.migrate.android.SourceSetType.JAVA_KOTLIN
+import com.grab.grazel.migrate.android.SourceSetType.KOTLIN
+import com.grab.grazel.migrate.android.SourceSetType.RESOURCES
 import com.grab.grazel.migrate.android.filterSourceSetPaths
 import com.grab.grazel.migrate.android.lintConfigs
 import com.grab.grazel.migrate.dependencies.calculateDirectDependencyTags
@@ -60,15 +65,21 @@ internal class DefaultKotlinProjectDataExtractor
     override fun extract(project: Project): KotlinProjectData {
         val name = project.name
         val sourceSets = project.the<KotlinJvmProjectExtension>().sourceSets
-        val srcs = project.kotlinSources(sourceSets, SourceSetType.JAVA_KOTLIN).toList()
-        val resources = project.kotlinSources(sourceSets, SourceSetType.RESOURCES).toList()
+        val srcs = project.kotlinSources(sourceSets, JAVA_KOTLIN).toList()
+        val resources = project.kotlinSources(sourceSets, RESOURCES).toList()
 
         val deps = projectDependencyGraphs.directDependencies(
-            project, BuildGraphType(ConfigurationScope.BUILD)
+            project = project,
+            buildGraphType = BuildGraphType(ConfigurationScope.BUILD)
         ).map { dependent ->
-            gradleDependencyToBazelDependency.map(project, dependent, null)
+            gradleDependencyToBazelDependency.map(
+                project = project,
+                dependency = dependent,
+                matchedVariant = null
+            )
         } + dependenciesDataSource.collectMavenDeps(
-            project, BuildGraphType(ConfigurationScope.BUILD)
+            project = project,
+            buildGraphType = BuildGraphType(ConfigurationScope.BUILD)
         ) + project.androidJarDeps() + project.kotlinParcelizeDeps()
 
         val tags = if (kotlinExtension.enabledTransitiveReduction) {
@@ -93,15 +104,15 @@ internal class DefaultKotlinProjectDataExtractor
         sourceSets: NamedDomainObjectContainer<KotlinSourceSet>, sourceSetType: SourceSetType
     ): Sequence<String> {
         val sourceSetChoosers: KotlinSourceSet.() -> Sequence<File> = when (sourceSetType) {
-            SourceSetType.JAVA, SourceSetType.JAVA_KOTLIN, SourceSetType.KOTLIN -> {
+            JAVA, JAVA_KOTLIN, KOTLIN -> {
                 { kotlin.srcDirs.asSequence() }
             }
 
-            SourceSetType.RESOURCES -> {
+            RESOURCES -> {
                 { resources.srcDirs.asSequence() }
             }
 
-            SourceSetType.ASSETS -> {
+            ASSETS -> {
                 { emptySequence() }
             }
         }
