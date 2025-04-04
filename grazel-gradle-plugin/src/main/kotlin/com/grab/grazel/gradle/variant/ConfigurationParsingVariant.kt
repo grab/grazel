@@ -144,13 +144,13 @@ interface ConfigurationParsingVariant<VariantData> : Variant<VariantData> {
         classpath: Classpath
     ) {
         val objects = project.objects
-        apply {
-            isCanBeResolved = true
-            isVisible = false
-            isCanBeConsumed = false
-            resolutionStrategy.sortArtifacts(SortOrder.CONSUMER_FIRST)
-            description = "Resolved configuration for $name ${classpath.name} classpath"
-            setExtendsFrom(baseConfigurations)
+        isCanBeResolved = true
+        isVisible = false
+        isCanBeConsumed = false
+        resolutionStrategy.sortArtifacts(SortOrder.CONSUMER_FIRST)
+        description = "Resolved configuration for $name ${classpath.name} classpath"
+        setExtendsFrom(baseConfigurations)
+        try {
             attributes {
                 attribute(
                     AgpVersionAttr.ATTRIBUTE,
@@ -166,6 +166,10 @@ interface ConfigurationParsingVariant<VariantData> : Variant<VariantData> {
                     KotlinPlatformType.androidJvm
                 )
             }
+        } catch (e: IllegalArgumentException) {
+            // Can happen if the configuration was already resolved in the same gradle execution
+            // For example, running both assemble and migrateToBazel at the same time. Rare case but
+            // we catch it.
         }
     }
 
