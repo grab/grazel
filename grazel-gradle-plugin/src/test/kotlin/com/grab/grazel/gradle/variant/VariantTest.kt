@@ -385,11 +385,19 @@ class VariantTest {
                     Compile -> buildType.compileConfiguration
                     else -> buildType.runtimeConfiguration
                 }
-                val assertionMessage = "${classpath.name} configuration for " +
-                    "${buildType.name} merges all flavor sub configurations - ${variantType.name}"
-                assertEquals(2, configurations.size, assertionMessage)
+                val assertionMessage =
+                    "${classpath.name} configuration for ${buildType.name} merges all flavor sub configurations - ${variantType.name}"
+                assertEquals(1, configurations.size, assertionMessage)
                 assertTrue(assertionMessage) {
                     configurations.all { it.name.contains("debug", true) }
+                }
+                assertTrue(
+                    "${classpath.name} configuration for ${buildType.name} has gradle attributes set - ${variantType.name}"
+                ) {
+                    configurations.all {
+                        it.attributes.toString()
+                            .contains("org.gradle.jvm.environment=android, org.gradle.usage=java-runtime, org.jetbrains.kotlin.platform.type=androidJvm")
+                    }
                 }
             }
         }

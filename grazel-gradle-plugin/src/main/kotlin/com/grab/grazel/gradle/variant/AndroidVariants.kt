@@ -242,10 +242,10 @@ class AndroidDefaultVariant(
             }.filter {
                 val configName = it.name
                 when (variantType) {
-                    AndroidBuild -> !configName.isTest()
-                    AndroidTest -> configName.isAndroidTest()
-                    Test -> configName.isUnitTest()
-                    Lint -> configName.isLint()
+                    AndroidBuild -> !configName.isTest
+                    AndroidTest -> configName.isAndroidTest
+                    Test -> configName.isUnitTest
+                    Lint -> configName.isLint
                     JvmBuild -> error("Invalid variant type ${JvmBuild.name} for Android variant")
                 }
             }.toSet()

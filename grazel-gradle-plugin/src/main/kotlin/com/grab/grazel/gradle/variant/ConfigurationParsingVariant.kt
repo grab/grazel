@@ -13,7 +13,7 @@ import com.grab.grazel.gradle.variant.VariantType.Test
 import com.grab.grazel.util.addTo
 import org.gradle.api.artifacts.Configuration
 import org.gradle.api.artifacts.ConfigurationContainer
-import org.gradle.api.artifacts.ResolutionStrategy
+import org.gradle.api.artifacts.ResolutionStrategy.SortOrder
 import org.gradle.api.attributes.Usage
 import org.gradle.api.attributes.Usage.JAVA_RUNTIME
 import org.gradle.api.attributes.Usage.USAGE_ATTRIBUTE
@@ -108,39 +108,48 @@ interface ConfigurationParsingVariant<VariantData> : Variant<VariantData> {
     ): Set<Configuration> {
         if (variantType == Lint) return setOf(project.configurations["lintChecks"]!!)
 
-        val classpathConfiguration = project.configurations.maybeCreate(
-            "grazel${name.capitalize()}${classpath.name.capitalize()}Classpath",
-        )
+        val classpathName = "grazel${name.capitalize()}${classpath.name.capitalize()}Classpath"
+        val classpathConfiguration = project.configurations.maybeCreate(classpathName)
         val onlyConfig = when (classpath) {
             Runtime -> "RuntimeOnly"
             Compile -> "CompileOnly"
         }
         val metadata = "DependenciesMetadata"
-        val baseConfigurations = variantConfigurations.filter {
-            val configName = it.name.lowercase()
-            when (variantType) {
-                AndroidBuild -> configName == "${namePattern}${onlyConfig}$metadata".lowercase()
-                    || configName == "${namePattern}Implementation$metadata".lowercase()
+        val baseConfigurations = variantConfigurations
+            .filter {
+                val configName = it.name.lowercase()
+                when (variantType) {
+                    AndroidBuild -> configName == "${namePattern}${onlyConfig}$metadata".lowercase()
+                        || configName == "${namePattern}Implementation$metadata".lowercase()
 
-                AndroidTest -> configName == "androidTest${basePattern}${onlyConfig}$metadata".lowercase()
-                    || configName == "androidTest${basePattern}Implementation$metadata".lowercase()
+                    AndroidTest -> configName == "androidTest${basePattern}${onlyConfig}$metadata".lowercase()
+                        || configName == "androidTest${basePattern}Implementation$metadata".lowercase()
 
-                Test -> configName == "test${basePattern}${onlyConfig}$metadata".lowercase()
-                    || configName == "test${basePattern}Implementation$metadata".lowercase()
+                    Test -> configName == "test${basePattern}${onlyConfig}$metadata".lowercase()
+                        || configName == "test${basePattern}Implementation$metadata".lowercase()
 
-                Lint -> configName == "lintChecks".lowercase()
+                    Lint -> configName == "lintChecks".lowercase()
+                    else -> error("$JvmBuild invalid for build type runtime configuration")
+                }
+            }.flatMap { it.hierarchy }
+            .distinctBy { it.name }
+            .filter { !it.name.contains(metadata) }
 
-                else -> error("$JvmBuild invalid for build type runtime configuration")
-            }
-        }.flatMap { it.hierarchy }.distinctBy { it.name }.filter { !it.name.contains(metadata) }
+        classpathConfiguration.applyAttributes(baseConfigurations, classpath)
+        return setOf(classpathConfiguration)
+    }
 
+    private fun Configuration.applyAttributes(
+        baseConfigurations: List<Configuration>,
+        classpath: Classpath
+    ) {
         val objects = project.objects
-        classpathConfiguration.apply {
+        apply {
             isCanBeResolved = true
             isVisible = false
             isCanBeConsumed = false
-            resolutionStrategy.sortArtifacts(ResolutionStrategy.SortOrder.CONSUMER_FIRST)
-            description = "Resolved configuration for $namePattern ${classpath.name} classpath"
+            resolutionStrategy.sortArtifacts(SortOrder.CONSUMER_FIRST)
+            description = "Resolved configuration for $name ${classpath.name} classpath"
             setExtendsFrom(baseConfigurations)
             attributes {
                 attribute(
@@ -158,7 +167,6 @@ interface ConfigurationParsingVariant<VariantData> : Variant<VariantData> {
                 )
             }
         }
-        return setOf(classpathConfiguration)
     }
 
     /** Determines if a configuration name matches the current variant type. */
@@ -172,18 +180,20 @@ interface ConfigurationParsingVariant<VariantData> : Variant<VariantData> {
             (configName.contains("TestFixtures", true) && baseName in configName)
 
         return when (variantType) {
-            AndroidBuild -> !configName.isTest() && variantNameMatches
-            AndroidTest -> configName.isAndroidTest() && (variantNameMatches || androidTestMatches)
-            Test -> configName.isUnitTest() && (variantNameMatches || testMatches)
+            AndroidBuild -> !configName.isTest && variantNameMatches
+            AndroidTest -> configName.isAndroidTest && (variantNameMatches || androidTestMatches)
+            Test -> configName.isUnitTest && (variantNameMatches || testMatches)
             else -> variantNameMatches
         }
     }
 
-    fun String.isAndroidTest() = startsWith("androidTest") || contains("androidTest", true)
-
-    fun String.isUnitTest() = startsWith("test") || startsWith("kaptTest") || contains("UnitTest")
-
-    fun String.isLint() = startsWith("lintChecks")
-
-    fun String.isTest() = isAndroidTest() || isUnitTest() || contains("Test")
+    val String.isAndroidTest
+        get() = startsWith("androidTest")
+            || contains("androidTest", true)
+    val String.isUnitTest
+        get() = startsWith("test")
+            || startsWith("kaptTest")
+            || contains("UnitTest")
+    val String.isLint get() = startsWith("lintChecks")
+    val String.isTest get() = isAndroidTest || isUnitTest || contains("Test")
 }
