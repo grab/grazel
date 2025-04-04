@@ -171,6 +171,5 @@ dependencies {
     testImplementation libs.junit
     androidTestImplementation libs.androidx.test.junit
     androidTestImplementation libs.androidx.test.espresso.core
-    androidTestImplementation "androidx.compose.ui:ui-test-junit4:1.7.8"
     androidTestImplementation libs.androidx.monitor
 }
