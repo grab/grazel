@@ -1,6 +1,10 @@
 package com.grab.grazel.gradle.variant
 
+import com.android.build.api.attributes.AgpVersionAttr
+import com.android.builder.model.Version
 import com.grab.grazel.gradle.hasKapt
+import com.grab.grazel.gradle.variant.Classpath.Compile
+import com.grab.grazel.gradle.variant.Classpath.Runtime
 import com.grab.grazel.gradle.variant.VariantType.AndroidBuild
 import com.grab.grazel.gradle.variant.VariantType.AndroidTest
 import com.grab.grazel.gradle.variant.VariantType.JvmBuild
@@ -9,6 +13,14 @@ import com.grab.grazel.gradle.variant.VariantType.Test
 import com.grab.grazel.util.addTo
 import org.gradle.api.artifacts.Configuration
 import org.gradle.api.artifacts.ConfigurationContainer
+import org.gradle.api.artifacts.ResolutionStrategy
+import org.gradle.api.attributes.Usage
+import org.gradle.api.attributes.Usage.JAVA_RUNTIME
+import org.gradle.api.attributes.Usage.USAGE_ATTRIBUTE
+import org.gradle.api.attributes.java.TargetJvmEnvironment
+import org.gradle.api.attributes.java.TargetJvmEnvironment.TARGET_JVM_ENVIRONMENT_ATTRIBUTE
+import org.gradle.kotlin.dsl.named
+import org.jetbrains.kotlin.gradle.plugin.KotlinPlatformType
 
 /**
  * [Variant] extension that builds [Variant] configuration by parsing them via their names.
@@ -25,7 +37,7 @@ import org.gradle.api.artifacts.ConfigurationContainer
  * @see AndroidDefaultVariant
  * @see AndroidNonVariant
  */
-interface ConfigurationParsingVariant<T> : Variant<T> {
+interface ConfigurationParsingVariant<VariantData> : Variant<VariantData> {
 
     /**
      * The base name of [Variant], this is the actual name of the variant without any type
@@ -94,22 +106,59 @@ interface ConfigurationParsingVariant<T> : Variant<T> {
         namePattern: String = name,
         basePattern: String = baseName,
     ): Set<Configuration> {
-        val configSuffix = when (classpath) {
-            Classpath.Runtime -> "RuntimeOnly"
-            Classpath.Compile -> "CompileOnly"
-        }
-        val metadataSuffix = "DependenciesMetadata"
+        if (variantType == Lint) return setOf(project.configurations["lintChecks"]!!)
 
-        return variantConfigurations.filter { configuration ->
-            val configName = configuration.name.toLowerCase()
-            matchesClasspathConfiguration(
-                configName,
-                namePattern,
-                basePattern,
-                configSuffix,
-                metadataSuffix
-            )
-        }.toSet()
+        val classpathConfiguration = project.configurations.maybeCreate(
+            "grazel${name.capitalize()}${classpath.name.capitalize()}Classpath",
+        )
+        val onlyConfig = when (classpath) {
+            Runtime -> "RuntimeOnly"
+            Compile -> "CompileOnly"
+        }
+        val metadata = "DependenciesMetadata"
+        val baseConfigurations = variantConfigurations.filter {
+            val configName = it.name.lowercase()
+            when (variantType) {
+                AndroidBuild -> configName == "${namePattern}${onlyConfig}$metadata".lowercase()
+                    || configName == "${namePattern}Implementation$metadata".lowercase()
+
+                AndroidTest -> configName == "androidTest${basePattern}${onlyConfig}$metadata".lowercase()
+                    || configName == "androidTest${basePattern}Implementation$metadata".lowercase()
+
+                Test -> configName == "test${basePattern}${onlyConfig}$metadata".lowercase()
+                    || configName == "test${basePattern}Implementation$metadata".lowercase()
+
+                Lint -> configName == "lintChecks".lowercase()
+
+                else -> error("$JvmBuild invalid for build type runtime configuration")
+            }
+        }.flatMap { it.hierarchy }.distinctBy { it.name }.filter { !it.name.contains(metadata) }
+
+        val objects = project.objects
+        classpathConfiguration.apply {
+            isCanBeResolved = true
+            isVisible = false
+            isCanBeConsumed = false
+            resolutionStrategy.sortArtifacts(ResolutionStrategy.SortOrder.CONSUMER_FIRST)
+            description = "Resolved configuration for $namePattern ${classpath.name} classpath"
+            setExtendsFrom(baseConfigurations)
+            attributes {
+                attribute(
+                    AgpVersionAttr.ATTRIBUTE,
+                    objects.named<AgpVersionAttr>(Version.ANDROID_GRADLE_PLUGIN_VERSION)
+                )
+                attribute(
+                    TARGET_JVM_ENVIRONMENT_ATTRIBUTE,
+                    objects.named<TargetJvmEnvironment>(TargetJvmEnvironment.ANDROID)
+                )
+                attribute(USAGE_ATTRIBUTE, objects.named<Usage>(JAVA_RUNTIME))
+                attribute(
+                    KotlinPlatformType.attribute,
+                    KotlinPlatformType.androidJvm
+                )
+            }
+        }
+        return setOf(classpathConfiguration)
     }
 
     /** Determines if a configuration name matches the current variant type. */
@@ -127,43 +176,6 @@ interface ConfigurationParsingVariant<T> : Variant<T> {
             AndroidTest -> configName.isAndroidTest() && (variantNameMatches || androidTestMatches)
             Test -> configName.isUnitTest() && (variantNameMatches || testMatches)
             else -> variantNameMatches
-        }
-    }
-
-    /**
-     * Determines if a configuration name matches the classpathConfiguration for the current variant
-     * type.
-     */
-    private fun matchesClasspathConfiguration(
-        configName: String,
-        namePattern: String,
-        basePattern: String,
-        configSuffix: String,
-        metadataSuffix: String
-    ): Boolean {
-        return when (variantType) {
-            AndroidBuild -> {
-                val mainConfig = "${namePattern}${configSuffix}$metadataSuffix".toLowerCase()
-                val implConfig = "${namePattern}Implementation$metadataSuffix".toLowerCase()
-                configName == mainConfig || configName == implConfig
-            }
-
-            AndroidTest -> {
-                val testConfig =
-                    "androidTest${basePattern}${configSuffix}$metadataSuffix".toLowerCase()
-                val testImplConfig =
-                    "androidTest${basePattern}Implementation$metadataSuffix".toLowerCase()
-                configName == testConfig || configName == testImplConfig
-            }
-
-            Test -> {
-                val testConfig = "test${basePattern}${configSuffix}$metadataSuffix".toLowerCase()
-                val testImplConfig = "test${basePattern}Implementation$metadataSuffix".toLowerCase()
-                configName == testConfig || configName == testImplConfig
-            }
-
-            Lint -> configName == "lintChecks".toLowerCase()
-            else -> error("$JvmBuild invalid for build type runtime configuration")
         }
     }
 
