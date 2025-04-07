@@ -118,6 +118,7 @@ android_library(
 
 android_unit_test(
     name = "sample-android-library-demo-free-debug-test",
+    size = "medium",
     srcs = glob([
         "src/test/java/com/grab/grazel/android/sample/SampleViewModelTest.kt",
     ]),
@@ -140,6 +141,7 @@ android_unit_test(
 
 android_unit_test(
     name = "sample-android-library-demo-paid-debug-test",
+    size = "medium",
     srcs = glob([
         "src/test/java/com/grab/grazel/android/sample/SampleViewModelTest.kt",
     ]),
@@ -162,6 +164,7 @@ android_unit_test(
 
 android_unit_test(
     name = "sample-android-library-full-free-debug-test",
+    size = "medium",
     srcs = glob([
         "src/test/java/com/grab/grazel/android/sample/SampleViewModelTest.kt",
     ]),
@@ -184,6 +187,7 @@ android_unit_test(
 
 android_unit_test(
     name = "sample-android-library-full-paid-debug-test",
+    size = "medium",
     srcs = glob([
         "src/test/java/com/grab/grazel/android/sample/SampleViewModelTest.kt",
     ]),

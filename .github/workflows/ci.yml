@@ -38,7 +38,7 @@ jobs:
                 uses: ./.github/actions/bazel
                 with:
                     bazel-command: build //...
-                    cache-key: bazel-build
+                    cache-key: bazel-build-cache
     bazel-test:
         runs-on: ubuntu-latest
         steps:
@@ -50,7 +50,7 @@ jobs:
                 uses: ./.github/actions/bazel
                 with:
                     bazel-command: test --target_pattern_file=/tmp/targets
-                    cache-key: bazel-test
+                    cache-key: bazel-test-cache
 
     bazel-android-lint:
         runs-on: ubuntu-latest
@@ -60,7 +60,7 @@ jobs:
                 uses: ./.github/actions/bazel
                 with:
                     bazel-command: test //sample-android:sample-android-demo-free-debug.lint_test
-                    cache-key: bazel-lint
+                    cache-key: bazel-lint-cache
 
     grazel-build:
         runs-on: ubuntu-latest
