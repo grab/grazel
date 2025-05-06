@@ -131,7 +131,7 @@ interface ConfigurationParsingVariant<VariantData> : Variant<VariantData> {
                     Lint -> configName == "lintChecks".lowercase()
                     else -> error("$JvmBuild invalid for build type runtime configuration")
                 }
-            }.flatMap { it.hierarchy }
+            }.flatMap { it.extendsFrom }
             .distinctBy { it.name }
             .filter { !it.name.contains(metadata) }
 
