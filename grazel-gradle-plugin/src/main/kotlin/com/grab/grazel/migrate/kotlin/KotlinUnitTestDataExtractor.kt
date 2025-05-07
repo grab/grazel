@@ -34,7 +34,7 @@ import com.grab.grazel.migrate.dependencies.calculateDirectDependencyTags
 import dagger.Lazy
 import org.gradle.api.NamedDomainObjectContainer
 import org.gradle.api.Project
-import org.gradle.api.internal.artifacts.dependencies.DefaultSelfResolvingDependency
+import org.gradle.api.internal.artifacts.dependencies.DefaultFileCollectionDependency
 import org.gradle.kotlin.dsl.the
 import org.jetbrains.kotlin.gradle.dsl.KotlinJvmProjectExtension
 import org.jetbrains.kotlin.gradle.plugin.KotlinSourceSet
@@ -132,6 +132,6 @@ constructor(
 internal fun Project.hasAndroidJarDep(): Boolean {
     return configurations.findByName("compileOnly")
         ?.dependencies
-        ?.filterIsInstance<DefaultSelfResolvingDependency>()
+        ?.filterIsInstance<DefaultFileCollectionDependency>()
         ?.any { dep -> dep.files.any { it.name.contains("android.jar") } } == true
 }
