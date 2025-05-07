@@ -15,7 +15,7 @@
  */
 ext {
     groupId = "com.grab.grazel"
-    versionName = project.hasProperty("versionName") ? versionName : "0.4.2-alpha.07"
+    versionName = project.hasProperty("versionName") ? versionName : "0.4.2-alpha.08"
 
     website = "https://grab.github.io/Grazel/"
 }

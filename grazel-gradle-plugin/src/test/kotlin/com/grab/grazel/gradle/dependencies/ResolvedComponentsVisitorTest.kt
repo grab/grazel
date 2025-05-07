@@ -19,6 +19,7 @@ import org.gradle.api.internal.artifacts.result.DefaultResolvedVariantResult
 import org.gradle.internal.DisplayName
 import org.gradle.internal.component.external.model.DefaultModuleComponentIdentifier
 import org.gradle.internal.component.external.model.DefaultModuleComponentSelector
+import org.gradle.internal.component.external.model.ImmutableCapabilities
 import org.gradle.kotlin.dsl.configure
 import org.gradle.kotlin.dsl.dependencies
 import org.gradle.kotlin.dsl.repositories
@@ -138,7 +139,7 @@ class ResolvedComponentsVisitorTest {
                             override fun getCapitalizedDisplayName(): String = ""
                         },
                         /* attributes = */ FakeAttributeContainer(),
-                        /* capabilities = */ emptyList(),
+                        /* capabilities = */ ImmutableCapabilities.EMPTY,
                         /* externalVariant = */ null
                     ),
                     /* from = */ percentLayoutComponent
