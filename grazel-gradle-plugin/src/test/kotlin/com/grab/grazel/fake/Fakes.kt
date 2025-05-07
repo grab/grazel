@@ -36,7 +36,7 @@ fun fakeComponentResult(
     /* selectionReason = */ FakeComponentSelectionReason(),
     /* componentId = */ when {
         isProject -> DefaultProjectComponentIdentifier(
-            /* buildIdentifier = */ DefaultBuildIdentifier(""),
+            /* buildIdentifier = */ DefaultBuildIdentifier(Path.path("")),
             /* identityPath = */ Path.path("empty"),
             /* projectPath = */ Path.path("empty"),
             /* projectName = */ ""
@@ -49,7 +49,7 @@ fun fakeComponentResult(
             ), version
         )
     },
-    /* selectedVariants = */ emptyList(),
+    /* selectedVariants = */ emptyMap(),
     /* allVariants = */ emptyList(),
     /* repositoryName = */ ""
 ).apply(action)

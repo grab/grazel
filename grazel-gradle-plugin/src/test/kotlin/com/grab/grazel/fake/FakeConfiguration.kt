@@ -304,6 +304,14 @@ class FakeConfiguration(private val name: String = "") : Configuration {
         TODO("Not yet implemented")
     }
 
+    override fun setCanBeDeclared(allowed: Boolean) {
+        TODO("Not yet implemented")
+    }
+
+    override fun isCanBeDeclared(): Boolean {
+        TODO("Not yet implemented")
+    }
+
     override fun shouldResolveConsistentlyWith(versionsSource: Configuration): Configuration {
         TODO("Not yet implemented")
     }

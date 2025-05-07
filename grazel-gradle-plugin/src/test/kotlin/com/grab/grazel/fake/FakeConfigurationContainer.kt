@@ -27,7 +27,10 @@ import org.gradle.api.Namer
 import org.gradle.api.Rule
 import org.gradle.api.artifacts.Configuration
 import org.gradle.api.artifacts.ConfigurationContainer
+import org.gradle.api.artifacts.ConsumableConfiguration
 import org.gradle.api.artifacts.Dependency
+import org.gradle.api.artifacts.DependencyScopeConfiguration
+import org.gradle.api.artifacts.ResolvableConfiguration
 import org.gradle.api.provider.Provider
 import org.gradle.api.specs.Spec
 import java.util.*
@@ -189,6 +192,10 @@ class FakeConfigurationContainer(
         TODO("Not yet implemented")
     }
 
+    override fun named(nameFilter: Spec<String>): NamedDomainObjectSet<Configuration> {
+        TODO("Not yet implemented")
+    }
+
     override fun named(p0: String): NamedDomainObjectProvider<Configuration> {
         TODO("Not yet implemented")
     }
@@ -251,6 +258,39 @@ class FakeConfigurationContainer(
     }
 
     override fun detachedConfiguration(vararg p0: Dependency?): Configuration {
+        TODO("Not yet implemented")
+    }
+
+    override fun resolvable(name: String): NamedDomainObjectProvider<ResolvableConfiguration> {
+        TODO("Not yet implemented")
+    }
+
+    override fun resolvable(
+        name: String,
+        action: Action<in ResolvableConfiguration>
+    ): NamedDomainObjectProvider<ResolvableConfiguration> {
+        TODO("Not yet implemented")
+    }
+
+    override fun consumable(name: String): NamedDomainObjectProvider<ConsumableConfiguration> {
+        TODO("Not yet implemented")
+    }
+
+    override fun consumable(
+        name: String,
+        action: Action<in ConsumableConfiguration>
+    ): NamedDomainObjectProvider<ConsumableConfiguration> {
+        TODO("Not yet implemented")
+    }
+
+    override fun dependencyScope(name: String): NamedDomainObjectProvider<DependencyScopeConfiguration> {
+        TODO("Not yet implemented")
+    }
+
+    override fun dependencyScope(
+        name: String,
+        action: Action<in DependencyScopeConfiguration>
+    ): NamedDomainObjectProvider<DependencyScopeConfiguration> {
         TODO("Not yet implemented")
     }
 
