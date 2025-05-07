@@ -210,6 +210,10 @@ class FakeProject(private val name: String) : Project {
         TODO("Not yet implemented")
     }
 
+    override fun getBuildTreePath(): String {
+        TODO("Not yet implemented")
+    }
+
     override fun getDefaultTasks(): MutableList<String> {
         TODO("Not yet implemented")
     }

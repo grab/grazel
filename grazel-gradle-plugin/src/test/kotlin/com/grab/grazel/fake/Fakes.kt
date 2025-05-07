@@ -36,7 +36,7 @@ fun fakeComponentResult(
     /* selectionReason = */ FakeComponentSelectionReason(),
     /* componentId = */ when {
         isProject -> DefaultProjectComponentIdentifier(
-            /* buildIdentifier = */ DefaultBuildIdentifier(Path.path("")),
+            /* buildIdentifier = */ DefaultBuildIdentifier(Path.path(":empty")),
             /* identityPath = */ Path.path("empty"),
             /* projectPath = */ Path.path("empty"),
             /* projectName = */ ""
