@@ -24,6 +24,7 @@ import dagger.Module
         AndroidLibraryTargetBuilderModule::class,
         AndroidBinaryTargetBuilderModule::class,
         AndroidInstrumentationBinaryTargetBuilderModule::class,
+        AndroidTestTargetBuilderModule::class,
     ]
 )
 interface TargetModule
