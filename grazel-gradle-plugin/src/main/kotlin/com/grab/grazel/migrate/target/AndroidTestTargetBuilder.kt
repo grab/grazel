@@ -76,14 +76,14 @@ internal class AndroidTestTargetBuilder
 
         // Get variants from the TARGET app, not from the test module.
         //
-        // NOTE: Standalone test modules (com.android.test) don't have their own build types/flavors.
-        // They instrument the target app's variants. Therefore, we query variants from the target
-        // project and create one test target per app variant.
+        // NOTE: Standalone test modules (com.android.test) don't have their own build types/flavors
+        // in the traditional sense. They instrument the target app's variants. We query variants from
+        // the target project and create one test target per app variant.
         //
-        // TODO: Currently, we only extract sources from src/main/ in the test module. If the test
-        // module has variant-specific source sets (e.g., src/variantA/, src/variantB/), those are
-        // not currently extracted. Future enhancement: Check if test module has variant-specific
-        // source sets matching the app variants and merge them appropriately.
+        // For each app variant, the extractor will attempt to find a matching test module variant
+        // based on flavors (e.g., if app has "gpsPaxDebug", it looks for "gpsPax*" in test module).
+        // This allows test modules to have flavor-specific test code (e.g., src/gps/, src/hms/)
+        // while always using debug build type (tests are always debuggable).
         variantMatcher.matchedVariants(
             targetProject,
             BUILD

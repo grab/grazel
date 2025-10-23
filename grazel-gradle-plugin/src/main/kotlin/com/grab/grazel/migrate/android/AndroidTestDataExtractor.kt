@@ -207,22 +207,28 @@ constructor(
         val targetVariant = resolution.targetVariant
 
         // Extract test module source sets
-        // Note: We need to get the test module's own variant, not use the app's variant.
-        // Test modules typically have a single "main" variant with no flavors/build types.
+        // Strategy: Find a test module variant that matches the app's flavor combination.
+        // Test modules are always debug (can't have release tests), but may have flavor-specific
+        // source sets (e.g., src/gpsFlavor/, src/hmsFlavor/) for flavor-specific test code.
         val testModuleVariants = androidVariantDataSource.getMigratableBuildVariants(project)
-        val testModuleVariant = testModuleVariants.firstOrNull()
+
+        // Try to find a test variant matching the app's flavors (ignoring build type since tests are always debug)
+        val appFlavors = matchedVariant.flavors
+        val matchingTestVariant = testModuleVariants.firstOrNull { testVariant ->
+            // Match if the test variant has the same flavors as the app variant
+            testVariant.productFlavors.map { it.name }.toSet() == appFlavors
+        }
+
+        // Fall back to first variant if no flavor match (common case: test module has no flavors)
+        val testModuleVariant = matchingTestVariant ?: testModuleVariants.firstOrNull()
             ?: throw IllegalStateException("No build variants found for test module ${project.path}")
 
         val migratableSourceSets = testModuleVariant.sourceSets
             .filterIsInstance<AndroidSourceSet>()
             .toList()
 
-        // Extract sources using BUILD configuration scope (not ANDROID_TEST)
-        // TODO: This currently extracts sources from src/main/ only. If the test module defines
-        // variant-specific source sets (e.g., src/debugTest/, src/releaseTest/), those are not
-        // currently included. The matchedVariant parameter represents the target app's variant,
-        // not the test module's variant. Future enhancement: Query test module for variant-specific
-        // source sets that correspond to the target app's variant and merge them.
+        // Extract sources - this will include src/main/ and any flavor-specific sources (e.g., src/gps/)
+        // that match the test module's variant
         val srcs = project.androidSources(migratableSourceSets, SourceSetType.JAVA_KOTLIN).toList()
 
         // Extract resources and assets
