@@ -33,6 +33,7 @@ import com.grab.grazel.gradle.variant.getMigratableBuildVariants
 import com.grab.grazel.gradle.variant.nameSuffix
 import dagger.Lazy
 import org.gradle.api.Project
+import org.gradle.api.artifacts.ProjectDependency
 import org.gradle.kotlin.dsl.findByType
 import org.gradle.kotlin.dsl.getByType
 import javax.inject.Inject
@@ -257,17 +258,35 @@ constructor(
         }
 
         // Extract dependencies
-        // For test modules, dependencies come from the "implementation" configuration.
-        // We use the app's matched variant for generating dependency name suffixes.
-        val deps = projectDependencyGraphs.directDependencies(
-            project = project,
-            buildGraphType = BuildGraphType(ConfigurationScope.BUILD, targetVariant.variant)
-        ).map { dependency ->
-            gradleDependencyToBazelDependency.map(project, dependency, matchedVariant)
-        } + dependenciesDataSource.collectMavenDeps(
-            project = project,
-            buildGraphType = BuildGraphType(ConfigurationScope.BUILD, targetVariant.variant)
-        )
+        // For test modules, we query the "implementation" configuration directly.
+        // We can't use DependencyGraphs with the app's variant because the graph is project-specific.
+        // Instead, we get dependencies from the test project's Gradle configurations.
+        val implementationConfig = project.configurations.findByName("implementation")
+        val deps = if (implementationConfig != null) {
+            implementationConfig.dependencies.mapNotNull { dep ->
+                when {
+                    dep is ProjectDependency -> {
+                        // Project dependency - map to Bazel target with app variant suffix
+                        val depProject = dep.dependencyProject
+                        BazelDependency.ProjectDependency(
+                            dependencyProject = depProject,
+                            suffix = matchedVariant.nameSuffix
+                        )
+                    }
+                    else -> {
+                        // External dependency - map to Maven coordinate
+                        dep.group?.let { group ->
+                            BazelDependency.MavenDependency(
+                                group = group,
+                                name = dep.name
+                            )
+                        }
+                    }
+                }
+            }
+        } else {
+            emptyList()
+        }
 
         // Extract debug key from TARGET project (not test project)
         val debugKey = keyStoreExtractor.extract(
