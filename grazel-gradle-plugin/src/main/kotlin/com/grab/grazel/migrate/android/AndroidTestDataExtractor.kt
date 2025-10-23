@@ -207,7 +207,13 @@ constructor(
         val targetVariant = resolution.targetVariant
 
         // Extract test module source sets
-        val migratableSourceSets = matchedVariant.variant.sourceSets
+        // Note: We need to get the test module's own variant, not use the app's variant.
+        // Test modules typically have a single "main" variant with no flavors/build types.
+        val testModuleVariants = androidVariantDataSource.getMigratableBuildVariants(project)
+        val testModuleVariant = testModuleVariants.firstOrNull()
+            ?: throw IllegalStateException("No build variants found for test module ${project.path}")
+
+        val migratableSourceSets = testModuleVariant.sourceSets
             .filterIsInstance<AndroidSourceSet>()
             .toList()
 
@@ -239,23 +245,23 @@ constructor(
         // Extract test application ID (if set, otherwise defaults to targetPackage.test)
         val testApplicationId = testExtension.defaultConfig.applicationId
 
-        // Build manifest values for the test module using BUILD scope
-        val manifestValues = manifestValuesBuilder.build(
-            project = project,
-            matchedVariant = matchedVariant,
-            defaultConfig = testExtension.defaultConfig,
-            configurationScope = ConfigurationScope.BUILD
-        )
+        // Build manifest values for the test module
+        // Note: Test modules have simple manifests - we just need the test applicationId
+        val manifestValues = buildMap<String, String> {
+            testApplicationId?.let { put("applicationId", it) }
+        }
 
         // Extract dependencies using BUILD scope (not ANDROID_TEST)
+        // Use the test module's own variant for dependency resolution
         val deps = projectDependencyGraphs.directDependencies(
             project = project,
-            buildGraphType = BuildGraphType(ConfigurationScope.BUILD, matchedVariant.variant)
+            buildGraphType = BuildGraphType(ConfigurationScope.BUILD, testModuleVariant)
         ).map { dependency ->
+            // Map dependencies using the app's variant for name suffix generation
             gradleDependencyToBazelDependency.map(project, dependency, matchedVariant)
         } + dependenciesDataSource.collectMavenDeps(
             project = project,
-            buildGraphType = BuildGraphType(ConfigurationScope.BUILD, matchedVariant.variant)
+            buildGraphType = BuildGraphType(ConfigurationScope.BUILD, testModuleVariant)
         )
 
         // Extract debug key from TARGET project (not test project)
