@@ -212,6 +212,11 @@ constructor(
             .toList()
 
         // Extract sources using BUILD configuration scope (not ANDROID_TEST)
+        // TODO: This currently extracts sources from src/main/ only. If the test module defines
+        // variant-specific source sets (e.g., src/debugTest/, src/releaseTest/), those are not
+        // currently included. The matchedVariant parameter represents the target app's variant,
+        // not the test module's variant. Future enhancement: Query test module for variant-specific
+        // source sets that correspond to the target app's variant and merge them.
         val srcs = project.androidSources(migratableSourceSets, SourceSetType.JAVA_KOTLIN).toList()
 
         // Extract resources and assets

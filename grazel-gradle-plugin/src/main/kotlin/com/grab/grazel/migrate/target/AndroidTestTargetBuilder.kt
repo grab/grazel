@@ -74,7 +74,16 @@ internal class AndroidTestTargetBuilder
         val targetProject = project.rootProject.findProject(targetProjectPath)
             ?: error("Target project $targetProjectPath not found for test module ${project.path}")
 
-        // Get variants from the TARGET app, not from the test module
+        // Get variants from the TARGET app, not from the test module.
+        //
+        // NOTE: Standalone test modules (com.android.test) don't have their own build types/flavors.
+        // They instrument the target app's variants. Therefore, we query variants from the target
+        // project and create one test target per app variant.
+        //
+        // TODO: Currently, we only extract sources from src/main/ in the test module. If the test
+        // module has variant-specific source sets (e.g., src/variantA/, src/variantB/), those are
+        // not currently extracted. Future enhancement: Check if test module has variant-specific
+        // source sets matching the app variants and merge them appropriately.
         variantMatcher.matchedVariants(
             targetProject,
             BUILD
