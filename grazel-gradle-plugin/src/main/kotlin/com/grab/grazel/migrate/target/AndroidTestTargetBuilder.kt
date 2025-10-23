@@ -52,7 +52,8 @@ internal interface AndroidTestTargetBuilderModule {
  *
  * This builder is responsible for:
  * - Identifying com.android.test projects
- * - Extracting test data for matched variants
+ * - Getting variants from the target app (not the test module itself)
+ * - Extracting test data for each app variant
  * - Converting the data to Bazel build targets
  */
 @Singleton
@@ -63,8 +64,19 @@ internal class AndroidTestTargetBuilder
 ) : TargetBuilder {
 
     override fun build(project: Project) = buildList {
+        // Get the target app project from TestExtension
+        val testExtension = project.extensions.findByType(com.android.build.gradle.TestExtension::class.java)
+            ?: error("${project.path} has com.android.test plugin but TestExtension not found")
+
+        val targetProjectPath = testExtension.targetProjectPath
+            ?: error("${project.path} is a com.android.test module but targetProjectPath is not set")
+
+        val targetProject = project.rootProject.findProject(targetProjectPath)
+            ?: error("Target project $targetProjectPath not found for test module ${project.path}")
+
+        // Get variants from the TARGET app, not from the test module
         variantMatcher.matchedVariants(
-            project,
+            targetProject,
             BUILD
         ).forEach { matchedVariant ->
             val androidTestData = androidTestDataExtractor.extract(
