@@ -207,28 +207,27 @@ constructor(
         val targetVariant = resolution.targetVariant
 
         // Extract test module source sets
-        // Strategy: Find a test module variant that matches the app's flavor combination.
-        // Test modules are always debug (can't have release tests), but may have flavor-specific
-        // source sets (e.g., src/gpsFlavor/, src/hmsFlavor/) for flavor-specific test code.
-        val testModuleVariants = androidVariantDataSource.getMigratableBuildVariants(project)
+        // For com.android.test modules, we don't query via androidVariantDataSource because
+        // TestExtension doesn't expose variants the same way AppExtension/LibraryExtension do.
+        // Instead, we directly access source sets from the extension.
+        //
+        // Strategy: Access all source sets from TestExtension and filter by the app's flavor names
+        // to find flavor-specific test sources (e.g., src/gps/, src/hms/)
+        val allTestSources = testExtension.sourceSets
 
-        // Try to find a test variant matching the app's flavors (ignoring build type since tests are always debug)
+        // Filter source sets to include:
+        // 1. "main" - always included
+        // 2. Flavor-specific (e.g., "gps", "hms") if they match the app's flavors
         val appFlavors = matchedVariant.flavors
-        val matchingTestVariant = testModuleVariants.firstOrNull { testVariant ->
-            // Match if the test variant has the same flavors as the app variant
-            testVariant.productFlavors.map { it.name }.toSet() == appFlavors
-        }
+        val relevantSourceSets = allTestSources.filter { sourceSet ->
+            sourceSet.name == "main" || sourceSet.name in appFlavors
+        }.toList()
 
-        // Fall back to first variant if no flavor match (common case: test module has no flavors)
-        val testModuleVariant = matchingTestVariant ?: testModuleVariants.firstOrNull()
-            ?: throw IllegalStateException("No build variants found for test module ${project.path}")
-
-        val migratableSourceSets = testModuleVariant.sourceSets
+        val migratableSourceSets = relevantSourceSets
             .filterIsInstance<AndroidSourceSet>()
             .toList()
 
         // Extract sources - this will include src/main/ and any flavor-specific sources (e.g., src/gps/)
-        // that match the test module's variant
         val srcs = project.androidSources(migratableSourceSets, SourceSetType.JAVA_KOTLIN).toList()
 
         // Extract resources and assets
@@ -257,17 +256,17 @@ constructor(
             testApplicationId?.let { put("applicationId", it) }
         }
 
-        // Extract dependencies using BUILD scope (not ANDROID_TEST)
-        // Use the test module's own variant for dependency resolution
+        // Extract dependencies
+        // For test modules, dependencies come from the "implementation" configuration.
+        // We use the app's matched variant for generating dependency name suffixes.
         val deps = projectDependencyGraphs.directDependencies(
             project = project,
-            buildGraphType = BuildGraphType(ConfigurationScope.BUILD, testModuleVariant)
+            buildGraphType = BuildGraphType(ConfigurationScope.BUILD, targetVariant.variant)
         ).map { dependency ->
-            // Map dependencies using the app's variant for name suffix generation
             gradleDependencyToBazelDependency.map(project, dependency, matchedVariant)
         } + dependenciesDataSource.collectMavenDeps(
             project = project,
-            buildGraphType = BuildGraphType(ConfigurationScope.BUILD, testModuleVariant)
+            buildGraphType = BuildGraphType(ConfigurationScope.BUILD, targetVariant.variant)
         )
 
         // Extract debug key from TARGET project (not test project)
