@@ -74,19 +74,13 @@ constructor(
         targetProjectPath: String,
         testVariant: MatchedVariant
     ): TargetProjectResolution {
-        // Find the target project in the Gradle project graph
         val targetProject = testProject.rootProject.findProject(targetProjectPath)
             ?: return TargetProjectResolution.ProjectNotFound(targetProjectPath)
 
-        // Verify it's an Android project
         if (!targetProject.isAndroid) {
             return TargetProjectResolution.NotAndroidProject(targetProject)
         }
 
-        // Match the variant in the target project
-        // testVariant.variantName contains the APP's variant name (e.g., "gpsPaxDebug")
-        // even if the test module only has simple variants like "debug".
-        // The VariantMatcher handles the flavor/buildType mapping.
         val targetVariants = variantMatcher.matchedVariants(
             project = targetProject,
             scope = ConfigurationScope.BUILD
@@ -204,8 +198,6 @@ constructor(
 
         val resolution = targetResolution as TargetProjectResolution.Success
 
-        // Extract test module data using the SAME pattern as library modules
-        // The test module has its own variants (from TestExtension) and we use those
         return project.extract(
             matchedVariant = matchedVariant,
             extension = testExtension,
@@ -218,8 +210,6 @@ constructor(
         extension: TestExtension,
         targetResolution: TargetProjectResolution.Success
     ): AndroidTestData {
-        // Extract dependencies using the SAME approach as library modules
-        // Pass the test module's variant to BuildGraphType
         val allDeps = projectDependencyGraphs
             .directDependencies(
                 project = this,
@@ -239,26 +229,21 @@ constructor(
             dep.dependencyProject.path == targetResolution.targetProject.path
         } + targetResolution.associateDependency
 
-        // Extract source sets from the test module's variant (SAME as library modules)
         val migratableSourceSets = matchedVariant.variant.sourceSets
             .filterIsInstance<AndroidSourceSet>()
             .toList()
 
-        // Extract sources, resources, assets using variant's source sets
         val srcs = androidSources(migratableSourceSets, SourceSetType.JAVA_KOTLIN).toList()
         val resources = androidSources(migratableSourceSets, SourceSetType.RESOURCES).toList()
         val assets = androidSources(migratableSourceSets, SourceSetType.ASSETS).toList()
 
-        // Extract custom package from test project's manifest
         val customPackage = androidManifestParser.parsePackageName(
             extension,
             migratableSourceSets
         ) ?: ""
 
-        // Extract target package from the target app's variant
         val targetPackage = targetResolution.targetVariant.variant.applicationId
 
-        // Extract test instrumentation runner
         val testInstrumentationRunner = extension.defaultConfig.testInstrumentationRunner
             ?: "androidx.test.runner.AndroidJUnitRunner" // Default runner
 
@@ -270,7 +255,6 @@ constructor(
             testApplicationId?.let { put("applicationId", it) }
         }
 
-        // Extract debug key from TARGET project (not test project)
         val debugKey = keyStoreExtractor.extract(
             rootProject = targetResolution.targetProject.rootProject,
             variant = androidVariantDataSource.getMigratableBuildVariants(targetResolution.targetProject).firstOrNull()
