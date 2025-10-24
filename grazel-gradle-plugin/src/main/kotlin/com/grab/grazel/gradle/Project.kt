@@ -46,6 +46,7 @@ val Project.isAndroid
     get() = isAndroidApplication
         || isAndroidLibrary
         || isAndroidDynamicFeature
+        || isAndroidTest
 
 val Project.hasDatabinding: Boolean
     get() = extensions.findByType<BaseExtension>()

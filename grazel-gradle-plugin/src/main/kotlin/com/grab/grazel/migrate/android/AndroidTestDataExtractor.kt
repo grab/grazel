@@ -16,7 +16,6 @@
 
 package com.grab.grazel.migrate.android
 
-import com.android.build.gradle.BaseExtension
 import com.android.build.gradle.TestExtension
 import com.android.build.gradle.api.AndroidSourceSet
 import com.grab.grazel.bazel.starlark.BazelDependency
@@ -33,8 +32,6 @@ import com.grab.grazel.gradle.variant.getMigratableBuildVariants
 import com.grab.grazel.gradle.variant.nameSuffix
 import dagger.Lazy
 import org.gradle.api.Project
-import org.gradle.api.artifacts.ProjectDependency
-import org.gradle.kotlin.dsl.findByType
 import org.gradle.kotlin.dsl.getByType
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -87,21 +84,23 @@ constructor(
         }
 
         // Match the variant in the target project
-        // We use the same variant name/flavor as the test variant
+        // testVariant.variantName contains the APP's variant name (e.g., "gpsPaxDebug")
+        // even if the test module only has simple variants like "debug".
+        // The VariantMatcher handles the flavor/buildType mapping.
         val targetVariants = variantMatcher.matchedVariants(
             project = targetProject,
             scope = ConfigurationScope.BUILD
         )
 
-        // Try to find a matching variant - prefer exact match by name
+        // Match by the APP's variant name, not the test module's actual variant name
         val targetVariant = targetVariants.firstOrNull { matchedVariant ->
-            matchedVariant.variant.name == testVariant.variant.name
-        } ?: targetVariants.firstOrNull() // Fallback to first available variant
+            matchedVariant.variantName == testVariant.variantName
+        }
 
         if (targetVariant == null) {
             return TargetProjectResolution.VariantNotMatched(
                 targetProject = targetProject,
-                requestedVariant = testVariant.variant.name
+                requestedVariant = testVariant.variantName
             )
         }
 
@@ -204,105 +203,88 @@ constructor(
         }
 
         val resolution = targetResolution as TargetProjectResolution.Success
-        val targetProject = resolution.targetProject
-        val targetVariant = resolution.targetVariant
 
-        // Extract test module source sets
-        // For com.android.test modules, we don't query via androidVariantDataSource because
-        // TestExtension doesn't expose variants the same way AppExtension/LibraryExtension do.
-        // Instead, we directly access source sets from the extension.
-        //
-        // Strategy: Access all source sets from TestExtension and filter by the app's flavor names
-        // to find flavor-specific test sources (e.g., src/gps/, src/hms/)
-        val allTestSources = testExtension.sourceSets
+        // Extract test module data using the SAME pattern as library modules
+        // The test module has its own variants (from TestExtension) and we use those
+        return project.extract(
+            matchedVariant = matchedVariant,
+            extension = testExtension,
+            targetResolution = resolution
+        )
+    }
 
-        // Filter source sets to include:
-        // 1. "main" - always included
-        // 2. Flavor-specific (e.g., "gps", "hms") if they match the app's flavors
-        val appFlavors = matchedVariant.flavors
-        val relevantSourceSets = allTestSources.filter { sourceSet ->
-            sourceSet.name == "main" || sourceSet.name in appFlavors
-        }.toList()
+    private fun Project.extract(
+        matchedVariant: MatchedVariant,
+        extension: TestExtension,
+        targetResolution: TargetProjectResolution.Success
+    ): AndroidTestData {
+        // Extract dependencies using the SAME approach as library modules
+        // Pass the test module's variant to BuildGraphType
+        val allDeps = projectDependencyGraphs
+            .directDependencies(
+                project = this,
+                buildGraphType = BuildGraphType(ConfigurationScope.BUILD, matchedVariant.variant)
+            ).map { dependency ->
+                gradleDependencyToBazelDependency.map(this, dependency, matchedVariant)
+            } +
+            dependenciesDataSource.collectMavenDeps(
+                this,
+                BuildGraphType(ConfigurationScope.BUILD, matchedVariant.variant)
+            )
 
-        val migratableSourceSets = relevantSourceSets
+        // Filter out the target app BINARY from dependencies and add the app LIBRARY instead
+        // The app binary is specified via 'instruments', but we need the app library in deps
+        val deps = allDeps.filterNot { dep ->
+            dep is BazelDependency.ProjectDependency &&
+            dep.dependencyProject.path == targetResolution.targetProject.path
+        } + targetResolution.associateDependency
+
+        // Extract source sets from the test module's variant (SAME as library modules)
+        val migratableSourceSets = matchedVariant.variant.sourceSets
             .filterIsInstance<AndroidSourceSet>()
             .toList()
 
-        // Extract sources - this will include src/main/ and any flavor-specific sources (e.g., src/gps/)
-        val srcs = project.androidSources(migratableSourceSets, SourceSetType.JAVA_KOTLIN).toList()
-
-        // Extract resources and assets
-        val resources = project.androidSources(migratableSourceSets, SourceSetType.RESOURCES).toList()
-        val assets = project.androidSources(migratableSourceSets, SourceSetType.ASSETS).toList()
+        // Extract sources, resources, assets using variant's source sets
+        val srcs = androidSources(migratableSourceSets, SourceSetType.JAVA_KOTLIN).toList()
+        val resources = androidSources(migratableSourceSets, SourceSetType.RESOURCES).toList()
+        val assets = androidSources(migratableSourceSets, SourceSetType.ASSETS).toList()
 
         // Extract custom package from test project's manifest
         val customPackage = androidManifestParser.parsePackageName(
-            testExtension,
+            extension,
             migratableSourceSets
         ) ?: ""
 
         // Extract target package from the target app's variant
-        val targetPackage = targetVariant.variant.applicationId
+        val targetPackage = targetResolution.targetVariant.variant.applicationId
 
         // Extract test instrumentation runner
-        val testInstrumentationRunner = testExtension.defaultConfig.testInstrumentationRunner
+        val testInstrumentationRunner = extension.defaultConfig.testInstrumentationRunner
             ?: "androidx.test.runner.AndroidJUnitRunner" // Default runner
 
         // Extract test application ID (if set, otherwise defaults to targetPackage.test)
-        val testApplicationId = testExtension.defaultConfig.applicationId
+        val testApplicationId = extension.defaultConfig.applicationId
 
         // Build manifest values for the test module
-        // Note: Test modules have simple manifests - we just need the test applicationId
         val manifestValues = buildMap<String, String> {
             testApplicationId?.let { put("applicationId", it) }
         }
 
-        // Extract dependencies
-        // For test modules, we query the "implementation" configuration directly.
-        // We can't use DependencyGraphs with the app's variant because the graph is project-specific.
-        // Instead, we get dependencies from the test project's Gradle configurations.
-        val implementationConfig = project.configurations.findByName("implementation")
-        val deps = if (implementationConfig != null) {
-            implementationConfig.dependencies.mapNotNull { dep ->
-                when {
-                    dep is ProjectDependency -> {
-                        // Project dependency - map to Bazel target with app variant suffix
-                        val depProject = dep.dependencyProject
-                        BazelDependency.ProjectDependency(
-                            dependencyProject = depProject,
-                            suffix = matchedVariant.nameSuffix
-                        )
-                    }
-                    else -> {
-                        // External dependency - map to Maven coordinate
-                        dep.group?.let { group ->
-                            BazelDependency.MavenDependency(
-                                group = group,
-                                name = dep.name
-                            )
-                        }
-                    }
-                }
-            }
-        } else {
-            emptyList()
-        }
-
         // Extract debug key from TARGET project (not test project)
         val debugKey = keyStoreExtractor.extract(
-            rootProject = targetProject.rootProject,
-            variant = androidVariantDataSource.getMigratableBuildVariants(targetProject).firstOrNull()
+            rootProject = targetResolution.targetProject.rootProject,
+            variant = androidVariantDataSource.getMigratableBuildVariants(targetResolution.targetProject).firstOrNull()
         )
 
         return AndroidTestData(
-            name = "${project.name}${matchedVariant.nameSuffix}",
+            name = "${name}${matchedVariant.nameSuffix}",
             srcs = srcs,
             deps = deps.sorted(),
-            instruments = resolution.instrumentsDependency,
+            instruments = targetResolution.instrumentsDependency,
             customPackage = customPackage,
             targetPackage = targetPackage,
             testInstrumentationRunner = testInstrumentationRunner,
-            manifestValues = manifestValues.mapValues { it.value ?: "" },
+            manifestValues = manifestValues,
             debugKey = debugKey,
             resources = resources,
             assets = assets,

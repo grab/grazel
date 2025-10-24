@@ -19,6 +19,7 @@ package com.grab.grazel.migrate.target
 import com.grab.grazel.gradle.ConfigurationScope
 import com.grab.grazel.gradle.isAndroid
 import com.grab.grazel.gradle.isAndroidApplication
+import com.grab.grazel.gradle.isAndroidTest
 import com.grab.grazel.gradle.variant.VariantMatcher
 import com.grab.grazel.migrate.BazelTarget
 import com.grab.grazel.migrate.TargetBuilder
@@ -83,7 +84,7 @@ constructor(
     }
 
     override fun canHandle(project: Project): Boolean = with(project) {
-        isAndroid && !isAndroidApplication
+        isAndroid && !isAndroidApplication && !isAndroidTest
     }
 }
 

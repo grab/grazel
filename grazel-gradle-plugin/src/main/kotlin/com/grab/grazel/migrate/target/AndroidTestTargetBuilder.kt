@@ -64,28 +64,11 @@ internal class AndroidTestTargetBuilder
 ) : TargetBuilder {
 
     override fun build(project: Project) = buildList {
-        // Get the target app project from TestExtension
-        val testExtension = project.extensions.findByType(com.android.build.gradle.TestExtension::class.java)
-            ?: error("${project.path} has com.android.test plugin but TestExtension not found")
-
-        val targetProjectPath = testExtension.targetProjectPath
-            ?: error("${project.path} is a com.android.test module but targetProjectPath is not set")
-
-        val targetProject = project.rootProject.findProject(targetProjectPath)
-            ?: error("Target project $targetProjectPath not found for test module ${project.path}")
-
-        // Get variants from the TARGET app, not from the test module.
-        //
-        // NOTE: Standalone test modules (com.android.test) don't have their own build types/flavors
-        // in the traditional sense. They instrument the target app's variants. We query variants from
-        // the target project and create one test target per app variant.
-        //
-        // For each app variant, the extractor will attempt to find a matching test module variant
-        // based on flavors (e.g., if app has "gpsPaxDebug", it looks for "gpsPax*" in test module).
-        // This allows test modules to have flavor-specific test code (e.g., src/gps/, src/hms/)
-        // while always using debug build type (tests are always debuggable).
+        // Get variants from the TEST MODULE itself, not the target app
+        // Test modules have their own build variants (build types × flavors) just like
+        // library modules. The test variant needs to match the target app's variant.
         variantMatcher.matchedVariants(
-            targetProject,
+            project,  // Test project, not target project
             BUILD
         ).forEach { matchedVariant ->
             val androidTestData = androidTestDataExtractor.extract(
