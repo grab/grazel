@@ -35,14 +35,18 @@ internal data class AndroidTestTarget(
     override val tags: List<String>,
     override val visibility: Visibility,
     override val sortKey: String = "2$name",
+    val associates: List<BazelDependency>,
     val instruments: BazelDependency,
     val customPackage: String,
     val targetPackage: String,
     val testInstrumentationRunner: String,
-    val manifestValues: Map<String, String>,
+    val manifestValues: Map<String, String?>,
     val debugKey: String?,
     val resources: List<String>,
+    val resourceFiles: List<String>,
+    val resourceStripPrefix: String?,
     val assets: List<String>,
+    val compose: Boolean,
 ) : BazelBuildTarget {
 
     override fun statements(builder: StatementsBuilder) = builder {
@@ -50,13 +54,17 @@ internal data class AndroidTestTarget(
             name = name,
             srcsGlob = srcs,
             deps = deps,
+            associates = associates,
             customPackage = customPackage,
             targetPackage = targetPackage,
             debugKey = debugKey,
             instruments = instruments,
             manifestValues = manifestValues,
             resources = resources,
+            resourceStripPrefix = resourceStripPrefix,
+            resourceFiles = buildResFiles(resourceFiles),
             testInstrumentationRunner = testInstrumentationRunner,
+            enableCompose = compose,
         )
     }
 }
@@ -70,6 +78,7 @@ internal fun AndroidTestData.toTarget() = AndroidTestTarget(
     srcs = srcs,
     tags = tags,
     visibility = Visibility.Public, // Always use public visibility
+    associates = associates,
     instruments = instruments,
     customPackage = customPackage,
     targetPackage = targetPackage,
@@ -77,5 +86,8 @@ internal fun AndroidTestData.toTarget() = AndroidTestTarget(
     manifestValues = manifestValues,
     debugKey = debugKey,
     resources = resources,
+    resourceFiles = resourceFiles,
+    resourceStripPrefix = resourceStripPrefix,
     assets = assets,
+    compose = compose,
 )

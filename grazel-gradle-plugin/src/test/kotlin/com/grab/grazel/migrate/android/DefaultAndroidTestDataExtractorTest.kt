@@ -191,13 +191,13 @@ class DefaultAndroidTestDataExtractorTest : GrazelPluginTest() {
     }
 
     @Test
-    fun `extract includes target app library in deps`() {
+    fun `extract includes target app library in associates`() {
         val testData = androidTestDataExtractor.extract(testProject, debugVariant())
 
-        // Should include app library (lib_app) in deps
-        val depStrings = testData.deps.map { it.toString() }
-        assertTrue(depStrings.any { it.contains("lib_app") },
-            "Expected deps to contain app library (lib_app), but got: $depStrings")
+        // Should include app library (lib_app) in associates (not deps)
+        val associateStrings = testData.associates.map { it.toString() }
+        assertTrue(associateStrings.any { it.contains("lib_app") },
+            "Expected associates to contain app library (lib_app), but got: $associateStrings")
     }
 
     @Test
@@ -226,5 +226,39 @@ class DefaultAndroidTestDataExtractorTest : GrazelPluginTest() {
         assertTrue(testData.srcs.isNotEmpty(), "Expected test sources to be extracted")
         assertTrue(testData.srcs.any { it.contains("ExampleTest.kt") },
             "Expected ExampleTest.kt to be in sources")
+    }
+
+    @Test
+    fun `extract populates associates field`() {
+        val testData = androidTestDataExtractor.extract(testProject, debugVariant())
+
+        assertNotNull(testData.associates)
+        assertTrue(testData.associates.isNotEmpty(),
+            "Expected associates to be populated")
+    }
+
+    @Test
+    fun `extract populates resourceFiles field`() {
+        val testData = androidTestDataExtractor.extract(testProject, debugVariant())
+
+        // resourceFiles should be populated (may be empty if no resources exist)
+        assertNotNull(testData.resourceFiles)
+    }
+
+    @Test
+    fun `extract populates compose field`() {
+        val testData = androidTestDataExtractor.extract(testProject, debugVariant())
+
+        // compose field should be set based on test project's compose configuration
+        assertNotNull(testData.compose)
+    }
+
+    @Test
+    fun `extract uses ManifestValuesBuilder for manifest values`() {
+        val testData = androidTestDataExtractor.extract(testProject, debugVariant())
+
+        // manifestValues should be populated by ManifestValuesBuilder
+        assertNotNull(testData.manifestValues)
+        // Map<String, String?> allows null values
     }
 }

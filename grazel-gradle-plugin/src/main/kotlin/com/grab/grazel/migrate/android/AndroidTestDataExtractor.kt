@@ -24,6 +24,7 @@ import com.grab.grazel.gradle.dependencies.BuildGraphType
 import com.grab.grazel.gradle.dependencies.DependenciesDataSource
 import com.grab.grazel.gradle.dependencies.DependencyGraphs
 import com.grab.grazel.gradle.dependencies.GradleDependencyToBazelDependency
+import com.grab.grazel.gradle.hasCompose
 import com.grab.grazel.gradle.isAndroid
 import com.grab.grazel.gradle.variant.AndroidVariantDataSource
 import com.grab.grazel.gradle.variant.MatchedVariant
@@ -196,7 +197,7 @@ constructor(
             }
         }
 
-        val resolution = targetResolution as TargetProjectResolution.Success
+        val resolution = targetResolution
 
         return project.extract(
             matchedVariant = matchedVariant,
@@ -222,19 +223,27 @@ constructor(
                 BuildGraphType(ConfigurationScope.BUILD, matchedVariant.variant)
             )
 
-        // Filter out the target app BINARY from dependencies and add the app LIBRARY instead
-        // The app binary is specified via 'instruments', but we need the app library in deps
+        // Filter out the target app from dependencies
+        // The app is handled separately via 'instruments' and 'associates'
         val deps = allDeps.filterNot { dep ->
             dep is BazelDependency.ProjectDependency &&
             dep.dependencyProject.path == targetResolution.targetProject.path
-        } + targetResolution.associateDependency
+        }
+
+        // Associates links test to app library (for accessing app internals)
+        val associates = listOf(targetResolution.associateDependency)
 
         val migratableSourceSets = matchedVariant.variant.sourceSets
             .filterIsInstance<AndroidSourceSet>()
             .toList()
 
         val srcs = androidSources(migratableSourceSets, SourceSetType.JAVA_KOTLIN).toList()
-        val resources = androidSources(migratableSourceSets, SourceSetType.RESOURCES).toList()
+
+        // Separate Java/Kotlin test resources from Android resource files
+        val resources = unitTestResources(migratableSourceSets.asSequence()).toList()
+        val resourceFiles = androidSources(migratableSourceSets, SourceSetType.RESOURCES).toList()
+        val resourceStripPrefix = resourceStripPrefix(migratableSourceSets.asSequence())
+
         val assets = androidSources(migratableSourceSets, SourceSetType.ASSETS).toList()
 
         val customPackage = androidManifestParser.parsePackageName(
@@ -247,23 +256,27 @@ constructor(
         val testInstrumentationRunner = extension.defaultConfig.testInstrumentationRunner
             ?: "androidx.test.runner.AndroidJUnitRunner" // Default runner
 
-        // Extract test application ID (if set, otherwise defaults to targetPackage.test)
-        val testApplicationId = extension.defaultConfig.applicationId
-
-        // Build manifest values for the test module
-        val manifestValues = buildMap<String, String> {
-            testApplicationId?.let { put("applicationId", it) }
-        }
+        // Use ManifestValuesBuilder for complete manifest value extraction
+        val manifestValues = manifestValuesBuilder.build(
+            project = this,
+            matchedVariant = matchedVariant,
+            defaultConfig = extension.defaultConfig,
+            configurationScope = ConfigurationScope.BUILD
+        )
 
         val debugKey = keyStoreExtractor.extract(
             rootProject = targetResolution.targetProject.rootProject,
             variant = androidVariantDataSource.getMigratableBuildVariants(targetResolution.targetProject).firstOrNull()
         )
 
+        // Check if the test module (not the target app) uses Compose
+        val compose = hasCompose
+
         return AndroidTestData(
             name = "${name}${matchedVariant.nameSuffix}",
             srcs = srcs,
             deps = deps.sorted(),
+            associates = associates,
             instruments = targetResolution.instrumentsDependency,
             customPackage = customPackage,
             targetPackage = targetPackage,
@@ -271,7 +284,10 @@ constructor(
             manifestValues = manifestValues,
             debugKey = debugKey,
             resources = resources,
+            resourceFiles = resourceFiles,
+            resourceStripPrefix = resourceStripPrefix,
             assets = assets,
+            compose = compose,
             tags = emptyList(), // Tags can be added later if needed
             visibility = listOf("//visibility:public") // Default visibility
         )
