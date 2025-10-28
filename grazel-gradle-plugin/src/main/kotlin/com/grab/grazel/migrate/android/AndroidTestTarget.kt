@@ -53,11 +53,10 @@ internal data class AndroidTestTarget(
         androidInstrumentationBinary(
             name = name,
             srcsGlob = srcs,
-            deps = deps,
-            // TODO: associates causes "Dependencies on .jar artifacts are not allowed" error
-            // for separate test modules. Investigate if this is a limitation of the
-            // android_instrumentation_binary macro for cross-module testing.
-            // associates = associates,
+            // Include associates in deps instead of passing separately to avoid
+            // "Dependencies on .jar artifacts are not allowed" error in some Bazel configurations.
+            // The app library dependency is needed for resource linking.
+            deps = deps + associates,
             customPackage = customPackage,
             targetPackage = targetPackage,
             debugKey = debugKey,
