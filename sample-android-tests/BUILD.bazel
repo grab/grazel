@@ -28,6 +28,7 @@ android_instrumentation_binary(
         "@maven//:androidx_test_ext_junit",
         "@maven//:androidx_test_rules",
         "@maven//:androidx_test_runner",
+        "@maven//:com_google_guava_guava",
         "@maven//:junit_junit",
     ],
 )
@@ -60,6 +61,7 @@ android_instrumentation_binary(
         "@maven//:androidx_test_ext_junit",
         "@maven//:androidx_test_rules",
         "@maven//:androidx_test_runner",
+        "@maven//:com_google_guava_guava",
         "@maven//:junit_junit",
     ],
 )
@@ -92,6 +94,7 @@ android_instrumentation_binary(
         "@maven//:androidx_test_ext_junit",
         "@maven//:androidx_test_rules",
         "@maven//:androidx_test_runner",
+        "@maven//:com_google_guava_guava",
         "@maven//:junit_junit",
     ],
 )
@@ -124,6 +127,7 @@ android_instrumentation_binary(
         "@maven//:androidx_test_ext_junit",
         "@maven//:androidx_test_rules",
         "@maven//:androidx_test_runner",
+        "@maven//:com_google_guava_guava",
         "@maven//:junit_junit",
     ],
 )

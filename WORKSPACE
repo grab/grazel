@@ -369,6 +369,7 @@ maven_install(
         "javax.inject:javax.inject:1",
         "junit:junit:4.13.2",
         "net.sf.kxml:kxml2:2.3.0",
+        "org.checkerframework:checker-compat-qual:2.5.5",
         "org.checkerframework:checker-qual:3.33.0",
         "org.hamcrest:hamcrest-core:1.3",
         "org.hamcrest:hamcrest-integration:1.3",

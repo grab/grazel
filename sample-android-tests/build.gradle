@@ -92,6 +92,8 @@ dependencies {
     // Compose UI testing using project's compatible version
     implementation 'androidx.compose.ui:ui-test-junit4:1.4.3'
     implementation 'androidx.compose.ui:ui-test-manifest:1.4.3'
+    // Guava is required for Compose testing (ListenableFuture)
+    implementation 'com.google.guava:guava:30.1-android'
 
     // Kotlin
     implementation 'org.jetbrains.kotlin:kotlin-stdlib:1.9.10'
