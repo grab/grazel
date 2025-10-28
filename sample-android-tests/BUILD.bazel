@@ -1,0 +1,125 @@
+load("@grab_bazel_common//rules:defs.bzl", "android_instrumentation_binary")
+
+android_instrumentation_binary(
+    name = "sample-android-tests-demo-free-debug",
+    srcs = glob([
+        "src/main/java/com/grab/grazel/android/sample/tests/**/*.kt",
+    ]),
+    associates = [
+        "//sample-android:lib_sample-android-demo-free-debug",
+    ],
+    custom_package = "com.grab.grazel.android.sample.tests",
+    debug_key = "//keystore:debug-keystore",
+    instruments = "//sample-android:sample-android-demo-free-debug",
+    manifest_values = {
+        "minSdkVersion": "21",
+        "targetSdkVersion": "34",
+        "applicationId": "com.grab.grazel.android.sample.tests",
+        "orientation": "portrait",
+    },
+    resource_files = glob([
+        "src/main/res/values/**",
+    ]),
+    target_package = "com.grab.grazel.android.sample.free",
+    test_instrumentation_runner = "androidx.test.runner.AndroidJUnitRunner",
+    deps = [
+        "@maven//:androidx_test_espresso_espresso_core",
+        "@maven//:androidx_test_ext_junit",
+        "@maven//:androidx_test_rules",
+        "@maven//:androidx_test_runner",
+        "@maven//:junit_junit",
+    ],
+)
+
+android_instrumentation_binary(
+    name = "sample-android-tests-demo-paid-debug",
+    srcs = glob([
+        "src/main/java/com/grab/grazel/android/sample/tests/**/*.kt",
+    ]),
+    associates = [
+        "//sample-android:lib_sample-android-demo-paid-debug",
+    ],
+    custom_package = "com.grab.grazel.android.sample.tests",
+    debug_key = "//keystore:debug-keystore",
+    instruments = "//sample-android:sample-android-demo-paid-debug",
+    manifest_values = {
+        "minSdkVersion": "21",
+        "targetSdkVersion": "34",
+        "applicationId": "com.grab.grazel.android.sample.tests",
+        "orientation": "portrait",
+    },
+    resource_files = glob([
+        "src/main/res/values/**",
+    ]),
+    target_package = "com.grab.grazel.android.sample.paid",
+    test_instrumentation_runner = "androidx.test.runner.AndroidJUnitRunner",
+    deps = [
+        "@maven//:androidx_test_espresso_espresso_core",
+        "@maven//:androidx_test_ext_junit",
+        "@maven//:androidx_test_rules",
+        "@maven//:androidx_test_runner",
+        "@maven//:junit_junit",
+    ],
+)
+
+android_instrumentation_binary(
+    name = "sample-android-tests-full-free-debug",
+    srcs = glob([
+        "src/main/java/com/grab/grazel/android/sample/tests/**/*.kt",
+    ]),
+    associates = [
+        "//sample-android:lib_sample-android-full-free-debug",
+    ],
+    custom_package = "com.grab.grazel.android.sample.tests",
+    debug_key = "//keystore:debug-keystore",
+    instruments = "//sample-android:sample-android-full-free-debug",
+    manifest_values = {
+        "minSdkVersion": "21",
+        "targetSdkVersion": "34",
+        "applicationId": "com.grab.grazel.android.sample.tests",
+        "orientation": "portrait",
+    },
+    resource_files = glob([
+        "src/main/res/values/**",
+    ]),
+    target_package = "com.grab.grazel.android.sample.free",
+    test_instrumentation_runner = "androidx.test.runner.AndroidJUnitRunner",
+    deps = [
+        "@maven//:androidx_test_espresso_espresso_core",
+        "@maven//:androidx_test_ext_junit",
+        "@maven//:androidx_test_rules",
+        "@maven//:androidx_test_runner",
+        "@maven//:junit_junit",
+    ],
+)
+
+android_instrumentation_binary(
+    name = "sample-android-tests-full-paid-debug",
+    srcs = glob([
+        "src/main/java/com/grab/grazel/android/sample/tests/**/*.kt",
+    ]),
+    associates = [
+        "//sample-android:lib_sample-android-full-paid-debug",
+    ],
+    custom_package = "com.grab.grazel.android.sample.tests",
+    debug_key = "//keystore:debug-keystore",
+    instruments = "//sample-android:sample-android-full-paid-debug",
+    manifest_values = {
+        "minSdkVersion": "21",
+        "targetSdkVersion": "34",
+        "applicationId": "com.grab.grazel.android.sample.tests",
+        "orientation": "portrait",
+    },
+    resource_files = glob([
+        "src/main/res/values/**",
+    ]),
+    target_package = "com.grab.grazel.android.sample.paid",
+    test_instrumentation_runner = "androidx.test.runner.AndroidJUnitRunner",
+    deps = [
+        "@maven//:androidx_test_espresso_espresso_core",
+        "@maven//:androidx_test_ext_junit",
+        "@maven//:androidx_test_rules",
+        "@maven//:androidx_test_runner",
+        "@maven//:junit_junit",
+    ],
+)
