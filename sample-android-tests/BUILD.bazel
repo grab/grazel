@@ -5,9 +5,6 @@ android_instrumentation_binary(
     srcs = glob([
         "src/main/java/com/grab/grazel/android/sample/tests/**/*.kt",
     ]),
-    associates = [
-        "//sample-android:lib_sample-android-demo-free-debug",
-    ],
     custom_package = "com.grab.grazel.android.sample.tests",
     debug_key = "//keystore:debug-keystore",
     instruments = "//sample-android:sample-android-demo-free-debug",
@@ -36,9 +33,6 @@ android_instrumentation_binary(
     srcs = glob([
         "src/main/java/com/grab/grazel/android/sample/tests/**/*.kt",
     ]),
-    associates = [
-        "//sample-android:lib_sample-android-demo-paid-debug",
-    ],
     custom_package = "com.grab.grazel.android.sample.tests",
     debug_key = "//keystore:debug-keystore",
     instruments = "//sample-android:sample-android-demo-paid-debug",
@@ -67,9 +61,6 @@ android_instrumentation_binary(
     srcs = glob([
         "src/main/java/com/grab/grazel/android/sample/tests/**/*.kt",
     ]),
-    associates = [
-        "//sample-android:lib_sample-android-full-free-debug",
-    ],
     custom_package = "com.grab.grazel.android.sample.tests",
     debug_key = "//keystore:debug-keystore",
     instruments = "//sample-android:sample-android-full-free-debug",
@@ -98,9 +89,6 @@ android_instrumentation_binary(
     srcs = glob([
         "src/main/java/com/grab/grazel/android/sample/tests/**/*.kt",
     ]),
-    associates = [
-        "//sample-android:lib_sample-android-full-paid-debug",
-    ],
     custom_package = "com.grab.grazel.android.sample.tests",
     debug_key = "//keystore:debug-keystore",
     instruments = "//sample-android:sample-android-full-paid-debug",

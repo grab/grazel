@@ -54,7 +54,10 @@ internal data class AndroidTestTarget(
             name = name,
             srcsGlob = srcs,
             deps = deps,
-            associates = associates,
+            // TODO: associates causes "Dependencies on .jar artifacts are not allowed" error
+            // for separate test modules. Investigate if this is a limitation of the
+            // android_instrumentation_binary macro for cross-module testing.
+            // associates = associates,
             customPackage = customPackage,
             targetPackage = targetPackage,
             debugKey = debugKey,

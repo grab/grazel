@@ -135,7 +135,7 @@ android_unit_test(
     deps = [
         "//:parcelize",
         "//sample-android-library:sample-android-library-demo-free-debug",
-        "@test_maven//:junit_junit",
+        "@maven//:junit_junit",
     ],
 )
 
@@ -158,7 +158,7 @@ android_unit_test(
     deps = [
         "//:parcelize",
         "//sample-android-library:sample-android-library-demo-paid-debug",
-        "@test_maven//:junit_junit",
+        "@maven//:junit_junit",
     ],
 )
 
@@ -181,7 +181,7 @@ android_unit_test(
     deps = [
         "//:parcelize",
         "//sample-android-library:sample-android-library-full-free-debug",
-        "@test_maven//:junit_junit",
+        "@maven//:junit_junit",
     ],
 )
 
@@ -204,6 +204,6 @@ android_unit_test(
     deps = [
         "//:parcelize",
         "//sample-android-library:sample-android-library-full-paid-debug",
-        "@test_maven//:junit_junit",
+        "@maven//:junit_junit",
     ],
 )

@@ -105,10 +105,11 @@ constructor(
         )
 
         // Create the associate dependency - this points to the library target
+        // Must match AndroidInstrumentationBinaryDataExtractor pattern: prefix + nameSuffix + "_kt"
         val associateDependency = BazelDependency.ProjectDependency(
             dependencyProject = targetProject,
             prefix = "lib_",
-            suffix = targetVariant.nameSuffix
+            suffix = "${targetVariant.nameSuffix}_kt"
         )
 
         return TargetProjectResolution.Success(
@@ -197,12 +198,10 @@ constructor(
             }
         }
 
-        val resolution = targetResolution
-
         return project.extract(
             matchedVariant = matchedVariant,
             extension = testExtension,
-            targetResolution = resolution
+            targetResolution = targetResolution
         )
     }
 
