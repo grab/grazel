@@ -60,14 +60,14 @@ android {
         }
     }
 
-    // Disable Compose for now to avoid version compatibility issues
-    // buildFeatures {
-    //     compose true
-    // }
-    //
-    // composeOptions {
-    //     kotlinCompilerExtensionVersion = "1.5.3"
-    // }
+    // Enable Compose using project's compatible version (1.4.3 works with Kotlin 1.8.10)
+    buildFeatures {
+        compose true
+    }
+
+    composeOptions {
+        kotlinCompilerExtensionVersion = "1.4.3"  // Match project's Compose version
+    }
 
     kotlinOptions {
         jvmTarget = "17"
@@ -89,9 +89,9 @@ dependencies {
     // For testing internal app code (via associates)
     implementation 'junit:junit:4.13.2'
 
-    // Compose UI testing - commented out due to version issues
-    // implementation 'androidx.compose.ui:ui-test-junit4:1.5.3'
-    // implementation 'androidx.compose.ui:ui-test-manifest:1.5.3'
+    // Compose UI testing using project's compatible version
+    implementation 'androidx.compose.ui:ui-test-junit4:1.4.3'
+    implementation 'androidx.compose.ui:ui-test-manifest:1.4.3'
 
     // Kotlin
     implementation 'org.jetbrains.kotlin:kotlin-stdlib:1.9.10'
