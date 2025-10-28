@@ -20,7 +20,7 @@ android_instrumentation_binary(
     target_package = "com.grab.grazel.android.sample.free",
     test_instrumentation_runner = "androidx.test.runner.AndroidJUnitRunner",
     deps = [
-        "//sample-android:lib_sample-android-demo-free-debug_kt",
+        "//sample-android:lib_sample-android-demo-free-debug",
         "@maven//:androidx_test_espresso_espresso_core",
         "@maven//:androidx_test_ext_junit",
         "@maven//:androidx_test_rules",
@@ -49,7 +49,7 @@ android_instrumentation_binary(
     target_package = "com.grab.grazel.android.sample.paid",
     test_instrumentation_runner = "androidx.test.runner.AndroidJUnitRunner",
     deps = [
-        "//sample-android:lib_sample-android-demo-paid-debug_kt",
+        "//sample-android:lib_sample-android-demo-paid-debug",
         "@maven//:androidx_test_espresso_espresso_core",
         "@maven//:androidx_test_ext_junit",
         "@maven//:androidx_test_rules",
@@ -78,7 +78,7 @@ android_instrumentation_binary(
     target_package = "com.grab.grazel.android.sample.free",
     test_instrumentation_runner = "androidx.test.runner.AndroidJUnitRunner",
     deps = [
-        "//sample-android:lib_sample-android-full-free-debug_kt",
+        "//sample-android:lib_sample-android-full-free-debug",
         "@maven//:androidx_test_espresso_espresso_core",
         "@maven//:androidx_test_ext_junit",
         "@maven//:androidx_test_rules",
@@ -107,7 +107,7 @@ android_instrumentation_binary(
     target_package = "com.grab.grazel.android.sample.paid",
     test_instrumentation_runner = "androidx.test.runner.AndroidJUnitRunner",
     deps = [
-        "//sample-android:lib_sample-android-full-paid-debug_kt",
+        "//sample-android:lib_sample-android-full-paid-debug",
         "@maven//:androidx_test_espresso_espresso_core",
         "@maven//:androidx_test_ext_junit",
         "@maven//:androidx_test_rules",

@@ -105,11 +105,13 @@ constructor(
         )
 
         // Create the associate dependency - this points to the library target
-        // Must match AndroidInstrumentationBinaryDataExtractor pattern: prefix + nameSuffix + "_kt"
+        // For separate test modules (cross-module), use base library target without _kt suffix
+        // to avoid "Dependencies on .jar artifacts are not allowed" error in android_binary.
+        // The _kt target brings in .jar artifacts that can't be used in cross-module scenarios.
         val associateDependency = BazelDependency.ProjectDependency(
             dependencyProject = targetProject,
             prefix = "lib_",
-            suffix = "${targetVariant.nameSuffix}_kt"
+            suffix = targetVariant.nameSuffix  // No _kt suffix for cross-module
         )
 
         return TargetProjectResolution.Success(
