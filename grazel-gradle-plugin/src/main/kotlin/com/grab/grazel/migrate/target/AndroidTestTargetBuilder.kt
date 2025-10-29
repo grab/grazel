@@ -37,14 +37,16 @@ import javax.inject.Singleton
 internal interface AndroidTestTargetBuilderModule {
 
     @Binds
-    fun DefaultAndroidTestDataExtractor.bindAndroidTestDataExtractor(): AndroidTestDataExtractor
+    fun bindAndroidTestDataExtractor(
+        extractor: DefaultAndroidTestDataExtractor
+    ): AndroidTestDataExtractor
 
     @Binds
-    fun DefaultTargetProjectResolver.bindTargetProjectResolver(): TargetProjectResolver
+    fun bindTargetProjectResolver(resolver: DefaultTargetProjectResolver): TargetProjectResolver
 
     @Binds
     @IntoSet
-    fun AndroidTestTargetBuilder.bindAndroidTestTargetBuilder(): TargetBuilder
+    fun bindAndroidTestTargetBuilder(builder: AndroidTestTargetBuilder): TargetBuilder
 }
 
 /**
