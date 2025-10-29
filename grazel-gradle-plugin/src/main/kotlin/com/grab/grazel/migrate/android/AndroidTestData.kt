@@ -23,23 +23,23 @@ import com.grab.grazel.bazel.starlark.BazelDependency
  *
  * This is used for migrating com.android.test modules to Bazel android_instrumentation_binary rules.
  *
- * @property name The name of the test target
- * @property srcs List of source file patterns for the test
- * @property deps List of dependencies required by the test
- * @property associates List of associated library targets (allows test to access app internals)
- * @property instruments The target being instrumented/tested (external project reference)
- * @property customPackage The custom package name for the test
- * @property targetPackage The package of the app under test
- * @property testInstrumentationRunner The fully qualified class name of the test runner
- * @property manifestValues Key-value pairs to be injected into the AndroidManifest.xml
- * @property debugKey Optional debug key for signing the test APK
- * @property resources List of Java/Kotlin test resource file patterns (src/test/resources)
- * @property resourceFiles List of Android resource file patterns (res/layout, res/values, etc.)
- * @property resourceStripPrefix Optional prefix to strip from resource paths
- * @property assets List of asset file patterns
- * @property compose Whether Jetpack Compose is enabled for this test
- * @property tags List of tags for the test (e.g., "manual", "no-sandbox")
- * @property visibility List of visibility declarations for the target
+ * @param name The name of the test target
+ * @param srcs List of source file patterns for the test
+ * @param deps List of dependencies required by the test
+ * @param associates List of associated library targets (allows test to access app internals)
+ * @param instruments The target being instrumented/tested (external project reference)
+ * @param customPackage The custom package name for the test
+ * @param targetPackage The package of the app under test
+ * @param testInstrumentationRunner The fully qualified class name of the test runner
+ * @param manifestValues Key-value pairs to be injected into the AndroidManifest.xml
+ * @param debugKey Optional debug key for signing the test APK
+ * @param resources List of Java/Kotlin test resource file patterns (src/test/resources)
+ * @param resourceFiles List of Android resource file patterns (res/layout, res/values, etc.)
+ * @param resourceStripPrefix Optional prefix to strip from resource paths
+ * @param assets List of asset file patterns
+ * @param compose Whether Jetpack Compose is enabled for this test
+ * @param tags List of tags for the test (e.g., "manual", "no-sandbox")
+ * @param visibility List of visibility declarations for the target
  */
 data class AndroidTestData(
     val name: String,
