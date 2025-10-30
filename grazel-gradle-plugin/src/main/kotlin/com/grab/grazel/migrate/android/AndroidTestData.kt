@@ -39,7 +39,6 @@ import com.grab.grazel.bazel.starlark.BazelDependency
  * @param assets List of asset file patterns
  * @param compose Whether Jetpack Compose is enabled for this test
  * @param tags List of tags for the test (e.g., "manual", "no-sandbox")
- * @param visibility List of visibility declarations for the target
  */
 data class AndroidTestData(
     val name: String,
@@ -57,6 +56,5 @@ data class AndroidTestData(
     val resourceStripPrefix: String?,
     val assets: List<String>,
     val compose: Boolean,
-    val tags: List<String>,
-    val visibility: List<String>
+    val tags: List<String>
 )

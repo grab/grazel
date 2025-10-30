@@ -20,7 +20,6 @@ import com.grab.grazel.gradle.ConfigurationScope.BUILD
 import com.grab.grazel.gradle.isAndroidTest
 import com.grab.grazel.gradle.variant.VariantMatcher
 import com.grab.grazel.migrate.TargetBuilder
-import com.grab.grazel.migrate.android.AndroidTestData
 import com.grab.grazel.migrate.android.AndroidTestDataExtractor
 import com.grab.grazel.migrate.android.DefaultAndroidTestDataExtractor
 import com.grab.grazel.migrate.android.DefaultTargetProjectResolver

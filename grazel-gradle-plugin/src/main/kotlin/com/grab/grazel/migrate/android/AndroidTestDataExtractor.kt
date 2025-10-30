@@ -290,7 +290,6 @@ constructor(
             assets = assets,
             compose = compose,
             tags = emptyList(), // Tags can be added later if needed
-            visibility = listOf("//visibility:public") // Default visibility
         )
     }
 }
