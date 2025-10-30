@@ -18,21 +18,16 @@ package com.grab.grazel.migrate.android
 
 import com.android.build.gradle.TestExtension
 import com.android.build.gradle.api.AndroidSourceSet
-import com.grab.grazel.bazel.rules.Multidex
 import com.grab.grazel.bazel.starlark.BazelDependency
 import com.grab.grazel.gradle.ConfigurationScope
 import com.grab.grazel.gradle.dependencies.BuildGraphType
 import com.grab.grazel.gradle.dependencies.DependenciesDataSource
-import com.grab.grazel.gradle.dependencies.DependencyGraphs
-import com.grab.grazel.gradle.dependencies.GradleDependencyToBazelDependency
-import com.grab.grazel.gradle.hasCompose
 import com.grab.grazel.gradle.isAndroid
 import com.grab.grazel.gradle.variant.AndroidVariantDataSource
 import com.grab.grazel.gradle.variant.MatchedVariant
 import com.grab.grazel.gradle.variant.VariantMatcher
 import com.grab.grazel.gradle.variant.getMigratableBuildVariants
 import com.grab.grazel.gradle.variant.nameSuffix
-import dagger.Lazy
 import org.gradle.api.Project
 import org.gradle.kotlin.dsl.getByType
 import javax.inject.Inject
@@ -58,7 +53,7 @@ internal interface TargetProjectResolver {
         testProject: Project,
         targetProjectPath: String,
         testVariant: MatchedVariant
-    ): TargetProjectResolution
+    ): TestTargetProjectResolution
 }
 
 /**
@@ -75,12 +70,12 @@ constructor(
         testProject: Project,
         targetProjectPath: String,
         testVariant: MatchedVariant
-    ): TargetProjectResolution {
+    ): TestTargetProjectResolution {
         val targetProject = testProject.rootProject.findProject(targetProjectPath)
-            ?: return TargetProjectResolution.ProjectNotFound(targetProjectPath)
+            ?: return TestTargetProjectResolution.ProjectNotFoundTest(targetProjectPath)
 
         if (!targetProject.isAndroid) {
-            return TargetProjectResolution.NotAndroidProject(targetProject)
+            return TestTargetProjectResolution.NotAndroidProjectTest(targetProject)
         }
 
         val targetVariants = variantMatcher.matchedVariants(
@@ -94,7 +89,7 @@ constructor(
         }
 
         if (targetVariant == null) {
-            return TargetProjectResolution.VariantNotMatched(
+            return TestTargetProjectResolution.VariantNotMatched(
                 targetProject = targetProject,
                 requestedVariant = testVariant.variantName
             )
@@ -115,7 +110,7 @@ constructor(
             suffix = targetVariant.nameSuffix  // No _kt suffix for cross-module
         )
 
-        return TargetProjectResolution.Success(
+        return TestTargetProjectResolution.Success(
             targetProject = targetProject,
             targetVariant = targetVariant,
             instrumentsDependency = instrumentsDependency,
@@ -184,25 +179,25 @@ constructor(
         )
 
         when (targetResolution) {
-            is TargetProjectResolution.ProjectNotFound -> {
+            is TestTargetProjectResolution.ProjectNotFoundTest -> {
                 throw IllegalStateException(
                     "Target project '$targetProjectPath' specified in ${project.path} was not found. " +
                         "Please check that the project path is correct."
                 )
             }
-            is TargetProjectResolution.NotAndroidProject -> {
+            is TestTargetProjectResolution.NotAndroidProjectTest -> {
                 throw IllegalStateException(
                     "Target project '${targetResolution.targetProject.path}' specified in ${project.path} " +
                         "is not an Android project. com.android.test modules can only test Android applications."
                 )
             }
-            is TargetProjectResolution.VariantNotMatched -> {
+            is TestTargetProjectResolution.VariantNotMatched -> {
                 throw IllegalStateException(
                     "Could not match variant '${targetResolution.requestedVariant}' in target project " +
                         "'${targetResolution.targetProject.path}'. Available variants might not include this variant."
                 )
             }
-            is TargetProjectResolution.Success -> {
+            is TestTargetProjectResolution.Success -> {
                 // Continue with successful resolution
             }
         }
@@ -219,7 +214,7 @@ constructor(
     private fun Project.extract(
         matchedVariant: MatchedVariant,
         extension: TestExtension,
-        targetResolution: TargetProjectResolution.Success,
+        targetResolution: TestTargetProjectResolution.Success,
         androidLibraryData: AndroidLibraryData,
         androidBinaryData: AndroidBinaryData,
     ): AndroidTestData {

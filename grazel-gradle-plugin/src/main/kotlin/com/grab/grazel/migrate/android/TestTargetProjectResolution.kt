@@ -26,7 +26,7 @@ import org.gradle.api.Project
  * When a test module needs to instrument another project, this sealed class hierarchy
  * represents all possible outcomes of that resolution process.
  */
-internal sealed class TargetProjectResolution {
+internal sealed class TestTargetProjectResolution {
     /**
      * Successful resolution of the target project.
      *
@@ -40,21 +40,21 @@ internal sealed class TargetProjectResolution {
         val targetVariant: MatchedVariant,
         val instrumentsDependency: BazelDependency,
         val associateDependency: BazelDependency
-    ) : TargetProjectResolution()
+    ) : TestTargetProjectResolution()
 
     /**
      * The target project specified by path was not found in the Gradle project graph.
      *
      * @property targetProjectPath The project path that could not be resolved
      */
-    data class ProjectNotFound(val targetProjectPath: String) : TargetProjectResolution()
+    data class ProjectNotFoundTest(val targetProjectPath: String) : TestTargetProjectResolution()
 
     /**
      * The target project was found but is not an Android project.
      *
      * @property targetProject The project that was found but is not Android
      */
-    data class NotAndroidProject(val targetProject: Project) : TargetProjectResolution()
+    data class NotAndroidProjectTest(val targetProject: Project) : TestTargetProjectResolution()
 
     /**
      * The target project is Android but the requested variant could not be matched.
@@ -65,5 +65,5 @@ internal sealed class TargetProjectResolution {
     data class VariantNotMatched(
         val targetProject: Project,
         val requestedVariant: String
-    ) : TargetProjectResolution()
+    ) : TestTargetProjectResolution()
 }
