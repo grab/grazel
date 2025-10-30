@@ -90,3 +90,37 @@ internal data class AndroidBinaryData(
     val debugKey: String? = null,
     val hasCrashlytics: Boolean = false,
 ) : AndroidData
+
+/**
+ * Data class representing an Android instrumentation test target (android_instrumentation_binary).
+ *
+ * Used for migrating com.android.test modules to Bazel android_instrumentation_binary rules.
+ * Similar to AndroidBinaryData but includes test-specific fields.
+ */
+internal data class AndroidTestData(
+    override val name: String,
+    override val srcs: List<String>,
+    override val resourceSets: Set<BazelSourceSet> = emptySet(),
+    override val resValuesData: ResValuesData = ResValuesData(),
+    override val manifestFile: String? = null,
+    override val customPackage: String,
+    override val packageName: String, // Same as targetPackage
+    override val buildConfigData: BuildConfigData = BuildConfigData(),
+    override val deps: List<BazelDependency>,
+    override val plugins: List<BazelDependency> = emptyList(),
+    override val compose: Boolean,
+    override val databinding: Boolean = false,
+    override val tags: List<String>,
+    override val lintConfigData: LintConfigData = LintConfigData(),
+    // Test-specific fields
+    val associates: List<BazelDependency>,
+    val instruments: BazelDependency,
+    val targetPackage: String, // Kept for clarity
+    val testInstrumentationRunner: String,
+    val manifestValues: Map<String, String?>,
+    val debugKey: String?,
+    val resources: List<String>, // Java/Kotlin resources
+    val resourceFiles: List<String>, // Android resources
+    val resourceStripPrefix: String?,
+    val assets: List<String>
+) : AndroidData
