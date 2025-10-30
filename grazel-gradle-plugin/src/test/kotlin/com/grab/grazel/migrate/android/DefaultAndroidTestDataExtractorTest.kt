@@ -2,29 +2,15 @@ package com.grab.grazel.migrate.android
 
 import com.android.build.gradle.AppExtension
 import com.android.build.gradle.TestExtension
-import com.grab.grazel.GrazelExtension
 import com.grab.grazel.GrazelPluginTest
 import com.grab.grazel.buildProject
-import com.grab.grazel.fake.FakeDependencyGraphs
 import com.grab.grazel.gradle.ANDROID_APPLICATION_PLUGIN
 import com.grab.grazel.gradle.ANDROID_TEST_PLUGIN
-import com.grab.grazel.gradle.DefaultConfigurationDataSource
 import com.grab.grazel.gradle.KOTLIN_ANDROID_PLUGIN
-import com.grab.grazel.gradle.dependencies.ArtifactsConfig
-import com.grab.grazel.gradle.dependencies.DefaultDependenciesDataSource
-import com.grab.grazel.gradle.dependencies.DefaultDependencyResolutionService
-import com.grab.grazel.gradle.dependencies.DependencyGraphs
-import com.grab.grazel.gradle.dependencies.GradleDependencyToBazelDependency
-import com.grab.grazel.gradle.variant.DefaultAndroidVariantDataSource
-import com.grab.grazel.gradle.variant.DefaultAndroidVariantsExtractor
-import com.grab.grazel.gradle.variant.DefaultVariantBuilder
-import com.grab.grazel.gradle.variant.DefaultVariantMatcher
 import com.grab.grazel.gradle.variant.MatchedVariant
-import com.grab.grazel.gradle.variant.VariantMatcher
-import com.grab.grazel.migrate.common.TestSizeCalculator
+import com.grab.grazel.util.addGrazelExtension
+import com.grab.grazel.util.createGrazelComponent
 import com.grab.grazel.util.doEvaluate
-import com.grab.grazel.migrate.android.DefaultAndroidLibraryDataExtractor
-import com.grab.grazel.migrate.android.DefaultAndroidBinaryDataExtractor
 import org.gradle.api.Project
 import org.gradle.kotlin.dsl.configure
 import org.gradle.kotlin.dsl.the
@@ -41,10 +27,9 @@ class DefaultAndroidTestDataExtractorTest : GrazelPluginTest() {
     private lateinit var rootProject: Project
     private lateinit var appProject: Project
     private lateinit var testProject: Project
-    private lateinit var androidTestDataExtractor: DefaultAndroidTestDataExtractor
+    private lateinit var androidTestDataExtractor: AndroidTestDataExtractor
     private lateinit var androidLibraryDataExtractor: AndroidLibraryDataExtractor
     private lateinit var androidBinaryDataExtractor: AndroidBinaryDataExtractor
-    private lateinit var variantMatcher: VariantMatcher
 
     @get:Rule
     val temporaryFolder = TemporaryFolder()
@@ -53,6 +38,7 @@ class DefaultAndroidTestDataExtractorTest : GrazelPluginTest() {
     fun setup() {
         val rootProjectDir = temporaryFolder.newFolder("project")
         rootProject = buildProject("root", projectDir = rootProjectDir)
+        rootProject.addGrazelExtension()
 
         val appProjectDir = File(rootProjectDir, "app").apply { mkdirs() }
         appProject = buildProject("app", rootProject, projectDir = appProjectDir)
@@ -134,60 +120,11 @@ class DefaultAndroidTestDataExtractorTest : GrazelPluginTest() {
         appProject.doEvaluate()
         testProject.doEvaluate()
 
-        // Create extractors manually
-        val androidVariantsExtractor = DefaultAndroidVariantsExtractor()
-        val variantDataSource = DefaultAndroidVariantDataSource(androidVariantsExtractor)
-        val configurationDataSource = DefaultConfigurationDataSource(variantDataSource)
-        val dependenciesDataSource = DefaultDependenciesDataSource(
-            configurationDataSource = configurationDataSource,
-            artifactsConfig = ArtifactsConfig(),
-            dependencyResolutionService = DefaultDependencyResolutionService.register(rootProject),
-            grazelExtension = GrazelExtension(rootProject),
-            androidVariantsExtractor = androidVariantsExtractor,
-            variantBuilder = DefaultVariantBuilder(variantDataSource),
-        )
-        val manifestParser = DefaultAndroidManifestParser()
-        val keyStoreExtractor = DefaultKeyStoreExtractor()
-        val dependencyGraphs = FakeDependencyGraphs()
-
-        // Create dagger.Lazy wrapper
-        val dependencyGraphsLazy = object : dagger.Lazy<DependencyGraphs> {
-            override fun get() = dependencyGraphs
-        }
-
-        val manifestValuesBuilder = DefaultManifestValuesBuilder(
-            dependencyGraphsProvider = dependencyGraphsLazy,
-            variantDataSource = variantDataSource
-        )
-        val gradleDependencyToBazelDependency = GradleDependencyToBazelDependency()
-
-        variantMatcher = DefaultVariantMatcher(rootProject, variantDataSource)
-        val targetProjectResolver = DefaultTargetProjectResolver(variantMatcher)
-
-        // Create library extractor
-        androidLibraryDataExtractor = DefaultAndroidLibraryDataExtractor(
-            androidManifestParser = manifestParser,
-            grazelExtension = GrazelExtension(rootProject),
-            dependenciesDataSource = dependenciesDataSource,
-            dependencyGraphsProvider = dependencyGraphsLazy,
-            gradleDependencyToBazelDependency = gradleDependencyToBazelDependency
-        )
-
-        // Create binary extractor
-        androidBinaryDataExtractor = DefaultAndroidBinaryDataExtractor(
-            variantDataSource = variantDataSource,
-            grazelExtension = GrazelExtension(rootProject),
-            keyStoreExtractor = keyStoreExtractor,
-            manifestValuesBuilder = manifestValuesBuilder,
-            androidManifestParser = manifestParser
-        )
-
-        androidTestDataExtractor = DefaultAndroidTestDataExtractor(
-            targetProjectResolver = targetProjectResolver,
-            dependenciesDataSource = dependenciesDataSource,
-            keyStoreExtractor = keyStoreExtractor,
-            androidVariantDataSource = variantDataSource
-        )
+        // Get extractors from GrazelComponent
+        val grazelComponent = rootProject.createGrazelComponent()
+        androidLibraryDataExtractor = grazelComponent.androidLibraryDataExtractor().get()
+        androidBinaryDataExtractor = grazelComponent.androidBinaryDataExtractor().get()
+        androidTestDataExtractor = grazelComponent.androidTestDataExtractor().get()
     }
 
     private fun debugVariant(): MatchedVariant {
