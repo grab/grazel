@@ -67,7 +67,13 @@ internal data class AndroidLibraryData(
     override val lintConfigData: LintConfigData,
 ) : AndroidData
 
-internal data class AndroidBinaryData(
+/**
+ * Base class for Android binary targets (applications and tests).
+ *
+ * Contains common fields for binary targets like manifestValues and debugKey.
+ * Made open (not data class) to allow AndroidTestData to extend it.
+ */
+internal open class AndroidBinaryData(
     override val name: String,
     override val srcs: List<String> = emptyList(),
     override val resourceSets: Set<BazelSourceSet> = emptySet(),
@@ -82,20 +88,20 @@ internal data class AndroidBinaryData(
     override val compose: Boolean = false,
     override val tags: List<String> = emptyList(),
     override val lintConfigData: LintConfigData,
-    val manifestValues: Map<String, String?> = emptyMap(),
-    val resConfigs: Set<String> = emptySet(),
-    val multidex: Multidex = Multidex.Native,
-    val dexShards: Int? = null,
-    val incrementalDexing: Boolean = true,
-    val debugKey: String? = null,
-    val hasCrashlytics: Boolean = false,
+    open val manifestValues: Map<String, String?> = emptyMap(),
+    open val resConfigs: Set<String> = emptySet(),
+    open val multidex: Multidex = Multidex.Native,
+    open val dexShards: Int? = null,
+    open val incrementalDexing: Boolean = true,
+    open val debugKey: String? = null,
+    open val hasCrashlytics: Boolean = false,
 ) : AndroidData
 
 /**
  * Data class representing an Android instrumentation test target (android_instrumentation_binary).
  *
- * Used for migrating com.android.test modules to Bazel android_instrumentation_binary rules.
- * Similar to AndroidBinaryData but includes test-specific fields.
+ * Extends AndroidBinaryData since tests are specialized binary targets that share common fields
+ * like manifestValues and debugKey, but adds test-specific capabilities.
  */
 internal data class AndroidTestData(
     override val name: String,
@@ -112,15 +118,43 @@ internal data class AndroidTestData(
     override val databinding: Boolean = false,
     override val tags: List<String>,
     override val lintConfigData: LintConfigData = LintConfigData(),
+    override val manifestValues: Map<String, String?>,
+    override val debugKey: String?,
+    // Binary-specific fields (inherited, using defaults)
+    override val resConfigs: Set<String> = emptySet(),
+    override val multidex: Multidex = Multidex.Native,
+    override val dexShards: Int? = null,
+    override val incrementalDexing: Boolean = true,
+    override val hasCrashlytics: Boolean = false,
     // Test-specific fields
     val associates: List<BazelDependency>,
     val instruments: BazelDependency,
     val targetPackage: String, // Kept for clarity
     val testInstrumentationRunner: String,
-    val manifestValues: Map<String, String?>,
-    val debugKey: String?,
     val resources: List<String>, // Java/Kotlin resources
     val resourceFiles: List<String>, // Android resources
     val resourceStripPrefix: String?,
     val assets: List<String>
-) : AndroidData
+) : AndroidBinaryData(
+    name = name,
+    srcs = srcs,
+    resourceSets = resourceSets,
+    resValuesData = resValuesData,
+    manifestFile = manifestFile,
+    customPackage = customPackage,
+    packageName = packageName,
+    buildConfigData = buildConfigData,
+    deps = deps,
+    plugins = plugins,
+    databinding = databinding,
+    compose = compose,
+    tags = tags,
+    lintConfigData = lintConfigData,
+    manifestValues = manifestValues,
+    resConfigs = resConfigs,
+    multidex = multidex,
+    dexShards = dexShards,
+    incrementalDexing = incrementalDexing,
+    debugKey = debugKey,
+    hasCrashlytics = hasCrashlytics
+)

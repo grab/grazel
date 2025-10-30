@@ -18,6 +18,7 @@ package com.grab.grazel.migrate.android
 
 import com.android.build.gradle.TestExtension
 import com.android.build.gradle.api.AndroidSourceSet
+import com.grab.grazel.bazel.rules.Multidex
 import com.grab.grazel.bazel.starlark.BazelDependency
 import com.grab.grazel.gradle.ConfigurationScope
 import com.grab.grazel.gradle.dependencies.BuildGraphType
@@ -292,13 +293,19 @@ constructor(
             databinding = false, // Not used for tests
             tags = emptyList(), // Tags can be added later if needed
             lintConfigData = LintConfigData(), // Not used for tests
+            manifestValues = manifestValues,
+            debugKey = debugKey,
+            // Binary-specific fields (using defaults for tests)
+            resConfigs = emptySet(),
+            multidex = Multidex.Native,
+            dexShards = null,
+            incrementalDexing = true,
+            hasCrashlytics = false,
             // Test-specific fields
             associates = associates,
             instruments = targetResolution.instrumentsDependency,
             targetPackage = targetPackage,
             testInstrumentationRunner = testInstrumentationRunner,
-            manifestValues = manifestValues,
-            debugKey = debugKey,
             resources = resources,
             resourceFiles = resourceFiles,
             resourceStripPrefix = resourceStripPrefix,
