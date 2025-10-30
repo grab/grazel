@@ -273,13 +273,28 @@ constructor(
         // Check if the test module (not the target app) uses Compose
         val compose = hasCompose
 
+        // For tests, resourceSets is not used directly (we use resourceFiles/assets instead)
+        // But we need to provide it for AndroidData interface compliance
+        val resourceSets = emptySet<BazelSourceSet>()
+
         return AndroidTestData(
             name = "${name}${matchedVariant.nameSuffix}",
             srcs = srcs,
+            resourceSets = resourceSets,
+            resValuesData = ResValuesData(), // Not used for tests
+            manifestFile = null, // Tests use manifestValues instead
+            customPackage = customPackage,
+            packageName = targetPackage, // AndroidData.packageName = targetPackage
+            buildConfigData = BuildConfigData(), // Not used for tests
             deps = deps.sorted(),
+            plugins = emptyList(), // Not used for tests
+            compose = compose,
+            databinding = false, // Not used for tests
+            tags = emptyList(), // Tags can be added later if needed
+            lintConfigData = LintConfigData(), // Not used for tests
+            // Test-specific fields
             associates = associates,
             instruments = targetResolution.instrumentsDependency,
-            customPackage = customPackage,
             targetPackage = targetPackage,
             testInstrumentationRunner = testInstrumentationRunner,
             manifestValues = manifestValues,
@@ -287,9 +302,7 @@ constructor(
             resources = resources,
             resourceFiles = resourceFiles,
             resourceStripPrefix = resourceStripPrefix,
-            assets = assets,
-            compose = compose,
-            tags = emptyList(), // Tags can be added later if needed
+            assets = assets
         )
     }
 }
