@@ -28,13 +28,26 @@ import com.grab.grazel.migrate.BazelBuildTarget
  * This target generates android_instrumentation_binary rules for test modules
  * that are migrated from Gradle's com.android.test plugin.
  */
+
 internal data class AndroidTestTarget(
     override val name: String,
+    override val srcs: List<String> = emptyList(),
     override val deps: List<BazelDependency>,
-    override val srcs: List<String>,
-    override val tags: List<String>,
-    override val visibility: Visibility,
+    override val tags: List<String> = emptyList(),
+    override val visibility: Visibility = Visibility.Public,
+    override val enableDataBinding: Boolean = false,
+    override val enableCompose: Boolean = false,
+    override val projectName: String = name,
+    override val resourceSets: Set<BazelSourceSet> = emptySet(),
+    override val resValuesData: ResValuesData = ResValuesData(),
+    override val buildConfigData: BuildConfigData = BuildConfigData(),
+    override val packageName: String,
+    override val manifest: String? = null,
+    override val assetsGlob: List<String> = emptyList(),
+    override val assetsDir: String? = null,
     override val sortKey: String = "2$name",
+    override val lintConfigData: LintConfigData? = null,
+    // Test-specific fields
     val associates: List<BazelDependency>,
     val instruments: BazelDependency,
     val customPackage: String,
@@ -45,10 +58,7 @@ internal data class AndroidTestTarget(
     val resources: List<String>,
     val resourceFiles: List<String>,
     val resourceStripPrefix: String?,
-    val assets: List<String>,
-    val compose: Boolean,
-) : BazelBuildTarget {
-
+) : AndroidTarget {
     override fun statements(builder: StatementsBuilder) = builder {
         androidInstrumentationBinary(
             name = name,
@@ -66,30 +76,7 @@ internal data class AndroidTestTarget(
             resourceStripPrefix = resourceStripPrefix,
             resourceFiles = buildResFiles(resourceFiles),
             testInstrumentationRunner = testInstrumentationRunner,
-            enableCompose = compose,
+            enableCompose = enableCompose,
         )
     }
 }
-
-/**
- * Converts AndroidTestData to AndroidTestTarget.
- */
-internal fun AndroidTestData.toTarget() = AndroidTestTarget(
-    name = name,
-    deps = deps,
-    srcs = srcs,
-    tags = tags,
-    visibility = Visibility.Public, // Always use public visibility
-    associates = associates,
-    instruments = instruments,
-    customPackage = customPackage,
-    targetPackage = targetPackage,
-    testInstrumentationRunner = testInstrumentationRunner,
-    manifestValues = manifestValues,
-    debugKey = debugKey,
-    resources = resources,
-    resourceFiles = resourceFiles,
-    resourceStripPrefix = resourceStripPrefix,
-    assets = assets,
-    compose = compose,
-)

@@ -23,6 +23,8 @@ import com.grab.grazel.gradle.variant.MatchedVariant
 import com.grab.grazel.gradle.variant.VariantMatcher
 import com.grab.grazel.migrate.common.TestSizeCalculator
 import com.grab.grazel.util.doEvaluate
+import com.grab.grazel.migrate.android.DefaultAndroidLibraryDataExtractor
+import com.grab.grazel.migrate.android.DefaultAndroidBinaryDataExtractor
 import org.gradle.api.Project
 import org.gradle.kotlin.dsl.configure
 import org.gradle.kotlin.dsl.the
@@ -40,6 +42,8 @@ class DefaultAndroidTestDataExtractorTest : GrazelPluginTest() {
     private lateinit var appProject: Project
     private lateinit var testProject: Project
     private lateinit var androidTestDataExtractor: DefaultAndroidTestDataExtractor
+    private lateinit var androidLibraryDataExtractor: AndroidLibraryDataExtractor
+    private lateinit var androidBinaryDataExtractor: AndroidBinaryDataExtractor
     private lateinit var variantMatcher: VariantMatcher
 
     @get:Rule
@@ -160,13 +164,27 @@ class DefaultAndroidTestDataExtractorTest : GrazelPluginTest() {
         variantMatcher = DefaultVariantMatcher(rootProject, variantDataSource)
         val targetProjectResolver = DefaultTargetProjectResolver(variantMatcher)
 
+        // Create library extractor
+        androidLibraryDataExtractor = DefaultAndroidLibraryDataExtractor(
+            androidManifestParser = manifestParser,
+            grazelExtension = GrazelExtension(rootProject),
+            dependenciesDataSource = dependenciesDataSource,
+            dependencyGraphsProvider = dependencyGraphsLazy,
+            gradleDependencyToBazelDependency = gradleDependencyToBazelDependency
+        )
+
+        // Create binary extractor
+        androidBinaryDataExtractor = DefaultAndroidBinaryDataExtractor(
+            variantDataSource = variantDataSource,
+            grazelExtension = GrazelExtension(rootProject),
+            keyStoreExtractor = keyStoreExtractor,
+            manifestValuesBuilder = manifestValuesBuilder,
+            androidManifestParser = manifestParser
+        )
+
         androidTestDataExtractor = DefaultAndroidTestDataExtractor(
             targetProjectResolver = targetProjectResolver,
             dependenciesDataSource = dependenciesDataSource,
-            dependencyGraphsProvider = dependencyGraphsLazy,
-            gradleDependencyToBazelDependency = gradleDependencyToBazelDependency,
-            androidManifestParser = manifestParser,
-            manifestValuesBuilder = manifestValuesBuilder,
             keyStoreExtractor = keyStoreExtractor,
             androidVariantDataSource = variantDataSource
         )
@@ -181,7 +199,10 @@ class DefaultAndroidTestDataExtractorTest : GrazelPluginTest() {
 
     @Test
     fun `extract returns AndroidTestData with correct structure`() {
-        val testData = androidTestDataExtractor.extract(testProject, debugVariant())
+        val variant = debugVariant()
+        val androidLibraryData = androidLibraryDataExtractor.extract(testProject, variant)
+        val androidBinaryData = androidBinaryDataExtractor.extract(testProject, variant)
+        val testData = androidTestDataExtractor.extract(testProject, variant, androidLibraryData, androidBinaryData)
 
         assertNotNull(testData)
         assertEquals("app-tests-debug", testData.name)
@@ -192,7 +213,10 @@ class DefaultAndroidTestDataExtractorTest : GrazelPluginTest() {
 
     @Test
     fun `extract includes target app library in associates`() {
-        val testData = androidTestDataExtractor.extract(testProject, debugVariant())
+        val variant = debugVariant()
+        val androidLibraryData = androidLibraryDataExtractor.extract(testProject, variant)
+        val androidBinaryData = androidBinaryDataExtractor.extract(testProject, variant)
+        val testData = androidTestDataExtractor.extract(testProject, variant, androidLibraryData, androidBinaryData)
 
         // Should include app library (lib_app) in associates (not deps)
         val associateStrings = testData.associates.map { it.toString() }
@@ -202,7 +226,10 @@ class DefaultAndroidTestDataExtractorTest : GrazelPluginTest() {
 
     @Test
     fun `extract excludes target app binary from deps`() {
-        val testData = androidTestDataExtractor.extract(testProject, debugVariant())
+        val variant = debugVariant()
+        val androidLibraryData = androidLibraryDataExtractor.extract(testProject, variant)
+        val androidBinaryData = androidBinaryDataExtractor.extract(testProject, variant)
+        val testData = androidTestDataExtractor.extract(testProject, variant, androidLibraryData, androidBinaryData)
 
         // Should NOT include app binary (just :app) in deps
         val depStrings = testData.deps.map { it.toString() }
@@ -212,7 +239,10 @@ class DefaultAndroidTestDataExtractorTest : GrazelPluginTest() {
 
     @Test
     fun `extract sets instruments to app binary`() {
-        val testData = androidTestDataExtractor.extract(testProject, debugVariant())
+        val variant = debugVariant()
+        val androidLibraryData = androidLibraryDataExtractor.extract(testProject, variant)
+        val androidBinaryData = androidBinaryDataExtractor.extract(testProject, variant)
+        val testData = androidTestDataExtractor.extract(testProject, variant, androidLibraryData, androidBinaryData)
 
         val instrumentsStr = testData.instruments.toString()
         assertTrue(instrumentsStr.contains("//app:app"),
@@ -221,7 +251,10 @@ class DefaultAndroidTestDataExtractorTest : GrazelPluginTest() {
 
     @Test
     fun `extract includes test sources`() {
-        val testData = androidTestDataExtractor.extract(testProject, debugVariant())
+        val variant = debugVariant()
+        val androidLibraryData = androidLibraryDataExtractor.extract(testProject, variant)
+        val androidBinaryData = androidBinaryDataExtractor.extract(testProject, variant)
+        val testData = androidTestDataExtractor.extract(testProject, variant, androidLibraryData, androidBinaryData)
 
         assertTrue(testData.srcs.isNotEmpty(), "Expected test sources to be extracted")
         assertTrue(testData.srcs.any { it.contains("ExampleTest.kt") },
@@ -230,7 +263,10 @@ class DefaultAndroidTestDataExtractorTest : GrazelPluginTest() {
 
     @Test
     fun `extract populates associates field`() {
-        val testData = androidTestDataExtractor.extract(testProject, debugVariant())
+        val variant = debugVariant()
+        val androidLibraryData = androidLibraryDataExtractor.extract(testProject, variant)
+        val androidBinaryData = androidBinaryDataExtractor.extract(testProject, variant)
+        val testData = androidTestDataExtractor.extract(testProject, variant, androidLibraryData, androidBinaryData)
 
         assertNotNull(testData.associates)
         assertTrue(testData.associates.isNotEmpty(),
@@ -239,7 +275,10 @@ class DefaultAndroidTestDataExtractorTest : GrazelPluginTest() {
 
     @Test
     fun `extract populates resourceFiles field`() {
-        val testData = androidTestDataExtractor.extract(testProject, debugVariant())
+        val variant = debugVariant()
+        val androidLibraryData = androidLibraryDataExtractor.extract(testProject, variant)
+        val androidBinaryData = androidBinaryDataExtractor.extract(testProject, variant)
+        val testData = androidTestDataExtractor.extract(testProject, variant, androidLibraryData, androidBinaryData)
 
         // resourceFiles should be populated (may be empty if no resources exist)
         assertNotNull(testData.resourceFiles)
@@ -247,7 +286,10 @@ class DefaultAndroidTestDataExtractorTest : GrazelPluginTest() {
 
     @Test
     fun `extract populates compose field`() {
-        val testData = androidTestDataExtractor.extract(testProject, debugVariant())
+        val variant = debugVariant()
+        val androidLibraryData = androidLibraryDataExtractor.extract(testProject, variant)
+        val androidBinaryData = androidBinaryDataExtractor.extract(testProject, variant)
+        val testData = androidTestDataExtractor.extract(testProject, variant, androidLibraryData, androidBinaryData)
 
         // compose field should be set based on test project's compose configuration
         assertNotNull(testData.compose)
@@ -255,7 +297,10 @@ class DefaultAndroidTestDataExtractorTest : GrazelPluginTest() {
 
     @Test
     fun `extract uses ManifestValuesBuilder for manifest values`() {
-        val testData = androidTestDataExtractor.extract(testProject, debugVariant())
+        val variant = debugVariant()
+        val androidLibraryData = androidLibraryDataExtractor.extract(testProject, variant)
+        val androidBinaryData = androidBinaryDataExtractor.extract(testProject, variant)
+        val testData = androidTestDataExtractor.extract(testProject, variant, androidLibraryData, androidBinaryData)
 
         // manifestValues should be populated by ManifestValuesBuilder
         assertNotNull(testData.manifestValues)

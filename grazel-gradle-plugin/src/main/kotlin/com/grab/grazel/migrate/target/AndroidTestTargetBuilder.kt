@@ -16,15 +16,19 @@
 
 package com.grab.grazel.migrate.target
 
+import com.grab.grazel.bazel.rules.Visibility
 import com.grab.grazel.gradle.ConfigurationScope.BUILD
 import com.grab.grazel.gradle.isAndroidTest
 import com.grab.grazel.gradle.variant.VariantMatcher
 import com.grab.grazel.migrate.TargetBuilder
+import com.grab.grazel.migrate.android.AndroidBinaryDataExtractor
+import com.grab.grazel.migrate.android.AndroidLibraryDataExtractor
+import com.grab.grazel.migrate.android.AndroidTestData
 import com.grab.grazel.migrate.android.AndroidTestDataExtractor
+import com.grab.grazel.migrate.android.AndroidTestTarget
 import com.grab.grazel.migrate.android.DefaultAndroidTestDataExtractor
 import com.grab.grazel.migrate.android.DefaultTargetProjectResolver
 import com.grab.grazel.migrate.android.TargetProjectResolver
-import com.grab.grazel.migrate.android.toTarget
 import dagger.Binds
 import dagger.Module
 import dagger.multibindings.IntoSet
@@ -48,37 +52,74 @@ internal interface AndroidTestTargetBuilderModule {
     fun bindAndroidTestTargetBuilder(builder: AndroidTestTargetBuilder): TargetBuilder
 }
 
-/**
- * TargetBuilder implementation for creating AndroidTestTarget instances from com.android.test modules.
- *
- * This builder is responsible for:
- * - Identifying com.android.test projects
- * - Getting variants from the target app (not the test module itself)
- * - Extracting test data for each app variant
- * - Converting the data to Bazel build targets
- */
 @Singleton
 internal class AndroidTestTargetBuilder
 @Inject constructor(
+    private val androidLibraryDataExtractor: AndroidLibraryDataExtractor,
+    private val androidBinaryDataExtractor: AndroidBinaryDataExtractor,
     private val androidTestDataExtractor: AndroidTestDataExtractor,
     private val variantMatcher: VariantMatcher,
 ) : TargetBuilder {
 
     override fun build(project: Project) = buildList {
-        // Get variants from the TEST MODULE itself, not the target app
-        // Test modules have their own build variants (build types × flavors) just like
-        // library modules. The test variant needs to match the target app's variant.
+        // Get variants from the TEST MODULE itself
         variantMatcher.matchedVariants(
-            project,  // Test project, not target project
+            project,
             BUILD
         ).forEach { matchedVariant ->
+            // Extract common library fields (srcs, resourceSets, etc.)
+            val androidLibraryData = androidLibraryDataExtractor.extract(
+                project = project,
+                matchedVariant = matchedVariant
+            )
+
+            // Extract binary-specific fields (manifestValues, debugKey, etc.)
+            val androidBinaryData = androidBinaryDataExtractor.extract(
+                project = project,
+                matchedVariant = matchedVariant
+            )
+
+            // Extract test-specific fields (associates, instruments, etc.)
             val androidTestData = androidTestDataExtractor.extract(
                 project = project,
                 matchedVariant = matchedVariant,
+                androidLibraryData = androidLibraryData,
+                androidBinaryData = androidBinaryData
             )
+
             add(androidTestData.toTarget())
         }
     }
 
     override fun canHandle(project: Project): Boolean = project.isAndroidTest
 }
+
+internal fun AndroidTestData.toTarget() = AndroidTestTarget(
+    name = name,
+    srcs = srcs,
+    deps = deps,
+    tags = tags,
+    visibility = Visibility.Public,
+    enableDataBinding = databinding,
+    enableCompose = compose,
+    projectName = name,
+    resourceSets = resourceSets,
+    resValuesData = resValuesData,
+    buildConfigData = buildConfigData,
+    packageName = packageName,
+    manifest = manifestFile,
+    assetsGlob = assets,
+    assetsDir = if (assets.isNotEmpty()) resourceStripPrefix else null,
+    lintConfigData = lintConfigData,
+    // Test-specific fields
+    associates = associates,
+    instruments = instruments,
+    customPackage = customPackage,
+    targetPackage = targetPackage,
+    testInstrumentationRunner = testInstrumentationRunner,
+    manifestValues = manifestValues,
+    debugKey = debugKey,
+    resources = resources,
+    resourceFiles = resourceFiles,
+    resourceStripPrefix = resourceStripPrefix,
+)

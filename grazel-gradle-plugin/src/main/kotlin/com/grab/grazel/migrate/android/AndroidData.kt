@@ -110,7 +110,7 @@ internal data class AndroidTestData(
     override val resValuesData: ResValuesData = ResValuesData(),
     override val manifestFile: String? = null,
     override val customPackage: String,
-    override val packageName: String, // Same as targetPackage
+    override val packageName: String,
     override val buildConfigData: BuildConfigData = BuildConfigData(),
     override val deps: List<BazelDependency>,
     override val plugins: List<BazelDependency> = emptyList(),
@@ -118,43 +118,15 @@ internal data class AndroidTestData(
     override val databinding: Boolean = false,
     override val tags: List<String>,
     override val lintConfigData: LintConfigData = LintConfigData(),
-    override val manifestValues: Map<String, String?>,
-    override val debugKey: String?,
-    // Binary-specific fields (inherited, using defaults)
-    override val resConfigs: Set<String> = emptySet(),
-    override val multidex: Multidex = Multidex.Native,
-    override val dexShards: Int? = null,
-    override val incrementalDexing: Boolean = true,
-    override val hasCrashlytics: Boolean = false,
-    // Test-specific fields
+    val manifestValues: Map<String, String?>,
+    val debugKey: String?,
+    val resConfigs: Set<String> = emptySet(),
     val associates: List<BazelDependency>,
     val instruments: BazelDependency,
-    val targetPackage: String, // Kept for clarity
+    val targetPackage: String,
     val testInstrumentationRunner: String,
-    val resources: List<String>, // Java/Kotlin resources
-    val resourceFiles: List<String>, // Android resources
+    val resources: List<String>,
+    val resourceFiles: List<String>,
     val resourceStripPrefix: String?,
     val assets: List<String>
-) : AndroidBinaryData(
-    name = name,
-    srcs = srcs,
-    resourceSets = resourceSets,
-    resValuesData = resValuesData,
-    manifestFile = manifestFile,
-    customPackage = customPackage,
-    packageName = packageName,
-    buildConfigData = buildConfigData,
-    deps = deps,
-    plugins = plugins,
-    databinding = databinding,
-    compose = compose,
-    tags = tags,
-    lintConfigData = lintConfigData,
-    manifestValues = manifestValues,
-    resConfigs = resConfigs,
-    multidex = multidex,
-    dexShards = dexShards,
-    incrementalDexing = incrementalDexing,
-    debugKey = debugKey,
-    hasCrashlytics = hasCrashlytics
-)
+) : AndroidData

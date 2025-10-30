@@ -133,9 +133,16 @@ internal interface AndroidTestDataExtractor {
      *
      * @param project The Gradle project to extract data from
      * @param matchedVariant The matched variant for the test
-     * @return AndroidTestData containing all necessary information for generating android_local_test rule
+     * @param androidLibraryData Library data extracted from AndroidLibraryDataExtractor
+     * @param androidBinaryData Binary data extracted from AndroidBinaryDataExtractor
+     * @return AndroidTestData containing all necessary information for generating android_instrumentation_binary rule
      */
-    fun extract(project: Project, matchedVariant: MatchedVariant): AndroidTestData
+    fun extract(
+        project: Project,
+        matchedVariant: MatchedVariant,
+        androidLibraryData: AndroidLibraryData,
+        androidBinaryData: AndroidBinaryData
+    ): AndroidTestData
 }
 
 /**
@@ -150,17 +157,16 @@ internal class DefaultAndroidTestDataExtractor
 constructor(
     private val targetProjectResolver: TargetProjectResolver,
     private val dependenciesDataSource: DependenciesDataSource,
-    private val dependencyGraphsProvider: Lazy<DependencyGraphs>,
-    private val gradleDependencyToBazelDependency: GradleDependencyToBazelDependency,
-    private val androidManifestParser: AndroidManifestParser,
-    private val manifestValuesBuilder: ManifestValuesBuilder,
     private val keyStoreExtractor: KeyStoreExtractor,
     private val androidVariantDataSource: AndroidVariantDataSource,
 ) : AndroidTestDataExtractor {
 
-    private val projectDependencyGraphs get() = dependencyGraphsProvider.get()
-
-    override fun extract(project: Project, matchedVariant: MatchedVariant): AndroidTestData {
+    override fun extract(
+        project: Project,
+        matchedVariant: MatchedVariant,
+        androidLibraryData: AndroidLibraryData,
+        androidBinaryData: AndroidBinaryData
+    ): AndroidTestData {
         val testExtension = project.extensions.getByType<TestExtension>()
 
         // Extract targetProjectPath - this is REQUIRED for com.android.test modules
@@ -204,34 +210,19 @@ constructor(
         return project.extract(
             matchedVariant = matchedVariant,
             extension = testExtension,
-            targetResolution = targetResolution
+            targetResolution = targetResolution,
+            androidLibraryData = androidLibraryData,
+            androidBinaryData = androidBinaryData,
         )
     }
 
     private fun Project.extract(
         matchedVariant: MatchedVariant,
         extension: TestExtension,
-        targetResolution: TargetProjectResolution.Success
+        targetResolution: TargetProjectResolution.Success,
+        androidLibraryData: AndroidLibraryData,
+        androidBinaryData: AndroidBinaryData,
     ): AndroidTestData {
-        val allDeps = projectDependencyGraphs
-            .directDependencies(
-                project = this,
-                buildGraphType = BuildGraphType(ConfigurationScope.BUILD, matchedVariant.variant)
-            ).map { dependency ->
-                gradleDependencyToBazelDependency.map(this, dependency, matchedVariant)
-            } +
-            dependenciesDataSource.collectMavenDeps(
-                this,
-                BuildGraphType(ConfigurationScope.BUILD, matchedVariant.variant)
-            )
-
-        // Filter out the target app from dependencies
-        // The app is handled separately via 'instruments' and 'associates'
-        val deps = allDeps.filterNot { dep ->
-            dep is BazelDependency.ProjectDependency &&
-            dep.dependencyProject.path == targetResolution.targetProject.path
-        }
-
         // Associates links test to app library (for accessing app internals)
         val associates = listOf(targetResolution.associateDependency)
 
@@ -239,68 +230,52 @@ constructor(
             .filterIsInstance<AndroidSourceSet>()
             .toList()
 
-        val srcs = androidSources(migratableSourceSets, SourceSetType.JAVA_KOTLIN).toList()
-
-        // Separate Java/Kotlin test resources from Android resource files
+        // Test-specific resource handling
         val resources = unitTestResources(migratableSourceSets.asSequence()).toList()
         val resourceFiles = androidSources(migratableSourceSets, SourceSetType.RESOURCES).toList()
         val resourceStripPrefix = resourceStripPrefix(migratableSourceSets.asSequence())
-
         val assets = androidSources(migratableSourceSets, SourceSetType.ASSETS).toList()
-
-        val customPackage = androidManifestParser.parsePackageName(
-            extension,
-            migratableSourceSets
-        ) ?: ""
 
         val targetPackage = targetResolution.targetVariant.variant.applicationId
 
         val testInstrumentationRunner = extension.defaultConfig.testInstrumentationRunner
             ?: "androidx.test.runner.AndroidJUnitRunner" // Default runner
 
-        // Use ManifestValuesBuilder for complete manifest value extraction
-        val manifestValues = manifestValuesBuilder.build(
-            project = this,
-            matchedVariant = matchedVariant,
-            defaultConfig = extension.defaultConfig,
-            configurationScope = ConfigurationScope.BUILD
-        )
+        // Combine library deps with test deps, but filter out the target app
+        // (it's handled via 'instruments' and 'associates')
+        val combinedDeps = (androidLibraryData.deps + dependenciesDataSource.collectMavenDeps(
+            this,
+            BuildGraphType(ConfigurationScope.BUILD, matchedVariant.variant)
+        )).filterNot { dep ->
+            dep is BazelDependency.ProjectDependency &&
+                dep.dependencyProject.path == targetResolution.targetProject.path
+        }
 
         val debugKey = keyStoreExtractor.extract(
             rootProject = targetResolution.targetProject.rootProject,
             variant = androidVariantDataSource.getMigratableBuildVariants(targetResolution.targetProject).firstOrNull()
         )
 
-        // Check if the test module (not the target app) uses Compose
-        val compose = hasCompose
-
-        // For tests, resourceSets is not used directly (we use resourceFiles/assets instead)
-        // But we need to provide it for AndroidData interface compliance
-        val resourceSets = emptySet<BazelSourceSet>()
-
         return AndroidTestData(
-            name = "${name}${matchedVariant.nameSuffix}",
-            srcs = srcs,
-            resourceSets = resourceSets,
-            resValuesData = ResValuesData(), // Not used for tests
-            manifestFile = null, // Tests use manifestValues instead
-            customPackage = customPackage,
-            packageName = targetPackage, // AndroidData.packageName = targetPackage
-            buildConfigData = BuildConfigData(), // Not used for tests
-            deps = deps.sorted(),
-            plugins = emptyList(), // Not used for tests
-            compose = compose,
-            databinding = false, // Not used for tests
-            tags = emptyList(), // Tags can be added later if needed
-            lintConfigData = LintConfigData(), // Not used for tests
-            manifestValues = manifestValues,
+            // Use data from AndroidLibraryDataExtractor (already includes variant suffix)
+            name = androidLibraryData.name,
+            srcs = androidLibraryData.srcs,
+            resourceSets = androidLibraryData.resourceSets,
+            resValuesData = androidLibraryData.resValuesData,
+            manifestFile = androidLibraryData.manifestFile,
+            customPackage = androidLibraryData.customPackage,
+            packageName = targetPackage,
+            buildConfigData = androidLibraryData.buildConfigData,
+            deps = combinedDeps.sorted(),
+            plugins = androidLibraryData.plugins,
+            compose = androidLibraryData.compose,
+            databinding = androidLibraryData.databinding,
+            tags = androidLibraryData.tags,
+            lintConfigData = androidLibraryData.lintConfigData,
+            // Use data from AndroidBinaryDataExtractor
+            manifestValues = androidBinaryData.manifestValues,
             debugKey = debugKey,
-            // Binary-specific fields (using defaults for tests)
-            resConfigs = emptySet(),
-            multidex = Multidex.Native,
-            dexShards = null,
-            incrementalDexing = true,
-            hasCrashlytics = false,
+            resConfigs = androidBinaryData.resConfigs,
             // Test-specific fields
             associates = associates,
             instruments = targetResolution.instrumentsDependency,
