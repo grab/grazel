@@ -2,12 +2,14 @@ package com.grab.grazel.gradle.variant
 
 import com.android.build.gradle.AppExtension
 import com.android.build.gradle.LibraryExtension
+import com.android.build.gradle.TestExtension
 import com.android.build.gradle.api.BaseVariant
 import com.android.builder.model.BuildType
 import com.android.builder.model.ProductFlavor
 import com.grab.grazel.gradle.isAndroidApplication
 import com.grab.grazel.gradle.isAndroidDynamicFeature
 import com.grab.grazel.gradle.isAndroidLibrary
+import com.grab.grazel.gradle.isAndroidTest
 import org.gradle.api.DomainObjectSet
 import org.gradle.api.Project
 import org.gradle.kotlin.dsl.the
@@ -48,6 +50,7 @@ constructor() : AndroidVariantsExtractor {
         return when {
             project.isAndroidAppOrDynFeature -> project.the<AppExtension>().applicationVariants
             project.isAndroidLibrary -> project.the<LibraryExtension>().libraryVariants
+            project.isAndroidTest -> project.the<TestExtension>().applicationVariants
             else -> project.objects.domainObjectSet(BaseVariant::class.java)
         }
     }
@@ -56,6 +59,7 @@ constructor() : AndroidVariantsExtractor {
         return when {
             project.isAndroidAppOrDynFeature -> project.the<AppExtension>().testVariants
             project.isAndroidLibrary -> project.the<LibraryExtension>().testVariants
+            // Test modules don't have testVariants - they ARE the test module
             else -> project.objects.domainObjectSet(BaseVariant::class.java)
         }
     }
@@ -64,6 +68,7 @@ constructor() : AndroidVariantsExtractor {
         return when {
             project.isAndroidAppOrDynFeature -> project.the<AppExtension>().unitTestVariants
             project.isAndroidLibrary -> project.the<LibraryExtension>().unitTestVariants
+            // Test modules don't have unitTestVariants
             else -> project.objects.domainObjectSet(BaseVariant::class.java)
         }
     }
@@ -72,6 +77,7 @@ constructor() : AndroidVariantsExtractor {
         return when {
             project.isAndroidAppOrDynFeature -> project.the<AppExtension>().productFlavors
             project.isAndroidLibrary -> project.the<LibraryExtension>().productFlavors
+            project.isAndroidTest -> project.the<TestExtension>().productFlavors
             else -> emptySet()
         }
     }
@@ -80,6 +86,7 @@ constructor() : AndroidVariantsExtractor {
         return when {
             project.isAndroidAppOrDynFeature -> project.the<AppExtension>().buildTypes.toSet()
             project.isAndroidLibrary -> project.the<LibraryExtension>().buildTypes.toSet()
+            project.isAndroidTest -> project.the<TestExtension>().buildTypes.toSet()
             else -> emptySet()
         }
     }

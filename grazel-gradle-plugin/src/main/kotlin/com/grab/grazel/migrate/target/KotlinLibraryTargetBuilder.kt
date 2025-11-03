@@ -17,6 +17,7 @@
 package com.grab.grazel.migrate.target
 
 import com.grab.grazel.gradle.isAndroid
+import com.grab.grazel.gradle.isAndroidTest
 import com.grab.grazel.gradle.isKotlin
 import com.grab.grazel.migrate.BazelTarget
 import com.grab.grazel.migrate.TargetBuilder
@@ -66,7 +67,7 @@ constructor(
     }
 
     override fun canHandle(project: Project): Boolean = with(project) {
-        !isAndroid && isKotlin
+        !isAndroid && !isAndroidTest && isKotlin
     }
 
     private fun KotlinProjectData.toKotlinLibraryTarget() = KotlinLibraryTarget(

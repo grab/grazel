@@ -1,0 +1,100 @@
+/*
+ * Copyright 2022 Grabtaxi Holdings PTE LTD (GRAB)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+plugins {
+    id 'com.android.test'
+    id 'org.jetbrains.kotlin.android'
+}
+
+android {
+    namespace 'com.grab.grazel.android.sample.tests'
+    compileSdk 34
+
+    // IMPORTANT: This points to the app module being tested
+    targetProjectPath = ':sample-android'
+
+    defaultConfig {
+        minSdk 21
+        targetSdk 34
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+
+        // Optional: Custom test application ID
+        applicationId "com.grab.grazel.android.sample.tests"
+    }
+
+    buildTypes {
+        debug {
+            // Match the app's debug build type
+        }
+        staging {
+            // Match the app's staging build type
+            matchingFallbacks = ["debug", "release"]
+        }
+    }
+
+    flavorDimensions += ["service", "release"]
+    productFlavors {
+        demo {
+            dimension "service"
+        }
+        full {
+            dimension "service"
+        }
+        free {
+            dimension "release"
+        }
+        paid {
+            dimension "release"
+        }
+    }
+
+    // Enable Compose using project's compatible version (1.4.3 works with Kotlin 1.8.10)
+    buildFeatures {
+        compose true
+    }
+
+    composeOptions {
+        kotlinCompilerExtensionVersion = "1.4.3"  // Match project's Compose version
+    }
+
+    kotlinOptions {
+        jvmTarget = "17"
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+dependencies {
+    // Test dependencies
+    implementation 'androidx.test.ext:junit:1.1.5'
+    implementation 'androidx.test.espresso:espresso-core:3.5.1'
+    implementation 'androidx.test:runner:1.5.2'
+    implementation 'androidx.test:rules:1.5.0'
+
+    // For testing internal app code (via associates)
+    implementation 'junit:junit:4.13.2'
+
+    // Compose UI testing using project's compatible version
+    implementation 'androidx.compose.ui:ui-test-junit4:1.4.3'
+    implementation 'androidx.compose.ui:ui-test-manifest:1.4.3'
+    // Guava is required for Compose testing (ListenableFuture)
+    implementation 'com.google.guava:guava:30.1-android'
+
+    // Kotlin
+    implementation 'org.jetbrains.kotlin:kotlin-stdlib:1.9.10'
+}
