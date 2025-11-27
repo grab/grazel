@@ -18,6 +18,7 @@ package com.grab.grazel.gradle.dependencies
 
 import com.grab.grazel.bazel.starlark.BazelDependency
 import com.grab.grazel.gradle.isAndroid
+import com.grab.grazel.gradle.isAndroidTest
 import com.grab.grazel.gradle.variant.MatchedVariant
 import com.grab.grazel.gradle.variant.nameSuffix
 import org.gradle.api.Project
@@ -41,9 +42,14 @@ constructor() {
                 )
             }
             if (dependency.isAndroid) {// project is an android project, dependent is also
+                val suffix = if (dependency.isAndroidTest) {
+                    "${matchedVariant.nameSuffix}_lib"
+                } else {
+                    matchedVariant.nameSuffix
+                }
                 BazelDependency.ProjectDependency(
                     dependency,
-                    suffix = matchedVariant.nameSuffix
+                    suffix = suffix
                 )
             } else {// project is an android project, dependent is NOT
                 BazelDependency.ProjectDependency(dependency)
