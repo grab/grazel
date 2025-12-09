@@ -24,6 +24,9 @@
 /.idea/inspectionProfiles/Project_Default.xml
 .idea/.gitignore
 .idea/rules_kotlin.iml
+.idea/kotlinc.xml
+.idea/AndroidProjectSystem.xml
+.idea/copilot.data.migration.agent.xml
 !.idea/runConfigurations
 /.idea/git_toolbox_blame.xml
 /.idea/runConfigurations.xml
