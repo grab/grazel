@@ -24,6 +24,7 @@ import org.junit.Test
 import java.nio.file.Files
 import kotlin.io.path.writeText
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 
 class DefaultAndroidLibraryDataExtractorTest {
     private lateinit var rootProject: Project
@@ -182,6 +183,68 @@ class DefaultAndroidLibraryDataExtractorTest {
             )
             containsNoDuplicates()
             hasSize(3)
+        }
+    }
+
+    @Test
+    fun `assert sources in build directory are filtered out`() {
+        configure()
+
+        // Create normal source file
+        appProject.file("src/main/java/com/example/Sample.kt").apply {
+            parentFile.mkdirs()
+            writeText("class Sample")
+        }
+
+        // Create source file in build/ directory
+        appProject.file("build/generated/source/kapt/debug/com/example/Generated.kt").apply {
+            parentFile.mkdirs()
+            writeText("class Generated")
+        }
+
+        val androidLibraryData = androidLibraryDataExtractor.extract(appProject, debugVariant())
+
+        // Assert that sources don't contain any path starting with "build/"
+        androidLibraryData.srcs.forEach { src ->
+            assertFalse(
+                src.startsWith("build/"),
+                "Expected no sources to start with 'build/' but found: $src"
+            )
+        }
+    }
+
+    @Test
+    fun `assert resources in build directory are filtered out`() {
+        configure()
+
+        // Create resource file in build/ directory
+        appProject.file("build/generated/res/resValues/debug/values/generated.xml").apply {
+            parentFile.mkdirs()
+            writeText("<resources></resources>")
+        }
+
+        val androidLibraryData = androidLibraryDataExtractor.extract(appProject, debugVariant())
+
+        // Assert that no resource set has paths starting with "build/"
+        androidLibraryData.resourceSets.forEach { resourceSet ->
+            resourceSet.res?.let { res ->
+                assertFalse(
+                    res.startsWith("build/"),
+                    "Expected resource path not to start with 'build/' but found: $res"
+                )
+            }
+            resourceSet.assets?.let { assets ->
+                assertFalse(
+                    assets.startsWith("build/"),
+                    "Expected assets path not to start with 'build/' but found: $assets"
+                )
+            }
+            resourceSet.manifest?.let { manifest ->
+                assertFalse(
+                    manifest.startsWith("build/"),
+                    "Expected manifest path not to start with 'build/' but found: $manifest"
+                )
+            }
         }
     }
 }

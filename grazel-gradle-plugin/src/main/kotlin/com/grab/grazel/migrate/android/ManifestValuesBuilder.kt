@@ -113,7 +113,7 @@ constructor(
             "targetSdkVersion" to defaultConfig.targetSdkVersion?.apiLevel?.toString(),
             "applicationId" to matchedVariant.variant.applicationId
         )
-        return (androidManifestValues + defautConfigPlaceHolders + variantPlaceholders + libraryFlavorManifestPlaceHolders)
+        return (androidManifestValues + defautConfigPlaceHolders + variantPlaceholders + libraryFlavorManifestPlaceHolders).toSortedMap()
     }
 }
 
