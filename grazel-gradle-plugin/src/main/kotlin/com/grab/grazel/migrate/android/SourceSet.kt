@@ -62,9 +62,17 @@ internal fun AndroidSourceSet.toResourceSet(
     project: Project
 ): Set<BazelSourceSet> {
     fun File.isValid() = exists() && walk().drop(1).any()
-    val manifestPath = manifest.srcFile.takeIf { it.exists() }?.let(project::relativePath)
-    val resources = res.srcDirs.filter(File::isValid)
-    val assets = assets.srcDirs.filter(File::isValid)
+    fun File.isNotInBuildDir() = !project.relativePath(this).startsWith("build/")
+
+    val manifestPath = manifest.srcFile
+        .takeIf { it.exists() && it.isNotInBuildDir() }
+        ?.let(project::relativePath)
+    val resources = res.srcDirs
+        .filter(File::isValid)
+        .filter(File::isNotInBuildDir)
+    val assets = assets.srcDirs
+        .filter(File::isValid)
+        .filter(File::isNotInBuildDir)
 
     return if (resources.size <= 1 && assets.size <= 1) {
         // Happy path, most modules would be like this with one single res and assets dir.
@@ -135,7 +143,9 @@ internal fun Project.filterSourceSetPaths(
                 }
             }
         }
-    }.distinct()
+    }
+    .filter { !it.startsWith("build/") }
+    .distinct()
 
 internal fun Project.filterNonDefaultSourceSetDirs(
     dirs: Sequence<File>,

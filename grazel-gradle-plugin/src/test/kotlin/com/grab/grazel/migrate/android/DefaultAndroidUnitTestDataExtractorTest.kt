@@ -200,4 +200,96 @@ class DefaultAndroidUnitTestDataExtractorTest : GrazelPluginTest() {
             buildType = variant.buildType.name
         )
     }
+
+    @Test
+    fun `assert test sources in build directory are filtered out`() {
+        // Create normal test source
+        File(subProjectDir, "src/test/java/com/example/Test.kt").apply {
+            parentFile.mkdirs()
+            createNewFile()
+            writeText("class Test")
+        }
+
+        // Create test source in build/ directory
+        File(subProjectDir, "build/generated/source/kapt/test/com/example/GeneratedTest.kt").apply {
+            parentFile.mkdirs()
+            createNewFile()
+            writeText("class GeneratedTest")
+        }
+
+        subProject.doEvaluate()
+
+        val androidUnitTestData = defaultAndroidUnitTestDataExtractor.extract(
+            subProject,
+            debugUnitTestVariant(subProject)
+        )
+
+        // Assert that sources don't contain any path starting with "build/"
+        androidUnitTestData.srcs.forEach { src ->
+            kotlin.test.assertFalse(
+                src.startsWith("build/"),
+                "Expected no test sources to start with 'build/' but found: $src"
+            )
+        }
+    }
+
+    @Test
+    fun `assert test resources in build directory are filtered out`() {
+        // Create normal test resource
+        File(subProjectDir, "src/test/resources/test.json").apply {
+            parentFile.mkdirs()
+            createNewFile()
+        }
+
+        // Create test resource in build/ directory
+        File(subProjectDir, "build/generated/test/resources/generated.json").apply {
+            parentFile.mkdirs()
+            createNewFile()
+        }
+
+        subProject.doEvaluate()
+
+        val androidUnitTestData = defaultAndroidUnitTestDataExtractor.extract(
+            subProject,
+            debugUnitTestVariant(subProject)
+        )
+
+        // Assert that resources don't contain any path starting with "build/"
+        androidUnitTestData.resources.forEach { resource ->
+            kotlin.test.assertFalse(
+                resource.startsWith("build/"),
+                "Expected no test resources to start with 'build/' but found: $resource"
+            )
+        }
+    }
+
+    @Test
+    fun `assert additional source sets in build directory are filtered out`() {
+        // Create normal additional source set
+        File(subProjectDir, "src/testDebug/java/Test.kt").apply {
+            parentFile.mkdirs()
+            createNewFile()
+        }
+
+        // Create additional source set in build/
+        File(subProjectDir, "build/generated/testDebug/java/Test.kt").apply {
+            parentFile.mkdirs()
+            createNewFile()
+        }
+
+        subProject.doEvaluate()
+
+        val androidUnitTestData = defaultAndroidUnitTestDataExtractor.extract(
+            subProject,
+            debugUnitTestVariant(subProject)
+        )
+
+        // Assert that additionalSrcSets don't contain any path starting with "build/"
+        androidUnitTestData.additionalSrcSets.forEach { srcSet ->
+            kotlin.test.assertFalse(
+                srcSet.startsWith("build/"),
+                "Expected no additional source sets to start with 'build/' but found: $srcSet"
+            )
+        }
+    }
 }
