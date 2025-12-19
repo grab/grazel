@@ -20,15 +20,15 @@ import com.android.build.gradle.AppExtension
 import com.grab.grazel.GrazelExtension
 import com.grab.grazel.bazel.starlark.BazelDependency
 import com.grab.grazel.buildProject
-import com.grab.grazel.gradle.ConfigurationScope.BUILD
-import com.grab.grazel.gradle.dependencies.BuildGraphType
 import com.grab.grazel.gradle.dependencies.DefaultDependenciesDataSource
 import com.grab.grazel.gradle.dependencies.DefaultDependencyResolutionService
 import com.grab.grazel.gradle.dependencies.DependencyResolutionService
 import com.grab.grazel.gradle.dependencies.IGNORED_ARTIFACT_GROUPS
 import com.grab.grazel.gradle.dependencies.MavenArtifact
+import com.grab.grazel.gradle.variant.VariantGraphKey
 import com.grab.grazel.gradle.dependencies.model.ResolvedDependency.Companion.from
 import com.grab.grazel.gradle.dependencies.model.WorkspaceDependencies
+import com.grab.grazel.gradle.variant.VariantType
 import com.grab.grazel.util.addGrazelExtension
 import com.grab.grazel.util.createGrazelComponent
 import com.grab.grazel.util.doEvaluate
@@ -151,16 +151,18 @@ class DefaultDependenciesDataSourceTest {
     }
 
     @Test
-    fun `assert collectMavenDeps returns variant specific classpath`() {
+    fun `assert collectMavenDeps with VariantGraphKey returns variant specific classpath`() {
         configure()
         val debugVariant = androidProject.the<AppExtension>()
             .applicationVariants
             .first { it.name == "debug" }!!
-        val deps = dependenciesDataSource.collectMavenDeps(
+        val variantKey = VariantGraphKey.from(
             androidProject,
-            BuildGraphType(BUILD, debugVariant)
+            debugVariant.name,
+            VariantType.AndroidBuild
         )
-        assertTrue(deps.size == 3, "collectMavenDeps returns variant specific classpath")
+        val deps = dependenciesDataSource.collectMavenDeps(androidProject, variantKey)
+        assertTrue(deps.size == 3, "collectMavenDeps with VariantGraphKey returns variant specific classpath")
     }
 
     private fun assertCollectMavenDeps(
@@ -171,10 +173,12 @@ class DefaultDependenciesDataSourceTest {
         val debugVariant = androidProject.the<AppExtension>()
             .applicationVariants
             .first { it.name == "debug" }!!
-        val deps = dependenciesDataSource.collectMavenDeps(
+        val variantKey = VariantGraphKey.from(
             androidProject,
-            BuildGraphType(BUILD, debugVariant)
+            debugVariant.name,
+            VariantType.AndroidBuild
         )
+        val deps = dependenciesDataSource.collectMavenDeps(androidProject, variantKey)
         assertEquals(2, deps.size, "collectMavenDeps respects ignore list")
         assertEquals(
             "@maven//:com_android_support_animated_vector_drawable", deps.first().toString()
@@ -216,7 +220,7 @@ class DefaultDependenciesDataSourceTest {
     }
 
     @Test
-    fun `assert collectTransitiveMavenDeps returns transitive dependencies`() {
+    fun `assert collectTransitiveMavenDeps with VariantGraphKey returns transitive dependencies`() {
         configure()
         val debugVariant = androidProject.the<AppExtension>()
             .applicationVariants
@@ -240,15 +244,20 @@ class DefaultDependenciesDataSourceTest {
             )
         }
 
+        val variantKey = VariantGraphKey.from(
+            androidProject,
+            debugVariant.name,
+            VariantType.AndroidBuild
+        )
         val transitiveDeps = dependenciesDataSource.collectTransitiveMavenDeps(
             androidProject,
-            BuildGraphType(BUILD, debugVariant)
+            variantKey
         )
 
         // Assert we have the expected transitive dependencies
         assertTrue(
             transitiveDeps.isNotEmpty(),
-            "collectTransitiveMavenDeps returns transitive dependencies"
+            "collectTransitiveMavenDeps with VariantGraphKey returns transitive dependencies"
         )
 
         // Assert specific transitive dependencies are included

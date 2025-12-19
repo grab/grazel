@@ -63,7 +63,10 @@ import java.io.File
 import java.net.URI
 import java.util.concurrent.Callable
 
-class FakeProject(private val name: String) : Project {
+class FakeProject(
+    private val name: String,
+    private val projectPath: String = ":$name"
+) : Project {
     var shadowConfigurations: List<Configuration> = emptyList()
 
     override fun toString(): String = name
@@ -206,9 +209,7 @@ class FakeProject(private val name: String) : Project {
         TODO("Not yet implemented")
     }
 
-    override fun getPath(): String {
-        TODO("Not yet implemented")
-    }
+    override fun getPath(): String = projectPath
 
     override fun getBuildTreePath(): String {
         TODO("Not yet implemented")

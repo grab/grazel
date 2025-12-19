@@ -16,7 +16,6 @@
 
 package com.grab.grazel.gradle.dependencies
 
-import com.grab.grazel.GrazelExtension
 import com.grab.grazel.bazel.rules.ANDROIDX_GROUP
 import com.grab.grazel.bazel.rules.ANNOTATION_ARTIFACT
 import com.grab.grazel.bazel.rules.DAGGER_GROUP
@@ -25,18 +24,14 @@ import com.grab.grazel.bazel.starlark.BazelDependency
 import com.grab.grazel.bazel.starlark.BazelDependency.MavenDependency
 import com.grab.grazel.bazel.starlark.BazelDependency.StringDependency
 import com.grab.grazel.gradle.ConfigurationDataSource
-import com.grab.grazel.gradle.ConfigurationScope
-import com.grab.grazel.gradle.ConfigurationScope.TEST
-import com.grab.grazel.gradle.configurationScopes
 import com.grab.grazel.gradle.hasDatabinding
 import com.grab.grazel.gradle.hasKotlinAndroidExtensions
 import com.grab.grazel.gradle.variant.AndroidVariant
-import com.grab.grazel.gradle.variant.AndroidVariantsExtractor
-import com.grab.grazel.gradle.variant.DEFAULT_VARIANT
-import com.grab.grazel.gradle.variant.TEST_VARIANT
 import com.grab.grazel.gradle.variant.Variant
 import com.grab.grazel.gradle.variant.VariantBuilder
-import com.grab.grazel.gradle.variant.isConfigScope
+import com.grab.grazel.gradle.variant.VariantGraphKey
+import com.grab.grazel.gradle.variant.VariantType
+import com.grab.grazel.gradle.variant.id
 import com.grab.grazel.gradle.variant.isTest
 import com.grab.grazel.gradle.variant.migratableConfigurations
 import com.grab.grazel.util.GradleProvider
@@ -89,12 +84,11 @@ internal data class ArtifactsConfig(
 
 internal interface DependenciesDataSource {
     /**
-     * Return the project's project (module) dependencies before the resolution strategy and any
-     * other custom substitutions by Gradle
+     * Return the project's project (module) dependencies filtered by VariantType.
      */
     fun projectDependencies(
         project: Project,
-        vararg scopes: ConfigurationScope
+        vararg variantTypes: VariantType
     ): Sequence<Pair<Configuration, ProjectDependency>>
 
     /** @return true if the project has any private dependencies in any configuration */
@@ -124,40 +118,20 @@ internal interface DependenciesDataSource {
         fileExtension: String? = null
     ): Map<MavenArtifact, File>
 
-    /** Non project dependencies for the given [buildGraphType] */
-    fun collectMavenDeps(
-        project: Project,
-        buildGraphType: BuildGraphType
-    ): List<BazelDependency>
+    /** Non project dependencies for the given [variantKey] */
+    fun collectMavenDeps(project: Project, variantKey: VariantGraphKey): List<BazelDependency>
 
-    /**
-     * Collects all transitive maven dependencies for the given [buildGraphType]. Similar to
-     * [collectMavenDeps]
-     */
-    fun collectTransitiveMavenDeps(
-        project: Project,
-        buildGraphType: BuildGraphType
-    ): Set<MavenDependency>
+    /** Collects all transitive maven dependencies for the given [variantKey] */
+    fun collectTransitiveMavenDeps(project: Project, variantKey: VariantGraphKey): Set<MavenDependency>
 }
 
 @Singleton
 internal class DefaultDependenciesDataSource @Inject constructor(
-    private val grazelExtension: GrazelExtension,
     private val configurationDataSource: ConfigurationDataSource,
     private val artifactsConfig: ArtifactsConfig,
     private val dependencyResolutionService: GradleProvider<DefaultDependencyResolutionService>,
-    private val androidVariantsExtractor: AndroidVariantsExtractor,
     private val variantBuilder: VariantBuilder,
 ) : DependenciesDataSource {
-
-    private val configurationScopes by lazy { grazelExtension.configurationScopes() }
-
-    private fun Project.buildGraphTypes() =
-        configurationScopes.flatMap { configurationScope ->
-            androidVariantsExtractor.getVariants(this).map { variant ->
-                BuildGraphType(configurationScope, variant)
-            }
-        }
 
     /** @return `true` when the `MavenArtifact` is present is ignored by user. */
     private val MavenArtifact.isIgnored get() = artifactsConfig.ignoredList.contains(id)
@@ -177,8 +151,8 @@ internal class DefaultDependenciesDataSource @Inject constructor(
     }
 
     override fun projectDependencies(
-        project: Project, vararg scopes: ConfigurationScope
-    ) = declaredDependencies(project, *scopes)
+        project: Project, vararg variantTypes: VariantType
+    ) = declaredDependencies(project, *variantTypes)
         .filter { it.second is ProjectDependency }
         .map { it.first to it.second as ProjectDependency }
 
@@ -219,9 +193,9 @@ internal class DefaultDependenciesDataSource @Inject constructor(
 
     override fun collectMavenDeps(
         project: Project,
-        buildGraphType: BuildGraphType
+        variantKey: VariantGraphKey
     ): List<BazelDependency> {
-        val grazelVariant: Variant<*> = findGrazelVariant(project, buildGraphType)
+        val grazelVariant: Variant<*> = findGrazelVariantByKey(project, variantKey)
         return grazelVariant.migratableConfigurations
             .asSequence()
             .flatMap { it.allDependencies.filterIsInstance<ExternalDependency>() }
@@ -254,8 +228,8 @@ internal class DefaultDependenciesDataSource @Inject constructor(
 
     override fun collectTransitiveMavenDeps(
         project: Project,
-        buildGraphType: BuildGraphType
-    ): Set<MavenDependency> = findGrazelVariant(project, buildGraphType)
+        variantKey: VariantGraphKey
+    ): Set<MavenDependency> = findGrazelVariantByKey(project, variantKey)
         .migratableConfigurations
         .asSequence()
         .flatMap { it.allDependencies.filterIsInstance<ExternalDependency>() }
@@ -274,27 +248,16 @@ internal class DefaultDependenciesDataSource @Inject constructor(
             }
         }
 
-    private fun findGrazelVariant(
-        project: Project,
-        buildGraphType: BuildGraphType
-    ): Variant<*> {
-        val variants = variantBuilder.build(project).groupBy(Variant<*>::name)
-        val inputVariant = buildGraphType.variant
-        // From input variant map to Grazel variant
-        val grazelVariant: Variant<*> = when {
-            inputVariant != null -> variants[inputVariant.name]!!.first {
-                it.variantType.isConfigScope(project, buildGraphType.configurationScope)
-            }
-            // Input variant is null, probably legacy code path assumes non android project has no
-            // variants. To compensate, map it to `default` or `test` based on
-            // BuildGraphType.configurationScope
-            // This will no longer needed after migrating legacy code path to use variants
-            else -> when (buildGraphType.configurationScope) {
-                TEST -> variants[TEST_VARIANT]!!.first()
-                else -> variants[DEFAULT_VARIANT]!!.first()
-            }
-        }
-        return grazelVariant
+    /**
+     * Find variant by VariantGraphKey.
+     * The variantKey.variantId format is "projectPath:variantNameVariantType", so we strip the
+     * project path prefix to match against Variant.id which is just "variantNameVariantType".
+     */
+    private fun findGrazelVariantByKey(project: Project, variantKey: VariantGraphKey): Variant<*> {
+        val variants = variantBuilder.build(project)
+        // Strip project path prefix from variantId to match Variant.id format
+        val variantIdWithoutProject = variantKey.variantId.substringAfterLast(":")
+        return variants.first { it.id == variantIdWithoutProject }
     }
 
     /**
@@ -305,12 +268,16 @@ internal class DefaultDependenciesDataSource @Inject constructor(
      * @return Sequence of [DefaultResolvedDependency] in the first level
      */
     private fun Project.firstLevelModuleDependencies(
-        buildGraphTypes: List<BuildGraphType> = buildGraphTypes()
+        variantTypes: Array<VariantType> = arrayOf(
+            VariantType.AndroidBuild,
+            VariantType.Test,
+            VariantType.AndroidTest
+        )
     ): Sequence<DefaultResolvedDependency> {
         return configurationDataSource
             .resolvedConfigurations(
                 project = this,
-                buildGraphTypes = buildGraphTypes.toTypedArray()
+                variantTypes = variantTypes
             ).map { it.resolvedConfiguration.lenientConfiguration }
             .flatMap {
                 try {
@@ -335,9 +302,9 @@ internal class DefaultDependenciesDataSource @Inject constructor(
      */
     private fun declaredDependencies(
         project: Project,
-        vararg scopes: ConfigurationScope
+        vararg variantTypes: VariantType
     ): Sequence<Pair<Configuration, Dependency>> {
-        return configurationDataSource.configurations(project, *scopes)
+        return configurationDataSource.configurations(project, *variantTypes)
             .flatMap { configuration ->
                 configuration
                     .dependencies

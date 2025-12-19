@@ -21,9 +21,9 @@ import com.android.build.gradle.api.AndroidSourceSet
 import com.grab.grazel.GrazelExtension
 import com.grab.grazel.bazel.rules.Multidex
 import com.grab.grazel.bazel.starlark.BazelDependency
-import com.grab.grazel.gradle.ConfigurationScope.BUILD
-import com.grab.grazel.gradle.dependencies.BuildGraphType
 import com.grab.grazel.gradle.dependencies.DependenciesDataSource
+import com.grab.grazel.gradle.variant.VariantGraphKey
+import com.grab.grazel.gradle.variant.VariantType
 import com.grab.grazel.gradle.dependencies.DependencyGraphs
 import com.grab.grazel.gradle.dependencies.GradleDependencyToBazelDependency
 import com.grab.grazel.gradle.hasCompose
@@ -73,12 +73,10 @@ constructor(
             project.isAndroid -> {
                 val extension = project.extensions.getByType<BaseExtension>()
 
-                val deps: List<BazelDependency> = projectDependencyGraphs.directDependencies(
+                val variantKey = VariantGraphKey.from(project, matchedVariant, VariantType.AndroidBuild)
+                val deps: List<BazelDependency> = projectDependencyGraphs.directDependenciesByVariant(
                     project = project,
-                    buildGraphType = BuildGraphType(
-                        configurationScope = BUILD,
-                        variant = matchedVariant.variant
-                    )
+                    variantKey = variantKey
                 ).map { dependent ->
                     gradleDependencyToBazelDependency.map(
                         project,
@@ -87,7 +85,7 @@ constructor(
                     )
                 } + dependenciesDataSource.collectMavenDeps(
                     project,
-                    BuildGraphType(BUILD, matchedVariant.variant)
+                    variantKey
                 ) + project.kotlinParcelizeDeps()
                 return project.extract(matchedVariant, extension, deps)
             }
@@ -126,9 +124,10 @@ constructor(
             ?.let(::relativePath)
 
         val tags = if (grazelExtension.rules.kotlin.enabledTransitiveReduction) {
+            val variantKey = VariantGraphKey.from(project, matchedVariant, VariantType.AndroidBuild)
             val transitiveMavenDeps = dependenciesDataSource.collectTransitiveMavenDeps(
                 project = project,
-                buildGraphType = BuildGraphType(BUILD, matchedVariant.variant)
+                variantKey = variantKey
             )
             calculateDirectDependencyTags(
                 self = name,

@@ -23,8 +23,8 @@ import com.android.builder.model.ClassField
 import com.android.builder.model.ProductFlavor
 import com.android.builder.model.VectorDrawablesOptions
 import com.grab.grazel.extension.VariantFilter
-import com.grab.grazel.gradle.ConfigurationScope
 import com.grab.grazel.gradle.variant.AndroidVariantDataSource
+import com.grab.grazel.gradle.variant.VariantType
 import org.gradle.api.Action
 import org.gradle.api.Project
 import java.io.File
@@ -46,7 +46,7 @@ class FakeAndroidVariantDataSource(
 
     override fun getMigratableVariants(
         project: Project,
-        configurationScope: ConfigurationScope?
+        variantType: VariantType
     ): Set<BaseVariant> {
         return emptySet()
     }

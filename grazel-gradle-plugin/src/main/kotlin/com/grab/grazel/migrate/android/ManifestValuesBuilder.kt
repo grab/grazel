@@ -18,13 +18,12 @@ package com.grab.grazel.migrate.android
 
 import com.android.build.gradle.BaseExtension
 import com.android.build.gradle.internal.dsl.DefaultConfig
-import com.grab.grazel.gradle.ConfigurationScope
-import com.grab.grazel.gradle.ConfigurationScope.BUILD
-import com.grab.grazel.gradle.dependencies.BuildGraphType
 import com.grab.grazel.gradle.dependencies.DependencyGraphs
+import com.grab.grazel.gradle.variant.VariantGraphKey
 import com.grab.grazel.gradle.isAndroid
 import com.grab.grazel.gradle.variant.AndroidVariantDataSource
 import com.grab.grazel.gradle.variant.MatchedVariant
+import com.grab.grazel.gradle.variant.VariantType
 import com.grab.grazel.gradle.variant.getMigratableBuildVariants
 import dagger.Lazy
 import org.gradle.api.Project
@@ -36,7 +35,7 @@ internal interface ManifestValuesBuilder {
         project: Project,
         matchedVariant: MatchedVariant,
         defaultConfig: DefaultConfig,
-        configurationScope: ConfigurationScope = BUILD
+        variantType: VariantType = VariantType.AndroidBuild
     ): Map<String, String?>
 }
 
@@ -53,13 +52,14 @@ constructor(
         project: Project,
         matchedVariant: MatchedVariant,
         defaultConfig: DefaultConfig,
-        configurationScope: ConfigurationScope
+        variantType: VariantType
     ): Map<String, String?> {
         // Collect manifest values for all dependant projects
+        val variantKey = VariantGraphKey.from(project, matchedVariant, variantType)
         val libraryFlavorManifestPlaceHolders = projectDependencyGraphs
-            .dependenciesSubGraph(
+            .dependenciesSubGraphByVariant(
                 project,
-                BuildGraphType(configurationScope, matchedVariant.variant)
+                variantKey
             ).asSequence()
             .filter(Project::isAndroid)
             .flatMap { depProject ->

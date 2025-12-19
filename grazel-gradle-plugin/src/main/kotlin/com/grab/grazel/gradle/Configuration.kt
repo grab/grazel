@@ -17,28 +17,13 @@
 package com.grab.grazel.gradle
 
 import com.android.build.gradle.api.BaseVariant
-import com.grab.grazel.GrazelExtension
-import com.grab.grazel.gradle.dependencies.BuildGraphType
 import com.grab.grazel.gradle.variant.AndroidVariantDataSource
+import com.grab.grazel.gradle.variant.VariantType
 import org.gradle.api.Project
 import org.gradle.api.artifacts.Configuration
 import org.jetbrains.kotlin.gradle.internal.Kapt3GradleSubplugin.Companion.findKaptConfiguration
 import javax.inject.Inject
 import javax.inject.Singleton
-
-enum class ConfigurationScope(val scopeName: String) {
-    BUILD(""),
-    TEST("UnitTest"),
-    ANDROID_TEST("AndroidTest");
-}
-
-internal fun GrazelExtension.configurationScopes(): Array<ConfigurationScope> {
-    return arrayOf(
-        ConfigurationScope.BUILD,
-        ConfigurationScope.TEST,
-        ConfigurationScope.ANDROID_TEST,
-    )
-}
 
 internal interface ConfigurationDataSource {
     /**
@@ -47,16 +32,16 @@ internal interface ConfigurationDataSource {
      */
     fun resolvedConfigurations(
         project: Project,
-        vararg buildGraphTypes: BuildGraphType
+        vararg variantTypes: VariantType
     ): Sequence<Configuration>
 
     /**
-     * Return a sequence of the configurations filtered out by the ignore flavors, build variants and the configuration scopes
-     * If the scopes is empty, the build scope will be used by default.
+     * Return a sequence of the configurations filtered out by the ignore flavors, build variants and the variant types.
+     * If the variantTypes is empty, AndroidBuild scope will be used by default.
      */
     fun configurations(
         project: Project,
-        vararg scopes: ConfigurationScope
+        vararg variantTypes: VariantType
     ): Sequence<Configuration>
 
     fun isThisConfigurationBelongsToThisVariants(
@@ -73,11 +58,11 @@ internal class DefaultConfigurationDataSource @Inject constructor(
 
     override fun configurations(
         project: Project,
-        vararg scopes: ConfigurationScope
+        vararg variantTypes: VariantType
     ): Sequence<Configuration> {
         val ignoreFlavors = androidVariantDataSource.getIgnoredFlavors(project)
         val ignoreVariants = androidVariantDataSource.getIgnoredVariants(project)
-        return filterConfigurations(project, scopes)
+        return filterConfigurationsByVariantType(project, variantTypes)
             .filter { config ->
                 !config.name.let { configurationName ->
                     ignoreFlavors.any { configurationName.contains(it.name, true) }
@@ -87,14 +72,15 @@ internal class DefaultConfigurationDataSource @Inject constructor(
     }
 
     /**
-     * Only allow relevant configurations required for build. Ideally for android projects we could
-     * rely on [BaseVariant.getCompileConfiguration] etc but other configurations added by plugins won't
-     * be present there. Hence we get all configurations in the project and filter by name with some
-     * assumptions
+     * Filter configurations by VariantType.
      */
-    private fun filterConfigurations(
+    private fun filterConfigurationsByVariantType(
         project: Project,
-        scopes: Array<out ConfigurationScope> = ConfigurationScope.values(),
+        variantTypes: Array<out VariantType> = arrayOf(
+            VariantType.AndroidBuild,
+            VariantType.Test,
+            VariantType.AndroidTest
+        ),
         variantNameFilter: String? = null
     ): Sequence<Configuration> {
         return project.configurations
@@ -109,12 +95,12 @@ internal class DefaultConfigurationDataSource @Inject constructor(
             .filter { !it.isDynamicConfiguration() } // Remove when Grazel support dynamic-feature plugin
             .filter { configuration ->
                 when {
-                    scopes.isEmpty() -> configuration.isNotTest() // If the scopes is empty, the build scope will be used by default.
-                    else -> scopes.any { scope ->
-                        when (scope) {
-                            ConfigurationScope.TEST -> !configuration.isAndroidTest() && configuration.isUnitTest()
-                            ConfigurationScope.ANDROID_TEST -> !configuration.isUnitTest()
-                            ConfigurationScope.BUILD -> configuration.isNotTest()
+                    variantTypes.isEmpty() -> configuration.isNotTest() // Default to build scope
+                    else -> variantTypes.any { variantType ->
+                        when (variantType) {
+                            VariantType.Test -> !configuration.isAndroidTest() && configuration.isUnitTest()
+                            VariantType.AndroidTest -> !configuration.isUnitTest()
+                            else -> configuration.isNotTest() // AndroidBuild, JvmBuild, Lint
                         }
                     }
                 }
@@ -141,12 +127,10 @@ internal class DefaultConfigurationDataSource @Inject constructor(
 
     override fun resolvedConfigurations(
         project: Project,
-        vararg buildGraphTypes: BuildGraphType
+        vararg variantTypes: VariantType
     ): Sequence<Configuration> {
-        return configurations(
-            project,
-            *buildGraphTypes.map { it.configurationScope }.toTypedArray()
-        ).filter { it.isCanBeResolved }
+        return configurations(project, *variantTypes)
+            .filter { it.isCanBeResolved }
     }
 }
 

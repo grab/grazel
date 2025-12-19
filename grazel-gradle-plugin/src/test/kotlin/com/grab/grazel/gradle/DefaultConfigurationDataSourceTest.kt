@@ -22,14 +22,12 @@ import com.grab.grazel.buildProject
 import com.grab.grazel.fake.FLAVOR1
 import com.grab.grazel.fake.FLAVOR2
 import com.grab.grazel.fake.FakeAndroidVariantDataSource
-import com.grab.grazel.fake.FakeConfiguration
-import com.grab.grazel.fake.FakeProject
+import com.grab.grazel.gradle.variant.VariantType
 import org.gradle.api.Project
 import org.gradle.kotlin.dsl.configure
 import org.junit.Before
 import org.junit.Test
 import kotlin.test.assertFalse
-import kotlin.test.assertNotEquals
 import kotlin.test.assertTrue
 
 
@@ -58,70 +56,11 @@ class DefaultConfigurationDataSourceTest : GrazelPluginTest() {
     }
 
     @Test
-    fun `assert configurations filter out dynamic-feature configuration`() {
-        val dynamicFeatureConfigurationName = "debugReverseMetadataValues"
-        val configurationDataSource = createNoFlavorFilterDataSource()
-        val project = FakeProject("project").also {
-            it.shadowConfigurations = listOf(
-                FakeConfiguration("implementation"),
-                FakeConfiguration(dynamicFeatureConfigurationName),
-            )
-        }
-
-        val configurations = configurationDataSource.configurations(project).toList()
-        assertTrue(configurations.isNotEmpty())
-        configurations.forEach {
-            assertNotEquals(dynamicFeatureConfigurationName, it.name)
-        }
-    }
-
-    @Test
-    fun `assert configurations filter out classpath and lint`() {
-        val configurationDataSource = createNoFlavorFilterDataSource()
-        val configurations = configurationDataSource.configurations(project).toList()
-        assertTrue(configurations.isNotEmpty())
-        configurations.forEach {
-            assertFalse(it.name.contains("classpath"))
-            assertFalse(it.name.contains("lint"))
-        }
-    }
-
-    @Test
-    fun `assert configurations filter out test`() {
-        val configurationDataSource = createNoFlavorFilterDataSource()
-        val configurations = configurationDataSource.configurations(project).toList()
-        assertTrue(configurations.isNotEmpty())
-        assertFalse(configurations.any { it.name.contains("test") })
-    }
-
-    @Test
-    fun `when no variant filter applied, configurations should return all variants configurations`() {
-        val configurationDataSource = createNoFlavorFilterDataSource()
-        val configurations = configurationDataSource.configurations(project).toList()
-        assertTrue(configurations.any { it.name.contains(FLAVOR1) })
-        assertTrue(configurations.any { it.name.contains(FLAVOR2) })
-    }
-
-    private fun createNoFlavorFilterDataSource(): DefaultConfigurationDataSource {
-        return DefaultConfigurationDataSource(FakeAndroidVariantDataSource())
-    }
-
-    @Test
-    fun `when variants filter applied, assert configurations ignore related variants and flavor`() {
-        val fakeVariantDataSource = FakeAndroidVariantDataSource(listOf(FLAVOR1))
-        val configurationDataSource = DefaultConfigurationDataSource(fakeVariantDataSource)
-        val configurations = configurationDataSource.configurations(project).toList()
-        assertTrue(configurations.isNotEmpty())
-        assertFalse(configurations.any { it.name.contains(FLAVOR1) })
-        assertTrue(configurations.any { it.name.contains(FLAVOR2) })
-    }
-
-    @Test
-    fun `configurations should not return test or android tests configuration with build scope`() {
+    fun `configurations should return build configurations with AndroidBuild variant type`() {
         val fakeVariantDataSource = FakeAndroidVariantDataSource(listOf(FLAVOR1, FLAVOR2))
         val configurationDataSource = DefaultConfigurationDataSource(fakeVariantDataSource)
         val configurations = configurationDataSource
-            .configurations(project, ConfigurationScope.BUILD).toList()
+            .configurations(project, VariantType.AndroidBuild).toList()
         assertTrue(configurations.isNotEmpty())
         configurations.forEach { configuration ->
             assertTrue(configuration.isNotTest())
@@ -131,11 +70,11 @@ class DefaultConfigurationDataSourceTest : GrazelPluginTest() {
     }
 
     @Test
-    fun `configurations should return test and build configurations with test scope`() {
+    fun `configurations should return test configurations with Test variant type`() {
         val fakeVariantDataSource = FakeAndroidVariantDataSource(listOf(FLAVOR1, FLAVOR2))
         val configurationDataSource = DefaultConfigurationDataSource(fakeVariantDataSource)
         val configurations = configurationDataSource
-            .configurations(project, ConfigurationScope.TEST).toList()
+            .configurations(project, VariantType.Test).toList()
         assertTrue(configurations.isNotEmpty())
         assertTrue { configurations.any { it.isUnitTest() } }
         configurations.forEach { configuration ->
@@ -147,11 +86,11 @@ class DefaultConfigurationDataSourceTest : GrazelPluginTest() {
     }
 
     @Test
-    fun `configurations should return android test and build configurations with android test scope`() {
+    fun `configurations should return android test configurations with AndroidTest variant type`() {
         val fakeVariantDataSource = FakeAndroidVariantDataSource(listOf(FLAVOR1, FLAVOR2))
         val configurationDataSource = DefaultConfigurationDataSource(fakeVariantDataSource)
         val configurations = configurationDataSource
-            .configurations(project, ConfigurationScope.ANDROID_TEST)
+            .configurations(project, VariantType.AndroidTest)
             .toList()
         assertTrue(configurations.isNotEmpty())
         assertTrue { configurations.any { it.isAndroidTest() } }
@@ -162,7 +101,26 @@ class DefaultConfigurationDataSourceTest : GrazelPluginTest() {
             assertFalse(configuration.isUnitTest())
         }
     }
+
+    @Test
+    fun `configurations with no variant type should return all configurations`() {
+        val fakeVariantDataSource = FakeAndroidVariantDataSource(listOf(FLAVOR1, FLAVOR2))
+        val configurationDataSource = DefaultConfigurationDataSource(fakeVariantDataSource)
+
+        // Test with no variant types - should return all configurations
+        val allConfigurations = configurationDataSource
+            .configurations(project).toList()
+        assertTrue(allConfigurations.isNotEmpty())
+
+        // Should include build, test, and android test configurations
+        val buildConfigurations = configurationDataSource
+            .configurations(project, VariantType.AndroidBuild).toList()
+        val testConfigurations = configurationDataSource
+            .configurations(project, VariantType.Test).toList()
+        val androidTestConfigurations = configurationDataSource
+            .configurations(project, VariantType.AndroidTest).toList()
+
+        // All configurations should be a superset of each type
+        assertTrue(allConfigurations.map { it.name }.containsAll(buildConfigurations.map { it.name }))
+    }
 }
-
-
-

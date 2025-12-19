@@ -16,7 +16,7 @@
 
 package com.grab.grazel.migrate.target
 
-import com.grab.grazel.gradle.ConfigurationScope
+import com.grab.grazel.gradle.variant.VariantType
 import com.grab.grazel.gradle.isAndroid
 import com.grab.grazel.gradle.isAndroidApplication
 import com.grab.grazel.gradle.isAndroidTest
@@ -66,7 +66,7 @@ constructor(
 ) : TargetBuilder {
 
     override fun build(project: Project): List<BazelTarget> {
-        return variantMatcher.matchedVariants(project, ConfigurationScope.BUILD)
+        return variantMatcher.matchedVariants(project, VariantType.AndroidBuild)
             .map { matchedVariant ->
                 androidLibraryDataExtractor
                     .extract(project, matchedVariant)
@@ -77,7 +77,7 @@ constructor(
     private fun unitTestsTargets(project: Project): List<AndroidUnitTestTarget> {
         return variantMatcher.matchedVariants(
             project,
-            ConfigurationScope.TEST
+            VariantType.Test
         ).map { matchedVariant ->
             unitTestDataExtractor.extract(project, matchedVariant).toUnitTestTarget()
         }

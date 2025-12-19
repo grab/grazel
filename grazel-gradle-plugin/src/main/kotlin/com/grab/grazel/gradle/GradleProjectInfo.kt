@@ -78,7 +78,7 @@ internal class DefaultGradleProjectInfo(
 
     override val hasAndroidExtension: Boolean by lazy {
         projectGraph
-            .nodes()
+            .nodesByVariant()
             .any(Project::hasKotlinAndroidExtensions)
     }
 
