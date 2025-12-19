@@ -84,3 +84,7 @@ local.bazelrc
 # Mkdocs
 site/
 
+# Claude Code
+.claude/settings.local.json
+.claude/local.md
+CLAUDE.local.md
