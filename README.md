@@ -23,76 +23,89 @@ to [Bazel build](https://bazel.build) system in an incremental and automated fas
 
 ## Features
 
-* Generate `BUILD.bazel`, `WORKSPACE` for given Android project and reduce the overall migration
-  effort.
-* Setup [hybrid build](https://grab.github.io/grazel/hybrid_builds/) to build part of project graph
-  to build with Bazel and rest with Gradle.
-* Minimal source changes to codebase - supported
-  by [Grab Bazel Common](https://github.com/grab/grab-bazel-common).
-* Gradle Configuration as source of truth.
+* Generates `BUILD.bazel` and `WORKSPACE` from Gradle configuration
+* Powered by [Grab Bazel Common](https://github.com/grab/grab-bazel-common) - custom Bazel rules for Android/Kotlin
+* Gradle remains the source of truth and minimal code changes required on Gradle side.
 
 For documentation and usage instructions, please visit [website](https://grab.github.io/grazel/).
 
 ## How it works
 
-It works by automatically generating Bazel scripts for given Android project based on your Gradle
-configuration. For simple projects, it should be able to migrate, fully build and launch the app
-with `bazel mobile-install //<target-name>`.
+Grazel reads your Gradle configuration and generates equivalent Bazel build scripts.
+Running `./gradlew migrateToBazel` produces `BUILD.bazel` files for each module.
 
 For example, for the following Gradle configuration:
 
 ```groovy
-apply plugin: "com.android.library"
-apply plugin: "kotlin-android"
+plugins {
+    id("com.android.library")
+    id("kotlin-android")
+}
 
 android {
-    compileSdkVersion rootProject.compileSdk
+    namespace = "com.example.mylibrary"
+
     defaultConfig {
-        minSdkVersion rootProject.minSdk
-        targetSdkVersion rootProject.targetSdk
-        versionCode 1
-        versionName "1.0"
+        manifestPlaceholders = [minSdkVersion: "21"]
+    }
+
+    sourceSets {
+        debug {
+            res.srcDirs += "src/debug/res"
+        }
+    }
+
+    lint {
+        baseline = file("lint_baseline.xml")
     }
 }
 
 dependencies {
-    implementation project(":app")
-    implementation project(":base")
-    implementation "androidx.test.espresso:espresso-idling-resource:3.2.0"
+    implementation(project(":core"))
+    implementation("androidx.appcompat:appcompat:1.6.1")
 }
 ```
 
 Grazel's `migrateToBazel` task generates the following build script:
 
 ```python
-load("@io_bazel_rules_kotlin//kotlin:kotlin.bzl", "kt_android_library")
+load("@grab_bazel_common//rules:defs.bzl", "android_library")
 
-kt_android_library(
-    name = "quiz",
-    srcs = glob([
-        "src/main/java/**/*.kt",
-    ]),
-    custom_package = "com.google.samples.apps.topeka.quiz",
+android_library(
+    name = "my-library-debug",
+    srcs = glob(["src/main/java/**/*.kt"]),
+    custom_package = "com.example.mylibrary",
     manifest = "src/main/AndroidManifest.xml",
-    resource_files = glob([
-        "src/main/res/**",
-    ]),
-    visibility = [
-        "//visibility:public",
-    ],
+    manifest_values = {
+        "minSdkVersion": "21",
+    },
+    resource_sets = {
+        "main": {
+            "res": "src/main/res",
+            "manifest": "src/main/AndroidManifest.xml",
+        },
+        "debug": {
+            "res": "src/debug/res",
+        },
+    },
+    lint_options = {
+        "enabled": True,
+        "baseline": "lint_baseline.xml",
+        "config": "//:lint.xml",
+    },
+    visibility = ["//visibility:public"],
     deps = [
-        "//app",
-        "//base",
-        "@maven//:androidx_test_espresso_espresso_idling_resource",
+        "//core:core-debug",
+        "@maven//:androidx_appcompat_appcompat",
     ],
 )
 ```
 
-See [migration capabilities](https://grab.github.io/grazel/migration_capabilities) for supported
-features. In advanced cases, where entire project might not
-be [migratable](https://grab.github.io/grazel/migration_criteria), it migrates part of the graph and
-sets up [hybrid build](https://grab.github.io/grazel/hybrid_builds) where part of the graph can be
-built with Bazel and rest with Gradle.
+Grazel also generates `android_unit_test` and `android_instrumentation_binary` targets for testing.
+Other supported features include flavors, mapping correct dependency data to Bazel, Dagger,
+Databinding, and Jetpack Compose etc
+
+See the [documentation](https://grab.github.io/grazel/) for the full list of capabilities.
 
 ## Resources
 
