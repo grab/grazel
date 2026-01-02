@@ -19,23 +19,21 @@ package com.grab.grazel.gradle.variant
 import com.android.build.gradle.api.BaseVariant
 import com.android.builder.model.BuildType
 import com.grab.grazel.di.qualifiers.RootProject
-import com.grab.grazel.gradle.ConfigurationScope
 import com.grab.grazel.gradle.isAndroidApplication
 import org.gradle.api.Project
 import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Variant matcher helps in resolving android variant graph accounting for variant combinations of graph
- * such as
- *  * App module contains a flavor and library module does not
- *  * App module contains a build type and library module does not
- *  * App module contains flavor dimensions but library module does not.
- * The returned [MatchedVariant] can be used for migration
+ * Variant matcher helps in resolving android variant graph accounting for variant combinations of
+ * graph such as
+ * * App module contains a flavor and library module does not
+ * * App module contains a build type and library module does not
+ * * App module contains flavor dimensions but library module does not. The returned
+ *   [MatchedVariant] can be used for migration
  *
- * Notes:
- *   Currently `missingDimension` are not handled.
- *   Functionality of this class can be merged with [VariantBuilder] if needed.
+ * Notes: Currently `missingDimension` are not handled. Functionality of this class can be merged
+ * with [VariantBuilder] if needed.
  */
 internal interface VariantMatcher {
     /**
@@ -44,33 +42,27 @@ internal interface VariantMatcher {
      * * flavors or its fallbacks
      *
      * The method accounts for various combination of variant setup between with app module and
-     * library module [project]. The app module's variants are used as source truth to generate
-     * the [MatchedVariant] since app module typically in the entry point to build.
+     * library module [project]. The app module's variants are used as source truth to generate the
+     * [MatchedVariant] since app module typically in the entry point to build.
+     *
+     * Uses [VariantBuilder] as the source of truth for variants.
      *
      * Throws error when either build type or flavor cannot be matched successfully.
      */
     fun matchedVariants(
         project: Project,
-        scope: ConfigurationScope
+        variantType: VariantType
     ): Set<MatchedVariant>
 }
 
 internal data class MatchedVariant(
-    /**
-     * The actual name of the matched variant
-     */
+    /** The actual name of the matched variant */
     val variantName: String,
-    /**
-     * Sorted set of flavors contributing to this variant
-     */
+    /** Sorted set of flavors contributing to this variant */
     val flavors: Set<String>,
-    /**
-     * The matched app module build type for this variant
-     */
+    /** The matched app module build type for this variant */
     val buildType: String,
-    /**
-     * The actual library variant that will be used for migration.
-     */
+    /** The actual library variant that will be used for migration. */
     val variant: BaseVariant,
 ) {
     companion object {
@@ -84,7 +76,7 @@ internal data class MatchedVariant(
 }
 
 private val HUMPS = "(?<=.)(?=\\p{Upper})".toRegex()
-internal val MatchedVariant.nameSuffix get() = "-${variantName.replace(HUMPS, "-").toLowerCase()}"
+internal val MatchedVariant.nameSuffix get() = "-${variantName.replace(HUMPS, "-").lowercase()}"
 
 @Singleton
 internal class DefaultVariantMatcher
@@ -92,13 +84,15 @@ internal class DefaultVariantMatcher
 constructor(
     @param:RootProject private val rootProject: Project,
     private val androidVariantDataSource: AndroidVariantDataSource,
+    private val variantBuilder: VariantBuilder,
 ) : VariantMatcher {
     /**
-     * In order to match variants correctly we need to derive the matching from active android application
-     * project which will be the source of truth for buildable variants. We find the application project
-     * here with the following caveats
-     *  * Multiple application projects in a project module graph is not supported
-     *  TODO("Support multiple android application modules")
+     * In order to match variants correctly we need to derive the matching from active android
+     * application project which will be the source of truth for buildable variants. We find the
+     * application project here with the following caveats
+     * * Multiple application projects in a project module graph is not supported
+     *
+     * TODO("Support multiple android application modules")
      */
     private val appProject: Project by lazy {
         rootProject.subprojects
@@ -112,23 +106,47 @@ constructor(
             }
     }
 
+    /**
+     * Get variants from [VariantBuilder] filtered by [VariantType]. This is the new source of truth
+     * for variant data.
+     */
+    private fun getVariantsFromBuilder(
+        project: Project,
+        variantType: VariantType
+    ): Set<BaseVariant> {
+        return variantBuilder.build(project)
+            .filter { it.variantType == variantType }
+            .filterIsInstance<AndroidVariant>()
+            .map { it.backingVariant }
+            .toSet()
+    }
+
     override fun matchedVariants(
         project: Project,
-        scope: ConfigurationScope
+        variantType: VariantType
     ): Set<MatchedVariant> {
-        /**
-         * In order to generate set of matched variants, app variants are used as source of truth,
-         * then for each app variant we find a suitable variant on the module variant. The implementation
-         * accounts for flavor dimensions and fallbacks as well as build type and fallbacks.
-         *
-         * To do this we find a set of candidates and then filter them based on matches in each build type
-         * or flavors. First build type is used to find the candidates since it only one dimension,
-         * then since flavors can have multiple candidates we account for partial matches and then
-         * use fallbacks in each unmatched flavors to find a matching one
-         */
-        val appVariants = androidVariantDataSource.getMigratableVariants(appProject, scope)
+        return matchVariantsInternal(
+            project = project,
+            appVariants = getVariantsFromBuilder(appProject, variantType),
+            libraryVariants = getVariantsFromBuilder(project, variantType)
+        )
+    }
 
-        val libraryVariants = androidVariantDataSource.getMigratableVariants(project, scope)
+    /**
+     * In order to generate set of matched variants, app variants are used as source of truth, then
+     * for each app variant we find a suitable variant on the module variant. The implementation
+     * accounts for flavor dimensions and fallbacks as well as build type and fallbacks.
+     *
+     * To do this we find a set of candidates and then filter them based on matches in each build
+     * type or flavors. First build type is used to find the candidates since it only one dimension,
+     * then since flavors can have multiple candidates we account for partial matches and then use
+     * fallbacks in each unmatched flavors to find a matching one.
+     */
+    private fun matchVariantsInternal(
+        project: Project,
+        appVariants: Set<BaseVariant>,
+        libraryVariants: Set<BaseVariant>
+    ): Set<MatchedVariant> {
         val libraryVariantsByBuildType = libraryVariants.groupBy { it.buildType.name }
         val libraryVariantsByName = libraryVariants.groupBy { it.name }
 
@@ -181,8 +199,8 @@ constructor(
     }
 
     /**
-     * Tries to find list of [BaseVariant] that match the [appBuildType], in case direct match is not
-     * found, `matchingFallbacks` is used to find the fallback build type in library module.
+     * Tries to find list of [BaseVariant] that match the [appBuildType], in case direct match is
+     * not found, `matchingFallbacks` is used to find the fallback build type in library module.
      */
     private fun calcBuildTypeCandidates(
         libraryVariantsByBuildType: Map<String, List<BaseVariant>>,
@@ -214,15 +232,17 @@ constructor(
     }
 
     /**
-     * For given [flavors] and flavor fallbacks in the app module, tries to find a [BaseVariant] that
-     * at least has one match in each flavors' fallbacks.
+     * For given [flavors] and flavor fallbacks in the app module, tries to find a [BaseVariant]
+     * that at least has one match in each flavors' fallbacks.
      *
      * For example for
+     *
      * ```
      *   flavors: free
      *   appFlavorFallbacks: ["free" : "paid"]
      *   candidates: ["paidDebug", "anotherDebug"]
      * ```
+     *
      * The candidate result will be `paidDebug`
      */
     private fun findMatchingCandidateWithFallbacks(

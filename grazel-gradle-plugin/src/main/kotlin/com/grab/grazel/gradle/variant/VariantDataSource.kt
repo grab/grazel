@@ -22,7 +22,6 @@ import com.android.build.gradle.api.UnitTestVariant
 import com.android.builder.model.BuildType
 import com.android.builder.model.ProductFlavor
 import com.grab.grazel.extension.VariantFilter
-import com.grab.grazel.gradle.ConfigurationScope
 import org.gradle.api.Action
 import org.gradle.api.Project
 
@@ -53,11 +52,20 @@ internal interface AndroidVariantDataSource {
     fun migratableVariants(project: Project, variants: (BaseVariant) -> Unit)
 
     /**
-     * @return all variants minus the ones that declared in filtered variants
+     * Returns migratable variants filtered by [VariantType].
+     *
+     * Maps VariantType to Android variant types:
+     * - [VariantType.Test] -> Unit test variants
+     * - [VariantType.AndroidTest] -> Instrumentation test variants
+     * - [VariantType.AndroidBuild] -> Library/Application variants
+     *
+     * @param project The Gradle project to get variants from
+     * @param variantType The type of variants to retrieve
+     * @return Set of [BaseVariant] matching the variant type, excluding ignored variants
      */
     fun getMigratableVariants(
         project: Project,
-        configurationScope: ConfigurationScope?
+        variantType: VariantType
     ): Set<BaseVariant>
 
     fun buildTypeFallbacks(project: Project): Map<String, Set<String>>
@@ -94,12 +102,13 @@ internal class DefaultAndroidVariantDataSource(
 
     override fun getMigratableVariants(
         project: Project,
-        configurationScope: ConfigurationScope?
+        variantType: VariantType
     ): Set<BaseVariant> {
-        return when (configurationScope) {
-            ConfigurationScope.TEST -> androidVariantsExtractor.getUnitTestVariants(project)
-            ConfigurationScope.ANDROID_TEST -> androidVariantsExtractor.getTestVariants(project)
-            else -> androidVariantsExtractor.getVariants(project)
+        return when (variantType) {
+            VariantType.Test -> androidVariantsExtractor.getUnitTestVariants(project)
+            VariantType.AndroidTest -> androidVariantsExtractor.getTestVariants(project)
+            VariantType.AndroidBuild -> androidVariantsExtractor.getVariants(project)
+            else -> emptySet() // JvmBuild, Lint not applicable to Android
         }.filterNot(::ignoredVariantFilter).toSet()
     }
 

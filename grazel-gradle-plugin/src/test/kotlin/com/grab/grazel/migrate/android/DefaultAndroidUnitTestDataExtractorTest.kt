@@ -101,8 +101,6 @@ class DefaultAndroidUnitTestDataExtractorTest : GrazelPluginTest() {
             configurationDataSource = configurationDataSource,
             artifactsConfig = ArtifactsConfig(ignoredList = listOf(KOTLIN_STDLIB)),
             dependencyResolutionService = DefaultDependencyResolutionService.register(rootProject),
-            grazelExtension = GrazelExtension(rootProject),
-            androidVariantsExtractor = androidVariantsExtractor,
             variantBuilder = DefaultVariantBuilder(
                 DefaultAndroidVariantDataSource(
                     androidVariantsExtractor

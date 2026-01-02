@@ -18,45 +18,59 @@ package com.grab.grazel.gradle.dependencies
 
 import com.google.common.graph.Graphs
 import com.google.common.graph.ImmutableValueGraph
+import com.grab.grazel.gradle.variant.VariantGraphKey
 import org.gradle.api.Project
 import org.gradle.api.artifacts.Configuration
 
 
 internal interface DependencyGraphs {
-    val buildGraphs: Map<BuildGraphType, ImmutableValueGraph<Project, Configuration>>
+    /**
+     * Graph keyed by [VariantGraphKey]. Maps variant IDs to their corresponding dependency graphs.
+     */
+    val variantGraphs: Map<VariantGraphKey, ImmutableValueGraph<Project, Configuration>>
 
-    fun nodes(vararg buildGraphType: BuildGraphType): Set<Project>
+    /**
+     * Returns all project nodes from graphs matching the given variant keys. If no keys are
+     * provided, returns nodes from all variant graphs.
+     */
+    fun nodesByVariant(vararg variantKey: VariantGraphKey): Set<Project>
 
-    fun dependenciesSubGraph(
+    /**
+     * Returns the transitive dependency subgraph for a project, filtered by variant keys. If no
+     * keys are provided, returns dependencies from all variant graphs.
+     */
+    fun dependenciesSubGraphByVariant(
         project: Project,
-        vararg buildGraphTypes: BuildGraphType
+        vararg variantKeys: VariantGraphKey
     ): Set<Project>
 
-    fun directDependencies(
+    /** Returns direct dependencies for a project by variant key. */
+    fun directDependenciesByVariant(
         project: Project,
-        buildGraphType: BuildGraphType
+        variantKey: VariantGraphKey
     ): Set<Project>
 }
 
 internal class DefaultDependencyGraphs(
-    override val buildGraphs: Map<BuildGraphType, ImmutableValueGraph<Project, Configuration>>
+    override val variantGraphs: Map<VariantGraphKey, ImmutableValueGraph<Project, Configuration>>
 ) : DependencyGraphs {
-    override fun nodes(vararg buildGraphType: BuildGraphType): Set<Project> {
+
+    override fun nodesByVariant(vararg variantKey: VariantGraphKey): Set<Project> {
         return when {
-            buildGraphType.isEmpty() -> buildGraphs.values.flatMap { it.nodes() }.toSet()
+            variantKey.isEmpty() -> variantGraphs.values.flatMap { it.nodes() }.toSet()
             else -> {
-                buildGraphType.flatMap {
-                    buildGraphs.getValue(it).nodes()
+                variantKey.flatMap {
+                    variantGraphs[it]?.nodes() ?: emptySet()
                 }.toSet()
             }
         }
     }
 
-    override fun dependenciesSubGraph(
+    override fun dependenciesSubGraphByVariant(
         project: Project,
-        vararg buildGraphTypes: BuildGraphType
-    ): Set<Project> = if (buildGraphTypes.isEmpty()) {
-        buildGraphs.values.flatMap {
+        vararg variantKeys: VariantGraphKey
+    ): Set<Project> = if (variantKeys.isEmpty()) {
+        variantGraphs.values.flatMap {
             if (it.nodes().contains(project)) {
                 Graphs.reachableNodes(it.asGraph(), project)
             } else {
@@ -64,13 +78,19 @@ internal class DefaultDependencyGraphs(
             }
         }
     } else {
-        buildGraphTypes.flatMap { buildGraphType ->
-            Graphs.reachableNodes(buildGraphs.getValue(buildGraphType).asGraph(), project)
+        variantKeys.flatMap { variantKey ->
+            variantGraphs[variantKey]?.let { graph ->
+                if (graph.nodes().contains(project)) {
+                    Graphs.reachableNodes(graph.asGraph(), project)
+                } else {
+                    emptySet()
+                }
+            } ?: emptySet()
         }
     }.toSet()
 
-    override fun directDependencies(
+    override fun directDependenciesByVariant(
         project: Project,
-        buildGraphType: BuildGraphType
-    ): Set<Project> = buildGraphs.getValue(buildGraphType).successors(project).toSet()
+        variantKey: VariantGraphKey
+    ): Set<Project> = variantGraphs[variantKey]?.successors(project)?.toSet() ?: emptySet()
 }

@@ -19,11 +19,11 @@ package com.grab.grazel.migrate.android
 import com.android.build.gradle.BaseExtension
 import com.android.build.gradle.api.AndroidSourceSet
 import com.grab.grazel.bazel.starlark.BazelDependency
-import com.grab.grazel.gradle.ConfigurationScope
-import com.grab.grazel.gradle.dependencies.BuildGraphType
 import com.grab.grazel.gradle.dependencies.DependenciesDataSource
 import com.grab.grazel.gradle.dependencies.DependencyGraphs
 import com.grab.grazel.gradle.dependencies.GradleDependencyToBazelDependency
+import com.grab.grazel.gradle.variant.VariantGraphKey
+import com.grab.grazel.gradle.variant.VariantType
 import com.grab.grazel.gradle.hasCompose
 import com.grab.grazel.gradle.variant.AndroidVariantDataSource
 import com.grab.grazel.gradle.variant.MatchedVariant
@@ -63,16 +63,17 @@ internal class DefaultAndroidInstrumentationBinaryDataExtractor
         sourceSetType: SourceSetType,
     ): AndroidInstrumentationBinaryData {
         val extension = project.extensions.getByType<BaseExtension>()
+        val variantKey = VariantGraphKey.from(project, matchedVariant, VariantType.AndroidTest)
         val deps = projectDependencyGraphs
-            .directDependencies(
+            .directDependenciesByVariant(
                 project,
-                BuildGraphType(ConfigurationScope.ANDROID_TEST, matchedVariant.variant)
+                variantKey
             ).map { dependency ->
                 gradleDependencyToBazelDependency.map(project, dependency, matchedVariant)
             } +
             dependenciesDataSource.collectMavenDeps(
                 project,
-                BuildGraphType(ConfigurationScope.ANDROID_TEST, matchedVariant.variant)
+                variantKey
             ) +
             BazelDependency.ProjectDependency(
                 prefix = "lib_",
@@ -103,7 +104,7 @@ internal class DefaultAndroidInstrumentationBinaryDataExtractor
             project = project,
             matchedVariant = matchedVariant,
             defaultConfig = extension.defaultConfig,
-            configurationScope = ConfigurationScope.ANDROID_TEST
+            variantType = VariantType.AndroidTest
         )
 
         val customPackage = androidManifestParser.parsePackageName(

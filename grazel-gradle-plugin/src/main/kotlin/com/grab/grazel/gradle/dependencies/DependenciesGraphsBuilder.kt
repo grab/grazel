@@ -21,11 +21,15 @@ import com.google.common.graph.MutableValueGraph
 import com.google.common.graph.ValueGraphBuilder
 import com.grab.grazel.di.qualifiers.RootProject
 import com.grab.grazel.gradle.ConfigurationDataSource
-import com.grab.grazel.gradle.ConfigurationScope
 import com.grab.grazel.gradle.isAndroid
 import com.grab.grazel.gradle.isJava
 import com.grab.grazel.gradle.isKotlinJvm
 import com.grab.grazel.gradle.variant.AndroidVariantDataSource
+import com.grab.grazel.gradle.variant.VariantGraphKey
+import com.grab.grazel.gradle.variant.VariantType
+import com.grab.grazel.gradle.variant.jvmVariantName
+import com.grab.grazel.gradle.variant.toJvmVariantType
+import com.grab.grazel.gradle.variant.toVariantType
 import org.gradle.api.Project
 import org.gradle.api.artifacts.Configuration
 import javax.inject.Inject
@@ -40,25 +44,25 @@ constructor(
 ) {
 
     fun build(): DependencyGraphs {
-        val buildGraphs: MutableMap<BuildGraphType, MutableValueGraph<Project, Configuration>> =
+        val variantGraphs: MutableMap<VariantGraphKey, MutableValueGraph<Project, Configuration>> =
             mutableMapOf()
-        buildList {
-            add(ConfigurationScope.BUILD)
-            add(ConfigurationScope.TEST)
-            add(ConfigurationScope.ANDROID_TEST)
-        }.forEach { configurationScope ->
+        listOf(
+            VariantType.AndroidBuild,
+            VariantType.Test,
+            VariantType.AndroidTest
+        ).forEach { variantType ->
             rootProject.subprojects.forEach { sourceProject ->
                 addProjectAsNodeToAllOfItsVariantsGraphs(
                     sourceProject,
-                    configurationScope,
-                    buildGraphs
+                    variantType,
+                    variantGraphs
                 )
-                addEdges(sourceProject, configurationScope, buildGraphs)
-                dependenciesDataSource.projectDependencies(sourceProject, configurationScope)
+                addEdges(sourceProject, variantType, variantGraphs)
+                dependenciesDataSource.projectDependencies(sourceProject, variantType)
                     .forEach { (configuration, projectDependency) ->
                         androidVariantDataSource.getMigratableVariants(
                             sourceProject,
-                            configurationScope
+                            variantType
                         ).forEach { variant ->
                             if (configurationDataSource.isThisConfigurationBelongsToThisVariants(
                                     sourceProject,
@@ -66,8 +70,13 @@ constructor(
                                     configuration = configuration
                                 )
                             ) {
-                                buildGraphs.putEdgeValue(
-                                    BuildGraphType(configurationScope, variant),
+                                val variantKey = VariantGraphKey.from(
+                                    sourceProject,
+                                    variant.name,
+                                    variant.toVariantType()
+                                )
+                                variantGraphs.putEdgeValue(
+                                    variantKey,
                                     sourceProject,
                                     projectDependency.dependencyProject,
                                     configuration
@@ -78,31 +87,38 @@ constructor(
             }
         }
 
-        val immutableBuildGraphs = buildGraphs
+        val immutableVariantGraphs = variantGraphs
             .withDefault { buildGraph(0) }
             .mapValues { (_, graph) ->
                 ImmutableValueGraph.copyOf(graph)
             }
 
-        return DefaultDependencyGraphs(buildGraphs = immutableBuildGraphs)
+        return DefaultDependencyGraphs(
+            variantGraphs = immutableVariantGraphs
+        )
     }
 
     private fun addEdges(
         project: Project,
-        configurationScope: ConfigurationScope,
-        graph: MutableMap<BuildGraphType, MutableValueGraph<Project, Configuration>>,
+        variantType: VariantType,
+        variantGraph: MutableMap<VariantGraphKey, MutableValueGraph<Project, Configuration>>,
     ) {
-        dependenciesDataSource.projectDependencies(project, configurationScope)
+        dependenciesDataSource.projectDependencies(project, variantType)
             .forEach { (configuration, projectDependency) ->
                 val variants = androidVariantDataSource.getMigratableVariants(
                     project,
-                    configurationScope
+                    variantType
                 )
                 if (variants.isNotEmpty()) {
                     variants.forEach { variant ->
                         if (variant.compileConfiguration.hierarchy.contains(configuration)) {
-                            graph.putEdgeValue(
-                                BuildGraphType(configurationScope, variant),
+                            val variantKey = VariantGraphKey.from(
+                                project,
+                                variant.name,
+                                variant.toVariantType()
+                            )
+                            variantGraph.putEdgeValue(
+                                variantKey,
                                 project,
                                 projectDependency.dependencyProject,
                                 configuration
@@ -110,8 +126,14 @@ constructor(
                         }
                     }
                 } else {
-                    graph.putEdgeValue(
-                        BuildGraphType(configurationScope),
+                    // For non-Android projects, create JVM variant keys
+                    val variantKey = VariantGraphKey.from(
+                        project,
+                        variantType.jvmVariantName,
+                        variantType.toJvmVariantType
+                    )
+                    variantGraph.putEdgeValue(
+                        variantKey,
                         project,
                         projectDependency.dependencyProject,
                         configuration
@@ -122,45 +144,56 @@ constructor(
 
     private fun addProjectAsNodeToAllOfItsVariantsGraphs(
         sourceProject: Project,
-        configurationScope: ConfigurationScope,
-        buildGraphs: MutableMap<BuildGraphType, MutableValueGraph<Project, Configuration>>
+        variantType: VariantType,
+        variantGraphs: MutableMap<VariantGraphKey, MutableValueGraph<Project, Configuration>>
     ) {
         if (sourceProject.isAndroid) {
-            androidVariantDataSource.getMigratableVariants(sourceProject, configurationScope)
+            androidVariantDataSource.getMigratableVariants(sourceProject, variantType)
                 .forEach { variant ->
-                    buildGraphs.addNode(BuildGraphType(configurationScope, variant), sourceProject)
+                    val variantKey = VariantGraphKey.from(
+                        sourceProject,
+                        variant.name,
+                        variant.toVariantType()
+                    )
+                    variantGraphs.addNode(variantKey, sourceProject)
                 }
         } else if (
             !sourceProject.isAndroid &&
             (sourceProject.isJava || sourceProject.isKotlinJvm)
         ) {
-            buildGraphs.addNode(BuildGraphType(configurationScope, null), sourceProject)
+            // For JVM projects
+            val variantKey = VariantGraphKey.from(
+                sourceProject,
+                variantType.jvmVariantName,
+                variantType.toJvmVariantType
+            )
+            variantGraphs.addNode(variantKey, sourceProject)
         } else {
             rootProject.logger.info("${sourceProject.name} is a simple directory")
         }
     }
 }
 
-private fun MutableMap<BuildGraphType, MutableValueGraph<Project, Configuration>>.putEdgeValue(
-    buildGraphType: BuildGraphType,
+private fun MutableMap<VariantGraphKey, MutableValueGraph<Project, Configuration>>.putEdgeValue(
+    variantKey: VariantGraphKey,
     sourceProject: Project,
     dependencyProject: Project,
     configuration: Configuration
 ) {
-    computeIfAbsent(buildGraphType) {
+    computeIfAbsent(variantKey) {
         buildGraph(sourceProject.subprojects.size)
     }
-    get(buildGraphType)!!.putEdgeValue(sourceProject, dependencyProject, configuration)
+    get(variantKey)!!.putEdgeValue(sourceProject, dependencyProject, configuration)
 }
 
-private fun MutableMap<BuildGraphType, MutableValueGraph<Project, Configuration>>.addNode(
-    buildGraphType: BuildGraphType,
+private fun MutableMap<VariantGraphKey, MutableValueGraph<Project, Configuration>>.addNode(
+    variantKey: VariantGraphKey,
     sourceProject: Project
 ) {
-    computeIfAbsent(buildGraphType) {
+    computeIfAbsent(variantKey) {
         buildGraph(sourceProject.subprojects.size)
     }
-    get(buildGraphType)!!.addNode(sourceProject)
+    get(variantKey)!!.addNode(sourceProject)
 }
 
 fun buildGraph(size: Int): MutableValueGraph<Project, Configuration> {

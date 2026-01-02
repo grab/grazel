@@ -20,7 +20,7 @@ import com.google.common.graph.ImmutableValueGraph
 import com.google.common.graph.ValueGraphBuilder
 import com.grab.grazel.fake.FakeConfiguration
 import com.grab.grazel.fake.FakeProject
-import com.grab.grazel.gradle.ConfigurationScope
+import com.grab.grazel.gradle.variant.VariantGraphKey
 import org.gradle.api.Project
 import org.gradle.api.artifacts.Configuration
 import org.junit.Test
@@ -35,78 +35,106 @@ class DefaultDependencyGraphsTest {
     private val projectE = FakeProject("E")
 
     private val dependenciesGraphs = DefaultDependencyGraphs(
-        buildGraphs = mapOf(
-            BuildGraphType(ConfigurationScope.BUILD) to buildBuildGraphs(),
-            BuildGraphType(ConfigurationScope.TEST) to buildTestGraphs()
+        variantGraphs = mapOf(
+            VariantGraphKey(":A:debugAndroidBuild") to buildBuildGraphs(),
+            VariantGraphKey(":A:debugUnitTestTest") to buildTestGraphs()
         )
     )
 
     @Test
-    fun nodesShouldReturnAllNodesIfNoScopePassed() {
+    fun `nodesByVariant should return all nodes if no variant key passed`() {
         val buildNodes = setOf(projectA, projectB, projectC)
         val testNodes = setOf(projectA, projectB, projectC, projectD, projectE)
         assertEquals(
-            testNodes + buildNodes, dependenciesGraphs.nodes()
+            testNodes + buildNodes, dependenciesGraphs.nodesByVariant()
         )
     }
 
     @Test
-    fun nodesShouldReturnTheCorrectItemsBaseOnScopes() {
+    fun `nodesByVariant should return correct nodes for build variant`() {
+        val buildNodes = setOf(projectA, projectB, projectC)
+        assertEquals(
+            buildNodes,
+            dependenciesGraphs.nodesByVariant(VariantGraphKey(":A:debugAndroidBuild"))
+        )
+    }
+
+    @Test
+    fun `nodesByVariant should return correct nodes for test variant`() {
+        val testNodes = setOf(projectA, projectB, projectC, projectD, projectE)
+        assertEquals(
+            testNodes,
+            dependenciesGraphs.nodesByVariant(VariantGraphKey(":A:debugUnitTestTest"))
+        )
+    }
+
+    @Test
+    fun `nodesByVariant should return combined nodes for multiple variants`() {
         val buildNodes = setOf(projectA, projectB, projectC)
         val testNodes = setOf(projectA, projectB, projectC, projectD, projectE)
-        assertEquals(buildNodes, dependenciesGraphs.nodes(BuildGraphType(ConfigurationScope.BUILD)))
-        assertEquals(testNodes, dependenciesGraphs.nodes(BuildGraphType(ConfigurationScope.TEST)))
         assertEquals(
             testNodes + buildNodes,
-            dependenciesGraphs.nodes(
-                BuildGraphType(ConfigurationScope.TEST),
-                BuildGraphType(ConfigurationScope.BUILD)
+            dependenciesGraphs.nodesByVariant(
+                VariantGraphKey(":A:debugAndroidBuild"),
+                VariantGraphKey(":A:debugUnitTestTest")
             )
         )
     }
 
     @Test
-    fun directDependenciesShouldReturnDirectDepsFromBuildScope() {
+    fun `directDependenciesByVariant should return direct deps using VariantGraphKey`() {
         val directDepsFromAWithBuildScope = setOf(projectB, projectC)
         assertEquals(
             directDepsFromAWithBuildScope,
-            dependenciesGraphs.directDependencies(
+            dependenciesGraphs.directDependenciesByVariant(
                 projectA,
-                BuildGraphType(ConfigurationScope.BUILD)
+                VariantGraphKey(":A:debugAndroidBuild")
             )
         )
     }
 
     @Test
-    fun dependenciesSubGraphShouldReturnDepsFromAllScopeIfNoScopePassed() {
-        val expectDeps = setOf(projectB, projectC, projectD, projectE)
-        assertEquals(
-            expectDeps,
-            dependenciesGraphs.dependenciesSubGraph(projectB)
-        )
-    }
-
-    @Test
-    fun dependenciesSubGraphShouldReturnDepsFromBuildScope() {
+    fun `dependenciesSubGraphByVariant should return deps using VariantGraphKey for build scope`() {
         val expectDeps = setOf(projectB, projectC)
         assertEquals(
             expectDeps,
-            dependenciesGraphs.dependenciesSubGraph(
+            dependenciesGraphs.dependenciesSubGraphByVariant(
                 projectB,
-                BuildGraphType(ConfigurationScope.BUILD)
+                VariantGraphKey(":A:debugAndroidBuild")
             )
         )
     }
 
     @Test
-    fun dependenciesSubGraphShouldReturnDepsFromBuildAndTestScope() {
+    fun `dependenciesSubGraphByVariant should return deps using VariantGraphKey for test scope`() {
         val expectDeps = setOf(projectB, projectC, projectD, projectE)
         assertEquals(
             expectDeps,
-            dependenciesGraphs.dependenciesSubGraph(
+            dependenciesGraphs.dependenciesSubGraphByVariant(
                 projectB,
-                BuildGraphType(ConfigurationScope.BUILD),
-                BuildGraphType(ConfigurationScope.TEST)
+                VariantGraphKey(":A:debugUnitTestTest")
+            )
+        )
+    }
+
+    @Test
+    fun `dependenciesSubGraphByVariant should return all deps when no variant keys provided`() {
+        val expectDeps = setOf(projectB, projectC, projectD, projectE)
+        assertEquals(
+            expectDeps,
+            dependenciesGraphs.dependenciesSubGraphByVariant(projectB)
+        )
+    }
+
+    @Test
+    fun `dependenciesSubGraphByVariant should return combined deps for multiple variants`() {
+        val expectDeps = setOf(projectB, projectC, projectD, projectE)
+        assertEquals(
+            expectDeps,
+            dependenciesGraphs.dependenciesSubGraphByVariant(
+                projectB,
+                VariantGraphKey(":A:debugAndroidBuild"),
+                VariantGraphKey(":A:debugUnitTestTest")
             )
         )
     }
@@ -134,3 +162,4 @@ class DefaultDependencyGraphsTest {
                 putEdgeValue(projectA, projectE, FakeConfiguration())
             }.run { ImmutableValueGraph.copyOf(this) }
 }
+

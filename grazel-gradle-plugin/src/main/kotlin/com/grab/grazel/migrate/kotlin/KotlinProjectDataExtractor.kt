@@ -20,11 +20,11 @@ import com.grab.grazel.GrazelExtension
 import com.grab.grazel.bazel.rules.KOTLIN_PARCELIZE_TARGET
 import com.grab.grazel.bazel.starlark.BazelDependency
 import com.grab.grazel.extension.KotlinExtension
-import com.grab.grazel.gradle.ConfigurationScope
-import com.grab.grazel.gradle.dependencies.BuildGraphType
 import com.grab.grazel.gradle.dependencies.DependenciesDataSource
 import com.grab.grazel.gradle.dependencies.DependencyGraphs
+import com.grab.grazel.gradle.variant.VariantGraphKey
 import com.grab.grazel.gradle.dependencies.GradleDependencyToBazelDependency
+import com.grab.grazel.gradle.variant.VariantType
 import com.grab.grazel.gradle.hasKotlinAndroidExtensions
 import com.grab.grazel.migrate.android.SourceSetType
 import com.grab.grazel.migrate.android.SourceSetType.ASSETS
@@ -68,9 +68,10 @@ internal class DefaultKotlinProjectDataExtractor
         val srcs = project.kotlinSources(sourceSets, JAVA_KOTLIN).toList()
         val resources = project.kotlinSources(sourceSets, RESOURCES).toList()
 
-        val deps = projectDependencyGraphs.directDependencies(
+        val variantKey = VariantGraphKey.from(project, "default", VariantType.JvmBuild)
+        val deps = projectDependencyGraphs.directDependenciesByVariant(
             project = project,
-            buildGraphType = BuildGraphType(ConfigurationScope.BUILD)
+            variantKey = variantKey
         ).map { dependent ->
             gradleDependencyToBazelDependency.map(
                 project = project,
@@ -79,13 +80,13 @@ internal class DefaultKotlinProjectDataExtractor
             )
         } + dependenciesDataSource.collectMavenDeps(
             project = project,
-            buildGraphType = BuildGraphType(ConfigurationScope.BUILD)
+            variantKey = variantKey
         ) + project.androidJarDeps() + project.kotlinParcelizeDeps()
 
         val tags = if (kotlinExtension.enabledTransitiveReduction) {
             val transitiveMavenDeps = dependenciesDataSource.collectTransitiveMavenDeps(
                 project = project,
-                buildGraphType = BuildGraphType(ConfigurationScope.BUILD)
+                variantKey = variantKey
             )
             calculateDirectDependencyTags(self = name, deps = deps + transitiveMavenDeps)
         } else emptyList()
@@ -117,7 +118,7 @@ internal class DefaultKotlinProjectDataExtractor
             }
         }
         val dirs = sourceSets.asSequence()
-            .filter { !it.name.toLowerCase().contains("test") } // TODO Consider enabling later.
+            .filter { !it.name.lowercase().contains("test") } // TODO Consider enabling later.
             .flatMap(sourceSetChoosers)
         return filterSourceSetPaths(dirs, sourceSetType.patterns)
     }

@@ -19,11 +19,11 @@ import com.android.build.gradle.api.AndroidSourceSet
 import com.grab.grazel.GrazelExtension
 import com.grab.grazel.bazel.starlark.BazelDependency
 import com.grab.grazel.extension.KotlinExtension
-import com.grab.grazel.gradle.ConfigurationScope
-import com.grab.grazel.gradle.dependencies.BuildGraphType
 import com.grab.grazel.gradle.dependencies.DependenciesDataSource
 import com.grab.grazel.gradle.dependencies.DependencyGraphs
 import com.grab.grazel.gradle.dependencies.GradleDependencyToBazelDependency
+import com.grab.grazel.gradle.variant.VariantGraphKey
+import com.grab.grazel.gradle.variant.VariantType
 import com.grab.grazel.gradle.hasCompose
 import com.grab.grazel.gradle.variant.AndroidVariantDataSource
 import com.grab.grazel.gradle.variant.MatchedVariant
@@ -86,16 +86,17 @@ constructor(
         val resources = project.unitTestResources(migratableSourceSets).toList()
         val associate = calculateTestAssociates(project, matchedVariant.nameSuffix)
 
+        val variantKey = VariantGraphKey.from(project, matchedVariant, VariantType.Test)
         val deps = projectDependencyGraphs
-            .directDependencies(
+            .directDependenciesByVariant(
                 project = project,
-                buildGraphType = BuildGraphType(ConfigurationScope.TEST, matchedVariant.variant)
+                variantKey = variantKey
             ).map { dependent ->
                 gradleDependencyToBazelDependency.map(project, dependent, matchedVariant)
             } +
             dependenciesDataSource.collectMavenDeps(
                 project = project,
-                buildGraphType = BuildGraphType(ConfigurationScope.TEST, matchedVariant.variant)
+                variantKey = variantKey
             ) +
             project.kotlinParcelizeDeps() +
             BazelDependency.ProjectDependency(
@@ -106,7 +107,7 @@ constructor(
         val tags = if (kotlinExtension.enabledTransitiveReduction) {
             val transitiveMavenDeps = dependenciesDataSource.collectTransitiveMavenDeps(
                 project = project,
-                buildGraphType = BuildGraphType(ConfigurationScope.TEST, matchedVariant.variant)
+                variantKey = variantKey
             )
             calculateDirectDependencyTags(name, deps + transitiveMavenDeps)
         } else emptyList()

@@ -6,12 +6,7 @@ import com.android.build.gradle.api.LibraryVariant
 import com.android.build.gradle.api.TestVariant
 import com.android.build.gradle.api.UnitTestVariant
 import com.google.common.base.MoreObjects
-import com.grab.grazel.gradle.ConfigurationScope
-import com.grab.grazel.gradle.ConfigurationScope.ANDROID_TEST
-import com.grab.grazel.gradle.ConfigurationScope.BUILD
-import com.grab.grazel.gradle.ConfigurationScope.TEST
 import com.grab.grazel.gradle.hasKapt
-import com.grab.grazel.gradle.isAndroid
 import com.grab.grazel.gradle.variant.VariantType.AndroidBuild
 import com.grab.grazel.gradle.variant.VariantType.AndroidTest
 import com.grab.grazel.gradle.variant.VariantType.JvmBuild
@@ -98,22 +93,6 @@ val Variant<*>.isBase get() = name == DEFAULT_VARIANT
 
 val Variant<*>.id get() = name + variantType.toString()
 
-/**
- * Bridge function to map [ConfigurationScope] to [VariantType]
- * Not required once fully migrated to [Variant] APIs
- *
- * @return whether this [VariantType] corresponds to [ConfigurationScope]
- */
-@Deprecated(message = "Deprecated, new code should use Variant API directly")
-fun VariantType.isConfigScope(
-    project: Project,
-    configurationScope: ConfigurationScope
-) = when (configurationScope) {
-    BUILD -> this == if (project.isAndroid) AndroidBuild else JvmBuild
-    TEST -> this == Test
-    ANDROID_TEST -> this == AndroidTest
-}
-
 val VariantType.isAndroidTest get() = this == AndroidTest
 val VariantType.isTest get() = this == Test || isAndroidTest
 
@@ -122,6 +101,31 @@ val VariantType.testSuffix
         this == Test -> "UnitTest"
         this == AndroidTest -> "AndroidTest"
         else -> error("$this is not a test type!")
+    }
+
+/**
+ * Maps an Android-oriented VariantType to its JVM equivalent.
+ * - AndroidBuild -> JvmBuild
+ * - Test -> Test (unchanged)
+ * - AndroidTest -> JvmBuild (not applicable to JVM)
+ * - Lint -> Lint (unchanged)
+ * - JvmBuild -> JvmBuild (unchanged)
+ */
+val VariantType.toJvmVariantType: VariantType
+    get() = when (this) {
+        AndroidBuild -> JvmBuild
+        Test -> Test
+        else -> JvmBuild
+    }
+
+/**
+ * Returns the default variant name for JVM projects based on variant type.
+ */
+val VariantType.jvmVariantName: String
+    get() = when (this.toJvmVariantType) {
+        JvmBuild -> DEFAULT_VARIANT
+        Test -> TEST_VARIANT
+        else -> DEFAULT_VARIANT
     }
 
 /**

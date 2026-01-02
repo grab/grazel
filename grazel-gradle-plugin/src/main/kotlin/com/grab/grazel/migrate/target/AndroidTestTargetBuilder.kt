@@ -17,7 +17,7 @@
 package com.grab.grazel.migrate.target
 
 import com.grab.grazel.bazel.rules.Visibility
-import com.grab.grazel.gradle.ConfigurationScope.BUILD
+import com.grab.grazel.gradle.variant.VariantType
 import com.grab.grazel.gradle.isAndroidTest
 import com.grab.grazel.gradle.variant.VariantMatcher
 import com.grab.grazel.migrate.TargetBuilder
@@ -65,7 +65,7 @@ internal class AndroidTestTargetBuilder
         // Get variants from the TEST MODULE itself
         variantMatcher.matchedVariants(
             project,
-            BUILD
+            VariantType.AndroidBuild
         ).forEach { matchedVariant ->
             // Extract common library fields (srcs, resourceSets, etc.)
             val androidLibraryData = androidLibraryDataExtractor.extract(

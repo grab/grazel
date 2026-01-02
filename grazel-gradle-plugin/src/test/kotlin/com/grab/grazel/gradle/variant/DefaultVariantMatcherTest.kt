@@ -21,7 +21,6 @@ import com.android.build.gradle.LibraryExtension
 import com.grab.grazel.buildProject
 import com.grab.grazel.gradle.ANDROID_APPLICATION_PLUGIN
 import com.grab.grazel.gradle.ANDROID_LIBRARY_PLUGIN
-import com.grab.grazel.gradle.ConfigurationScope
 import com.grab.grazel.gradle.KOTLIN_ANDROID_PLUGIN
 import com.grab.grazel.gradle.KOTLIN_KAPT
 import com.grab.grazel.util.addGrazelExtension
@@ -104,7 +103,7 @@ internal class DefaultVariantMatcherTest {
         configure()
         val matchedVariants = variantMatcher.matchedVariants(
             libraryProject,
-            ConfigurationScope.BUILD
+            VariantType.AndroidBuild
         )
         assertVariantNames(matchedVariants, "debug", "release")
     }
@@ -126,7 +125,7 @@ internal class DefaultVariantMatcherTest {
         )
         val matchedVariants = variantMatcher.matchedVariants(
             libraryProject,
-            ConfigurationScope.BUILD
+            VariantType.AndroidBuild
         )
         assertVariantNames(
             matchedVariants,
@@ -165,7 +164,7 @@ internal class DefaultVariantMatcherTest {
         )
         val matchedVariants = variantMatcher.matchedVariants(
             libraryProject,
-            ConfigurationScope.BUILD
+            VariantType.AndroidBuild
         )
         assertVariantNames(
             matchedVariants,
@@ -211,13 +210,13 @@ internal class DefaultVariantMatcherTest {
         ) {
             variantMatcher.matchedVariants(
                 libraryProject,
-                ConfigurationScope.BUILD
+                VariantType.AndroidBuild
             )
         }
         setup(addFallback = true)
         val results = variantMatcher.matchedVariants(
             libraryProject,
-            ConfigurationScope.BUILD
+            VariantType.AndroidBuild
         )
         assertVariantNames(
             results,
@@ -256,13 +255,13 @@ internal class DefaultVariantMatcherTest {
         ) {
             variantMatcher.matchedVariants(
                 libraryProject,
-                ConfigurationScope.BUILD
+                VariantType.AndroidBuild
             )
         }
         setup(addFallback = true)
         val results = variantMatcher.matchedVariants(
             libraryProject,
-            ConfigurationScope.BUILD
+            VariantType.AndroidBuild
         )
         assertVariantNames(
             results,
@@ -310,13 +309,13 @@ internal class DefaultVariantMatcherTest {
         ) {
             variantMatcher.matchedVariants(
                 libraryProject,
-                ConfigurationScope.BUILD
+                VariantType.AndroidBuild
             )
         }
         setup(addFallback = true)
         val results = variantMatcher.matchedVariants(
             libraryProject,
-            ConfigurationScope.BUILD
+            VariantType.AndroidBuild
         )
         assertVariantNames(
             results,
@@ -361,7 +360,7 @@ internal class DefaultVariantMatcherTest {
         setup(true)
         val results = variantMatcher.matchedVariants(
             libraryProject,
-            ConfigurationScope.BUILD
+            VariantType.AndroidBuild
         )
         assertVariantNames(
             results,
@@ -415,7 +414,7 @@ internal class DefaultVariantMatcherTest {
         )
         val results = variantMatcher.matchedVariants(
             libraryProject,
-            ConfigurationScope.BUILD
+            VariantType.AndroidBuild
         )
         assertVariantNames(
             results,

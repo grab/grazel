@@ -16,7 +16,7 @@
 
 package com.grab.grazel.migrate.target
 
-import com.grab.grazel.gradle.ConfigurationScope.BUILD
+import com.grab.grazel.gradle.variant.VariantType
 import com.grab.grazel.gradle.hasCrashlytics
 import com.grab.grazel.gradle.hasGooglePlayServicesPlugin
 import com.grab.grazel.gradle.isAndroidApplication
@@ -85,7 +85,7 @@ constructor(
     private fun buildAndroidBinaryTargets(
         project: Project
     ): List<BazelTarget> {
-        val targets = variantMatcher.matchedVariants(project, BUILD).flatMap { matchedVariant ->
+        val targets = variantMatcher.matchedVariants(project, VariantType.AndroidBuild).flatMap { matchedVariant ->
             val androidLibraryData = androidLibraryDataExtractor.extract(
                 project = project,
                 matchedVariant = matchedVariant

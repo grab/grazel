@@ -19,9 +19,9 @@ package com.grab.grazel.migrate.android
 import com.android.build.gradle.TestExtension
 import com.android.build.gradle.api.AndroidSourceSet
 import com.grab.grazel.bazel.starlark.BazelDependency
-import com.grab.grazel.gradle.ConfigurationScope
-import com.grab.grazel.gradle.dependencies.BuildGraphType
 import com.grab.grazel.gradle.dependencies.DependenciesDataSource
+import com.grab.grazel.gradle.variant.VariantGraphKey
+import com.grab.grazel.gradle.variant.VariantType
 import com.grab.grazel.gradle.isAndroid
 import com.grab.grazel.gradle.variant.AndroidVariantDataSource
 import com.grab.grazel.gradle.variant.MatchedVariant
@@ -80,7 +80,7 @@ constructor(
 
         val targetVariants = variantMatcher.matchedVariants(
             project = targetProject,
-            scope = ConfigurationScope.BUILD
+            variantType = VariantType.AndroidBuild
         )
 
         // Match by the APP's variant name, not the test module's actual variant name
@@ -238,9 +238,10 @@ constructor(
 
         // Combine library deps with test deps, but filter out the target app
         // (it's handled via 'instruments' and 'associates')
+        val variantKey = VariantGraphKey.from(this, matchedVariant, VariantType.AndroidBuild)
         val combinedDeps = (androidLibraryData.deps + dependenciesDataSource.collectMavenDeps(
             this,
-            BuildGraphType(ConfigurationScope.BUILD, matchedVariant.variant)
+            variantKey
         )).filterNot { dep ->
             dep is BazelDependency.ProjectDependency &&
                 dep.dependencyProject.path == targetResolution.targetProject.path

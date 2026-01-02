@@ -16,7 +16,7 @@
 
 package com.grab.grazel.migrate.target
 
-import com.grab.grazel.gradle.ConfigurationScope.ANDROID_TEST
+import com.grab.grazel.gradle.variant.VariantType
 import com.grab.grazel.gradle.hasTestInstrumentationRunner
 import com.grab.grazel.gradle.isAndroidApplication
 import com.grab.grazel.gradle.variant.VariantMatcher
@@ -54,7 +54,7 @@ internal class AndroidInstrumentationBinaryTargetBuilder
     override fun build(project: Project) = buildList {
         variantMatcher.matchedVariants(
             project,
-            ANDROID_TEST
+            VariantType.AndroidTest
         ).forEach { matchedVariant ->
             val androidInstrumentationBinData = androidInstrumentationBinDataExtractor.extract(
                 project = project,
