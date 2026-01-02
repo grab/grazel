@@ -8,9 +8,9 @@ http_archive(
     url = "https://github.com/bazelbuild/rules_kotlin/releases/download/v1.9.5/rules_kotlin-v1.9.5.tar.gz",
 )
 
-KOTLIN_VERSION = "1.8.10"
+KOTLIN_VERSION = "1.9.25"
 
-KOTLINC_RELEASE_SHA = "4c3fa7bc1bb9ef3058a2319d8bcc3b7196079f88e92fdcd8d304a46f4b6b5787"
+KOTLINC_RELEASE_SHA = "6ab72d6144e71cbbc380b770c2ad380972548c63ab6ed4c79f11c88f2967332e"
 
 load("@io_bazel_rules_kotlin//kotlin:repositories.bzl", "kotlin_repositories", "kotlinc_version")
 
@@ -294,11 +294,11 @@ maven_install(
         "androidx.cursoradapter:cursoradapter:1.0.0",
         "androidx.customview:customview-poolingcontainer:1.0.0",
         "androidx.customview:customview:1.0.0",
-        "androidx.databinding:databinding-adapters:8.1.4",
-        "androidx.databinding:databinding-common:8.1.4",
-        "androidx.databinding:databinding-ktx:8.1.4",
-        "androidx.databinding:databinding-runtime:8.1.4",
-        "androidx.databinding:viewbinding:8.1.4",
+        "androidx.databinding:databinding-adapters:8.6.1",
+        "androidx.databinding:databinding-common:8.6.1",
+        "androidx.databinding:databinding-ktx:8.6.1",
+        "androidx.databinding:databinding-runtime:8.6.1",
+        "androidx.databinding:viewbinding:8.6.1",
         "androidx.drawerlayout:drawerlayout:1.0.0",
         "androidx.emoji2:emoji2-views-helper:1.3.0",
         "androidx.emoji2:emoji2:1.3.0",
@@ -375,10 +375,10 @@ maven_install(
         "org.hamcrest:hamcrest-integration:1.3",
         "org.hamcrest:hamcrest-library:1.3",
         "org.jetbrains.kotlin:kotlin-reflect:1.9.20",
-        "org.jetbrains.kotlin:kotlin-stdlib-common:1.9.10",
+        "org.jetbrains.kotlin:kotlin-stdlib-common:1.9.25",
         "org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.9.20",
         "org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.9.20",
-        "org.jetbrains.kotlin:kotlin-stdlib:1.9.20",
+        "org.jetbrains.kotlin:kotlin-stdlib:1.9.25",
         "org.jetbrains.kotlinx:kotlinx-coroutines-android:1.6.4",
         "org.jetbrains.kotlinx:kotlinx-coroutines-bom:1.6.4",
         "org.jetbrains.kotlinx:kotlinx-coroutines-core-jvm:1.6.4",
