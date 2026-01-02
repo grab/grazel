@@ -71,6 +71,18 @@ data class KotlinCompiler(
 )
 
 /**
+ * Configuration for KSP (Kotlin Symbol Processing) compiler.
+ * When configured, KSP compiler release will be added to kotlin_repositories in WORKSPACE.
+ *
+ * @param tag KSP version tag (e.g., "1.8.10-1.0.9")
+ * @param sha SHA256 hash of the KSP compiler release
+ */
+data class KspCompiler(
+    var tag: String? = null,
+    var sha: String? = null
+)
+
+/**
  * Configuration for Kotlin compiler and toolchains. Options configured will be used in root `BUILD.bazel`, `WORKSPACE`
  * respectively.
  *
@@ -95,6 +107,7 @@ data class KotlinCompiler(
  */
 data class KotlinExtension(
     val compiler: KotlinCompiler = KotlinCompiler(),
+    val kspCompiler: KspCompiler = KspCompiler(),
     val kotlinCOptions: KotlinCOptions = KotlinCOptions(),
     val javaCOptions: JavaCOptions = JavaCOptions(),
     val toolchain: KotlinToolChain = KotlinToolChain(),
@@ -134,6 +147,15 @@ data class KotlinExtension(
 
     fun compiler(closure: Closure<*>) {
         closure.delegate = compiler
+        closure.call()
+    }
+
+    fun kspCompiler(block: KspCompiler.() -> Unit) {
+        block(kspCompiler)
+    }
+
+    fun kspCompiler(closure: Closure<*>) {
+        closure.delegate = kspCompiler
         closure.call()
     }
 

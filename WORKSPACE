@@ -12,14 +12,26 @@ KOTLIN_VERSION = "1.8.10"
 
 KOTLINC_RELEASE_SHA = "4c3fa7bc1bb9ef3058a2319d8bcc3b7196079f88e92fdcd8d304a46f4b6b5787"
 
-load("@io_bazel_rules_kotlin//kotlin:repositories.bzl", "kotlin_repositories", "kotlinc_version")
+KSP_VERSION = "1.8.10-1.0.9"
+
+KSP_COMPILER_RELEASE_SHA = "2f60c27956e4033c4c94355624e3fe88f255df42d8b67af44c1f2cdcbd513a13"
+
+load("@io_bazel_rules_kotlin//kotlin:repositories.bzl", "kotlin_repositories", "kotlinc_version", "ksp_version")
 
 KOTLINC_RELEASE = kotlinc_version(
     release = KOTLIN_VERSION,
     sha256 = KOTLINC_RELEASE_SHA,
 )
 
-kotlin_repositories(compiler_release = KOTLINC_RELEASE)
+KSP_COMPILER_RELEASE = ksp_version(
+    release = KSP_VERSION,
+    sha256 = KSP_COMPILER_RELEASE_SHA,
+)
+
+kotlin_repositories(
+    compiler_release = KOTLINC_RELEASE,
+    ksp_compiler_release = KSP_COMPILER_RELEASE,
+)
 
 register_toolchains("//:kotlin_toolchain")
 

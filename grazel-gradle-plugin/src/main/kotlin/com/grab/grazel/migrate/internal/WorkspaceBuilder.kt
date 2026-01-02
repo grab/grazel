@@ -196,12 +196,18 @@ internal class WorkspaceBuilder(
      * Add Kotlin specific statements to WORKSPACE namely
      * * Kotlin repository
      * * Kotlin compiler
+     * * KSP compiler (if configured)
      * * Registering toolchains
      */
     private fun StatementsBuilder.kotlinRules() {
         val kotlin = grazelExtension.rules.kotlin
         kotlinRepository(repositoryRule = kotlin.repository)
-        kotlinCompiler(kotlin.compiler.tag, kotlin.compiler.sha)
+        kotlinCompiler(
+            kotlinCompilerVersion = kotlin.compiler.tag,
+            kotlinCompilerReleaseSha = kotlin.compiler.sha,
+            kspCompilerVersion = kotlin.kspCompiler.tag,
+            kspCompilerReleaseSha = kotlin.kspCompiler.sha
+        )
         registerKotlinToolchain(toolchain = kotlin.toolchain)
     }
 }
