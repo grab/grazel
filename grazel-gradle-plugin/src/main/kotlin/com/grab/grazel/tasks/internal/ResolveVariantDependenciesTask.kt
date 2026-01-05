@@ -23,6 +23,7 @@ import com.grab.grazel.gradle.dependencies.model.ResolveDependenciesResult.Compa
 import com.grab.grazel.gradle.dependencies.model.ResolvedDependency
 import com.grab.grazel.gradle.variant.Variant
 import com.grab.grazel.gradle.variant.VariantBuilder
+import com.grab.grazel.gradle.variant.extendsOnlyFromDefaultVariants
 import com.grab.grazel.gradle.variant.isBase
 import com.grab.grazel.gradle.variant.isTest
 import com.grab.grazel.util.dependsOn
@@ -32,6 +33,7 @@ import dagger.Lazy
 import org.gradle.api.DefaultTask
 import org.gradle.api.Project
 import org.gradle.api.Task
+import org.gradle.api.artifacts.Configuration
 import org.gradle.api.artifacts.ExternalDependency
 import org.gradle.api.artifacts.ProjectDependency
 import org.gradle.api.artifacts.result.ResolvedComponentResult
@@ -130,6 +132,15 @@ internal abstract class ResolveVariantDependenciesTask : DefaultTask() {
 
     @TaskAction
     fun action() {
+        if (compileConfiguration.get().isEmpty()) {
+            val emptyResult = ResolveDependenciesResult(
+                variantName = variantName.get(),
+                dependencies = mapOf(COMPILE.name to emptySet())
+            )
+            writeJson(emptyResult, resolvedDependencies.get())
+            return
+        }
+
         val baseDependenciesMap = buildMap<String, String> {
             if (!base.get()) {
                 // For non baseVariant tasks, every dependency that appears in the base task's json output
@@ -221,12 +232,55 @@ internal abstract class ResolveVariantDependenciesTask : DefaultTask() {
                 .toSet()
         }
 
+        /**
+         * Check if a variant has unique dependencies not inherited from parent variants.
+         * Uses [Configuration.dependencies] which does NOT trigger expensive resolution.
+         *
+         * For composite variants (e.g., gpsPaxRelease), we check if the variant's own
+         * configuration buckets (Implementation, Api, CompileOnly) have any direct dependencies.
+         * These are deps declared specifically for this variant, not inherited from parent variants.
+         */
+        private fun hasUniqueDependencies(variant: Variant<*>, project: Project): Boolean {
+            // Hierarchy-defining variants must always resolve to create proper maven buckets
+            if (variant.isBase || variant.extendsOnlyFromDefaultVariants) return true
+
+            // compileClasspath.extendsFrom = {variantImplementation, variantApi, variantCompileOnly}
+            // .dependencies returns ONLY deps declared directly, not inherited from parent variants
+            val hasDirectDeps = variant.compileConfiguration
+                .flatMap { config -> config.extendsFrom }
+                .any { config ->
+                    config.dependencies.filterIsInstance<ExternalDependency>().isNotEmpty()
+                }
+
+            if (!hasDirectDeps) {
+                project.logger.info(
+                    "Grazel: Skipping resolution for variant '${variant.name}' (no direct dependencies)"
+                )
+            }
+            return hasDirectDeps
+        }
+
         private fun processVariant(
             project: Project,
             variant: Variant<*>,
             rootResolveDependenciesTask: TaskProvider<Task>,
             projectResolveDependenciesTask: TaskProvider<Task>,
         ) {
+            val resolvedDependenciesJson = project.layout
+                .buildDirectory
+                .file("grazel/${variant.name}/dependencies.json")
+
+            if (!hasUniqueDependencies(variant, project)) {
+                registerNoOpVariantTask(
+                    project = project,
+                    variant = variant,
+                    resolvedDependenciesJson = resolvedDependenciesJson,
+                    rootResolveDependenciesTask = rootResolveDependenciesTask,
+                    projectResolveDependenciesTask = projectResolveDependenciesTask
+                )
+                return
+            }
+
             val compileConfigurationProvider = project.provider { variant.compileConfiguration }
 
             val externalDependencies = compileConfigurationProvider.map { configs ->
@@ -248,10 +302,6 @@ internal abstract class ResolveVariantDependenciesTask : DefaultTask() {
                     }.filterValues { it.isNotEmpty() }
             }
 
-            val resolvedDependenciesJson = project.layout
-                .buildDirectory
-                .file("grazel/${variant.name}/dependencies.json")
-
             val resolveVariantDependenciesTask = project.tasks
                 .register<ResolveVariantDependenciesTask>(
                     variant.name + "ResolveDependencies"
@@ -265,6 +315,27 @@ internal abstract class ResolveVariantDependenciesTask : DefaultTask() {
 
                     compileDirectDependencies.set(directDependenciesCompile)
                     compileExcludeRules.set(excludeRulesCompile)
+                    resolvedDependencies.set(resolvedDependenciesJson)
+                }
+            rootResolveDependenciesTask.dependsOn(resolveVariantDependenciesTask)
+            projectResolveDependenciesTask.dependsOn(resolveVariantDependenciesTask)
+        }
+
+        private fun registerNoOpVariantTask(
+            project: Project,
+            variant: Variant<*>,
+            resolvedDependenciesJson: org.gradle.api.provider.Provider<RegularFile>,
+            rootResolveDependenciesTask: TaskProvider<Task>,
+            projectResolveDependenciesTask: TaskProvider<Task>,
+        ) {
+            val resolveVariantDependenciesTask = project.tasks
+                .register<ResolveVariantDependenciesTask>(
+                    variant.name + "ResolveDependencies"
+                ) {
+                    variantName.set(variant.name)
+                    base.set(false)
+                    compileDirectDependencies.set(emptyMap())
+                    compileExcludeRules.set(emptyMap())
                     resolvedDependencies.set(resolvedDependenciesJson)
                 }
             rootResolveDependenciesTask.dependsOn(resolveVariantDependenciesTask)

@@ -91,6 +91,16 @@ fun BaseVariant.toVariantType(): VariantType = when (this) {
 
 val Variant<*>.isBase get() = name == DEFAULT_VARIANT
 
+/**
+ * Returns true if this variant only extends from default variants (default, test, androidTest).
+ * Such variants define the hierarchy structure and must always resolve dependencies
+ * to create proper maven buckets for downstream composite variants.
+ */
+val Variant<*>.extendsOnlyFromDefaultVariants: Boolean
+    get() = extendsFrom.isEmpty() || extendsFrom.all {
+        it == DEFAULT_VARIANT || it == TEST_VARIANT || it == ANDROID_TEST_VARIANT
+    }
+
 val Variant<*>.id get() = name + variantType.toString()
 
 val VariantType.isAndroidTest get() = this == AndroidTest
