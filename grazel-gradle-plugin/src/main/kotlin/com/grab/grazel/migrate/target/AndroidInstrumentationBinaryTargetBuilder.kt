@@ -83,7 +83,6 @@ internal class AndroidInstrumentationBinaryTargetBuilder
         srcs = srcs,
         testInstrumentationRunner = testInstrumentationRunner,
         compose = compose,
+        minSdkVersion = minSdkVersion,
     )
 }
-
-

@@ -40,6 +40,7 @@ internal data class AndroidInstrumentationBinaryTarget(
     val resourceFiles: List<String>,
     val testInstrumentationRunner: String? = null,
     val compose: Boolean,
+    val minSdkVersion: Int? = null,
 ) : BazelBuildTarget {
 
     override fun statements(builder: StatementsBuilder) = builder {
@@ -58,6 +59,7 @@ internal data class AndroidInstrumentationBinaryTarget(
             resourceFiles = buildResFiles(resourceFiles),
             testInstrumentationRunner = testInstrumentationRunner,
             enableCompose = compose,
+            minSdkVersion = minSdkVersion,
         )
     }
 }

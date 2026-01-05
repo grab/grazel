@@ -122,4 +122,5 @@ internal fun AndroidTestData.toTarget() = AndroidTestTarget(
     resources = resources,
     resourceFiles = resourceFiles,
     resourceStripPrefix = resourceStripPrefix,
+    minSdkVersion = minSdkVersion,
 )

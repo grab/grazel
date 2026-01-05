@@ -18,6 +18,7 @@ package com.grab.grazel.migrate.android
 
 import com.android.build.gradle.BaseExtension
 import com.android.build.gradle.api.AndroidSourceSet
+import com.grab.grazel.GrazelExtension
 import com.grab.grazel.bazel.starlark.BazelDependency
 import com.grab.grazel.gradle.dependencies.DependenciesDataSource
 import com.grab.grazel.gradle.dependencies.DependencyGraphs
@@ -54,6 +55,7 @@ internal class DefaultAndroidInstrumentationBinaryDataExtractor
     private val androidManifestParser: AndroidManifestParser,
     private val manifestValuesBuilder: ManifestValuesBuilder,
     private val keyStoreExtractor: KeyStoreExtractor,
+    private val grazelExtension: GrazelExtension,
 ) : AndroidInstrumentationBinaryDataExtractor {
     private val projectDependencyGraphs get() = dependencyGraphsProvider.get()
 
@@ -130,6 +132,9 @@ internal class DefaultAndroidInstrumentationBinaryDataExtractor
         val srcs = androidSources(migratableSourceSets, sourceSetType).toList()
         val testInstrumentationRunner = extension.extractTestInstrumentationRunner()
 
+        // TODO: this is a workaround and should be removed after bazel 8 compatibility
+        val minSdkVersion = if (grazelExtension.experiments.minSdkVersionWorkaround.get()) 0 else null
+
         return AndroidInstrumentationBinaryData(
             name = "${name}${matchedVariant.nameSuffix}-android-test",
             associates = listOf(associate),
@@ -147,6 +152,7 @@ internal class DefaultAndroidInstrumentationBinaryDataExtractor
             testInstrumentationRunner = testInstrumentationRunner,
             manifestValues = manifestValues,
             compose = hasCompose,
+            minSdkVersion = minSdkVersion,
         )
     }
 }

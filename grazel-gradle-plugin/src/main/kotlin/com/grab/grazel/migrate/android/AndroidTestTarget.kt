@@ -58,6 +58,7 @@ internal data class AndroidTestTarget(
     val resources: List<String>,
     val resourceFiles: List<String>,
     val resourceStripPrefix: String?,
+    val minSdkVersion: Int? = null,
 ) : AndroidTarget {
     override fun statements(builder: StatementsBuilder) = builder {
         androidInstrumentationBinary(
@@ -77,6 +78,7 @@ internal data class AndroidTestTarget(
             resourceFiles = buildResFiles(resourceFiles),
             testInstrumentationRunner = testInstrumentationRunner,
             enableCompose = enableCompose,
+            minSdkVersion = minSdkVersion,
         )
     }
 }

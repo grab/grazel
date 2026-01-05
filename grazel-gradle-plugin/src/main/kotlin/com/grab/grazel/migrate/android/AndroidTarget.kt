@@ -105,6 +105,7 @@ internal data class AndroidBinaryTarget(
     val resConfigFilters: Set<String> = emptySet(),
     val customPackage: String,
     val incrementalDexing: Boolean = false,
+    val minSdkVersion: Int? = null,
 ) : AndroidTarget {
     override fun statements(builder: StatementsBuilder) = builder {
         androidBinary(
@@ -129,6 +130,7 @@ internal data class AndroidBinaryTarget(
             buildConfigData = buildConfigData,
             assetsDir = assetsDir,
             lintConfigData = lintConfigData,
+            minSdkVersion = minSdkVersion,
         )
     }
 }

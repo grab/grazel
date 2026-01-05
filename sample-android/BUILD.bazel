@@ -49,7 +49,7 @@ android_binary(
         "versionCode": "1",
         "versionName": "1.0",
     },
-    min_sdk_version = 0,  # https://github.com/bazelbuild/bazel/commit/84861027d3f94ce6fc0bcf25ebbb787d6be8567a did not make it to 7.x version
+    min_sdk_version = 0,
     multidex = "native",
     res_values = {
         "strings": {
@@ -162,7 +162,7 @@ android_binary(
         "versionCode": "1",
         "versionName": "1.0",
     },
-    min_sdk_version = 0,  # https://github.com/bazelbuild/bazel/commit/84861027d3f94ce6fc0bcf25ebbb787d6be8567a did not make it to 7.x version
+    min_sdk_version = 0,
     multidex = "native",
     res_values = {
         "strings": {
@@ -275,7 +275,7 @@ android_binary(
         "versionCode": "1",
         "versionName": "1.0",
     },
-    min_sdk_version = 0,  # https://github.com/bazelbuild/bazel/commit/84861027d3f94ce6fc0bcf25ebbb787d6be8567a did not make it to 7.x version
+    min_sdk_version = 0,
     multidex = "native",
     res_values = {
         "strings": {
@@ -388,7 +388,7 @@ android_binary(
         "versionCode": "1",
         "versionName": "1.0",
     },
-    min_sdk_version = 0,  # https://github.com/bazelbuild/bazel/commit/84861027d3f94ce6fc0bcf25ebbb787d6be8567a did not make it to 7.x version
+    min_sdk_version = 0,
     multidex = "native",
     res_values = {
         "strings": {
@@ -516,7 +516,7 @@ android_instrumentation_binary(
         "versionCode": "1",
         "versionName": "1.0",
     },
-    min_sdk_version = 0,  # https://github.com/bazelbuild/bazel/commit/84861027d3f94ce6fc0bcf25ebbb787d6be8567a did not make it to 7.x version
+    min_sdk_version = 0,
     resource_strip_prefix = "sample-android/src/androidTest/resources",
     resources = glob([
         "src/androidTest/resources/resource.json",
@@ -574,7 +574,7 @@ android_instrumentation_binary(
         "versionCode": "1",
         "versionName": "1.0",
     },
-    min_sdk_version = 0,  # https://github.com/bazelbuild/bazel/commit/84861027d3f94ce6fc0bcf25ebbb787d6be8567a did not make it to 7.x version
+    min_sdk_version = 0,
     resource_strip_prefix = "sample-android/src/androidTest/resources",
     resources = glob([
         "src/androidTest/resources/resource.json",
@@ -632,7 +632,7 @@ android_instrumentation_binary(
         "versionCode": "1",
         "versionName": "1.0",
     },
-    min_sdk_version = 0,  # https://github.com/bazelbuild/bazel/commit/84861027d3f94ce6fc0bcf25ebbb787d6be8567a did not make it to 7.x version
+    min_sdk_version = 0,
     resource_strip_prefix = "sample-android/src/androidTest/resources",
     resources = glob([
         "src/androidTest/resources/resource.json",
@@ -690,7 +690,7 @@ android_instrumentation_binary(
         "versionCode": "1",
         "versionName": "1.0",
     },
-    min_sdk_version = 0,  # https://github.com/bazelbuild/bazel/commit/84861027d3f94ce6fc0bcf25ebbb787d6be8567a did not make it to 7.x version
+    min_sdk_version = 0,
     resource_strip_prefix = "sample-android/src/androidTest/resources",
     resources = glob([
         "src/androidTest/resources/resource.json",

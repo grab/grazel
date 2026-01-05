@@ -15,6 +15,7 @@ android_instrumentation_binary(
         "orientation": "portrait",
         "targetSdkVersion": "34",
     },
+    min_sdk_version = 0,
     resource_files = glob([
         "src/main/res/values/**",
     ]),
@@ -48,6 +49,7 @@ android_instrumentation_binary(
         "orientation": "portrait",
         "targetSdkVersion": "34",
     },
+    min_sdk_version = 0,
     resource_files = glob([
         "src/main/res/values/**",
     ]),
@@ -81,6 +83,7 @@ android_instrumentation_binary(
         "orientation": "portrait",
         "targetSdkVersion": "34",
     },
+    min_sdk_version = 0,
     resource_files = glob([
         "src/main/res/values/**",
     ]),
@@ -114,6 +117,7 @@ android_instrumentation_binary(
         "orientation": "portrait",
         "targetSdkVersion": "34",
     },
+    min_sdk_version = 0,
     resource_files = glob([
         "src/main/res/values/**",
     ]),
