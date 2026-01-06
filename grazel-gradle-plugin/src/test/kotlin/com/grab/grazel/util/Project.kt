@@ -35,6 +35,19 @@ internal fun Project.createGrazelComponent(): GrazelComponent {
     return DaggerGrazelComponent.factory().create(this)
 }
 
+/**
+ * Initialize the DependencyGraphsService for tests that need to access dependency graphs.
+ * Call this after creating the GrazelComponent and ensuring the GrazelExtension is registered.
+ */
+internal fun GrazelComponent.initDependencyGraphsForTest(rootProject: Project) {
+    dependencyGraphsService().get().configure(
+        rootProject = rootProject,
+        dependenciesDataSource = dependenciesDataSource().get(),
+        configurationDataSource = configurationDataSource().get(),
+        androidVariantDataSource = androidVariantDataSource().get()
+    )
+}
+
 internal fun Project.addGrazelExtension(configure: GrazelExtension.() -> Unit = {}) {
     val grazelGradlePluginExtension = GrazelExtension(rootProject)
     rootProject.extensions.add(GrazelExtension.GRAZEL_EXTENSION, grazelGradlePluginExtension)

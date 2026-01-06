@@ -42,6 +42,13 @@ internal interface DependenciesModule {
             @RootProject rootProject: Project
         ): GradleProvider<@JvmSuppressWildcards DefaultDependencyResolutionService> =
             DefaultDependencyResolutionService.register(rootProject)
+
+        @Singleton
+        @Provides
+        fun dependencyGraphsService(
+            @RootProject rootProject: Project
+        ): GradleProvider<@JvmSuppressWildcards DefaultDependencyGraphsService> =
+            DefaultDependencyGraphsService.register(rootProject)
     }
 }
 

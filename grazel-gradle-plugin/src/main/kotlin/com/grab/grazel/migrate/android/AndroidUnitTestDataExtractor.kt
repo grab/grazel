@@ -19,6 +19,7 @@ import com.android.build.gradle.api.AndroidSourceSet
 import com.grab.grazel.GrazelExtension
 import com.grab.grazel.bazel.starlark.BazelDependency
 import com.grab.grazel.extension.KotlinExtension
+import com.grab.grazel.gradle.dependencies.DefaultDependencyGraphsService
 import com.grab.grazel.gradle.dependencies.DependenciesDataSource
 import com.grab.grazel.gradle.dependencies.DependencyGraphs
 import com.grab.grazel.gradle.dependencies.GradleDependencyToBazelDependency
@@ -34,7 +35,7 @@ import com.grab.grazel.migrate.common.TestSizeCalculator
 import com.grab.grazel.migrate.common.calculateTestAssociates
 import com.grab.grazel.migrate.dependencies.calculateDirectDependencyTags
 import com.grab.grazel.migrate.kotlin.kotlinParcelizeDeps
-import dagger.Lazy
+import com.grab.grazel.util.GradleProvider
 import org.gradle.api.Project
 import org.gradle.kotlin.dsl.getByType
 import java.io.File
@@ -52,14 +53,14 @@ internal class DefaultAndroidUnitTestDataExtractor
 @Inject
 constructor(
     private val dependenciesDataSource: DependenciesDataSource,
-    private val dependencyGraphsProvider: Lazy<DependencyGraphs>,
+    private val dependencyGraphsService: GradleProvider<DefaultDependencyGraphsService>,
     private val androidManifestParser: AndroidManifestParser,
     private val grazelExtension: GrazelExtension,
     private val variantDataSource: AndroidVariantDataSource,
     private val gradleDependencyToBazelDependency: GradleDependencyToBazelDependency,
     private val testSizeCalculator: TestSizeCalculator,
 ) : AndroidUnitTestDataExtractor {
-    private val projectDependencyGraphs get() = dependencyGraphsProvider.get()
+    private val projectDependencyGraphs: DependencyGraphs get() = dependencyGraphsService.get().get()
     private val kotlinExtension: KotlinExtension get() = grazelExtension.rules.kotlin
 
     override fun extract(project: Project, matchedVariant: MatchedVariant): AndroidUnitTestData {

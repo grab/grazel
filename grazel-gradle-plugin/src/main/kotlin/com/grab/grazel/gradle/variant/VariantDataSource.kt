@@ -28,18 +28,21 @@ import org.gradle.api.Project
 
 internal interface AndroidVariantDataSource {
     /**
-     * Variant filter instance to filter out unsupported variants
+     * Returns the variant filter instance to filter out unsupported variants.
+     *
+     * Note: This function may be computed on each call by reading from [GrazelExtension.android.variantFilter].
+     * This ensures the filter is evaluated after user configuration runs.
      */
-    val variantFilter: Action<VariantFilter>?
+    fun getVariantFilter(): Action<VariantFilter>?
 
     /**
      * This method will return the flavors which are ignored after evaluate the ignore variants
-     * determined by [variantFilter]
+     * determined by [getVariantFilter]
      */
     fun getIgnoredFlavors(project: Project): List<ProductFlavor>
 
     /**
-     * This method will return the variants which are ignored by the configuration determined by [variantFilter]
+     * This method will return the variants which are ignored by the configuration determined by [getVariantFilter]
      */
     fun getIgnoredVariants(project: Project): List<BaseVariant>
 
@@ -92,8 +95,10 @@ internal class DefaultVariantFilter(variant: BaseVariant) : VariantFilter {
 
 internal class DefaultAndroidVariantDataSource(
     private val androidVariantsExtractor: AndroidVariantsExtractor,
-    override val variantFilter: Action<VariantFilter>? = null,
+    private val variantFilterProvider: () -> Action<VariantFilter>? = { null },
 ) : AndroidVariantDataSource {
+
+    override fun getVariantFilter(): Action<VariantFilter>? = variantFilterProvider()
 
     private fun Project.androidVariants() =
         androidVariantsExtractor.getVariants(this) +
@@ -168,7 +173,7 @@ internal class DefaultAndroidVariantDataSource(
     private fun ignoredVariantFilter(
         variant: BaseVariant
     ): Boolean = DefaultVariantFilter(variant)
-        .apply { variantFilter?.execute(this) }
+        .apply { getVariantFilter()?.execute(this) }
         .ignored
 }
 

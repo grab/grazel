@@ -25,6 +25,7 @@ import com.grab.grazel.gradle.dependencies.model.WorkspaceDependencies
 import com.grab.grazel.migrate.internal.RootBazelFileBuilder
 import com.grab.grazel.util.addGrazelExtension
 import com.grab.grazel.util.createGrazelComponent
+import com.grab.grazel.util.initDependencyGraphsForTest
 import com.grab.grazel.util.truth
 import org.gradle.api.Project
 import org.gradle.kotlin.dsl.configure
@@ -41,8 +42,9 @@ class KotlinRootBazelRulesTest {
     @Before
     fun setup() {
         rootProject = buildProject("root")
-        val grazelComponent = rootProject.createGrazelComponent()
         rootProject.addGrazelExtension()
+        val grazelComponent = rootProject.createGrazelComponent()
+        grazelComponent.initDependencyGraphsForTest(rootProject)
         rootBazelFileBuilder = grazelComponent.rootBazelFileFactory()
             .get()
             .create(

@@ -27,6 +27,7 @@ import com.grab.grazel.gradle.DefaultConfigurationDataSource
 import com.grab.grazel.gradle.KOTLIN_ANDROID_PLUGIN
 import com.grab.grazel.gradle.dependencies.ArtifactsConfig
 import com.grab.grazel.gradle.dependencies.DefaultDependenciesDataSource
+import com.grab.grazel.gradle.dependencies.DefaultDependencyGraphsService
 import com.grab.grazel.gradle.dependencies.DefaultDependencyResolutionService
 import com.grab.grazel.gradle.dependencies.GradleDependencyToBazelDependency
 import com.grab.grazel.gradle.variant.AndroidVariantsExtractor
@@ -35,6 +36,7 @@ import com.grab.grazel.gradle.variant.DefaultAndroidVariantsExtractor
 import com.grab.grazel.gradle.variant.DefaultVariantBuilder
 import com.grab.grazel.gradle.variant.MatchedVariant
 import com.grab.grazel.migrate.common.TestSizeCalculator
+import com.grab.grazel.util.GradleProvider
 import com.grab.grazel.util.doEvaluate
 import org.gradle.api.Project
 import org.gradle.kotlin.dsl.configure
@@ -111,10 +113,28 @@ class DefaultAndroidUnitTestDataExtractorTest : GrazelPluginTest() {
         val dependencyGraphs = FakeDependencyGraphs()
         val androidManifestParser: AndroidManifestParser = DefaultAndroidManifestParser()
 
+        // Create a test implementation of DependencyGraphsService
+        val testDependencyGraphsService = object : DefaultDependencyGraphsService() {
+            init {
+                // Pre-initialize with fake dependency graphs for testing
+                val field =
+                    DefaultDependencyGraphsService::class.java.getDeclaredField("dependencyGraphs")
+                field.isAccessible = true
+                field.set(this, dependencyGraphs)
+            }
+
+            override fun getParameters(): com.grab.grazel.gradle.dependencies.DependencyGraphsService.Params {
+                throw UnsupportedOperationException("Not needed for tests")
+            }
+        }
+
+        val mockDependencyGraphsService: GradleProvider<DefaultDependencyGraphsService> =
+            rootProject.provider { testDependencyGraphsService }
+
         val extension = GrazelExtension(rootProject)
         defaultAndroidUnitTestDataExtractor = DefaultAndroidUnitTestDataExtractor(
             dependenciesDataSource = dependenciesDataSource,
-            dependencyGraphsProvider = { dependencyGraphs },
+            dependencyGraphsService = mockDependencyGraphsService,
             androidManifestParser = androidManifestParser,
             variantDataSource = variantDataSource,
             grazelExtension = extension,

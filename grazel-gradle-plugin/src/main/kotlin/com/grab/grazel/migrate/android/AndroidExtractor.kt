@@ -21,6 +21,7 @@ import com.android.build.gradle.api.AndroidSourceSet
 import com.grab.grazel.GrazelExtension
 import com.grab.grazel.bazel.rules.Multidex
 import com.grab.grazel.bazel.starlark.BazelDependency
+import com.grab.grazel.gradle.dependencies.DefaultDependencyGraphsService
 import com.grab.grazel.gradle.dependencies.DependenciesDataSource
 import com.grab.grazel.gradle.variant.VariantGraphKey
 import com.grab.grazel.gradle.variant.VariantType
@@ -37,7 +38,7 @@ import com.grab.grazel.gradle.variant.nameSuffix
 import com.grab.grazel.migrate.android.SourceSetType.JAVA_KOTLIN
 import com.grab.grazel.migrate.dependencies.calculateDirectDependencyTags
 import com.grab.grazel.migrate.kotlin.kotlinParcelizeDeps
-import dagger.Lazy
+import com.grab.grazel.util.GradleProvider
 import org.gradle.api.Project
 import org.gradle.kotlin.dsl.getByType
 import javax.inject.Inject
@@ -59,11 +60,11 @@ constructor(
     private val androidManifestParser: AndroidManifestParser,
     private val grazelExtension: GrazelExtension,
     private val dependenciesDataSource: DependenciesDataSource,
-    private val dependencyGraphsProvider: Lazy<DependencyGraphs>,
+    private val dependencyGraphsService: GradleProvider<DefaultDependencyGraphsService>,
     private val gradleDependencyToBazelDependency: GradleDependencyToBazelDependency
 ) : AndroidLibraryDataExtractor {
 
-    private val projectDependencyGraphs get() = dependencyGraphsProvider.get()
+    private val projectDependencyGraphs: DependencyGraphs get() = dependencyGraphsService.get().get()
 
     override fun extract(
         project: Project,

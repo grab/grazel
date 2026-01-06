@@ -16,9 +16,9 @@
 
 package com.grab.grazel.gradle
 
+import com.grab.grazel.gradle.dependencies.DefaultDependencyGraphsService
 import com.grab.grazel.gradle.dependencies.DependenciesDataSource
-import com.grab.grazel.gradle.dependencies.DependencyGraphs
-import dagger.Lazy
+import com.grab.grazel.util.GradleProvider
 import dagger.Module
 import dagger.Provides
 import dagger.multibindings.ElementsIntoSet
@@ -44,7 +44,7 @@ internal object MigrationCriteriaModule {
 
 @Singleton
 internal class MigrationChecker @Inject constructor(
-    private val dependencyGraphsProvider: Lazy<DependencyGraphs>,
+    private val dependencyGraphsService: GradleProvider<DefaultDependencyGraphsService>,
     private val migrationCriteria: Set<@JvmSuppressWildcards MigrationCriteria>
 ) : MigrationCriteria {
     /**
@@ -63,7 +63,8 @@ internal class MigrationChecker @Inject constructor(
         return when {
             canMigrateInternal(project) -> true
             else -> {
-                dependencyGraphsProvider
+                dependencyGraphsService
+                    .get()
                     .get()
                     .dependenciesSubGraphByVariant(project)
                     .all(::canMigrateInternal)

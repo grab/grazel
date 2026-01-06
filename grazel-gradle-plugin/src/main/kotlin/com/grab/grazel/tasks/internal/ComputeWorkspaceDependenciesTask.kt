@@ -16,8 +16,12 @@
 
 package com.grab.grazel.tasks.internal
 
+import com.grab.grazel.gradle.ConfigurationDataSource
 import com.grab.grazel.gradle.dependencies.ComputeWorkspaceDependencies
+import com.grab.grazel.gradle.dependencies.DefaultDependencyGraphsService
 import com.grab.grazel.gradle.dependencies.DefaultDependencyResolutionService
+import com.grab.grazel.gradle.dependencies.DependenciesDataSource
+import com.grab.grazel.gradle.variant.AndroidVariantDataSource
 import com.grab.grazel.gradle.variant.VariantBuilder
 import com.grab.grazel.util.GradleProvider
 import com.grab.grazel.util.writeJson
@@ -80,7 +84,18 @@ internal abstract class ComputeWorkspaceDependenciesTask : DefaultTask() {
             variantBuilderProvider: Lazy<VariantBuilder>,
             limitDependencyResolutionParallelism: Property<Boolean>,
             dependencyResolutionService: GradleProvider<DefaultDependencyResolutionService>,
+            dependencyGraphsService: GradleProvider<DefaultDependencyGraphsService>,
+            dependenciesDataSource: Lazy<DependenciesDataSource>,
+            configurationDataSource: Lazy<ConfigurationDataSource>,
+            androidVariantDataSource: Lazy<AndroidVariantDataSource>,
         ): TaskProvider<ComputeWorkspaceDependenciesTask> {
+            dependencyGraphsService.get().configure(
+                rootProject = rootProject,
+                dependenciesDataSource = dependenciesDataSource.get(),
+                configurationDataSource = configurationDataSource.get(),
+                androidVariantDataSource = androidVariantDataSource.get()
+            )
+
             val computeTask = rootProject.tasks
                 .register<ComputeWorkspaceDependenciesTask>(TASK_NAME) {
                     workspaceDependencies.set(

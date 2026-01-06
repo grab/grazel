@@ -18,9 +18,10 @@ package com.grab.grazel.gradle
 
 import com.grab.grazel.GrazelExtension
 import com.grab.grazel.di.qualifiers.RootProject
+import com.grab.grazel.gradle.dependencies.DefaultDependencyGraphsService
 import com.grab.grazel.gradle.dependencies.DependencyGraphs
 import com.grab.grazel.gradle.dependencies.model.WorkspaceDependencies
-import dagger.Lazy
+import com.grab.grazel.util.GradleProvider
 import org.gradle.api.Project
 import org.gradle.kotlin.dsl.provideDelegate
 import java.io.File
@@ -43,7 +44,7 @@ interface GradleProjectInfo {
 internal class DefaultGradleProjectInfo(
     override val rootProject: Project,
     override val grazelExtension: GrazelExtension,
-    private val dependencyGraphsProvider: Lazy<DependencyGraphs>,
+    private val dependencyGraphsService: GradleProvider<DefaultDependencyGraphsService>,
     private val workspaceDependencies: WorkspaceDependencies
 ) : GradleProjectInfo {
 
@@ -53,19 +54,19 @@ internal class DefaultGradleProjectInfo(
         @param:RootProject
         private val rootProject: Project,
         private val grazelExtension: GrazelExtension,
-        private val dependencyGraphsProvider: Lazy<DependencyGraphs>,
+        private val dependencyGraphsService: GradleProvider<DefaultDependencyGraphsService>,
     ) {
         fun create(
             workspaceDependencies: WorkspaceDependencies
         ): GradleProjectInfo = DefaultGradleProjectInfo(
             rootProject,
             grazelExtension,
-            dependencyGraphsProvider,
+            dependencyGraphsService,
             workspaceDependencies
         )
     }
 
-    private val projectGraph: DependencyGraphs get() = dependencyGraphsProvider.get()
+    private val projectGraph: DependencyGraphs get() = dependencyGraphsService.get().get()
 
     override val hasDagger: Boolean by lazy {
         workspaceDependencies
