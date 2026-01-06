@@ -22,6 +22,7 @@ import com.grab.grazel.GrazelExtension
 import com.grab.grazel.GrazelPluginTest
 import com.grab.grazel.buildProject
 import com.grab.grazel.fake.FakeDependencyGraphs
+import com.grab.grazel.fake.FakeDependencyGraphsService
 import com.grab.grazel.gradle.ANDROID_LIBRARY_PLUGIN
 import com.grab.grazel.gradle.DefaultConfigurationDataSource
 import com.grab.grazel.gradle.KOTLIN_ANDROID_PLUGIN
@@ -113,20 +114,7 @@ class DefaultAndroidUnitTestDataExtractorTest : GrazelPluginTest() {
         val dependencyGraphs = FakeDependencyGraphs()
         val androidManifestParser: AndroidManifestParser = DefaultAndroidManifestParser()
 
-        // Create a test implementation of DependencyGraphsService
-        val testDependencyGraphsService = object : DefaultDependencyGraphsService() {
-            init {
-                // Pre-initialize with fake dependency graphs for testing
-                val field =
-                    DefaultDependencyGraphsService::class.java.getDeclaredField("dependencyGraphs")
-                field.isAccessible = true
-                field.set(this, dependencyGraphs)
-            }
-
-            override fun getParameters(): com.grab.grazel.gradle.dependencies.DependencyGraphsService.Params {
-                throw UnsupportedOperationException("Not needed for tests")
-            }
-        }
+        val testDependencyGraphsService = FakeDependencyGraphsService(dependencyGraphs)
 
         val mockDependencyGraphsService: GradleProvider<DefaultDependencyGraphsService> =
             rootProject.provider { testDependencyGraphsService }
