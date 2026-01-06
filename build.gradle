@@ -129,6 +129,10 @@ grazel {
                 tag = "1.9.25"
                 sha = "6ab72d6144e71cbbc380b770c2ad380972548c63ab6ed4c79f11c88f2967332e"
             }
+            kspCompiler {
+                tag = "1.8.10-1.0.9"
+                sha = "2f60c27956e4033c4c94355624e3fe88f255df42d8b67af44c1f2cdcbd513a13"
+            }
             toolchain {
                 enabled = true
                 apiVersion = "1.7"

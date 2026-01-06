@@ -137,6 +137,61 @@ class KotlinWorkspaceRulesTest {
         }
     }
 
+    @Test
+    fun `assert KSP compiler not generated when not configured`() {
+        val kotlinTag = "1.6.21"
+        val kotlinSha = "somesha256"
+        rootProject.configure<GrazelExtension> {
+            rules.kotlin.compiler {
+                tag = kotlinTag
+                sha = kotlinSha
+            }
+        }
+        generateWorkspace().truth {
+            contains("""KOTLIN_VERSION = "$kotlinTag"""")
+            contains("""KOTLINC_RELEASE_SHA = "$kotlinSha"""")
+            contains("kotlin_repositories(compiler_release = KOTLINC_RELEASE)")
+            doesNotContain("KSP_VERSION")
+            doesNotContain("KSP_COMPILER_RELEASE")
+            doesNotContain("ksp_version")
+            doesNotContain("ksp_compiler_release")
+        }
+    }
+
+    @Test
+    fun `assert KSP compiler generated when configured`() {
+        val kotlinTag = "1.8.10"
+        val kotlinSha = "kotlinsha256"
+        val kspTag = "1.8.10-1.0.9"
+        val kspSha = "kspsha256"
+        rootProject.configure<GrazelExtension> {
+            rules.kotlin {
+                compiler {
+                    tag = kotlinTag
+                    sha = kotlinSha
+                }
+                kspCompiler {
+                    tag = kspTag
+                    sha = kspSha
+                }
+            }
+        }
+        generateWorkspace().truth {
+            // Kotlin compiler vars
+            contains("""KOTLIN_VERSION = "$kotlinTag"""")
+            contains("""KOTLINC_RELEASE_SHA = "$kotlinSha"""")
+            // KSP compiler vars
+            contains("""KSP_VERSION = "$kspTag"""")
+            contains("""KSP_COMPILER_RELEASE_SHA = "$kspSha"""")
+            // Load statement should include ksp_version
+            contains("ksp_version")
+            // KSP_COMPILER_RELEASE assignment
+            contains("KSP_COMPILER_RELEASE = ksp_version(")
+            // kotlin_repositories should include ksp_compiler_release
+            contains("ksp_compiler_release = KSP_COMPILER_RELEASE")
+        }
+    }
+
     fun generateWorkspace() = workspaceFactory
         .create(
             projectsToMigrate = listOf(rootProject, subProject),

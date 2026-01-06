@@ -50,20 +50,40 @@ fun StatementsBuilder.kotlinRepository(repositoryRule: BazelRepositoryRule) {
 private const val KOTLIN_VERSION = "KOTLIN_VERSION"
 private const val KOTLINC_RELEASE = "KOTLINC_RELEASE"
 private const val KOTLINC_RELEASE_SHA = "KOTLINC_RELEASE_SHA"
+private const val KSP_VERSION = "KSP_VERSION"
+private const val KSP_COMPILER_RELEASE = "KSP_COMPILER_RELEASE"
+private const val KSP_COMPILER_RELEASE_SHA = "KSP_COMPILER_RELEASE_SHA"
 
 fun StatementsBuilder.kotlinCompiler(
     kotlinCompilerVersion: String,
-    kotlinCompilerReleaseSha: String
+    kotlinCompilerReleaseSha: String,
+    kspCompilerVersion: String? = null,
+    kspCompilerReleaseSha: String? = null
 ) {
     KOTLIN_VERSION `=` kotlinCompilerVersion.quote
     KOTLINC_RELEASE_SHA `=` kotlinCompilerReleaseSha.quote
+
+    val hasKsp = kspCompilerVersion != null && kspCompilerReleaseSha != null
+    if (hasKsp) {
+        KSP_VERSION `=` kspCompilerVersion!!.quote
+        KSP_COMPILER_RELEASE_SHA `=` kspCompilerReleaseSha!!.quote
+    }
     newLine()
 
-    load(
-        "@io_bazel_rules_kotlin//kotlin:repositories.bzl",
-        "kotlin_repositories",
-        "kotlinc_version"
-    )
+    if (hasKsp) {
+        load(
+            "@io_bazel_rules_kotlin//kotlin:repositories.bzl",
+            "kotlin_repositories",
+            "kotlinc_version",
+            "ksp_version"
+        )
+    } else {
+        load(
+            "@io_bazel_rules_kotlin//kotlin:repositories.bzl",
+            "kotlin_repositories",
+            "kotlinc_version"
+        )
+    }
 
     KOTLINC_RELEASE `=` """kotlinc_version(
         release = $KOTLIN_VERSION,
@@ -71,7 +91,17 @@ fun StatementsBuilder.kotlinCompiler(
     )
     """.trimIndent()
 
-    add("""kotlin_repositories(compiler_release = $KOTLINC_RELEASE)""")
+    if (hasKsp) {
+        KSP_COMPILER_RELEASE `=` """ksp_version(
+            release = $KSP_VERSION,
+            sha256 = $KSP_COMPILER_RELEASE_SHA
+        )
+        """.trimIndent()
+
+        add("""kotlin_repositories(compiler_release = $KOTLINC_RELEASE, ksp_compiler_release = $KSP_COMPILER_RELEASE)""")
+    } else {
+        add("""kotlin_repositories(compiler_release = $KOTLINC_RELEASE)""")
+    }
 }
 
 /**
