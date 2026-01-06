@@ -62,13 +62,13 @@ class VariantTest {
         }
 
         assertEquals(
-            31,
+            29,
             androidVariant(appExtension.testVariants.first()).variantConfigurations.size,
             "Variant configuration parsed for androidTest variant"
         )
 
         assertEquals(
-            31,
+            29,
             androidVariant(appExtension.unitTestVariants.first()).variantConfigurations.size,
             "Variant configuration parsed for unitTest variant"
         )
@@ -81,9 +81,9 @@ class VariantTest {
         val allConfigurations = androidProject.configurations.map { it.name }
 
         assertEquals(
-            253,
+            258,
             (allConfigurations - parsedConfigurations).size,
-            "Remaining unparsed configurations size at 254"
+            "Remaining unparsed configurations size at 259"
         )
     }
 
@@ -206,7 +206,7 @@ class VariantTest {
             variantType = JvmBuild
         ).variantConfigurations.let { configurations ->
             assertEquals(
-                32,
+                31,
                 configurations.size,
                 "Build configurations are parsed correctly for build variant"
             )
@@ -226,7 +226,7 @@ class VariantTest {
             variantType = Test
         ).variantConfigurations.let { configurations ->
             assertEquals(
-                18,
+                19,
                 configurations.size,
                 "Build configurations are parsed correctly for test variant"
             )
@@ -356,14 +356,14 @@ class VariantTest {
         androidBuildType(appExtension.testVariants.first(), AndroidTest).let { buildType ->
             val configurations = buildType.variantConfigurations
             assertTrue("Variant specific configurations are parsed for build type") {
-                configurations.size == 12 && configurations.all { it.name.contains("debug", true) }
+                configurations.size == 11 && configurations.all { it.name.contains("debug", true) }
             }
         }
 
         androidBuildType(appExtension.unitTestVariants.first(), Test).let { buildType ->
             val configurations = buildType.variantConfigurations
             assertTrue("Variant specific configurations are parsed for build type") {
-                configurations.size == 24 && configurations.all { it.name.contains("debug", true) }
+                configurations.size == 23 && configurations.all { it.name.contains("debug", true) }
             }
         }
     }
