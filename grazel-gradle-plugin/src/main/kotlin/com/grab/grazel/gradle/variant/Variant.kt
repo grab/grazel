@@ -7,6 +7,7 @@ import com.android.build.gradle.api.TestVariant
 import com.android.build.gradle.api.UnitTestVariant
 import com.google.common.base.MoreObjects
 import com.grab.grazel.gradle.hasKapt
+import com.grab.grazel.gradle.hasKsp
 import com.grab.grazel.gradle.variant.VariantType.AndroidBuild
 import com.grab.grazel.gradle.variant.VariantType.AndroidTest
 import com.grab.grazel.gradle.variant.VariantType.JvmBuild
@@ -50,6 +51,8 @@ interface Variant<T> {
     val runtimeConfiguration: Set<Configuration>
 
     val annotationProcessorConfiguration: Set<Configuration>
+
+    val kspConfiguration: Set<Configuration>
 
     val kotlinCompilerPluginConfiguration: Set<Configuration>
 }
@@ -228,6 +231,17 @@ class JvmVariant(
                     else -> configurationNameMap.getValue("annotationProcessor")
                 }
             )
+        }
+
+    override val kspConfiguration: Set<Configuration>
+        get() = buildSet {
+            if (project.hasKsp) {
+                val configName = when (variantType) {
+                    JvmBuild -> "ksp"
+                    else -> "kspTest"
+                }
+                configurationNameMap[configName]?.let(::add)
+            }
         }
 
     override val kotlinCompilerPluginConfiguration: Set<Configuration>

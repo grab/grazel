@@ -205,8 +205,8 @@ internal class WorkspaceBuilder(
         kotlinCompiler(
             kotlinCompilerVersion = kotlin.compiler.tag,
             kotlinCompilerReleaseSha = kotlin.compiler.sha,
-            kspCompilerVersion = kotlin.kspCompiler.tag,
-            kspCompilerReleaseSha = kotlin.kspCompiler.sha
+            kspCompilerVersion = kotlin.ksp.compiler.tag,
+            kspCompilerReleaseSha = kotlin.ksp.compiler.sha
         )
         registerKotlinToolchain(toolchain = kotlin.toolchain)
     }

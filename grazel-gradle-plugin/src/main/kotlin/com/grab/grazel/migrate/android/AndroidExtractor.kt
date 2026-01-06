@@ -20,6 +20,7 @@ import com.android.build.gradle.BaseExtension
 import com.android.build.gradle.api.AndroidSourceSet
 import com.grab.grazel.GrazelExtension
 import com.grab.grazel.bazel.rules.Multidex
+import com.grab.grazel.bazel.rules.kspPluginDeps
 import com.grab.grazel.bazel.starlark.BazelDependency
 import com.grab.grazel.gradle.dependencies.DefaultDependencyGraphsService
 import com.grab.grazel.gradle.dependencies.DependenciesDataSource
@@ -138,6 +139,8 @@ constructor(
 
         val lintConfigs = lintConfigs(extension.lintOptions, project)
 
+        val plugins = kspPluginDeps(this)
+
         return AndroidLibraryData(
             name = name + matchedVariant.nameSuffix,
             srcs = srcs,
@@ -150,6 +153,7 @@ constructor(
             buildConfigData = extension.extractBuildConfig(this, matchedVariant.variant),
             resValuesData = extension.extractResValue(matchedVariant),
             deps = deps.sorted(),
+            plugins = plugins,
             tags = tags.sorted(),
             lintConfigData = lintConfigs
         )

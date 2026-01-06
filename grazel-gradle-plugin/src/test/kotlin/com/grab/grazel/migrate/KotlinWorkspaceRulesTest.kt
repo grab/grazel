@@ -170,9 +170,11 @@ class KotlinWorkspaceRulesTest {
                     tag = kotlinTag
                     sha = kotlinSha
                 }
-                kspCompiler {
-                    tag = kspTag
-                    sha = kspSha
+                ksp {
+                    compiler {
+                        tag = kspTag
+                        sha = kspSha
+                    }
                 }
             }
         }

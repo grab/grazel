@@ -20,6 +20,7 @@ import com.grab.grazel.GrazelExtension
 import com.grab.grazel.bazel.rules.androidExtensionsRules
 import com.grab.grazel.bazel.rules.configureCommonToolchains
 import com.grab.grazel.bazel.rules.daggerBuildRules
+import com.grab.grazel.bazel.rules.kspPluginRules
 import com.grab.grazel.bazel.rules.rootKotlinSetup
 import com.grab.grazel.bazel.starlark.Statement
 import com.grab.grazel.bazel.starlark.StatementsBuilder
@@ -49,6 +50,7 @@ internal class RootBazelFileBuilder(
         setupKotlin()
         if (gradleProjectInfo.hasDagger) daggerBuildRules()
         if (gradleProjectInfo.hasAndroidExtension) androidExtensionsRules()
+        if (gradleProjectInfo.hasKsp) kspPluginRules(gradleProjectInfo.kspDependencies)
         configureCommonToolchains(
             bazelCommonRepoName = grazelExtension.rules.bazelCommon.repository.name,
             toolchains = grazelExtension.rules.bazelCommon.toolchains

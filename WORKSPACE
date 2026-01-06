@@ -4,17 +4,17 @@ load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
 http_archive(
     name = "io_bazel_rules_kotlin",
-    sha256 = "34e8c0351764b71d78f76c8746e98063979ce08dcf1a91666f3f3bc2949a533d",
-    url = "https://github.com/bazelbuild/rules_kotlin/releases/download/v1.9.5/rules_kotlin-v1.9.5.tar.gz",
+    sha256 = "3b772976fec7bdcda1d84b9d39b176589424c047eb2175bed09aac630e50af43",
+    url = "https://github.com/bazelbuild/rules_kotlin/releases/download/v1.9.6/rules_kotlin-v1.9.6.tar.gz",
 )
 
 KOTLIN_VERSION = "1.9.25"
 
 KOTLINC_RELEASE_SHA = "6ab72d6144e71cbbc380b770c2ad380972548c63ab6ed4c79f11c88f2967332e"
 
-KSP_VERSION = "1.8.10-1.0.9"
+KSP_VERSION = "1.9.25-1.0.20"
 
-KSP_COMPILER_RELEASE_SHA = "2f60c27956e4033c4c94355624e3fe88f255df42d8b67af44c1f2cdcbd513a13"
+KSP_COMPILER_RELEASE_SHA = "3a2d24623409ac5904c87a7e130f5b39ce9fd67ca8b44e4fe5b784a6ec102b81"
 
 load("@io_bazel_rules_kotlin//kotlin:repositories.bzl", "kotlin_repositories", "kotlinc_version", "ksp_version")
 

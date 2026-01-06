@@ -3,6 +3,7 @@ package com.grab.grazel.gradle.variant
 import com.android.build.api.attributes.AgpVersionAttr
 import com.android.builder.model.Version
 import com.grab.grazel.gradle.hasKapt
+import com.grab.grazel.gradle.hasKsp
 import com.grab.grazel.gradle.variant.Classpath.Compile
 import com.grab.grazel.gradle.variant.Classpath.Runtime
 import com.grab.grazel.gradle.variant.VariantType.AndroidBuild
@@ -101,6 +102,37 @@ interface ConfigurationParsingVariant<VariantData> : Variant<VariantData> {
         }
     }
 
+    /**
+     * Parses the KSP (Kotlin Symbol Processing) configurations for this variant.
+     * KSP configurations follow a similar pattern to kapt but with "ksp" prefix.
+     *
+     * @param namePattern The name pattern to use for matching configurations. Defaults to the
+     *    [Variant.name].
+     * @param basePattern The base name pattern to use for matching configurations. Defaults to the
+     *    [Variant.baseName].
+     */
+    fun parseKspConfigurations(
+        namePattern: String = name,
+        basePattern: String = baseName,
+    ): Set<Configuration> = buildSet {
+        if (project.hasKsp) {
+            val kspConfigurations = variantConfigurations.filter { configuration ->
+                val configName = configuration.name
+                val capitalizedNamePattern = namePattern.capitalize()
+                val capitalizedBasePattern = basePattern.capitalize()
+
+                when (variantType) {
+                    AndroidBuild -> configName.startsWith("ksp$capitalizedNamePattern")
+                    AndroidTest -> configName.startsWith("kspAndroidTest$capitalizedBasePattern")
+                    Test -> configName.startsWith("kspTest$capitalizedBasePattern")
+                    Lint -> false
+                    JvmBuild -> error("Invalid variant type ${JvmBuild.name} for Android variant")
+                }
+            }
+            kspConfigurations.addTo(this)
+        }
+    }
+
     fun classpathConfiguration(
         classpath: Classpath,
         namePattern: String = name,
@@ -181,6 +213,7 @@ interface ConfigurationParsingVariant<VariantData> : Variant<VariantData> {
         val testMatches = configName.contains("UnitTest$baseName", true) ||
             configName.startsWith("test$baseName") ||
             configName.startsWith("kaptTest$baseName") ||
+            configName.startsWith("kspTest$baseName") ||
             (configName.contains("TestFixtures", true) && baseName in configName)
 
         return when (variantType) {
@@ -197,6 +230,7 @@ interface ConfigurationParsingVariant<VariantData> : Variant<VariantData> {
     val String.isUnitTest
         get() = startsWith("test")
             || startsWith("kaptTest")
+            || startsWith("kspTest")
             || contains("UnitTest")
     val String.isLint get() = startsWith("lintChecks")
     val String.isTest get() = isAndroidTest || isUnitTest || contains("Test")
