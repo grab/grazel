@@ -18,6 +18,7 @@ package com.grab.grazel.migrate.android
 
 import com.android.build.gradle.TestExtension
 import com.android.build.gradle.api.AndroidSourceSet
+import com.grab.grazel.GrazelExtension
 import com.grab.grazel.bazel.starlark.BazelDependency
 import com.grab.grazel.gradle.dependencies.DependenciesDataSource
 import com.grab.grazel.gradle.variant.VariantGraphKey
@@ -154,6 +155,7 @@ constructor(
     private val dependenciesDataSource: DependenciesDataSource,
     private val keyStoreExtractor: KeyStoreExtractor,
     private val androidVariantDataSource: AndroidVariantDataSource,
+    private val grazelExtension: GrazelExtension,
 ) : AndroidTestDataExtractor {
 
     override fun extract(
@@ -252,6 +254,9 @@ constructor(
             variant = androidVariantDataSource.getMigratableBuildVariants(targetResolution.targetProject).firstOrNull()
         )
 
+        // TODO: this is a workaround and should be removed after bazel 8 compatibility
+        val minSdkVersion = if (grazelExtension.experiments.minSdkVersionWorkaround.get()) 0 else null
+
         return AndroidTestData(
             // Use data from AndroidLibraryDataExtractor (already includes variant suffix)
             name = androidLibraryData.name,
@@ -280,7 +285,8 @@ constructor(
             resources = resources,
             resourceFiles = resourceFiles,
             resourceStripPrefix = resourceStripPrefix,
-            assets = assets
+            assets = assets,
+            minSdkVersion = minSdkVersion,
         )
     }
 }

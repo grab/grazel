@@ -60,13 +60,12 @@ android {
         }
     }
 
-    // Enable Compose using project's compatible version (1.4.3 works with Kotlin 1.8.10)
     buildFeatures {
         compose true
     }
 
     composeOptions {
-        kotlinCompilerExtensionVersion = "1.4.3"  // Match project's Compose version
+        kotlinCompilerExtensionVersion = libs.versions.androidx.compose.compiler.get()
     }
 
     kotlinOptions {

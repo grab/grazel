@@ -142,6 +142,7 @@ internal fun StatementsBuilder.androidBinary(
     buildConfigData: BuildConfigData,
     lintConfigData: LintConfigData? = null,
     resConfigFilters: Set<String> = emptySet(),
+    minSdkVersion: Int? = null,
 ) {
     load("@$GRAB_BAZEL_COMMON//rules:defs.bzl", "android_binary")
     rule("android_binary") {
@@ -190,6 +191,10 @@ internal fun StatementsBuilder.androidBinary(
 
         if (lintConfigData?.merged?.isNotEmpty() == true) {
             "lint_options" `=` lintConfigData.merged.toObject()
+        }
+
+        if (minSdkVersion != null) {
+            "min_sdk_version" `=` minSdkVersion
         }
     }
 }
@@ -344,6 +349,7 @@ fun StatementsBuilder.androidInstrumentationBinary(
     resourceFiles: List<Assignee> = emptyList(),
     testInstrumentationRunner: String? = null,
     enableCompose: Boolean = false,
+    minSdkVersion: Int? = null,
 ) {
     load(
         "@$GRAB_BAZEL_COMMON//rules:defs.bzl",
@@ -388,6 +394,10 @@ fun StatementsBuilder.androidInstrumentationBinary(
 
         if (enableCompose) {
             "enable_compose" `=` enableCompose.toString().capitalize()
+        }
+
+        if (minSdkVersion != null) {
+            "min_sdk_version" `=` minSdkVersion
         }
     }
 }

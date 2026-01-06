@@ -33,4 +33,5 @@ internal data class AndroidInstrumentationBinaryData(
     val srcs: List<String>,
     val testInstrumentationRunner: String? = null,
     val compose: Boolean = false,
+    val minSdkVersion: Int? = null,
 )

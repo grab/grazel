@@ -70,7 +70,7 @@ grazel {
     rules {
         bazelCommon {
             gitRepository {
-                commit = "f0b7887ccb4f9c04b24272983b4ec1e5b0fc9509"
+                commit = "d17b05487ec15d1959dd8592757f4bc88741bf3e"
                 remote = "https://github.com/grab/grab-bazel-common.git"
             }
             toolchains {
@@ -126,8 +126,8 @@ grazel {
                 sha256 = "34e8c0351764b71d78f76c8746e98063979ce08dcf1a91666f3f3bc2949a533d"
             }
             compiler {
-                tag = "1.8.10"
-                sha = "4c3fa7bc1bb9ef3058a2319d8bcc3b7196079f88e92fdcd8d304a46f4b6b5787"
+                tag = "1.9.25"
+                sha = "6ab72d6144e71cbbc380b770c2ad380972548c63ab6ed4c79f11c88f2967332e"
             }
             toolchain {
                 enabled = true
@@ -150,6 +150,7 @@ grazel {
     }
     experiments {
         limitDependencyResolutionParallelism.set(true)
+        minSdkVersionWorkaround.set(true)
     }
     test {
         testSizeProvider = { testData ->

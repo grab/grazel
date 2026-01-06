@@ -199,6 +199,9 @@ constructor(
             .flatMap { it.resourceConfigurations }
             .toSortedSet()
 
+        // TODO: this is a workaround and should be removed after bazel 8 compatibility
+        val minSdkVersion = if (grazelExtension.experiments.minSdkVersionWorkaround.get()) 0 else null
+
         return AndroidBinaryData(
             name = project.name,
             manifestValues = manifestValues,
@@ -213,7 +216,8 @@ constructor(
             compose = project.hasCompose,
             databinding = project.hasDatabinding,
             lintConfigData = lintConfigs,
-            resConfigs = resourceConfiguration
+            resConfigs = resourceConfiguration,
+            minSdkVersion = minSdkVersion,
         )
     }
 }

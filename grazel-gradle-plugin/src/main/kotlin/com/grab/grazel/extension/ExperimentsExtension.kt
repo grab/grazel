@@ -37,4 +37,26 @@ data class ExperimentsExtension(private val objects: ObjectFactory) {
     val limitDependencyResolutionParallelism: Property<Boolean> = objects
         .property<Boolean>()
         .convention(false)
+
+    /**
+     * Workaround for Bazel 7.x compatibility with rules that support the `min_sdk_version` attribute.
+     *
+     * When enabled, explicitly sets `min_sdk_version = 0` on `android_binary` and
+     * `android_instrumentation_binary` targets. This prevents the `--min_sdk_version` flag from
+     * being passed to dexmerger actions, which would cause build failures on Bazel 7.x where
+     * dexmerger does not recognize this flag.
+     *
+     * Background: Bazel 8 introduced forwarding `min_sdk_version` to dexmerger actions via
+     * `--min_sdk_version` flag (only when value > 0). Rules updated for Bazel 8 compatibility
+     * may generate this attribute, but Bazel 7.x dexmerger rejects it as an unknown flag.
+     * Setting the value to 0 suppresses flag generation while still allowing the attribute
+     * to be present in BUILD files.
+     *
+     * This workaround should be removed once the project fully migrates to Bazel 8.
+     *
+     * @see <a href="https://github.com/bazelbuild/bazel/commit/6a1ee8984f1b893c32689ee6aef543e00e462205">Bazel commit</a>
+     */
+    val minSdkVersionWorkaround: Property<Boolean> = objects
+        .property<Boolean>()
+        .convention(false)
 }

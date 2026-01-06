@@ -124,6 +124,7 @@ constructor(
                     resValuesData = androidLibraryData.resValuesData,
                     buildConfigData = androidLibraryData.buildConfigData,
                     lintConfigData = androidLibraryData.lintConfigData,
+                    minSdkVersion = androidBinaryData.minSdkVersion,
                 )
             ) + intermediateTargets
         }

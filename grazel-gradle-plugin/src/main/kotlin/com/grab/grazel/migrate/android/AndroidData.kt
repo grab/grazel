@@ -95,6 +95,7 @@ internal open class AndroidBinaryData(
     open val incrementalDexing: Boolean = true,
     open val debugKey: String? = null,
     open val hasCrashlytics: Boolean = false,
+    open val minSdkVersion: Int? = null,
 ) : AndroidData
 
 /**
@@ -128,5 +129,6 @@ internal data class AndroidTestData(
     val resources: List<String>,
     val resourceFiles: List<String>,
     val resourceStripPrefix: String?,
-    val assets: List<String>
+    val assets: List<String>,
+    val minSdkVersion: Int? = null,
 ) : AndroidData
