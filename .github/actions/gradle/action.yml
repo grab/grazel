@@ -2,7 +2,7 @@ name: 'Run Gradle with Cache'
 description: 'Configures Gradle environment with JDK, Android SDK, and cache setup'
 inputs:
   job-id:
-    description: 'Unique identifier for the cache'
+    description: 'Unique identifier for the cache (kept for compatibility, not used)'
     required: true
   arguments:
     description: 'Gradle command arguments to execute'
@@ -17,7 +17,7 @@ runs:
   using: "composite"
   steps:
     - name: Install JDK 17
-      uses: actions/setup-java@v4
+      uses: actions/setup-java@v5
       with:
         distribution: "zulu"
         java-version: "17"
@@ -25,13 +25,13 @@ runs:
     - name: Setup Android SDK
       uses: ./.github/actions/android
 
-    - name: Run Gradle with Cache
-      uses: burrunan/gradle-cache-action@v1.12
+    - name: Setup Gradle
+      uses: gradle/actions/setup-gradle@v5
       with:
-        debug: false
-        job-id: ${{ inputs.job-id }}
+        cache-read-only: ${{ inputs.read-only }}
         build-root-directory: ${{ inputs.build-root-directory }}
-        read-only: ${{ inputs.read-only }}
-        gradle-dependencies-cache-key: |
-          gradle/libs.versions.toml
-        arguments: ${{ inputs.arguments }} 
+
+    - name: Run Gradle
+      shell: bash
+      working-directory: ${{ inputs.build-root-directory }}
+      run: ./gradlew ${{ inputs.arguments }}

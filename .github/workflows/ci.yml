@@ -18,9 +18,9 @@ jobs:
         runs-on: ubuntu-latest
         steps:
             -   name: Checkout
-                uses: actions/checkout@v4
+                uses: actions/checkout@v6
             -   name: Install JDK 17
-                uses: actions/setup-java@v4
+                uses: actions/setup-java@v5
                 with:
                     distribution: "zulu"
                     java-version: "17"
@@ -33,7 +33,7 @@ jobs:
     bazel-build:
         runs-on: ubuntu-latest
         steps:
-            -   uses: actions/checkout@v4
+            -   uses: actions/checkout@v6
             -   name: Bazel build
                 uses: ./.github/actions/bazel
                 with:
@@ -42,7 +42,7 @@ jobs:
     bazel-test:
         runs-on: ubuntu-latest
         steps:
-            -   uses: actions/checkout@v4
+            -   uses: actions/checkout@v6
             -   name: Query targets
                 run: |
                     bazelisk query 'kind(kt_jvm_test, ...)' --output label > /tmp/targets
@@ -55,7 +55,7 @@ jobs:
     bazel-android-lint:
         runs-on: ubuntu-latest
         steps:
-            -   uses: actions/checkout@v4
+            -   uses: actions/checkout@v6
             -   name: Bazel Android Lint
                 uses: ./.github/actions/bazel
                 with:
@@ -65,7 +65,7 @@ jobs:
     grazel-build:
         runs-on: ubuntu-latest
         steps:
-            -   uses: actions/checkout@v4
+            -   uses: actions/checkout@v6
             -   name: Run Gradle build
                 uses: ./.github/actions/gradle
                 with:
@@ -76,7 +76,7 @@ jobs:
     grazel-test:
         runs-on: ubuntu-latest
         steps:
-            -   uses: actions/checkout@v4
+            -   uses: actions/checkout@v6
             -   name: Run Gradle tests
                 uses: ./.github/actions/gradle
                 with:
@@ -87,7 +87,7 @@ jobs:
     grazel-gradle-plugin-test:
         runs-on: ubuntu-latest
         steps:
-            -   uses: actions/checkout@v4
+            -   uses: actions/checkout@v6
             -   name: Test Gradle plugin
                 uses: ./.github/actions/gradle
                 with:
@@ -99,7 +99,7 @@ jobs:
     migrate-to-bazel-validation:
         runs-on: ubuntu-latest
         steps:
-            -   uses: actions/checkout@v4
+            -   uses: actions/checkout@v6
             -   name: Validate migration
                 uses: ./.github/actions/gradle
                 with:
