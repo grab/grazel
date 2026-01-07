@@ -26,11 +26,10 @@ import com.grab.grazel.gradle.GradleProjectInfo
 import com.grab.grazel.gradle.MigrationChecker
 import com.grab.grazel.gradle.MigrationCriteriaModule
 import com.grab.grazel.gradle.RepositoryDataSource
+import com.grab.grazel.gradle.dependencies.DefaultDependencyGraphsService
 import com.grab.grazel.gradle.dependencies.DefaultDependencyResolutionService
 import com.grab.grazel.gradle.dependencies.DependenciesDataSource
-import com.grab.grazel.gradle.dependencies.DependenciesGraphsBuilder
 import com.grab.grazel.gradle.dependencies.DependenciesModule
-import com.grab.grazel.gradle.dependencies.DependencyGraphs
 import com.grab.grazel.gradle.variant.AndroidVariantDataSource
 import com.grab.grazel.gradle.variant.VariantBuilder
 import com.grab.grazel.gradle.variant.VariantMatcher
@@ -96,6 +95,8 @@ internal interface GrazelComponent {
     fun manifestValuesBuilder(): ManifestValuesBuilder
 
     fun dependencyResolutionService(): GradleProvider<DefaultDependencyResolutionService>
+    fun dependencyGraphsService(): GradleProvider<DefaultDependencyGraphsService>
+    fun configurationDataSource(): Lazy<ConfigurationDataSource>
     fun repositoryDataSource(): Lazy<RepositoryDataSource>
 }
 
@@ -123,10 +124,6 @@ internal interface GrazelModule {
         @Singleton
         @Provides
         fun @receiver:RootProject Project.provideGrazelExtension(): GrazelExtension = the()
-
-        @Provides
-        @Singleton
-        fun DependenciesGraphsBuilder.provideDependencyGraphs(): DependencyGraphs = build()
 
         @Provides
         @Singleton

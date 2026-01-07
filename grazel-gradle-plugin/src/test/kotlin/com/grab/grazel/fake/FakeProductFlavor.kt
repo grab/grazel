@@ -32,8 +32,10 @@ import java.io.File
 class FakeAndroidVariantDataSource(
     var ignoreFlavorsName: List<String> = emptyList(),
     var ignoreVariantName: List<Pair<String, String?>> = emptyList(),
-    override val variantFilter: Action<VariantFilter>? = null
+    private val variantFilter: Action<VariantFilter>? = null
 ) : AndroidVariantDataSource {
+    override fun getVariantFilter(): Action<VariantFilter>? = variantFilter
+
     override fun getIgnoredFlavors(project: Project): List<ProductFlavor> =
         ignoreFlavorsName.map { FakeProductFlavor(it) }
 

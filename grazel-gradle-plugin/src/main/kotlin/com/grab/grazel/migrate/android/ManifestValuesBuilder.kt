@@ -18,6 +18,7 @@ package com.grab.grazel.migrate.android
 
 import com.android.build.gradle.BaseExtension
 import com.android.build.gradle.internal.dsl.DefaultConfig
+import com.grab.grazel.gradle.dependencies.DefaultDependencyGraphsService
 import com.grab.grazel.gradle.dependencies.DependencyGraphs
 import com.grab.grazel.gradle.variant.VariantGraphKey
 import com.grab.grazel.gradle.isAndroid
@@ -25,7 +26,7 @@ import com.grab.grazel.gradle.variant.AndroidVariantDataSource
 import com.grab.grazel.gradle.variant.MatchedVariant
 import com.grab.grazel.gradle.variant.VariantType
 import com.grab.grazel.gradle.variant.getMigratableBuildVariants
-import dagger.Lazy
+import com.grab.grazel.util.GradleProvider
 import org.gradle.api.Project
 import org.gradle.kotlin.dsl.the
 import javax.inject.Inject
@@ -42,11 +43,11 @@ internal interface ManifestValuesBuilder {
 internal class DefaultManifestValuesBuilder
 @Inject
 constructor(
-    private val dependencyGraphsProvider: Lazy<DependencyGraphs>,
+    private val dependencyGraphsService: GradleProvider<DefaultDependencyGraphsService>,
     private val variantDataSource: AndroidVariantDataSource
 ) : ManifestValuesBuilder {
 
-    private val projectDependencyGraphs get() = dependencyGraphsProvider.get()
+    private val projectDependencyGraphs: DependencyGraphs get() = dependencyGraphsService.get().get()
 
     override fun build(
         project: Project,

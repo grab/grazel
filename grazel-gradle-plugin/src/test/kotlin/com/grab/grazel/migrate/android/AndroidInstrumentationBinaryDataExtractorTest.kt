@@ -25,6 +25,7 @@ import com.grab.grazel.gradle.KOTLIN_ANDROID_PLUGIN
 import com.grab.grazel.gradle.variant.MatchedVariant
 import com.grab.grazel.util.addGrazelExtension
 import com.grab.grazel.util.createGrazelComponent
+import com.grab.grazel.util.initDependencyGraphsForTest
 import com.grab.grazel.util.doEvaluate
 import org.gradle.api.Project
 import org.gradle.kotlin.dsl.configure
@@ -51,6 +52,7 @@ class AndroidInstrumentationBinaryDataExtractorTest : GrazelPluginTest() {
     fun setup() {
         val rootProject = buildRootProject()
         val grazelComponent = rootProject.createGrazelComponent()
+        grazelComponent.initDependencyGraphsForTest(rootProject)
         androidInstrumentationBinaryDataExtractor = grazelComponent
             .androidInstrumentationBinaryDataExtractor()
             .get()

@@ -14,6 +14,7 @@ import com.grab.grazel.gradle.variant.MatchedVariant
 import com.grab.grazel.util.addGrazelExtension
 import com.grab.grazel.util.createGrazelComponent
 import com.grab.grazel.util.doEvaluate
+import com.grab.grazel.util.initDependencyGraphsForTest
 import com.grab.grazel.util.truth
 import org.gradle.api.Project
 import org.gradle.api.provider.Provider
@@ -81,6 +82,7 @@ class DefaultAndroidLibraryDataExtractorTest {
         libraryProject.doEvaluate()
         appProject.doEvaluate()
         val grazelComponent = rootProject.createGrazelComponent()
+        grazelComponent.initDependencyGraphsForTest(rootProject)
         dependencyResolutionService = grazelComponent.dependencyResolutionService()
         androidLibraryDataExtractor = grazelComponent.androidLibraryDataExtractor().get()
 

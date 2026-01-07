@@ -52,8 +52,12 @@ constructor(
         val computeWorkspaceDependenciesTask = ComputeWorkspaceDependenciesTask.register(
             rootProject = rootProject,
             dependencyResolutionService = grazelComponent.dependencyResolutionService(),
+            dependencyGraphsService = grazelComponent.dependencyGraphsService(),
             variantBuilderProvider = grazelComponent.variantBuilder(),
-            limitDependencyResolutionParallelism = grazelComponent.extension().experiments.limitDependencyResolutionParallelism
+            limitDependencyResolutionParallelism = grazelComponent.extension().experiments.limitDependencyResolutionParallelism,
+            dependenciesDataSource = grazelComponent.dependenciesDataSource(),
+            configurationDataSource = grazelComponent.configurationDataSource(),
+            androidVariantDataSource = grazelComponent.androidVariantDataSource()
         )
         // Root bazel file generation task that should run at the start of migration
         val rootGenerateBazelScriptsTasks = GenerateRootBazelScriptsTask.register(

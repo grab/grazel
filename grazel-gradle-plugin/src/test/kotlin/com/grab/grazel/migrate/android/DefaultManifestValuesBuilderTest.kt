@@ -25,6 +25,7 @@ import com.grab.grazel.gradle.ANDROID_LIBRARY_PLUGIN
 import com.grab.grazel.gradle.variant.MatchedVariant
 import com.grab.grazel.util.addGrazelExtension
 import com.grab.grazel.util.createGrazelComponent
+import com.grab.grazel.util.initDependencyGraphsForTest
 import com.grab.grazel.util.doEvaluate
 import com.grab.grazel.util.truth
 import org.gradle.api.Project
@@ -93,9 +94,9 @@ class DefaultManifestValuesBuilderTest : GrazelPluginTest() {
         androidBinary.doEvaluate()
         androidLibrary.doEvaluate()
 
-        defaultManifestValuesBuilder = rootProject
-            .createGrazelComponent()
-            .manifestValuesBuilder()
+        val grazelComponent = rootProject.createGrazelComponent()
+        grazelComponent.initDependencyGraphsForTest(rootProject)
+        defaultManifestValuesBuilder = grazelComponent.manifestValuesBuilder()
     }
 
 

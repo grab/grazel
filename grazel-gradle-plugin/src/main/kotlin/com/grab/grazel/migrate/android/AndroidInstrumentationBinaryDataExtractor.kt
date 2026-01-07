@@ -20,6 +20,7 @@ import com.android.build.gradle.BaseExtension
 import com.android.build.gradle.api.AndroidSourceSet
 import com.grab.grazel.GrazelExtension
 import com.grab.grazel.bazel.starlark.BazelDependency
+import com.grab.grazel.gradle.dependencies.DefaultDependencyGraphsService
 import com.grab.grazel.gradle.dependencies.DependenciesDataSource
 import com.grab.grazel.gradle.dependencies.DependencyGraphs
 import com.grab.grazel.gradle.dependencies.GradleDependencyToBazelDependency
@@ -30,7 +31,7 @@ import com.grab.grazel.gradle.variant.AndroidVariantDataSource
 import com.grab.grazel.gradle.variant.MatchedVariant
 import com.grab.grazel.gradle.variant.getMigratableBuildVariants
 import com.grab.grazel.gradle.variant.nameSuffix
-import dagger.Lazy
+import com.grab.grazel.util.GradleProvider
 import org.gradle.api.Project
 import org.gradle.kotlin.dsl.getByType
 import java.io.File
@@ -50,14 +51,14 @@ internal class DefaultAndroidInstrumentationBinaryDataExtractor
 @Inject constructor(
     private val variantDataSource: AndroidVariantDataSource,
     private val dependenciesDataSource: DependenciesDataSource,
-    private val dependencyGraphsProvider: Lazy<DependencyGraphs>,
+    private val dependencyGraphsService: GradleProvider<DefaultDependencyGraphsService>,
     private val gradleDependencyToBazelDependency: GradleDependencyToBazelDependency,
     private val androidManifestParser: AndroidManifestParser,
     private val manifestValuesBuilder: ManifestValuesBuilder,
     private val keyStoreExtractor: KeyStoreExtractor,
     private val grazelExtension: GrazelExtension,
 ) : AndroidInstrumentationBinaryDataExtractor {
-    private val projectDependencyGraphs get() = dependencyGraphsProvider.get()
+    private val projectDependencyGraphs: DependencyGraphs get() = dependencyGraphsService.get().get()
 
     override fun extract(
         project: Project,

@@ -26,7 +26,7 @@ internal interface VariantModule {
             androidVariantsExtractor: DefaultAndroidVariantsExtractor,
             @RootProject rootProject: Project
         ): AndroidVariantDataSource = DefaultAndroidVariantDataSource(
-            variantFilter = android.variantFilter,
+            variantFilterProvider = { android.variantFilter },
             androidVariantsExtractor = androidVariantsExtractor
         )
     }
