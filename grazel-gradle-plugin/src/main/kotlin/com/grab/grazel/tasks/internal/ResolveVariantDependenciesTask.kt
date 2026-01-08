@@ -16,6 +16,7 @@
 
 package com.grab.grazel.tasks.internal
 
+import com.grab.grazel.gradle.dependencies.KspProcessorClassExtractor
 import com.grab.grazel.gradle.dependencies.ResolvedComponentsVisitor
 import com.grab.grazel.gradle.dependencies.model.ExcludeRule
 import com.grab.grazel.gradle.dependencies.model.ResolveDependenciesResult
@@ -87,6 +88,9 @@ internal abstract class ResolveVariantDependenciesTask : DefaultTask() {
     @get:Input
     abstract val kspDirectDependencies: MapProperty</*shortId*/ String, String>
 
+    @get:Input
+    abstract val kspProcessorClasses: MapProperty</*shortId*/ String, /*processorClass*/ String>
+
     @get:OutputFile
     abstract val resolvedDependencies: RegularFileProperty
 
@@ -103,6 +107,7 @@ internal abstract class ResolveVariantDependenciesTask : DefaultTask() {
         directDependenciesMap: Map<String, String> = emptyMap(),
         baseDependenciesMap: Map<String, String> = emptyMap(),
         excludeRulesMap: Map<String, Set<ExcludeRule>> = emptyMap(),
+        processorClassMap: Map<String, String> = emptyMap(),
         removeTransitives: Boolean = false
     ): Set<ResolvedDependency> = get()
         .asSequence()
@@ -116,6 +121,7 @@ internal abstract class ResolveVariantDependenciesTask : DefaultTask() {
                 val isDirect = shortId in directDependenciesMap
                 val isUnique = shortId !in baseDependenciesMap
                 val excludeRules = excludeRulesMap.getOrDefault(shortId, emptySet())
+                val processorClass = processorClassMap[shortId]
                 if (isUnique) {
                     ResolvedDependency(
                         id = component.toString(),
@@ -131,7 +137,8 @@ internal abstract class ResolveVariantDependenciesTask : DefaultTask() {
                         },
                         repository = repository,
                         excludeRules = excludeRules,
-                        requiresJetifier = jetifier
+                        requiresJetifier = jetifier,
+                        processorClass = processorClass
                     )
                 } else null
             }.asSequence()
@@ -184,6 +191,7 @@ internal abstract class ResolveVariantDependenciesTask : DefaultTask() {
                     KSP.name,
                     kspConfiguration.toResolvedDependencies(
                         directDependenciesMap = kspDirectDependencies.get(),
+                        processorClassMap = kspProcessorClasses.get(),
                         removeTransitives = true // Only direct KSP processors, repos extracted from transitives
                     )
                 )
@@ -331,6 +339,14 @@ internal abstract class ResolveVariantDependenciesTask : DefaultTask() {
             val directDependenciesKsp = kspExternalDependencies.map { deps ->
                 deps.associateTo(TreeMap()) { "${it.group}:${it.name}" to "${it.group}:${it.name}" }
             }
+            // Extract processor classes from KSP JARs
+            val processorClasses = kspConfigurationProvider.map { configs ->
+                configs
+                    .filter { it.isCanBeResolved }
+                    .flatMap { KspProcessorClassExtractor.extractProcessorClasses(it).entries }
+                    .associate { it.key to it.value.firstOrNull().orEmpty() }
+                    .filterValues { it.isNotEmpty() }
+            }
 
             val resolveVariantDependenciesTask = project.tasks
                 .register<ResolveVariantDependenciesTask>(
@@ -353,6 +369,7 @@ internal abstract class ResolveVariantDependenciesTask : DefaultTask() {
                     compileDirectDependencies.set(directDependenciesCompile)
                     compileExcludeRules.set(excludeRulesCompile)
                     kspDirectDependencies.set(directDependenciesKsp)
+                    kspProcessorClasses.set(processorClasses)
                     resolvedDependencies.set(resolvedDependenciesJson)
                 }
             rootResolveDependenciesTask.dependsOn(resolveVariantDependenciesTask)
@@ -375,6 +392,7 @@ internal abstract class ResolveVariantDependenciesTask : DefaultTask() {
                     compileDirectDependencies.set(emptyMap())
                     compileExcludeRules.set(emptyMap())
                     kspDirectDependencies.set(emptyMap())
+                    kspProcessorClasses.set(emptyMap())
                     resolvedDependencies.set(resolvedDependenciesJson)
                 }
             rootResolveDependenciesTask.dependsOn(resolveVariantDependenciesTask)

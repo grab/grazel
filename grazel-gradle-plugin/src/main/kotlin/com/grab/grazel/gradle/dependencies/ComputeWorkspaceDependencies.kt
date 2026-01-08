@@ -16,7 +16,6 @@ import org.gradle.api.file.RegularFile
 import java.util.stream.Collector
 import java.util.stream.Collectors
 
-
 internal class ComputeWorkspaceDependencies {
 
     fun compute(compileDependenciesJsons: List<RegularFile>): WorkspaceDependencies {

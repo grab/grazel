@@ -45,11 +45,13 @@ class KotlinRootBazelRulesTest {
         rootProject.addGrazelExtension()
         val grazelComponent = rootProject.createGrazelComponent()
         grazelComponent.initDependencyGraphsForTest(rootProject)
+        val workspaceDependencies = WorkspaceDependencies(emptyMap())
         rootBazelFileBuilder = grazelComponent.rootBazelFileFactory()
             .get()
             .create(
                 gradleProjectInfo = grazelComponent.gradleProjectInfoFactory().get()
-                    .create(WorkspaceDependencies(emptyMap()))
+                    .create(workspaceDependencies),
+                workspaceDependencies = workspaceDependencies
             )
 
         subProject = buildProject("subproject", rootProject)

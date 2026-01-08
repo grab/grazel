@@ -70,7 +70,7 @@ grazel {
     rules {
         bazelCommon {
             gitRepository {
-                commit = "d17b05487ec15d1959dd8592757f4bc88741bf3e"
+                commit = "8cfb7bcb84f6d9631b01bb14c25644030ad2ecf8"
                 remote = "https://github.com/grab/grab-bazel-common.git"
             }
             toolchains {

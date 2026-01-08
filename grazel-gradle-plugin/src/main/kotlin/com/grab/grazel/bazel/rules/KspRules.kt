@@ -21,10 +21,33 @@ import com.grab.grazel.bazel.starlark.StatementsBuilder
 import com.grab.grazel.bazel.starlark.array
 import com.grab.grazel.bazel.starlark.load
 import com.grab.grazel.bazel.starlark.quote
-import com.grab.grazel.gradle.KspProcessor
-import com.grab.grazel.gradle.hasKsp
-import org.gradle.api.Project
-import org.gradle.api.artifacts.ExternalDependency
+
+/**
+ * Data holder for KSP processor dependencies.
+ *
+ * @param group Maven group ID
+ * @param name Maven artifact name
+ * @param version Maven version
+ * @param processorClass Fully-qualified class name of the KSP processor provider
+ * @param generatesJava Whether this processor generates Java code
+ * @param targetEmbeddedCompiler Whether to use embedded Kotlin compiler
+ */
+data class KspProcessor(
+    val group: String,
+    val name: String,
+    val version: String?,
+    val processorClass: String = "",
+    val generatesJava: Boolean = false,
+    val targetEmbeddedCompiler: Boolean = false
+) : Comparable<KspProcessor> {
+    /** Maven coordinate in format `group:name` */
+    val shortId get() = "$group:$name"
+
+    /** Maven coordinate in format `group:name:version` */
+    val id get() = "$group:$name:${version ?: ""}"
+
+    override fun compareTo(other: KspProcessor) = shortId.compareTo(other.shortId)
+}
 
 /**
  * Generates the target name for a KSP plugin rule.
@@ -84,37 +107,4 @@ fun StatementsBuilder.kspPluginRules(kspProcessors: Set<KspProcessor>) {
             "visibility" `=` array(listOf("//visibility:public".quote))
         }
     }
-}
-
-/**
- * Extracts KSP plugin targets for a module based on its KSP configurations.
- * Returns references to root-level kt_ksp_plugin targets (e.g., //:room-compiler-ksp).
- *
- * @param project The project to extract KSP plugin targets from
- * @return List of BazelDependency references to root-level KSP plugin targets
- */
-internal fun kspPluginDeps(project: Project): List<BazelDependency> {
-    if (!project.hasKsp) return emptyList()
-
-    // Filter out KSP's own internal dependencies (symbol-processing-*)
-    val kspInternalGroup = "com.google.devtools.ksp"
-
-    return project.configurations
-        .filter { config ->
-            val name = config.name
-            name.startsWith("ksp") &&
-                !name.contains("Test", ignoreCase = true) &&
-                !name.contains("AndroidTest", ignoreCase = true)
-        }
-        .flatMap { config -> config.allDependencies.filterIsInstance<ExternalDependency>() }
-        .filter { dep -> dep.group != kspInternalGroup }
-        .distinctBy { "${it.group}:${it.name}" }
-        .map { dep ->
-            val processor = KspProcessor(
-                group = dep.group ?: "",
-                name = dep.name,
-                version = dep.version
-            )
-            kspPluginTarget(processor)
-        }
 }

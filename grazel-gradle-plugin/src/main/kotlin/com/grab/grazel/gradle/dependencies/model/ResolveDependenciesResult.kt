@@ -49,7 +49,8 @@ internal data class ResolvedDependency(
     val repository: String,
     val requiresJetifier: Boolean,
     val jetifierSource: String? = null,
-    val overrideTarget: OverrideTarget? = null
+    val overrideTarget: OverrideTarget? = null,
+    val processorClass: String? = null  // For KSP processors
 ) : Comparable<ResolvedDependency> {
     override fun compareTo(other: ResolvedDependency) = id.compareTo(other.id)
 
@@ -111,6 +112,7 @@ internal fun ResolvedDependency.merge(other: ResolvedDependency): ResolvedDepend
         jetifierSource = jetifierSource ?: other.jetifierSource,
         overrideTarget = overrideTarget ?: other.overrideTarget,
         excludeRules = (excludeRules + other.excludeRules).toSortedSet(compareBy(ExcludeRule::toString)),
+        processorClass = processorClass ?: other.processorClass,
     )
 }
 
