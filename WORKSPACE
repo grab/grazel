@@ -224,6 +224,27 @@ load("@debug_maven//:defs.bzl", debug_maven_pinned_maven_install = "pinned_maven
 debug_maven_pinned_maven_install()
 
 maven_install(
+    name = "ksp_maven",
+    artifacts = [
+        "androidx.room:room-compiler:2.6.1",
+    ],
+    excluded_artifacts = ["androidx.test.espresso:espresso-contrib"],
+    fail_if_repin_required = False,
+    fail_on_missing_checksum = False,
+    maven_install_json = "//:ksp_maven_install.json",
+    repositories = [
+        "https://dl.google.com/dl/android/maven2/",
+        "https://repo.maven.apache.org/maven2/",
+    ],
+    resolve_timeout = 1000,
+    version_conflict_policy = "pinned",
+)
+
+load("@ksp_maven//:defs.bzl", ksp_maven_pinned_maven_install = "pinned_maven_install")
+
+ksp_maven_pinned_maven_install()
+
+maven_install(
     name = "lint_maven",
     artifacts = [
         "com.google.auto.service:auto-service-annotations:1.1.1",
@@ -356,8 +377,12 @@ maven_install(
         "androidx.loader:loader:1.0.0",
         "androidx.profileinstaller:profileinstaller:1.3.1",
         "androidx.resourceinspection:resourceinspection-annotation:1.0.1",
+        "androidx.room:room-common:2.6.1",
+        "androidx.room:room-runtime:2.6.1",
         "androidx.savedstate:savedstate-ktx:1.2.1",
         "androidx.savedstate:savedstate:1.2.1",
+        "androidx.sqlite:sqlite-framework:2.4.0",
+        "androidx.sqlite:sqlite:2.4.0",
         "androidx.startup:startup-runtime:1.1.1",
         "androidx.test.espresso:espresso-core:3.5.1",
         "androidx.test.espresso:espresso-idling-resource:3.5.1",
@@ -440,7 +465,10 @@ maven_install(
         "android.arch.lifecycle:livedata-core",
         "android.arch.lifecycle:runtime",
         "android.arch.lifecycle:viewmodel",
-        "androidx.fragment:fragment",
+        "android.arch.persistence.room:common",
+        "android.arch.persistence.room:runtime",
+        "android.arch.persistence:db",
+        "android.arch.persistence:db-framework",
         "com.android.databinding:baseLibrary",
         "com.android.databinding:library",
         "com.android.support.test.espresso:espresso-core",
@@ -460,6 +488,7 @@ maven_install(
         "com.android.support:support-compat",
         "com.android.support:support-core-ui",
         "com.android.support:support-core-utils",
+        "com.android.support:support-fragment",
         "com.android.support:support-vector-drawable",
         "com.android.support:versionedparcelable",
         "com.android.support:viewpager",

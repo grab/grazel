@@ -134,9 +134,6 @@ grazel {
                     tag = "1.9.25-1.0.20"
                     sha = "3a2d24623409ac5904c87a7e130f5b39ce9fd67ca8b44e4fe5b784a6ec102b81"
                 }
-                processor("com.google.dagger:dagger-compiler") {
-                    generatesJava = true
-                }
             }
             toolchain {
                 enabled = true

@@ -20,7 +20,7 @@ import org.gradle.api.Project
 import org.gradle.api.file.FileSystemOperations
 import org.gradle.api.file.ProjectLayout
 import org.gradle.api.model.ObjectFactory
-import org.gradle.configurationcache.extensions.serviceOf
+import org.gradle.kotlin.dsl.support.serviceOf
 import org.gradle.internal.logging.progress.ProgressLoggerFactory
 import org.gradle.process.ExecOperations
 import org.gradle.workers.WorkerExecutor

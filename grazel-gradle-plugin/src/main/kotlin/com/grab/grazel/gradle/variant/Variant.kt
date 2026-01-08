@@ -236,9 +236,10 @@ class JvmVariant(
     override val kspConfiguration: Set<Configuration>
         get() = buildSet {
             if (project.hasKsp) {
+                // KSP creates *KotlinProcessorClasspath configs that are resolvable
                 val configName = when (variantType) {
-                    JvmBuild -> "ksp"
-                    else -> "kspTest"
+                    JvmBuild -> "kspKotlinProcessorClasspath"
+                    else -> "kspTestKotlinProcessorClasspath"
                 }
                 configurationNameMap[configName]?.let(::add)
             }

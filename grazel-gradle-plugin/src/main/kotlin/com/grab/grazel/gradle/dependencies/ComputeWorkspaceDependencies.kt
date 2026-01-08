@@ -4,6 +4,7 @@ import com.grab.grazel.bazel.starlark.BazelDependency
 import com.grab.grazel.gradle.dependencies.model.OverrideTarget
 import com.grab.grazel.gradle.dependencies.model.ResolveDependenciesResult
 import com.grab.grazel.gradle.dependencies.model.ResolveDependenciesResult.Companion.Scope.COMPILE
+import com.grab.grazel.gradle.dependencies.model.ResolveDependenciesResult.Companion.Scope.KSP
 import com.grab.grazel.gradle.dependencies.model.ResolvedDependency
 import com.grab.grazel.gradle.dependencies.model.WorkspaceDependencies
 import com.grab.grazel.gradle.dependencies.model.allDependencies
@@ -152,6 +153,18 @@ internal class ComputeWorkspaceDependencies {
                 )
             ).toMap()
 
+        // Aggregate KSP deps across ALL variants into single bucket
+        val kspClassPath = compileDependenciesJsons
+            .parallelStream()
+            .map<ResolveDependenciesResult>(::fromJson)
+            .flatMap { it.dependencies.getOrDefault(KSP.name, emptySet()).stream() }
+            .collect(
+                Collectors.groupingByConcurrent(
+                    ResolvedDependency::shortId,
+                    maxVersionReducer()
+                )
+            )
+
         // Clear maps to allow GC
         defaultFlatClasspath.clear()
         flattenClasspath.clear()
@@ -160,6 +173,7 @@ internal class ComputeWorkspaceDependencies {
         classPaths.clear()
         return WorkspaceDependencies(
             result = reducedFinalClasspath,
+            kspResult = kspClassPath,
             transitiveClasspath = transitiveClasspath
         )
     }

@@ -104,7 +104,8 @@ interface ConfigurationParsingVariant<VariantData> : Variant<VariantData> {
 
     /**
      * Parses the KSP (Kotlin Symbol Processing) configurations for this variant.
-     * KSP configurations follow a similar pattern to kapt but with "ksp" prefix.
+     * KSP creates `*KotlinProcessorClasspath` configurations that ARE resolvable,
+     * while the declaration configs (like `kspDebug`) are NOT resolvable.
      *
      * @param namePattern The name pattern to use for matching configurations. Defaults to the
      *    [Variant.name].
@@ -116,15 +117,17 @@ interface ConfigurationParsingVariant<VariantData> : Variant<VariantData> {
         basePattern: String = baseName,
     ): Set<Configuration> = buildSet {
         if (project.hasKsp) {
+            val capitalizedNamePattern = namePattern.capitalize()
+            val capitalizedBasePattern = basePattern.capitalize()
+            val suffix = "KotlinProcessorClasspath"
+
             val kspConfigurations = variantConfigurations.filter { configuration ->
                 val configName = configuration.name
-                val capitalizedNamePattern = namePattern.capitalize()
-                val capitalizedBasePattern = basePattern.capitalize()
-
+                // KSP creates *KotlinProcessorClasspath configs that are resolvable
                 when (variantType) {
-                    AndroidBuild -> configName.startsWith("ksp$capitalizedNamePattern")
-                    AndroidTest -> configName.startsWith("kspAndroidTest$capitalizedBasePattern")
-                    Test -> configName.startsWith("kspTest$capitalizedBasePattern")
+                    AndroidBuild -> configName == "ksp${capitalizedNamePattern}$suffix"
+                    AndroidTest -> configName == "ksp${capitalizedBasePattern}AndroidTest$suffix"
+                    Test -> configName == "ksp${capitalizedBasePattern}UnitTest$suffix"
                     Lint -> false
                     JvmBuild -> error("Invalid variant type ${JvmBuild.name} for Android variant")
                 }

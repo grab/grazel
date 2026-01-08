@@ -44,12 +44,12 @@ fun kspPluginTarget(processor: KspProcessor): BazelDependency =
 
 /**
  * Converts a KSP processor to its maven label format.
- * Example: "@maven//:androidx_room_room_compiler"
+ * Example: "@ksp_maven//:androidx_room_room_compiler"
  */
 private fun KspProcessor.toMavenLabel(): String {
     val groupPart = group.replace(".", "_").replace("-", "_")
     val namePart = name.replace(".", "_").replace("-", "_")
-    return "@maven//:${groupPart}_$namePart"
+    return "@ksp_maven//:${groupPart}_$namePart"
 }
 
 /**

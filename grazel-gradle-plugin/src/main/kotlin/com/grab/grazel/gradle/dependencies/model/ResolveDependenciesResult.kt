@@ -32,7 +32,8 @@ internal data class ResolveDependenciesResult(
 ) {
     companion object {
         enum class Scope {
-            COMPILE
+            COMPILE,
+            KSP
         }
     }
 }
@@ -122,6 +123,7 @@ internal data class OverrideTarget(
 @Serializable
 internal data class WorkspaceDependencies(
     val result: Map<String, List<ResolvedDependency>>,
+    val kspResult: Map<String, ResolvedDependency> = emptyMap(),
     val transitiveClasspath: Map<String, Set<String>> = emptyMap()
 )
 
