@@ -25,5 +25,6 @@ data class KotlinProjectData(
     val res: List<String>,
     val deps: List<BazelDependency>,
     val tags: List<String>,
-    val lintConfigData: LintConfigData
+    val lintConfigData: LintConfigData,
+    val plugins: List<BazelDependency> = emptyList()
 )

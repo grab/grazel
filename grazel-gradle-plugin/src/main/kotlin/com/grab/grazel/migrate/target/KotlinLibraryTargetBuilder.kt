@@ -76,7 +76,8 @@ constructor(
         res = res,
         deps = deps,
         tags = tags,
-        lintConfigData = lintConfigData
+        lintConfigData = lintConfigData,
+        plugins = plugins
     )
 }
 

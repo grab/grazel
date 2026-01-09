@@ -93,6 +93,5 @@ class MainActivity : ComponentActivity() {
         val moshi = Moshi.Builder().build()
         val adapter = moshi.adapter(User::class.java)
         val json = adapter.toJson(User("Test", 25))
-        Log.d("KSP", "Moshi KSP generated: $json")
     }
 }

@@ -10,8 +10,14 @@ kotlin_library(
         "baseline": "lint-baseline-kotlin.xml",
         "lint_checks": ["@lint_maven//:com_slack_lint_slack_lint_checks"],
     },
+    plugins = [
+        "//:moshi-kotlin-codegen-ksp",
+    ],
     visibility = [
         "//visibility:public",
+    ],
+    deps = [
+        "@maven//:com_squareup_moshi_moshi",
     ],
 )
 
@@ -28,6 +34,7 @@ kotlin_test(
         "//visibility:public",
     ],
     deps = [
+        "@maven//:com_squareup_moshi_moshi",
         "@maven//:junit_junit",
     ],
 )
