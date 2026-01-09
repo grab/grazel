@@ -52,7 +52,7 @@ android_binary(
     min_sdk_version = 0,
     multidex = "native",
     plugins = [
-        "//:room-compiler-ksp",
+        "//:moshi-kotlin-codegen-ksp",
     ],
     res_values = {
         "strings": {
@@ -113,9 +113,9 @@ android_binary(
         "@maven//:androidx_compose_ui_ui_tooling",
         "@maven//:androidx_constraintlayout_constraintlayout",
         "@maven//:androidx_emoji2_emoji2",
-        "@maven//:androidx_room_room_runtime",
         "@maven//:com_google_ar_sceneform_ux_sceneform_ux",
         "@maven//:com_jakewharton_timber_timber",
+        "@maven//:com_squareup_moshi_moshi",
     ],
 )
 
@@ -169,7 +169,7 @@ android_binary(
     min_sdk_version = 0,
     multidex = "native",
     plugins = [
-        "//:room-compiler-ksp",
+        "//:moshi-kotlin-codegen-ksp",
     ],
     res_values = {
         "strings": {
@@ -230,9 +230,9 @@ android_binary(
         "@maven//:androidx_compose_ui_ui_tooling",
         "@maven//:androidx_constraintlayout_constraintlayout",
         "@maven//:androidx_emoji2_emoji2",
-        "@maven//:androidx_room_room_runtime",
         "@maven//:com_google_ar_sceneform_ux_sceneform_ux",
         "@maven//:com_jakewharton_timber_timber",
+        "@maven//:com_squareup_moshi_moshi",
     ],
 )
 
@@ -286,7 +286,7 @@ android_binary(
     min_sdk_version = 0,
     multidex = "native",
     plugins = [
-        "//:room-compiler-ksp",
+        "//:moshi-kotlin-codegen-ksp",
     ],
     res_values = {
         "strings": {
@@ -347,9 +347,9 @@ android_binary(
         "@maven//:androidx_compose_ui_ui_tooling",
         "@maven//:androidx_constraintlayout_constraintlayout",
         "@maven//:androidx_emoji2_emoji2",
-        "@maven//:androidx_room_room_runtime",
         "@maven//:com_google_ar_sceneform_ux_sceneform_ux",
         "@maven//:com_jakewharton_timber_timber",
+        "@maven//:com_squareup_moshi_moshi",
     ],
 )
 
@@ -403,7 +403,7 @@ android_binary(
     min_sdk_version = 0,
     multidex = "native",
     plugins = [
-        "//:room-compiler-ksp",
+        "//:moshi-kotlin-codegen-ksp",
     ],
     res_values = {
         "strings": {
@@ -464,9 +464,9 @@ android_binary(
         "@maven//:androidx_compose_ui_ui_tooling",
         "@maven//:androidx_constraintlayout_constraintlayout",
         "@maven//:androidx_emoji2_emoji2",
-        "@maven//:androidx_room_room_runtime",
         "@maven//:com_google_ar_sceneform_ux_sceneform_ux",
         "@maven//:com_jakewharton_timber_timber",
+        "@maven//:com_squareup_moshi_moshi",
     ],
 )
 
@@ -561,11 +561,11 @@ android_instrumentation_binary(
         "@maven//:androidx_compose_ui_ui_tooling",
         "@maven//:androidx_constraintlayout_constraintlayout",
         "@maven//:androidx_emoji2_emoji2",
-        "@maven//:androidx_room_room_runtime",
         "@maven//:androidx_test_espresso_espresso_core",
         "@maven//:androidx_test_ext_junit",
         "@maven//:com_google_ar_sceneform_ux_sceneform_ux",
         "@maven//:com_jakewharton_timber_timber",
+        "@maven//:com_squareup_moshi_moshi",
     ],
 )
 
@@ -620,11 +620,11 @@ android_instrumentation_binary(
         "@maven//:androidx_compose_ui_ui_tooling",
         "@maven//:androidx_constraintlayout_constraintlayout",
         "@maven//:androidx_emoji2_emoji2",
-        "@maven//:androidx_room_room_runtime",
         "@maven//:androidx_test_espresso_espresso_core",
         "@maven//:androidx_test_ext_junit",
         "@maven//:com_google_ar_sceneform_ux_sceneform_ux",
         "@maven//:com_jakewharton_timber_timber",
+        "@maven//:com_squareup_moshi_moshi",
     ],
 )
 
@@ -679,11 +679,11 @@ android_instrumentation_binary(
         "@maven//:androidx_compose_ui_ui_tooling",
         "@maven//:androidx_constraintlayout_constraintlayout",
         "@maven//:androidx_emoji2_emoji2",
-        "@maven//:androidx_room_room_runtime",
         "@maven//:androidx_test_espresso_espresso_core",
         "@maven//:androidx_test_ext_junit",
         "@maven//:com_google_ar_sceneform_ux_sceneform_ux",
         "@maven//:com_jakewharton_timber_timber",
+        "@maven//:com_squareup_moshi_moshi",
     ],
 )
 
@@ -738,10 +738,10 @@ android_instrumentation_binary(
         "@maven//:androidx_compose_ui_ui_tooling",
         "@maven//:androidx_constraintlayout_constraintlayout",
         "@maven//:androidx_emoji2_emoji2",
-        "@maven//:androidx_room_room_runtime",
         "@maven//:androidx_test_espresso_espresso_core",
         "@maven//:androidx_test_ext_junit",
         "@maven//:com_google_ar_sceneform_ux_sceneform_ux",
         "@maven//:com_jakewharton_timber_timber",
+        "@maven//:com_squareup_moshi_moshi",
     ],
 )

@@ -25,6 +25,7 @@ import android.widget.TextView
 import androidx.activity.ComponentActivity
 import com.grab.grazel.android.flavor.FlavorActivity
 import com.grab.grazel.sample.HelloWorld
+import com.squareup.moshi.Moshi
 import dagger.Component
 import kotlinx.parcelize.Parcelize
 import javax.inject.Inject
@@ -54,6 +55,7 @@ class MainActivity : ComponentActivity() {
         Log.d("tag","MainActivity OnCreate")
         HelloWorld()
         verifyBuildConfigFields()
+        verifyKspCodeGeneration()
 
         DaggerMainActivityComponent
             .factory()
@@ -81,5 +83,16 @@ class MainActivity : ComponentActivity() {
         BuildConfig.VERSION_CODE
         BuildConfig.VERSION_NAME
         BuildConfig.VARIANT_NAME
+    }
+
+    /**
+     * Verify KSP code generation by using the generated Moshi adapter.
+     * This will fail to compile if KSP doesn't generate UserJsonAdapter.
+     */
+    private fun verifyKspCodeGeneration() {
+        val moshi = Moshi.Builder().build()
+        val adapter = moshi.adapter(User::class.java)
+        val json = adapter.toJson(User("Test", 25))
+        Log.d("KSP", "Moshi KSP generated: $json")
     }
 }

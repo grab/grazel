@@ -29,15 +29,15 @@ dagger_rules()
 parcelize_rules()
 
 kt_ksp_plugin(
-    name = "room-compiler-ksp",
+    name = "moshi-kotlin-codegen-ksp",
     generates_java = False,
-    processor_class = "androidx.room.RoomKspProcessor$Provider",
+    processor_class = "com.squareup.moshi.kotlin.codegen.ksp.JsonClassSymbolProcessorProvider",
     target_embedded_compiler = False,
     visibility = [
         "//visibility:public",
     ],
     deps = [
-        "@ksp_maven//:androidx_room_room_compiler",
+        "@ksp_maven//:com_squareup_moshi_moshi_kotlin_codegen",
     ],
 )
 
