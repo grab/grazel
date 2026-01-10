@@ -93,6 +93,7 @@ private fun AndroidLibraryData.toAndroidLibTarget() = AndroidLibraryTarget(
     srcs = srcs,
     resourceSets = resourceSets,
     deps = deps,
+    plugins = plugins,
     enableDataBinding = databinding,
     enableCompose = compose,
     resValuesData = resValuesData,

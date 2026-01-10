@@ -137,6 +137,7 @@ internal fun StatementsBuilder.androidBinary(
     resourceSets: Assignee? = null,
     resValuesData: ResValuesData,
     deps: List<BazelDependency>,
+    plugins: List<BazelDependency> = emptyList(),
     assetsGlob: List<String> = emptyList(),
     assetsDir: String? = null,
     buildConfigData: BuildConfigData,
@@ -178,6 +179,9 @@ internal fun StatementsBuilder.androidBinary(
         deps.notEmpty {
             "deps" `=` array(deps.map(BazelDependency::toString).quote)
         }
+        plugins.notEmpty {
+            "plugins" `=` array(plugins.map(BazelDependency::toString).map(String::quote))
+        }
         assetsDir?.let {
             "assets" `=` glob(assetsGlob.quote)
             "assets_dir" `=` assetsDir.quote
@@ -210,6 +214,7 @@ internal fun StatementsBuilder.androidLibrary(
     enableDataBinding: Boolean = false,
     enableCompose: Boolean = false,
     deps: List<BazelDependency>,
+    plugins: List<BazelDependency> = emptyList(),
     tags: List<String> = emptyList(),
     assetsGlob: List<String> = emptyList(),
     assetsDir: String? = null,
@@ -235,6 +240,9 @@ internal fun StatementsBuilder.androidLibrary(
         resorceSets?.let { "resource_sets" `=` resorceSets }
         deps.notEmpty {
             "deps" `=` array(deps.map(BazelDependency::toString).map(String::quote))
+        }
+        plugins.notEmpty {
+            "plugins" `=` array(plugins.map(BazelDependency::toString).map(String::quote))
         }
         if (enableDataBinding) {
             "enable_data_binding" `=` enableDataBinding.toString().capitalize()

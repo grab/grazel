@@ -30,6 +30,7 @@ const val KOTLIN_ANDROID_PLUGIN = "kotlin-android"
 const val KOTLIN_ANDROID_EXTENSION = "kotlin-android-extensions"
 const val KOTLIN_PARCELIZE = "kotlin-parcelize"
 const val KOTLIN_KAPT = "kotlin-kapt"
+const val KOTLIN_KSP_PLUGIN = "com.google.devtools.ksp"
 const val ANDROID_APPLICATION_PLUGIN = "com.android.application"
 const val ANDROID_LIBRARY_PLUGIN = "com.android.library"
 const val LINT_PLUGIN_ID = "com.android.lint"
@@ -70,6 +71,7 @@ val Project.hasKotlinAndroidExtensions
         || plugins.hasPlugin(KOTLIN_PARCELIZE)
 val Project.isKotlin get() = isKotlinJvm || isKotlinAndroid
 val Project.hasKapt get() = plugins.hasPlugin(KOTLIN_KAPT)
+val Project.hasKsp get() = plugins.hasPlugin(KOTLIN_KSP_PLUGIN)
 
 val Project.hasTestInstrumentationRunner
     get() = !extensions

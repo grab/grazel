@@ -45,12 +45,15 @@ android_binary(
         "libraryManifestHolder": "value",
         "minSdkVersion": "21",
         "orientation": "portrait",
-        "targetSdkVersion": "31",
+        "targetSdkVersion": "35",
         "versionCode": "1",
         "versionName": "1.0",
     },
     min_sdk_version = 0,
     multidex = "native",
+    plugins = [
+        "//:moshi-kotlin-codegen-ksp",
+    ],
     res_values = {
         "strings": {
             "generated_value": "This string was generated with resValue",
@@ -112,6 +115,7 @@ android_binary(
         "@maven//:androidx_emoji2_emoji2",
         "@maven//:com_google_ar_sceneform_ux_sceneform_ux",
         "@maven//:com_jakewharton_timber_timber",
+        "@maven//:com_squareup_moshi_moshi",
     ],
 )
 
@@ -158,12 +162,15 @@ android_binary(
         "libraryManifestHolder": "value",
         "minSdkVersion": "21",
         "orientation": "portrait",
-        "targetSdkVersion": "31",
+        "targetSdkVersion": "35",
         "versionCode": "1",
         "versionName": "1.0",
     },
     min_sdk_version = 0,
     multidex = "native",
+    plugins = [
+        "//:moshi-kotlin-codegen-ksp",
+    ],
     res_values = {
         "strings": {
             "generated_value": "This string was generated with resValue",
@@ -225,6 +232,7 @@ android_binary(
         "@maven//:androidx_emoji2_emoji2",
         "@maven//:com_google_ar_sceneform_ux_sceneform_ux",
         "@maven//:com_jakewharton_timber_timber",
+        "@maven//:com_squareup_moshi_moshi",
     ],
 )
 
@@ -271,12 +279,15 @@ android_binary(
         "libraryManifestHolder": "value",
         "minSdkVersion": "21",
         "orientation": "portrait",
-        "targetSdkVersion": "31",
+        "targetSdkVersion": "35",
         "versionCode": "1",
         "versionName": "1.0",
     },
     min_sdk_version = 0,
     multidex = "native",
+    plugins = [
+        "//:moshi-kotlin-codegen-ksp",
+    ],
     res_values = {
         "strings": {
             "generated_value": "This string was generated with resValue",
@@ -338,6 +349,7 @@ android_binary(
         "@maven//:androidx_emoji2_emoji2",
         "@maven//:com_google_ar_sceneform_ux_sceneform_ux",
         "@maven//:com_jakewharton_timber_timber",
+        "@maven//:com_squareup_moshi_moshi",
     ],
 )
 
@@ -384,12 +396,15 @@ android_binary(
         "libraryManifestHolder": "value",
         "minSdkVersion": "21",
         "orientation": "portrait",
-        "targetSdkVersion": "31",
+        "targetSdkVersion": "35",
         "versionCode": "1",
         "versionName": "1.0",
     },
     min_sdk_version = 0,
     multidex = "native",
+    plugins = [
+        "//:moshi-kotlin-codegen-ksp",
+    ],
     res_values = {
         "strings": {
             "generated_value": "This string was generated with resValue",
@@ -451,6 +466,7 @@ android_binary(
         "@maven//:androidx_emoji2_emoji2",
         "@maven//:com_google_ar_sceneform_ux_sceneform_ux",
         "@maven//:com_jakewharton_timber_timber",
+        "@maven//:com_squareup_moshi_moshi",
     ],
 )
 
@@ -512,7 +528,7 @@ android_instrumentation_binary(
         "libraryManifestHolder": "value",
         "minSdkVersion": "21",
         "orientation": "portrait",
-        "targetSdkVersion": "31",
+        "targetSdkVersion": "35",
         "versionCode": "1",
         "versionName": "1.0",
     },
@@ -549,6 +565,7 @@ android_instrumentation_binary(
         "@maven//:androidx_test_ext_junit",
         "@maven//:com_google_ar_sceneform_ux_sceneform_ux",
         "@maven//:com_jakewharton_timber_timber",
+        "@maven//:com_squareup_moshi_moshi",
     ],
 )
 
@@ -570,7 +587,7 @@ android_instrumentation_binary(
         "libraryManifestHolder": "value",
         "minSdkVersion": "21",
         "orientation": "portrait",
-        "targetSdkVersion": "31",
+        "targetSdkVersion": "35",
         "versionCode": "1",
         "versionName": "1.0",
     },
@@ -607,6 +624,7 @@ android_instrumentation_binary(
         "@maven//:androidx_test_ext_junit",
         "@maven//:com_google_ar_sceneform_ux_sceneform_ux",
         "@maven//:com_jakewharton_timber_timber",
+        "@maven//:com_squareup_moshi_moshi",
     ],
 )
 
@@ -628,7 +646,7 @@ android_instrumentation_binary(
         "libraryManifestHolder": "value",
         "minSdkVersion": "21",
         "orientation": "portrait",
-        "targetSdkVersion": "31",
+        "targetSdkVersion": "35",
         "versionCode": "1",
         "versionName": "1.0",
     },
@@ -665,6 +683,7 @@ android_instrumentation_binary(
         "@maven//:androidx_test_ext_junit",
         "@maven//:com_google_ar_sceneform_ux_sceneform_ux",
         "@maven//:com_jakewharton_timber_timber",
+        "@maven//:com_squareup_moshi_moshi",
     ],
 )
 
@@ -686,7 +705,7 @@ android_instrumentation_binary(
         "libraryManifestHolder": "value",
         "minSdkVersion": "21",
         "orientation": "portrait",
-        "targetSdkVersion": "31",
+        "targetSdkVersion": "35",
         "versionCode": "1",
         "versionName": "1.0",
     },
@@ -723,5 +742,6 @@ android_instrumentation_binary(
         "@maven//:androidx_test_ext_junit",
         "@maven//:com_google_ar_sceneform_ux_sceneform_ux",
         "@maven//:com_jakewharton_timber_timber",
+        "@maven//:com_squareup_moshi_moshi",
     ],
 )

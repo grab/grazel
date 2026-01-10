@@ -56,6 +56,7 @@ internal data class AndroidLibraryTarget(
     override val assetsDir: String? = null,
     override val sortKey: String = "0$name",
     override val lintConfigData: LintConfigData? = null,
+    val plugins: List<BazelDependency> = emptyList(),
 ) : AndroidTarget {
     override fun statements(builder: StatementsBuilder) = builder {
         androidLibrary(
@@ -68,6 +69,7 @@ internal data class AndroidLibraryTarget(
             resorceSets = buildResources(resourceSets),
             visibility = visibility,
             deps = deps,
+            plugins = plugins,
             tags = tags,
             assetsGlob = assetsGlob,
             assetsDir = assetsDir,
@@ -106,6 +108,7 @@ internal data class AndroidBinaryTarget(
     val customPackage: String,
     val incrementalDexing: Boolean = false,
     val minSdkVersion: Int? = null,
+    val plugins: List<BazelDependency> = emptyList(),
 ) : AndroidTarget {
     override fun statements(builder: StatementsBuilder) = builder {
         androidBinary(
@@ -126,6 +129,7 @@ internal data class AndroidBinaryTarget(
             resourceSets = buildResources(resourceSets),
             resValuesData = resValuesData,
             deps = deps,
+            plugins = plugins,
             assetsGlob = assetsGlob,
             buildConfigData = buildConfigData,
             assetsDir = assetsDir,

@@ -19,6 +19,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.kapt)
+    alias(libs.plugins.ksp)
     alias(libs.plugins.kotlin.parcelize)
     alias(libs.plugins.firebase.crashlytics)
     alias(libs.plugins.google.mobile.services)
@@ -29,7 +30,7 @@ android {
 
     defaultConfig {
         applicationId "com.grab.grazel.android.sample"
-        targetSdkVersion 31
+        targetSdkVersion 35
         versionCode 1
         versionName "1.0"
 
@@ -167,6 +168,9 @@ dependencies {
 
     implementation libs.google.dagger
     kapt libs.google.dagger.compiler
+
+    implementation libs.moshi
+    ksp libs.moshi.codegen
 
     testImplementation libs.junit
     androidTestImplementation libs.androidx.test.junit

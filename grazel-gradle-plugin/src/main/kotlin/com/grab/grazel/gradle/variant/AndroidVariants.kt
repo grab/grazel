@@ -64,6 +64,9 @@ class AndroidVariant(
             fallback = backingVariant.annotationProcessorConfiguration
         )
 
+    override val kspConfiguration
+        get() = parseKspConfigurations()
+
     override fun toString() = MoreObjects.toStringHelper(this)
         .add("project", project.path)
         .add("name", name)
@@ -138,6 +141,19 @@ abstract class AndroidNonVariant<T>(
                         basePattern = namePattern
                     )
                 } ?: emptySet()
+            }
+            return (buildTypeConfigs + flavorConfig).toSet()
+        }
+
+    override val kspConfiguration: Set<Configuration>
+        get() {
+            val buildTypeConfigs = parseKspConfigurations()
+            val flavorConfig = toIgnoreKeywords.flatMap { flavor ->
+                val namePattern = flavor + baseName
+                parseKspConfigurations(
+                    namePattern = namePattern,
+                    basePattern = namePattern
+                )
             }
             return (buildTypeConfigs + flavorConfig).toSet()
         }
@@ -264,6 +280,9 @@ class AndroidDefaultVariant(
             "",
             ""
         )
+
+    override val kspConfiguration: Set<Configuration>
+        get() = parseKspConfigurations("", "")
 
     override val kotlinCompilerPluginConfiguration: Set<Configuration>
         get() = buildList {

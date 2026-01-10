@@ -16,6 +16,7 @@
 plugins {
     id("kotlin")
     id("com.android.lint")
+    alias(libs.plugins.ksp)
 }
 
 lint {
@@ -24,6 +25,8 @@ lint {
 
 dependencies {
     implementation fileTree(dir: "libs", include: ["*.jar"])
+    implementation libs.moshi
+    ksp libs.moshi.codegen
     lintChecks libs.slack.lint.checks
     testImplementation libs.junit
 }

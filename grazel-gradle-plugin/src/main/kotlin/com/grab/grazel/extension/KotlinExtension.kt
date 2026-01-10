@@ -20,6 +20,8 @@ import com.grab.grazel.bazel.rules.BazelRepositoryRule
 import com.grab.grazel.bazel.rules.GitRepositoryRule
 import com.grab.grazel.bazel.rules.HttpArchiveRule
 import groovy.lang.Closure
+import org.gradle.api.artifacts.MinimalExternalModuleDependency
+import org.gradle.api.provider.Provider
 
 internal const val RULE_KOTLIN_NAME = "io_bazel_rules_kotlin"
 internal const val RULES_KOTLIN_SHA =
@@ -83,6 +85,91 @@ data class KspCompiler(
 )
 
 /**
+ * Configuration for a specific KSP processor.
+ * Used to specify attributes that cannot be auto-detected from JAR metadata.
+ *
+ * @param generatesJava Whether this processor generates Java code (default: false)
+ * @param targetEmbeddedCompiler Whether to use embedded Kotlin compiler (default: false)
+ */
+data class KspProcessorConfig(
+    var generatesJava: Boolean = false,
+    var targetEmbeddedCompiler: Boolean = false
+)
+
+/**
+ * Configuration for KSP (Kotlin Symbol Processing).
+ * Groups compiler settings and processor-specific options.
+ *
+ * Usage:
+ * ```kotlin
+ * kotlin {
+ *     ksp {
+ *         compiler {
+ *             tag = "1.9.25-1.0.20"
+ *             sha = "..."
+ *         }
+ *         // String coordinate
+ *         processor("com.google.dagger:dagger-compiler") {
+ *             generatesJava = true
+ *         }
+ *         // Or version catalog reference
+ *         processor(libs.google.dagger.compiler) {
+ *             generatesJava = true
+ *         }
+ *     }
+ * }
+ * ```
+ */
+data class KspExtension(
+    val compiler: KspCompiler = KspCompiler(),
+    val processors: MutableMap<String, KspProcessorConfig> = mutableMapOf()
+) {
+    fun compiler(block: KspCompiler.() -> Unit) {
+        block(compiler)
+    }
+
+    fun compiler(closure: Closure<*>) {
+        closure.delegate = compiler
+        closure.resolveStrategy = Closure.DELEGATE_FIRST
+        closure.call()
+    }
+
+    /**
+     * Configure a KSP processor by maven coordinate string.
+     * @param coordinate Maven coordinate in format "group:artifact"
+     */
+    fun processor(coordinate: String, block: KspProcessorConfig.() -> Unit) {
+        processors.getOrPut(coordinate) { KspProcessorConfig() }.apply(block)
+    }
+
+    fun processor(coordinate: String, closure: Closure<*>) {
+        val config = processors.getOrPut(coordinate) { KspProcessorConfig() }
+        closure.delegate = config
+        closure.resolveStrategy = Closure.DELEGATE_FIRST
+        closure.call()
+    }
+
+    /**
+     * Configure a KSP processor using version catalog reference.
+     * @param dependency Version catalog dependency (e.g., libs.google.dagger.compiler)
+     */
+    fun processor(dependency: Provider<MinimalExternalModuleDependency>, block: KspProcessorConfig.() -> Unit) {
+        val dep = dependency.get()
+        val coordinate = "${dep.module.group}:${dep.module.name}"
+        processors.getOrPut(coordinate) { KspProcessorConfig() }.apply(block)
+    }
+
+    fun processor(dependency: Provider<MinimalExternalModuleDependency>, closure: Closure<*>) {
+        val dep = dependency.get()
+        val coordinate = "${dep.module.group}:${dep.module.name}"
+        val config = processors.getOrPut(coordinate) { KspProcessorConfig() }
+        closure.delegate = config
+        closure.resolveStrategy = Closure.DELEGATE_FIRST
+        closure.call()
+    }
+}
+
+/**
  * Configuration for Kotlin compiler and toolchains. Options configured will be used in root `BUILD.bazel`, `WORKSPACE`
  * respectively.
  *
@@ -102,12 +189,21 @@ data class KspCompiler(
  *         abiJars = true
  *         languageVersion = "1.4"
  *      }
+ *      ksp {
+ *         compiler {
+ *             tag = "1.9.25-1.0.20"
+ *             sha = "..."
+ *         }
+ *         processor("com.google.dagger:dagger-compiler") {
+ *             generatesJava = true
+ *         }
+ *      }
  * }
  * ```
  */
 data class KotlinExtension(
     val compiler: KotlinCompiler = KotlinCompiler(),
-    val kspCompiler: KspCompiler = KspCompiler(),
+    val ksp: KspExtension = KspExtension(),
     val kotlinCOptions: KotlinCOptions = KotlinCOptions(),
     val javaCOptions: JavaCOptions = JavaCOptions(),
     val toolchain: KotlinToolChain = KotlinToolChain(),
@@ -150,12 +246,13 @@ data class KotlinExtension(
         closure.call()
     }
 
-    fun kspCompiler(block: KspCompiler.() -> Unit) {
-        block(kspCompiler)
+    fun ksp(block: KspExtension.() -> Unit) {
+        block(ksp)
     }
 
-    fun kspCompiler(closure: Closure<*>) {
-        closure.delegate = kspCompiler
+    fun ksp(closure: Closure<*>) {
+        closure.delegate = ksp
+        closure.resolveStrategy = Closure.DELEGATE_FIRST
         closure.call()
     }
 

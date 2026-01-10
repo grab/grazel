@@ -74,6 +74,9 @@ common --persistent_multiplex_android_tools
 common --strategy=AARGenerator=worker
 common --strategy=DatabindingStubs=worker
 common --modify_execution_info=GenerateDataBindingBaseClasses=+supports-multiplex-workers=1
+# TODO: KSP doesn't seem to work in a parallel environment, so we need to use sandboxed strategy. https://github.com/google/ksp/issues/427#issuecomment-1140076577
+common --strategy=KotlinKsp=sandboxed
+
 ## Java Workers
 common --strategy=KotlinCompile=worker
 common --strategy=Javac=worker

@@ -14,17 +14,16 @@
  * limitations under the License.
  */
 
-package com.grab.grazel.migrate.kotlin
+package com.grab.grazel.android.sample
 
-import com.grab.grazel.bazel.starlark.BazelDependency
-import com.grab.grazel.migrate.android.LintConfigData
+import com.squareup.moshi.JsonClass
 
-data class KotlinProjectData(
+/**
+ * Simple data class to test KSP code generation with Moshi.
+ * The moshi-kotlin-codegen KSP processor will generate a UserJsonAdapter.
+ */
+@JsonClass(generateAdapter = true)
+data class User(
     val name: String,
-    val srcs: List<String>,
-    val res: List<String>,
-    val deps: List<BazelDependency>,
-    val tags: List<String>,
-    val lintConfigData: LintConfigData,
-    val plugins: List<BazelDependency> = emptyList()
+    val age: Int
 )

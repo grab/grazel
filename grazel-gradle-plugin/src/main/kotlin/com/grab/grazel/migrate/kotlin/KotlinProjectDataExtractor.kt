@@ -92,6 +92,8 @@ internal class DefaultKotlinProjectDataExtractor
             calculateDirectDependencyTags(self = name, deps = deps + transitiveMavenDeps)
         } else emptyList()
 
+        val plugins = dependenciesDataSource.collectKspPluginDeps(project, variantKey)
+
         return KotlinProjectData(
             name = name,
             srcs = srcs,
@@ -99,6 +101,7 @@ internal class DefaultKotlinProjectDataExtractor
             deps = deps.replaceAutoService(),
             tags = tags,
             lintConfigData = lintConfigs(project),
+            plugins = plugins
         )
     }
 

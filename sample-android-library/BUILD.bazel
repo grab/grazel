@@ -13,6 +13,9 @@ android_library(
         "config": "//:lint.xml",
     },
     manifest = "src/debug/AndroidManifest.xml",
+    plugins = [
+        "//:moshi-kotlin-codegen-ksp",
+    ],
     resource_sets = {
         "debug": {
             "manifest": "src/debug/AndroidManifest.xml",
@@ -26,6 +29,7 @@ android_library(
     ],
     deps = [
         "//:parcelize",
+        "@maven//:com_squareup_moshi_moshi",
     ],
 )
 
@@ -42,6 +46,9 @@ android_library(
         "config": "//:lint.xml",
     },
     manifest = "src/debug/AndroidManifest.xml",
+    plugins = [
+        "//:moshi-kotlin-codegen-ksp",
+    ],
     resource_sets = {
         "debug": {
             "manifest": "src/debug/AndroidManifest.xml",
@@ -55,6 +62,7 @@ android_library(
     ],
     deps = [
         "//:parcelize",
+        "@maven//:com_squareup_moshi_moshi",
     ],
 )
 
@@ -71,6 +79,9 @@ android_library(
         "config": "//:lint.xml",
     },
     manifest = "src/debug/AndroidManifest.xml",
+    plugins = [
+        "//:moshi-kotlin-codegen-ksp",
+    ],
     resource_sets = {
         "debug": {
             "manifest": "src/debug/AndroidManifest.xml",
@@ -84,6 +95,7 @@ android_library(
     ],
     deps = [
         "//:parcelize",
+        "@maven//:com_squareup_moshi_moshi",
     ],
 )
 
@@ -100,6 +112,9 @@ android_library(
         "config": "//:lint.xml",
     },
     manifest = "src/debug/AndroidManifest.xml",
+    plugins = [
+        "//:moshi-kotlin-codegen-ksp",
+    ],
     resource_sets = {
         "debug": {
             "manifest": "src/debug/AndroidManifest.xml",
@@ -113,6 +128,7 @@ android_library(
     ],
     deps = [
         "//:parcelize",
+        "@maven//:com_squareup_moshi_moshi",
     ],
 )
 
@@ -135,6 +151,7 @@ android_unit_test(
     deps = [
         "//:parcelize",
         "//sample-android-library:sample-android-library-demo-free-debug",
+        "@maven//:com_squareup_moshi_moshi",
         "@maven//:junit_junit",
     ],
 )
@@ -158,6 +175,7 @@ android_unit_test(
     deps = [
         "//:parcelize",
         "//sample-android-library:sample-android-library-demo-paid-debug",
+        "@maven//:com_squareup_moshi_moshi",
         "@maven//:junit_junit",
     ],
 )
@@ -181,6 +199,7 @@ android_unit_test(
     deps = [
         "//:parcelize",
         "//sample-android-library:sample-android-library-full-free-debug",
+        "@maven//:com_squareup_moshi_moshi",
         "@maven//:junit_junit",
     ],
 )
@@ -204,6 +223,7 @@ android_unit_test(
     deps = [
         "//:parcelize",
         "//sample-android-library:sample-android-library-full-paid-debug",
+        "@maven//:com_squareup_moshi_moshi",
         "@maven//:junit_junit",
     ],
 )
