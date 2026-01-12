@@ -139,14 +139,23 @@ data class KspExtension(
      * @param coordinate Maven coordinate in format "group:artifact"
      */
     fun processor(coordinate: String, block: KspProcessorConfig.() -> Unit) {
+        validateCoordinate(coordinate)
         processors.getOrPut(coordinate) { KspProcessorConfig() }.apply(block)
     }
 
     fun processor(coordinate: String, closure: Closure<*>) {
+        validateCoordinate(coordinate)
         val config = processors.getOrPut(coordinate) { KspProcessorConfig() }
         closure.delegate = config
         closure.resolveStrategy = Closure.DELEGATE_FIRST
         closure.call()
+    }
+
+    private fun validateCoordinate(coordinate: String) {
+        val parts = coordinate.split(":")
+        require(parts.size == 2 && parts.all { it.isNotBlank() }) {
+            "Invalid processor coordinate '$coordinate'. Expected format: 'group:artifact'"
+        }
     }
 
     /**
