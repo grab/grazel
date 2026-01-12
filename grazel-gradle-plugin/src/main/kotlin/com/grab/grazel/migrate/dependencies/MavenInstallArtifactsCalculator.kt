@@ -232,22 +232,10 @@ constructor(
      */
     private fun calculateRepositoriesIncludingTransitives(
         artifacts: List<ResolvedDependency>
-    ): Set<DefaultMavenRepository> {
-        // Collect repo names from direct artifacts
-        val repoNames = artifacts.map(ResolvedDependency::repository).toMutableSet()
-
-        // Also collect repo names from transitive dependencies
-        // Format: "group:name:version:repository:requiresJetifier:jetifierSource"
-        artifacts.flatMap { it.dependencies }
-            .mapNotNull { depNotation ->
-                val parts = depNotation.split(":")
-                if (parts.size >= 4) parts[3] else null // repository is at index 3
-            }
-            .forEach { repoNames.add(it) }
-
-        return repoNames
-            .mapNotNull { repoName -> repositoryDataSource.allRepositoriesByName[repoName] }
-            .map { it.toMavenRepository() }
-            .toSet()
-    }
+    ): Set<DefaultMavenRepository> =
+        artifacts
+            .flatMap(ResolvedDependency::dependencies)
+            .map(ResolvedDependency::from)
+            .plus(artifacts)
+            .let(::calculateRepositories)
 }

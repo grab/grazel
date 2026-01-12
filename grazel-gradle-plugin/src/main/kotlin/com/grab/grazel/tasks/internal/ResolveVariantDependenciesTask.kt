@@ -45,6 +45,7 @@ import org.gradle.api.file.RegularFileProperty
 import org.gradle.api.provider.ListProperty
 import org.gradle.api.provider.MapProperty
 import org.gradle.api.provider.Property
+import org.gradle.api.provider.Provider
 import org.gradle.api.tasks.CacheableTask
 import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.InputFiles
@@ -354,8 +355,8 @@ internal abstract class ResolveVariantDependenciesTask : DefaultTask() {
             val hasKsp = hasKspDependencies(variant, project)
 
             // Collect KSP direct dependencies only if variant has KSP deps
-            val directDependenciesKsp: org.gradle.api.provider.Provider<Map<String, String>>
-            val processorClasses: org.gradle.api.provider.Provider<Map<String, String>>
+            val directDependenciesKsp: Provider<Map<String, String>>
+            val processorClasses: Provider<Map<String, String>>
 
             if (hasKsp) {
                 val kspConfigurationProvider = project.provider { variant.kspConfiguration }
