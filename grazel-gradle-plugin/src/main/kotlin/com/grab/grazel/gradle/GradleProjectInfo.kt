@@ -45,7 +45,7 @@ internal class DefaultGradleProjectInfo(
     override val rootProject: Project,
     override val grazelExtension: GrazelExtension,
     private val dependencyGraphsService: GradleProvider<DefaultDependencyGraphsService>,
-    private val workspaceDependencies: WorkspaceDependencies
+    private val workspaceDependencies: WorkspaceDependencies,
 ) : GradleProjectInfo {
 
     @Singleton
@@ -62,7 +62,7 @@ internal class DefaultGradleProjectInfo(
             rootProject,
             grazelExtension,
             dependencyGraphsService,
-            workspaceDependencies
+            workspaceDependencies,
         )
     }
 
@@ -88,6 +88,7 @@ internal class DefaultGradleProjectInfo(
             .subprojects
             .any { project -> project.hasCrashlytics || project.hasGooglePlayServicesPlugin }
     }
+
     override val rootLintXml: File by lazy {
         rootProject.file("lint.xml")
     }

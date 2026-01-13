@@ -18,11 +18,27 @@ package com.grab.grazel.android.sample
 
 import android.os.Parcelable
 import android.util.Log
+import com.squareup.moshi.JsonClass
+import com.squareup.moshi.Moshi
 import kotlinx.parcelize.Parcelize
 
+/**
+ * Data class to test both Parcelize and KSP code generation with Moshi.
+ */
 @Parcelize
-class User(val firstName: String, val lastName: String) : Parcelable
+@JsonClass(generateAdapter = true)
+data class User(val firstName: String, val lastName: String) : Parcelable
 
 class SampleViewModel {
     val user = User(firstName = "tom", lastName = "hanks")
+
+    /**
+     * Verify KSP code generation by using the generated Moshi adapter.
+     * This will fail to compile if KSP doesn't generate UserJsonAdapter.
+     */
+    fun verifyKspCodeGeneration(): String {
+        val moshi = Moshi.Builder().build()
+        val adapter = moshi.adapter(User::class.java)
+        return adapter.toJson(user)
+    }
 }

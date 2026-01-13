@@ -69,59 +69,95 @@ constructor(
         workspaceDependencies: WorkspaceDependencies,
         externalArtifacts: Set<String>,
         externalRepositories: Set<String>,
-    ): Set<MavenInstallData> = workspaceDependencies.result
-        .mapNotNullTo(TreeSet(compareBy(MavenInstallData::name))) { (variantName, artifacts) ->
-            val mavenInstallName = variantName.toMavenRepoName()
-            val allArtifacts = artifacts + grazelExtension
-                .dependencies
-                .overrideArtifactVersions
-                .get()
-                .map { ResolvedDependency.fromId(it, mavenInstallName) }
-                .asSequence()
-
-            val mavenInstallArtifacts = allArtifacts
-                .mapTo(TreeSet(compareBy(MavenInstallArtifact::id)), ::toMavenInstallArtifact)
-                .also { if (it.isEmpty()) return@mapNotNullTo null }
-
-            val repositories = calculateRepositories(artifacts)
-
-            // Overrides
-            val overrideTargets = calculateOverrideTargets(artifacts)
-
-            val mavenInstallJson = layout
-                .projectDirectory
-                .file("${mavenInstallName}_install.json").asFile
-
-            val jetifierArtifacts = (
-                artifacts
+    ): Set<MavenInstallData> {
+        val result = workspaceDependencies.result
+            .mapNotNullTo(TreeSet(compareBy(MavenInstallData::name))) { (variantName, artifacts) ->
+                val mavenInstallName = variantName.toMavenRepoName()
+                val allArtifacts = artifacts + grazelExtension
+                    .dependencies
+                    .overrideArtifactVersions
+                    .get()
+                    .map { ResolvedDependency.fromId(it, mavenInstallName) }
                     .asSequence()
-                    .mapNotNull { if (it.requiresJetifier) it.shortId else it.jetifierSource }
-                    .toList()
-                    + mavenInstallExtension.jetifyIncludeList.get()
-                    - mavenInstallExtension.jetifyExcludeList.get().toSet()
-                    - DefaultJetifierExclusions
-                ).toSortedSet()
 
-            MavenInstallData(
-                name = mavenInstallName,
-                artifacts = mavenInstallArtifacts,
-                externalArtifacts = if (variantName == DEFAULT_VARIANT) externalArtifacts else emptySet(),
-                repositories = repositories,
-                externalRepositories = if (variantName == DEFAULT_VARIANT) externalRepositories else emptySet(),
-                jetifierConfig = JetifierConfig(
-                    isEnabled = jetifierArtifacts.isNotEmpty(),
-                    artifacts = jetifierArtifacts
-                ),
-                failOnMissingChecksum = false,
-                excludeArtifacts = mavenInstallExtension.excludeArtifacts.get().toSet(),
-                overrideTargets = overrideTargets,
-                resolveTimeout = mavenInstallExtension.resolveTimeout,
-                artifactPinning = mavenInstallExtension.artifactPinning.enabled.get(),
-                versionConflictPolicy = mavenInstallExtension.versionConflictPolicy,
-                mavenInstallJson = mavenInstallJson.name,
-                isMavenInstallJsonEnabled = mavenInstallExtension.artifactPinning.enabled.get() && mavenInstallJson.exists()
+                val mavenInstallArtifacts = allArtifacts
+                    .mapTo(TreeSet(compareBy(MavenInstallArtifact::id)), ::toMavenInstallArtifact)
+                    .also { if (it.isEmpty()) return@mapNotNullTo null }
+
+                val repositories = calculateRepositories(artifacts)
+
+                // Overrides
+                val overrideTargets = calculateOverrideTargets(artifacts)
+
+                val mavenInstallJson = layout
+                    .projectDirectory
+                    .file("${mavenInstallName}_install.json").asFile
+
+                val jetifierArtifacts = (
+                    artifacts
+                        .asSequence()
+                        .mapNotNull { if (it.requiresJetifier) it.shortId else it.jetifierSource }
+                        .toList()
+                        + mavenInstallExtension.jetifyIncludeList.get()
+                        - mavenInstallExtension.jetifyExcludeList.get().toSet()
+                        - DefaultJetifierExclusions
+                    ).toSortedSet()
+
+                MavenInstallData(
+                    name = mavenInstallName,
+                    artifacts = mavenInstallArtifacts,
+                    externalArtifacts = if (variantName == DEFAULT_VARIANT) externalArtifacts else emptySet(),
+                    repositories = repositories,
+                    externalRepositories = if (variantName == DEFAULT_VARIANT) externalRepositories else emptySet(),
+                    jetifierConfig = JetifierConfig(
+                        isEnabled = jetifierArtifacts.isNotEmpty(),
+                        artifacts = jetifierArtifacts
+                    ),
+                    failOnMissingChecksum = false,
+                    excludeArtifacts = mavenInstallExtension.excludeArtifacts.get().toSet(),
+                    overrideTargets = overrideTargets,
+                    resolveTimeout = mavenInstallExtension.resolveTimeout,
+                    artifactPinning = mavenInstallExtension.artifactPinning.enabled.get(),
+                    versionConflictPolicy = mavenInstallExtension.versionConflictPolicy,
+                    mavenInstallJson = mavenInstallJson.name,
+                    isMavenInstallJsonEnabled = mavenInstallExtension.artifactPinning.enabled.get() && mavenInstallJson.exists()
+                )
+            }
+
+        // Generate ksp_maven from aggregated KSP deps
+        if (workspaceDependencies.kspResult.isNotEmpty()) {
+            val kspArtifacts = workspaceDependencies.kspResult.values.toList()
+            val kspMavenInstallArtifacts = kspArtifacts
+                .mapTo(TreeSet(compareBy(MavenInstallArtifact::id)), ::toMavenInstallArtifact)
+
+            val kspRepositories = calculateRepositoriesIncludingTransitives(kspArtifacts)
+
+            val kspMavenInstallJson = layout
+                .projectDirectory
+                .file("ksp_maven_install.json").asFile
+
+            result.add(
+                MavenInstallData(
+                    name = "ksp_maven",
+                    artifacts = kspMavenInstallArtifacts,
+                    externalArtifacts = emptySet(),
+                    repositories = kspRepositories,
+                    externalRepositories = emptySet(),
+                    jetifierConfig = JetifierConfig(isEnabled = false, artifacts = emptySet()),
+                    failOnMissingChecksum = false,
+                    excludeArtifacts = mavenInstallExtension.excludeArtifacts.get().toSet(),
+                    overrideTargets = emptyMap(),
+                    resolveTimeout = mavenInstallExtension.resolveTimeout,
+                    artifactPinning = mavenInstallExtension.artifactPinning.enabled.get(),
+                    versionConflictPolicy = mavenInstallExtension.versionConflictPolicy,
+                    mavenInstallJson = kspMavenInstallJson.name,
+                    isMavenInstallJsonEnabled = mavenInstallExtension.artifactPinning.enabled.get() && kspMavenInstallJson.exists()
+                )
             )
         }
+
+        return result
+    }
 
     private fun calculateOverrideTargets(
         artifacts: List<ResolvedDependency>
@@ -188,4 +224,18 @@ constructor(
             }.toSet()
         return gradleRepositories.map { it.toMavenRepository() }.toSet()
     }
+
+    /**
+     * Calculate repositories from both direct artifacts and their transitive dependencies.
+     * This is needed for KSP where we only include direct processors as artifacts,
+     * but transitives may come from different repositories (e.g., Maven Central).
+     */
+    private fun calculateRepositoriesIncludingTransitives(
+        artifacts: List<ResolvedDependency>
+    ): Set<DefaultMavenRepository> =
+        artifacts
+            .flatMap(ResolvedDependency::dependencies)
+            .map(ResolvedDependency::from)
+            .plus(artifacts)
+            .let(::calculateRepositories)
 }

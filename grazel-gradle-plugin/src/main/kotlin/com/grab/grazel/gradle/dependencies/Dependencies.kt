@@ -20,6 +20,8 @@ import com.grab.grazel.bazel.rules.ANDROIDX_GROUP
 import com.grab.grazel.bazel.rules.ANNOTATION_ARTIFACT
 import com.grab.grazel.bazel.rules.DAGGER_GROUP
 import com.grab.grazel.bazel.rules.DATABINDING_GROUP
+import com.grab.grazel.bazel.rules.KspProcessor
+import com.grab.grazel.bazel.rules.kspPluginTarget
 import com.grab.grazel.bazel.starlark.BazelDependency
 import com.grab.grazel.bazel.starlark.BazelDependency.MavenDependency
 import com.grab.grazel.bazel.starlark.BazelDependency.StringDependency
@@ -123,6 +125,12 @@ internal interface DependenciesDataSource {
 
     /** Collects all transitive maven dependencies for the given [variantKey] */
     fun collectTransitiveMavenDeps(project: Project, variantKey: VariantGraphKey): Set<MavenDependency>
+
+    /**
+     * Collects KSP plugin dependencies for the given [variantKey].
+     * Returns BazelDependency references to root-level kt_ksp_plugin targets.
+     */
+    fun collectKspPluginDeps(project: Project, variantKey: VariantGraphKey): List<BazelDependency>
 }
 
 @Singleton
@@ -314,4 +322,25 @@ internal class DefaultDependenciesDataSource @Inject constructor(
     }
 
     private val ExternalDependency.shortId get() = module.group + ":" + module.name
+
+    override fun collectKspPluginDeps(
+        project: Project,
+        variantKey: VariantGraphKey
+    ): List<BazelDependency> {
+        val grazelVariant: Variant<*> = findGrazelVariantByKey(project, variantKey)
+        return grazelVariant.kspConfiguration
+            .asSequence()
+            .flatMap { config -> config.allDependencies.filterIsInstance<ExternalDependency>() }
+            .distinctBy { it.shortId }
+            .map { dep ->
+                // Create a minimal KspProcessor just for target name generation
+                val processor = KspProcessor(
+                    group = dep.module.group,
+                    name = dep.module.name,
+                    version = dep.version
+                )
+                kspPluginTarget(processor)
+            }
+            .toList()
+    }
 }

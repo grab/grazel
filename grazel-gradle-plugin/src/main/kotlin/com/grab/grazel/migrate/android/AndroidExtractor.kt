@@ -88,7 +88,7 @@ constructor(
                     project,
                     variantKey
                 ) + project.kotlinParcelizeDeps()
-                return project.extract(matchedVariant, extension, deps)
+                return project.extract(matchedVariant, extension, deps, variantKey)
             }
 
             else -> throw IllegalArgumentException("${project.name} is not an Android project")
@@ -99,6 +99,7 @@ constructor(
         matchedVariant: MatchedVariant,
         extension: BaseExtension,
         deps: List<BazelDependency>,
+        variantKey: VariantGraphKey,
     ): AndroidLibraryData {
         // Only consider source sets from migratable variants
         val migratableSourceSets = matchedVariant.variant.sourceSets
@@ -125,7 +126,6 @@ constructor(
             ?.let(::relativePath)
 
         val tags = if (grazelExtension.rules.kotlin.enabledTransitiveReduction) {
-            val variantKey = VariantGraphKey.from(project, matchedVariant, VariantType.AndroidBuild)
             val transitiveMavenDeps = dependenciesDataSource.collectTransitiveMavenDeps(
                 project = project,
                 variantKey = variantKey
@@ -137,6 +137,8 @@ constructor(
         } else emptyList()
 
         val lintConfigs = lintConfigs(extension.lintOptions, project)
+
+        val plugins = dependenciesDataSource.collectKspPluginDeps(this, variantKey)
 
         return AndroidLibraryData(
             name = name + matchedVariant.nameSuffix,
@@ -150,6 +152,7 @@ constructor(
             buildConfigData = extension.extractBuildConfig(this, matchedVariant.variant),
             resValuesData = extension.extractResValue(matchedVariant),
             deps = deps.sorted(),
+            plugins = plugins,
             tags = tags.sorted(),
             lintConfigData = lintConfigs
         )

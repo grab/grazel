@@ -4,17 +4,17 @@ load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
 http_archive(
     name = "io_bazel_rules_kotlin",
-    sha256 = "34e8c0351764b71d78f76c8746e98063979ce08dcf1a91666f3f3bc2949a533d",
-    url = "https://github.com/bazelbuild/rules_kotlin/releases/download/v1.9.5/rules_kotlin-v1.9.5.tar.gz",
+    sha256 = "3b772976fec7bdcda1d84b9d39b176589424c047eb2175bed09aac630e50af43",
+    url = "https://github.com/bazelbuild/rules_kotlin/releases/download/v1.9.6/rules_kotlin-v1.9.6.tar.gz",
 )
 
 KOTLIN_VERSION = "1.9.25"
 
 KOTLINC_RELEASE_SHA = "6ab72d6144e71cbbc380b770c2ad380972548c63ab6ed4c79f11c88f2967332e"
 
-KSP_VERSION = "1.8.10-1.0.9"
+KSP_VERSION = "1.9.25-1.0.20"
 
-KSP_COMPILER_RELEASE_SHA = "2f60c27956e4033c4c94355624e3fe88f255df42d8b67af44c1f2cdcbd513a13"
+KSP_COMPILER_RELEASE_SHA = "3a2d24623409ac5904c87a7e130f5b39ce9fd67ca8b44e4fe5b784a6ec102b81"
 
 load("@io_bazel_rules_kotlin//kotlin:repositories.bzl", "kotlin_repositories", "kotlinc_version", "ksp_version")
 
@@ -39,7 +39,7 @@ load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository")
 
 git_repository(
     name = "grab_bazel_common",
-    commit = "d17b05487ec15d1959dd8592757f4bc88741bf3e",
+    commit = "8cfb7bcb84f6d9631b01bb14c25644030ad2ecf8",
     remote = "https://github.com/grab/grab-bazel-common.git",
 )
 
@@ -224,6 +224,26 @@ load("@debug_maven//:defs.bzl", debug_maven_pinned_maven_install = "pinned_maven
 debug_maven_pinned_maven_install()
 
 maven_install(
+    name = "ksp_maven",
+    artifacts = [
+        "com.squareup.moshi:moshi-kotlin-codegen:1.15.0",
+    ],
+    excluded_artifacts = ["androidx.test.espresso:espresso-contrib"],
+    fail_if_repin_required = False,
+    fail_on_missing_checksum = False,
+    maven_install_json = "//:ksp_maven_install.json",
+    repositories = [
+        "https://repo.maven.apache.org/maven2/",
+    ],
+    resolve_timeout = 1000,
+    version_conflict_policy = "pinned",
+)
+
+load("@ksp_maven//:defs.bzl", ksp_maven_pinned_maven_install = "pinned_maven_install")
+
+ksp_maven_pinned_maven_install()
+
+maven_install(
     name = "lint_maven",
     artifacts = [
         "com.google.auto.service:auto-service-annotations:1.1.1",
@@ -403,6 +423,8 @@ maven_install(
         "com.google.guava:listenablefuture:9999.0-empty-to-avoid-conflict-with-guava",
         "com.google.j2objc:j2objc-annotations:2.8",
         "com.jakewharton.timber:timber:5.0.1",
+        "com.squareup.moshi:moshi:1.15.0",
+        "com.squareup.okio:okio:2.10.0",
         "com.squareup:javawriter:2.1.1",
         "commons-io:commons-io:2.13.0",
         "javax.inject:javax.inject:1",
@@ -440,7 +462,6 @@ maven_install(
         "android.arch.lifecycle:livedata-core",
         "android.arch.lifecycle:runtime",
         "android.arch.lifecycle:viewmodel",
-        "androidx.fragment:fragment",
         "com.android.databinding:baseLibrary",
         "com.android.databinding:library",
         "com.android.support.test.espresso:espresso-core",
@@ -460,6 +481,7 @@ maven_install(
         "com.android.support:support-compat",
         "com.android.support:support-core-ui",
         "com.android.support:support-core-utils",
+        "com.android.support:support-fragment",
         "com.android.support:support-vector-drawable",
         "com.android.support:versionedparcelable",
         "com.android.support:viewpager",
