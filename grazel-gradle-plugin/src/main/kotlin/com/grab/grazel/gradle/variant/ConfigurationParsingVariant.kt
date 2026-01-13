@@ -103,37 +103,57 @@ interface ConfigurationParsingVariant<VariantData> : Variant<VariantData> {
     }
 
     /**
-     * Parses the KSP (Kotlin Symbol Processing) configurations for this variant.
-     * KSP creates `*KotlinProcessorClasspath` configurations that ARE resolvable,
-     * while the declaration configs (like `kspDebug`) are NOT resolvable.
+     * Creates a custom resolvable KSP configuration that extends from the stable
+     * KSP declaration bucket configs (e.g., `ksp`, `kspDemoFreeDebug`).
      *
      * @param namePattern The name pattern to use for matching configurations. Defaults to the
      *    [Variant.name].
      * @param basePattern The base name pattern to use for matching configurations. Defaults to the
      *    [Variant.baseName].
      */
-    fun parseKspConfigurations(
+    fun kspClasspathConfiguration(
         namePattern: String = name,
         basePattern: String = baseName,
     ): Set<Configuration> = buildSet {
-        if (project.hasKsp) {
-            val capitalizedNamePattern = namePattern.capitalize()
-            val capitalizedBasePattern = basePattern.capitalize()
-            val suffix = "KotlinProcessorClasspath"
+        if (!project.hasKsp) return@buildSet
 
-            val kspConfigurations = variantConfigurations.filter { configuration ->
-                val configName = configuration.name
-                // KSP creates *KotlinProcessorClasspath configs that are resolvable
-                when (variantType) {
-                    AndroidBuild -> configName == "ksp${capitalizedNamePattern}$suffix"
-                    AndroidTest -> configName == "ksp${capitalizedBasePattern}AndroidTest$suffix"
-                    Test -> configName == "ksp${capitalizedBasePattern}UnitTest$suffix"
-                    Lint -> false
-                    JvmBuild -> error("Invalid variant type ${JvmBuild.name} for Android variant")
-                }
+        val capitalizedNamePattern = namePattern.capitalize()
+        val capitalizedBasePattern = basePattern.capitalize()
+
+        // Find stable KSP declaration bucket configs to inherit from
+        // Include BOTH the variant-specific config AND the base "ksp" config
+        // because deps can be declared on either (e.g., "ksp libs.foo" goes to base "ksp")
+        val baseKspConfigs = project.configurations.filter { config ->
+            val configName = config.name
+            when (variantType) {
+                AndroidBuild -> configName == "ksp$capitalizedNamePattern" || configName == "ksp"
+                AndroidTest -> configName == "kspAndroidTest$capitalizedBasePattern" || configName == "kspAndroidTest"
+                Test -> configName == "kspTest$capitalizedBasePattern" || configName == "kspTest"
+                Lint -> false
+                JvmBuild -> error("Invalid variant type ${JvmBuild.name} for Android variant")
             }
-            kspConfigurations.addTo(this)
         }
+
+        if (baseKspConfigs.isEmpty()) return@buildSet
+
+        // Create custom resolvable config with stable naming
+        // Use variant name (not namePattern) to ensure unique config names per variant
+        val kspClasspathName = "grazel${name.capitalize()}KspClasspath"
+        val kspClasspath = project.configurations.maybeCreate(kspClasspathName)
+
+        // Only configure if not already set up (extendsFrom is empty for new configs)
+        // This avoids "Cannot change dependencies after resolution" errors when
+        // the config was already resolved in a previous task
+        if (kspClasspath.extendsFrom.isEmpty()) {
+            kspClasspath.apply {
+                isCanBeResolved = true
+                isVisible = false
+                isCanBeConsumed = false
+                setExtendsFrom(baseKspConfigs)
+            }
+        }
+
+        add(kspClasspath)
     }
 
     fun classpathConfiguration(

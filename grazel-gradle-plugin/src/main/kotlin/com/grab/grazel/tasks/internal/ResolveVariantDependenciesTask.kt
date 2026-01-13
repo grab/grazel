@@ -39,7 +39,10 @@ import org.gradle.api.Task
 import org.gradle.api.artifacts.Configuration
 import org.gradle.api.artifacts.ExternalDependency
 import org.gradle.api.artifacts.ProjectDependency
+import org.gradle.api.artifacts.component.ModuleComponentIdentifier
 import org.gradle.api.artifacts.result.ResolvedComponentResult
+import org.gradle.api.file.ConfigurableFileCollection
+import org.gradle.api.file.FileCollection
 import org.gradle.api.file.RegularFile
 import org.gradle.api.file.RegularFileProperty
 import org.gradle.api.provider.ListProperty
@@ -56,6 +59,7 @@ import org.gradle.api.tasks.TaskAction
 import org.gradle.api.tasks.TaskProvider
 import org.gradle.kotlin.dsl.named
 import org.gradle.kotlin.dsl.register
+import java.io.File
 import java.util.TreeMap
 import java.util.TreeSet
 import kotlin.streams.asSequence
@@ -90,8 +94,12 @@ internal abstract class ResolveVariantDependenciesTask : DefaultTask() {
     @get:Input
     abstract val kspDirectDependencies: MapProperty</*shortId*/ String, String>
 
+    @get:InputFiles
+    @get:PathSensitive(PathSensitivity.NAME_ONLY)
+    abstract val kspArtifactJars: ConfigurableFileCollection
+
     @get:Input
-    abstract val kspProcessorClasses: MapProperty</*shortId*/ String, /*processorClass*/ String>
+    abstract val kspArtifactMapping: MapProperty</*shortId*/ String, /*fileName*/ String>
 
     @get:OutputFile
     abstract val resolvedDependencies: RegularFileProperty
@@ -193,7 +201,10 @@ internal abstract class ResolveVariantDependenciesTask : DefaultTask() {
                     KSP.name,
                     kspConfiguration.toResolvedDependencies(
                         directDependenciesMap = kspDirectDependencies.get(),
-                        processorClassMap = kspProcessorClasses.get(),
+                        processorClassMap = KspProcessorClassExtractor.extractProcessorClasses(
+                            kspArtifactJars.files,
+                            kspArtifactMapping.get()
+                        ),
                         removeTransitives = true // Only direct KSP processors, repos extracted from transitives
                     )
                 )
@@ -205,7 +216,8 @@ internal abstract class ResolveVariantDependenciesTask : DefaultTask() {
     private data class KspDependencyInfo(
         val hasKsp: Boolean,
         val directDependencies: Provider<Map<String, String>>,
-        val processorClasses: Provider<Map<String, String>>
+        val artifactJars: FileCollection,
+        val artifactMapping: Provider<Map<String, String>>
     )
 
     companion object {
@@ -295,17 +307,19 @@ internal abstract class ResolveVariantDependenciesTask : DefaultTask() {
 
         /**
          * Check if a variant has any KSP dependencies.
-         * Checks the project's base 'ksp' configuration which should exist at configuration time.
+         * Checks the variant's KSP configurations (resolvable classpath configs) for dependencies.
+         * Note: accessing .allDependencies does NOT trigger resolution.
          */
         private fun hasKspDependencies(variant: Variant<*>, project: Project): Boolean {
             if (!project.hasKsp) return false
 
-            // Check if project has any KSP dependencies declared
-            // The 'ksp' configuration is the base config that variant-specific configs extend from
-            val kspConfig = project.configurations.findByName("ksp")
-            val hasKspDeps = kspConfig?.dependencies
-                ?.filterIsInstance<ExternalDependency>()
-                ?.isNotEmpty() == true
+            val kspConfigs = variant.kspConfiguration.filter { it.isCanBeResolved }
+
+            // Check variant's KSP configurations (resolvable classpath configs) for dependencies
+            // allDependencies includes inherited deps from base "ksp" bucket
+            val hasKspDeps = kspConfigs.any { config ->
+                config.allDependencies.any { it is ExternalDependency }
+            }
 
             if (!hasKspDeps) {
                 project.logger.info(
@@ -326,37 +340,60 @@ internal abstract class ResolveVariantDependenciesTask : DefaultTask() {
                 return KspDependencyInfo(
                     hasKsp = false,
                     directDependencies = project.provider { emptyMap() },
-                    processorClasses = project.provider { emptyMap() }
+                    artifactJars = project.files(),
+                    artifactMapping = project.provider { emptyMap() }
                 )
             }
 
-            val kspConfigurationProvider = project.provider { variant.kspConfiguration }
-            val kspExternalDependencies = kspConfigurationProvider.map { configs ->
-                configs
-                    .filter { it.isCanBeResolved }
-                    .asSequence()
-                    .flatMap { it.incoming.dependencies }
-                    .filterIsInstance<ExternalDependency>()
+            val kspConfigs = variant.kspConfiguration.filter { it.isCanBeResolved }
+
+            // Get direct dependency shortIds (group:name)
+            val directDepShortIds: Set<String> = kspConfigs
+                .asSequence()
+                .flatMap { it.allDependencies }
+                .filterIsInstance<ExternalDependency>()
+                .map { "${it.group}:${it.name}" }
+                .toSet()
+
+            val directDependencies: Provider<Map<String, String>> = project.provider {
+                directDepShortIds.associateTo(TreeMap()) { it to it }
             }
 
-            val directDependencies: Provider<Map<String, String>> =
-                kspExternalDependencies.map { deps ->
-                    deps.associateTo(TreeMap()) { "${it.group}:${it.name}" to "${it.group}:${it.name}" }
+            // Lazy artifact collection - only for DIRECT dependencies
+            // Filter resolved artifacts to only include direct KSP processors, not transitives
+            val artifactResultsProvider: Provider<List<Pair<String, File>>> = project.provider {
+                kspConfigs.flatMap { config ->
+                    config.incoming
+                        .artifactView {
+                            isLenient = true
+                            componentFilter { it is ModuleComponentIdentifier }
+                        }
+                        .artifacts
+                        .mapNotNull { artifact ->
+                            val id = artifact.id.componentIdentifier as ModuleComponentIdentifier
+                            val shortId = "${id.group}:${id.module}"
+                            // Only include direct dependencies
+                            if (shortId in directDepShortIds) {
+                                shortId to artifact.file
+                            } else null
+                        }
                 }
+            }
 
-            val processorClasses: Provider<Map<String, String>> =
-                kspConfigurationProvider.map { configs ->
-                    configs
-                        .filter { it.isCanBeResolved }
-                        .flatMap { KspProcessorClassExtractor.extractProcessorClasses(it).entries }
-                        .associate { it.key to it.value.firstOrNull().orEmpty() }
-                        .filterValues { it.isNotEmpty() }
+            // ConfigurableFileCollection.from(Provider) defers file resolution
+            val artifactJars: ConfigurableFileCollection = project.files()
+            artifactJars.from(artifactResultsProvider.map { pairs: List<Pair<String, File>> -> pairs.map { it.second } })
+
+            val artifactMapping: Provider<Map<String, String>> =
+                artifactResultsProvider.map { pairs: List<Pair<String, File>> ->
+                    pairs.associate { (shortId, file) -> shortId to file.name }
                 }
 
             return KspDependencyInfo(
                 hasKsp = true,
                 directDependencies = directDependencies,
-                processorClasses = processorClasses
+                artifactJars = artifactJars,
+                artifactMapping = artifactMapping
             )
         }
 
@@ -428,7 +465,8 @@ internal abstract class ResolveVariantDependenciesTask : DefaultTask() {
                     compileDirectDependencies.set(directDependenciesCompile)
                     compileExcludeRules.set(excludeRulesCompile)
                     kspDirectDependencies.set(kspInfo.directDependencies)
-                    kspProcessorClasses.set(kspInfo.processorClasses)
+                    kspArtifactJars.from(kspInfo.artifactJars)
+                    kspArtifactMapping.set(kspInfo.artifactMapping)
                     resolvedDependencies.set(resolvedDependenciesJson)
                 }
             rootResolveDependenciesTask.dependsOn(resolveVariantDependenciesTask)
@@ -451,7 +489,7 @@ internal abstract class ResolveVariantDependenciesTask : DefaultTask() {
                     compileDirectDependencies.set(emptyMap())
                     compileExcludeRules.set(emptyMap())
                     kspDirectDependencies.set(emptyMap())
-                    kspProcessorClasses.set(emptyMap())
+                    kspArtifactMapping.set(emptyMap())
                     resolvedDependencies.set(resolvedDependenciesJson)
                 }
             rootResolveDependenciesTask.dependsOn(resolveVariantDependenciesTask)
