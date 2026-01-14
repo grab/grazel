@@ -16,55 +16,47 @@
 
 package com.grab.grazel.gradle.dependencies
 
-import org.gradle.api.artifacts.Configuration
-import org.gradle.api.artifacts.component.ModuleComponentIdentifier
 import java.io.File
+import java.util.concurrent.ConcurrentHashMap
 import java.util.zip.ZipFile
 
-private const val KSP_SERVICE_FILE = "META-INF/services/com.google.devtools.ksp.processing.SymbolProcessorProvider"
+private const val KSP_SERVICE_FILE =
+    "META-INF/services/com.google.devtools.ksp.processing.SymbolProcessorProvider"
 
 /**
  * Extracts processor class names from KSP processor JARs.
  * Reads META-INF/services/com.google.devtools.ksp.processing.SymbolProcessorProvider
  * to determine the fully-qualified class name of the processor provider.
+ *
+ * Results are cached to avoid re-reading the same JAR across variants.
  */
 internal object KspProcessorClassExtractor {
 
+    // TODO: Move cache to a Gradle BuildService for proper lifecycle management
+    private val cache = ConcurrentHashMap<String, List<String>>()
+
     /**
-     * Extracts processor classes from all resolved KSP artifacts in the configuration.
-     * @param configuration The Gradle configuration containing KSP processor dependencies
-     * @return Map of "group:name" to list of processor class names
+     * Extracts processor classes from KSP artifact JARs.
+     *
+     * @param artifactJars Collection of JAR files to scan
+     * @param artifactMapping Map of "group:artifact" shortId to JAR filename
+     * @return Map of shortId to processor class name
      */
-    fun extractProcessorClasses(configuration: Configuration): Map<String, List<String>> {
-        // Skip non-resolvable configurations
-        if (!configuration.isCanBeResolved) {
-            return emptyMap()
-        }
-
-        val result = mutableMapOf<String, List<String>>()
-
-        configuration.incoming
-            .artifactView {
-                isLenient = true
-                componentFilter { it is ModuleComponentIdentifier }
-            }
-            .artifacts
-            .forEach { artifact ->
-                val componentId = artifact.id.componentIdentifier
-                if (componentId is ModuleComponentIdentifier) {
-                    val key = "${componentId.group}:${componentId.module}"
-                    val classes = readProcessorClasses(artifact.file)
-                    if (classes.isNotEmpty()) {
-                        result[key] = classes
-                    }
-                }
-            }
-
-        return result
+    fun extractProcessorClasses(
+        artifactJars: Set<File>,
+        artifactMapping: Map<String, String>
+    ): Map<String, String> {
+        val jarsByName = artifactJars.associateBy { it.name }
+        return artifactMapping.mapNotNull { (shortId, fileName) ->
+            val jarFile = jarsByName[fileName] ?: return@mapNotNull null
+            readProcessorClasses(jarFile).firstOrNull()?.let { shortId to it }
+        }.toMap()
     }
 
     /**
      * Reads processor class names from a JAR file's service file.
+     * Results are cached by absolute path.
+     *
      * @param jarFile The JAR file to read
      * @return List of fully-qualified processor class names, or empty if not found
      */
@@ -73,18 +65,20 @@ internal object KspProcessorClassExtractor {
             return emptyList()
         }
 
-        return try {
-            ZipFile(jarFile).use { zip ->
-                val entry = zip.getEntry(KSP_SERVICE_FILE) ?: return emptyList()
-                zip.getInputStream(entry).bufferedReader().useLines { lines ->
-                    lines
-                        .map { it.trim() }
-                        .filter { it.isNotEmpty() && !it.startsWith("#") }
-                        .toList()
+        return cache.getOrPut(jarFile.absolutePath) {
+            try {
+                ZipFile(jarFile).use { zip ->
+                    val entry = zip.getEntry(KSP_SERVICE_FILE) ?: return@getOrPut emptyList()
+                    zip.getInputStream(entry).bufferedReader().useLines { lines ->
+                        lines
+                            .map { it.trim() }
+                            .filter { it.isNotEmpty() && !it.startsWith("#") }
+                            .toList()
+                    }
                 }
+            } catch (e: Exception) {
+                emptyList()
             }
-        } catch (e: Exception) {
-            emptyList()
         }
     }
 }
