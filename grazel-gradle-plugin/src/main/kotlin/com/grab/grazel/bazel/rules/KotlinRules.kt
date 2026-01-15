@@ -195,13 +195,13 @@ fun StatementsBuilder.ktLibrary(
             "deps" `=` array(deps.map(BazelDependency::toString).map(String::quote))
         }
         resourceFiles.notEmpty {
-            "resource_files" `=` resourceFiles.joinToString(
+            "resources" `=` resourceFiles.joinToString(
                 separator = " + ",
                 transform = Assignee::asString
             )
         }
         resources.notEmpty {
-            "resource_files" `=` glob(resources.quote)
+            "resources" `=` glob(resources.quote)
         }
         packageName?.let { "custom_package" `=` packageName.quote }
         manifest?.let { "manifest" `=` manifest.quote }
