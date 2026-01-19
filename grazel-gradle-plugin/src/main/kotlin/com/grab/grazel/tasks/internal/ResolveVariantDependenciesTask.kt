@@ -265,13 +265,13 @@ internal abstract class ResolveVariantDependenciesTask : DefaultTask() {
         private fun ExternalDependency.extractExcludeRules(): Set<ExcludeRule> {
             return excludeRules
                 .map {
-                    @Suppress("USELESS_ELVIS") // Gradle lying, module can be null
+                    @Suppress("USELESS_ELVIS") // Gradle lying, module and group can be null
                     (ExcludeRule(
-                        it.group,
+                        it.group ?: "",
                         it.module ?: ""
                     ))
                 }
-                .filterNot { it.artifact.isNullOrBlank() }
+                .filterNot { it.group.isNullOrBlank() || it.artifact.isNullOrBlank() }
                 // TODO(arun) Respect excludeArtifactsDenyList
                 //.filterNot { it.toString() in excludeArtifactsDenyList }
                 .toSet()
