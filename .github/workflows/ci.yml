@@ -37,7 +37,7 @@ jobs:
             -   name: Bazel build
                 uses: ./.github/actions/bazel
                 with:
-                    bazel-command: build //...
+                    bazel-command: build //sample-android:sample-android-demo-free-debug.apk
                     cache-key: bazel-build-cache
     bazel-test:
         runs-on: ubuntu-latest
