@@ -37,8 +37,8 @@ jobs:
             -   name: Bazel build
                 uses: ./.github/actions/bazel
                 with:
-                    bazel-command: build //sample-android:sample-android-demo-free-debug.apk
-                    cache-key: bazel-build-cache
+                    bazel-command: build //...
+                    cache-key: bazel-build-cache1
     bazel-test:
         runs-on: ubuntu-latest
         steps:
@@ -60,7 +60,7 @@ jobs:
                 uses: ./.github/actions/bazel
                 with:
                     bazel-command: test //sample-android:sample-android-demo-free-debug.lint_test
-                    cache-key: bazel-lint-cache
+                    cache-key: bazel-lint-cache1
 
     grazel-build:
         runs-on: ubuntu-latest
