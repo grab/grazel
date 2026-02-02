@@ -76,7 +76,16 @@ internal data class MatchedVariant(
 }
 
 private val HUMPS = "(?<=.)(?=\\p{Upper})".toRegex()
-internal val MatchedVariant.nameSuffix get() = "-${variantName.replace(HUMPS, "-").lowercase()}"
+
+/**
+ * Converts a camelCase variant name to normalized lowercase hyphenated suffix format. Example:
+ * "freeDebug" -> "-free-debug"
+ */
+internal fun normalizeVariantSuffix(variantName: String): String {
+    return "-${variantName.replace(HUMPS, "-").lowercase()}"
+}
+
+internal val MatchedVariant.nameSuffix get() = normalizeVariantSuffix(variantName)
 
 @Singleton
 internal class DefaultVariantMatcher
@@ -219,8 +228,7 @@ constructor(
             // Try using matching fallbacks
             appBuildTypeFallbacks
                 .getOrDefault(appBuildType.name, emptySet())
-                .mapNotNull { fallbackBuildType -> libraryVariantsByBuildType[fallbackBuildType] }
-                .firstOrNull()
+                .firstNotNullOfOrNull { fallbackBuildType -> libraryVariantsByBuildType[fallbackBuildType] }
                 ?.let { variantCandidates.addAll(it) }
                 ?: error(
                     "Could not match app build type '${appBuildType.name}' with " +

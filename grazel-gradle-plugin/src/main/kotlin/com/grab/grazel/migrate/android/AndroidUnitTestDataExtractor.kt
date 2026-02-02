@@ -23,13 +23,15 @@ import com.grab.grazel.gradle.dependencies.DefaultDependencyGraphsService
 import com.grab.grazel.gradle.dependencies.DependenciesDataSource
 import com.grab.grazel.gradle.dependencies.DependencyGraphs
 import com.grab.grazel.gradle.dependencies.GradleDependencyToBazelDependency
-import com.grab.grazel.gradle.variant.VariantGraphKey
-import com.grab.grazel.gradle.variant.VariantType
 import com.grab.grazel.gradle.hasCompose
 import com.grab.grazel.gradle.variant.AndroidVariantDataSource
+import com.grab.grazel.gradle.variant.DefaultVariantCompressionService
 import com.grab.grazel.gradle.variant.MatchedVariant
+import com.grab.grazel.gradle.variant.VariantGraphKey
+import com.grab.grazel.gradle.variant.VariantType
 import com.grab.grazel.gradle.variant.getMigratableBuildVariants
 import com.grab.grazel.gradle.variant.nameSuffix
+import com.grab.grazel.gradle.variant.resolveSuffix
 import com.grab.grazel.migrate.android.SourceSetType.JAVA_KOTLIN
 import com.grab.grazel.migrate.common.TestSizeCalculator
 import com.grab.grazel.migrate.common.calculateTestAssociates
@@ -59,14 +61,25 @@ constructor(
     private val variantDataSource: AndroidVariantDataSource,
     private val gradleDependencyToBazelDependency: GradleDependencyToBazelDependency,
     private val testSizeCalculator: TestSizeCalculator,
+    private val variantCompressionService: GradleProvider<DefaultVariantCompressionService>
 ) : AndroidUnitTestDataExtractor {
-    private val projectDependencyGraphs: DependencyGraphs get() = dependencyGraphsService.get().get()
+
+    private val projectDependencyGraphs: DependencyGraphs
+        get() = dependencyGraphsService.get().get()
+
     private val kotlinExtension: KotlinExtension get() = grazelExtension.rules.kotlin
 
     override fun extract(project: Project, matchedVariant: MatchedVariant): AndroidUnitTestData {
+        val targetSuffix = variantCompressionService.get().resolveSuffix(
+            projectPath = project.path,
+            variantName = matchedVariant.variantName,
+            fallbackSuffix = matchedVariant.nameSuffix,
+            logger = project.logger
+        )
+
         val name = FORMAT_UNIT_TEST_NAME.format(
             project.name,
-            matchedVariant.nameSuffix
+            targetSuffix
         )
         val migratableSourceSets = matchedVariant.variant.sourceSets
             .asSequence()
@@ -85,7 +98,7 @@ constructor(
         val testSize = testSizeCalculator.calculate(name, rawSrcs.toSet())
 
         val resources = project.unitTestResources(migratableSourceSets).toList()
-        val associate = calculateTestAssociates(project, matchedVariant.nameSuffix)
+        val associate = calculateTestAssociates(project, targetSuffix)
 
         val variantKey = VariantGraphKey.from(project, matchedVariant, VariantType.Test)
         val deps = projectDependencyGraphs
@@ -102,7 +115,7 @@ constructor(
             project.kotlinParcelizeDeps() +
             BazelDependency.ProjectDependency(
                 dependencyProject = project,
-                suffix = matchedVariant.nameSuffix
+                suffix = targetSuffix
             )
 
         val tags = if (kotlinExtension.enabledTransitiveReduction) {

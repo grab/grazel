@@ -114,7 +114,7 @@ class JvmProjectGraphKeyTest {
         // and properly prefixed keys (what the factory produces)
 
         // Given: A hardcoded key (like current KotlinProjectDataExtractor)
-        val hardcodedKey = VariantGraphKey("defaultJvmBuild")
+        val hardcodedKey = VariantGraphKey("defaultJvmBuild", VariantType.JvmBuild)
 
         // And: A properly prefixed key from the factory
         val properKey = VariantGraphKey.from(kotlinLibA, "default", VariantType.JvmBuild)

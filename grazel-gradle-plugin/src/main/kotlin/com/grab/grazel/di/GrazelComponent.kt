@@ -31,7 +31,9 @@ import com.grab.grazel.gradle.dependencies.DefaultDependencyResolutionService
 import com.grab.grazel.gradle.dependencies.DependenciesDataSource
 import com.grab.grazel.gradle.dependencies.DependenciesModule
 import com.grab.grazel.gradle.variant.AndroidVariantDataSource
+import com.grab.grazel.gradle.variant.DefaultVariantCompressionService
 import com.grab.grazel.gradle.variant.VariantBuilder
+import com.grab.grazel.gradle.variant.VariantCompressor
 import com.grab.grazel.gradle.variant.VariantMatcher
 import com.grab.grazel.gradle.variant.VariantModule
 import com.grab.grazel.hybrid.HybridBuildExecutor
@@ -91,11 +93,13 @@ internal interface GrazelComponent {
 
     fun variantBuilder(): Lazy<VariantBuilder>
     fun variantMatcher(): Lazy<VariantMatcher>
+    fun variantCompressor(): Lazy<VariantCompressor>
 
     fun manifestValuesBuilder(): ManifestValuesBuilder
 
     fun dependencyResolutionService(): GradleProvider<DefaultDependencyResolutionService>
     fun dependencyGraphsService(): GradleProvider<DefaultDependencyGraphsService>
+    fun variantCompressionService(): GradleProvider<DefaultVariantCompressionService>
     fun configurationDataSource(): Lazy<ConfigurationDataSource>
     fun repositoryDataSource(): Lazy<RepositoryDataSource>
 }

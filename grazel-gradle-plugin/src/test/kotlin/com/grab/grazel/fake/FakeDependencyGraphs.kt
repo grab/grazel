@@ -19,6 +19,7 @@ package com.grab.grazel.fake
 import com.google.common.graph.ImmutableValueGraph
 import com.grab.grazel.gradle.dependencies.DependencyGraphs
 import com.grab.grazel.gradle.variant.VariantGraphKey
+import com.grab.grazel.gradle.variant.VariantType
 import org.gradle.api.Project
 import org.gradle.api.artifacts.Configuration
 
@@ -26,7 +27,8 @@ internal class FakeDependencyGraphs(
     private val directDeps: Set<Project> = emptySet(),
     private val dependenciesSubGraph: Set<Project> = emptySet(),
     private val nodes: Set<Project> = emptySet(),
-    override val variantGraphs: Map<VariantGraphKey, ImmutableValueGraph<Project, Configuration>> = emptyMap()
+    override val variantGraphs: Map<VariantGraphKey, ImmutableValueGraph<Project, Configuration>> = emptyMap(),
+    private val projectGraph: Map<Project, Set<Project>> = emptyMap()
 ) : DependencyGraphs {
 
     override fun nodesByVariant(vararg variantKey: VariantGraphKey): Set<Project> = nodes
@@ -40,4 +42,8 @@ internal class FakeDependencyGraphs(
         project: Project,
         variantKey: VariantGraphKey
     ): Set<Project> = directDeps
+
+    override fun mergeToProjectGraph(
+        variantTypeFilter: (VariantType) -> Boolean
+    ): Map<Project, Set<Project>> = projectGraph
 }

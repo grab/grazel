@@ -19,6 +19,7 @@ package com.grab.grazel.gradle.dependencies
 import com.google.common.graph.Graphs
 import com.google.common.graph.ImmutableValueGraph
 import com.grab.grazel.gradle.variant.VariantGraphKey
+import com.grab.grazel.gradle.variant.VariantType
 import org.gradle.api.Project
 import org.gradle.api.artifacts.Configuration
 
@@ -49,6 +50,18 @@ internal interface DependencyGraphs {
         project: Project,
         variantKey: VariantGraphKey
     ): Set<Project>
+
+    /**
+     * Merges variant graphs into a project-level dependency graph.
+     *
+     * @param variantTypeFilter Predicate to filter which variant types to include. Defaults to
+     *    build graphs only (AndroidBuild, JvmBuild) to avoid artificial cycles from test
+     *    dependencies.
+     * @return Map of projects to their direct dependencies across filtered variants.
+     */
+    fun mergeToProjectGraph(
+        variantTypeFilter: (VariantType) -> Boolean = { it.isBuildGraph }
+    ): Map<Project, Set<Project>>
 }
 
 internal class DefaultDependencyGraphs(
@@ -93,4 +106,22 @@ internal class DefaultDependencyGraphs(
         project: Project,
         variantKey: VariantGraphKey
     ): Set<Project> = variantGraphs[variantKey]?.successors(project)?.toSet() ?: emptySet()
+
+    override fun mergeToProjectGraph(
+        variantTypeFilter: (VariantType) -> Boolean
+    ): Map<Project, Set<Project>> {
+        // Filter graphs by variant type
+        val filteredGraphs = variantGraphs.filterKeys { key ->
+            variantTypeFilter(key.variantType)
+        }
+
+        val allProjects = filteredGraphs.values.flatMap { it.nodes() }.toSet()
+        return allProjects.associateWith { project ->
+            filteredGraphs.values.flatMap { graph ->
+                if (graph.nodes().contains(project)) {
+                    graph.successors(project)
+                } else emptySet()
+            }.toSet()
+        }
+    }
 }
