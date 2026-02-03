@@ -6,6 +6,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Grazel is a Gradle plugin that automates migration of Android projects from Gradle to Bazel build system. It generates `BUILD.bazel` and `WORKSPACE` files based on existing Gradle configuration.
 
+**Important:** This project maintains both Gradle and Bazel builds. When working on new features, ensure that both build systems pass their respective tests.
+
 ## Build Commands
 
 ```bash
@@ -24,14 +26,34 @@ Grazel is a Gradle plugin that automates migration of Android projects from Grad
 # Generate Bazel scripts to test migration
 ./gradlew migrateToBazel
 
-# Clean generated Bazel files
-./gradlew bazelClean
-
-# Build and run bazel build on generated files
-./gradlew bazelBuildAll
-
 # Publish to local maven (for local testing)
 ./gradlew :grazel-gradle-plugin:publishToMavenLocal
+```
+
+## Bazelisk
+
+This project uses **bazelisk** (a Bazel version manager/launcher) instead of invoking `bazel` directly. Bazelisk automatically downloads and uses the Bazel version specified in `.bazelversion`.
+
+**Installation:** https://github.com/bazelbuild/bazelisk#installation
+
+```bash
+# Build all generated Bazel targets
+bazelisk build //...
+
+# Build a specific target (format: //module:target_name)
+bazelisk build //sample-android-library:sample-android-library
+
+# Query available targets
+bazelisk query //...:*
+
+# Query android library targets only
+bazelisk query "kind(android_library, //...:*)"
+
+# Run tests via Bazel
+bazelisk test //...
+
+# Clean Bazel build artifacts
+bazelisk clean
 ```
 
 ## Architecture
@@ -65,7 +87,7 @@ Grazel is a Gradle plugin that automates migration of Android projects from Grad
 
 - **`extension/`**: Individual extension classes for each configuration block (Android, Kotlin, Maven, Dagger, etc.)
 
-- **`hybrid/`**: Experimental hybrid build support (not currently active)
+- **`hybrid/`**: Legacy hybrid build code (no longer used)
 
 ### Key Patterns
 
@@ -85,7 +107,7 @@ Grazel is a Gradle plugin that automates migration of Android projects from Grad
 
 ### Sample Modules
 
-The root project includes sample modules for testing migration:
+The root project includes sample modules used to test the migration. These modules can be built with both Gradle and Bazel:
 - `sample-android/`: Android application
 - `sample-android-library/`: Android library
 - `sample-kotlin-library/`: Pure Kotlin library

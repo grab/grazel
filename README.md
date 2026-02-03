@@ -14,6 +14,11 @@ to [Bazel build](https://bazel.build) system in an incremental and automated fas
 <img src="docs/images/grazel-demo.gif" width="85%">
 </p>
 
+## Requirements
+
+* Android SDK with `ANDROID_HOME` environment variable set
+* [Bazelisk](https://github.com/bazelbuild/bazelisk#installation) - to build generated Bazel files
+
 ## Components
 
 * [Gradle plugin](https://github.com/grab/grazel/tree/master/grazel-gradle-plugin)
@@ -26,6 +31,27 @@ to [Bazel build](https://bazel.build) system in an incremental and automated fas
 * Generates `BUILD.bazel` and `WORKSPACE` from Gradle configuration
 * Powered by [Grab Bazel Common](https://github.com/grab/grab-bazel-common) - custom Bazel rules for Android/Kotlin
 * Gradle remains the source of truth and minimal code changes required on Gradle side.
+
+## Usage
+
+Generate Bazel build files from your Gradle configuration:
+
+```bash
+./gradlew migrateToBazel
+```
+
+Build with Bazel using the generated files:
+
+```bash
+# Build all targets
+bazelisk build //...
+
+# Build a specific module
+bazelisk build //my-library:my-library-debug
+
+# Run tests
+bazelisk test //...
+```
 
 For documentation and usage instructions, please visit [website](https://grab.github.io/grazel/).
 
