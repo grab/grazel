@@ -1,106 +1,7 @@
 load("@grab_bazel_common//rules:defs.bzl", "android_library", "android_unit_test")
 
 android_library(
-    name = "sample-android-library-demo-free-debug",
-    srcs = glob([
-        "src/main/java/com/grab/grazel/android/sample/SampleViewModel.kt",
-        "src/debug/kotlin/Empty.kt",
-    ]),
-    custom_package = "com.grab.grazel.android.sample.lib",
-    enable_data_binding = True,
-    lint_options = {
-        "enabled": True,
-        "config": "//:lint.xml",
-    },
-    manifest = "src/debug/AndroidManifest.xml",
-    plugins = [
-        "//:moshi-kotlin-codegen-ksp",
-    ],
-    resource_sets = {
-        "debug": {
-            "manifest": "src/debug/AndroidManifest.xml",
-        },
-        "main": {
-            "manifest": "src/main/AndroidManifest.xml",
-        },
-    },
-    visibility = [
-        "//visibility:public",
-    ],
-    deps = [
-        "//:parcelize",
-        "@maven//:com_squareup_moshi_moshi",
-    ],
-)
-
-android_library(
-    name = "sample-android-library-demo-paid-debug",
-    srcs = glob([
-        "src/main/java/com/grab/grazel/android/sample/SampleViewModel.kt",
-        "src/debug/kotlin/Empty.kt",
-    ]),
-    custom_package = "com.grab.grazel.android.sample.lib",
-    enable_data_binding = True,
-    lint_options = {
-        "enabled": True,
-        "config": "//:lint.xml",
-    },
-    manifest = "src/debug/AndroidManifest.xml",
-    plugins = [
-        "//:moshi-kotlin-codegen-ksp",
-    ],
-    resource_sets = {
-        "debug": {
-            "manifest": "src/debug/AndroidManifest.xml",
-        },
-        "main": {
-            "manifest": "src/main/AndroidManifest.xml",
-        },
-    },
-    visibility = [
-        "//visibility:public",
-    ],
-    deps = [
-        "//:parcelize",
-        "@maven//:com_squareup_moshi_moshi",
-    ],
-)
-
-android_library(
-    name = "sample-android-library-full-free-debug",
-    srcs = glob([
-        "src/main/java/com/grab/grazel/android/sample/SampleViewModel.kt",
-        "src/debug/kotlin/Empty.kt",
-    ]),
-    custom_package = "com.grab.grazel.android.sample.lib",
-    enable_data_binding = True,
-    lint_options = {
-        "enabled": True,
-        "config": "//:lint.xml",
-    },
-    manifest = "src/debug/AndroidManifest.xml",
-    plugins = [
-        "//:moshi-kotlin-codegen-ksp",
-    ],
-    resource_sets = {
-        "debug": {
-            "manifest": "src/debug/AndroidManifest.xml",
-        },
-        "main": {
-            "manifest": "src/main/AndroidManifest.xml",
-        },
-    },
-    visibility = [
-        "//visibility:public",
-    ],
-    deps = [
-        "//:parcelize",
-        "@maven//:com_squareup_moshi_moshi",
-    ],
-)
-
-android_library(
-    name = "sample-android-library-full-paid-debug",
+    name = "sample-android-library-debug",
     srcs = glob([
         "src/main/java/com/grab/grazel/android/sample/SampleViewModel.kt",
         "src/debug/kotlin/Empty.kt",
@@ -133,13 +34,13 @@ android_library(
 )
 
 android_unit_test(
-    name = "sample-android-library-demo-free-debug-test",
+    name = "sample-android-library-debug-test",
     size = "medium",
     srcs = glob([
         "src/test/java/com/grab/grazel/android/sample/SampleViewModelTest.kt",
     ]),
     associates = [
-        "//sample-android-library:sample-android-library-demo-free-debug_kt",
+        "//sample-android-library:sample-android-library-debug_kt",
     ],
     custom_package = "com.grab.grazel.android.sample.lib",
     resources = glob([
@@ -150,79 +51,7 @@ android_unit_test(
     ],
     deps = [
         "//:parcelize",
-        "//sample-android-library:sample-android-library-demo-free-debug",
-        "@maven//:com_squareup_moshi_moshi",
-        "@maven//:junit_junit",
-    ],
-)
-
-android_unit_test(
-    name = "sample-android-library-demo-paid-debug-test",
-    size = "medium",
-    srcs = glob([
-        "src/test/java/com/grab/grazel/android/sample/SampleViewModelTest.kt",
-    ]),
-    associates = [
-        "//sample-android-library:sample-android-library-demo-paid-debug_kt",
-    ],
-    custom_package = "com.grab.grazel.android.sample.lib",
-    resources = glob([
-        "src/test/resources/**",
-    ]),
-    visibility = [
-        "//visibility:public",
-    ],
-    deps = [
-        "//:parcelize",
-        "//sample-android-library:sample-android-library-demo-paid-debug",
-        "@maven//:com_squareup_moshi_moshi",
-        "@maven//:junit_junit",
-    ],
-)
-
-android_unit_test(
-    name = "sample-android-library-full-free-debug-test",
-    size = "medium",
-    srcs = glob([
-        "src/test/java/com/grab/grazel/android/sample/SampleViewModelTest.kt",
-    ]),
-    associates = [
-        "//sample-android-library:sample-android-library-full-free-debug_kt",
-    ],
-    custom_package = "com.grab.grazel.android.sample.lib",
-    resources = glob([
-        "src/test/resources/**",
-    ]),
-    visibility = [
-        "//visibility:public",
-    ],
-    deps = [
-        "//:parcelize",
-        "//sample-android-library:sample-android-library-full-free-debug",
-        "@maven//:com_squareup_moshi_moshi",
-        "@maven//:junit_junit",
-    ],
-)
-
-android_unit_test(
-    name = "sample-android-library-full-paid-debug-test",
-    size = "medium",
-    srcs = glob([
-        "src/test/java/com/grab/grazel/android/sample/SampleViewModelTest.kt",
-    ]),
-    associates = [
-        "//sample-android-library:sample-android-library-full-paid-debug_kt",
-    ],
-    custom_package = "com.grab.grazel.android.sample.lib",
-    resources = glob([
-        "src/test/resources/**",
-    ]),
-    visibility = [
-        "//visibility:public",
-    ],
-    deps = [
-        "//:parcelize",
-        "//sample-android-library:sample-android-library-full-paid-debug",
+        "//sample-android-library:sample-android-library-debug",
         "@maven//:com_squareup_moshi_moshi",
         "@maven//:junit_junit",
     ],

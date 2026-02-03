@@ -59,6 +59,15 @@ constructor(
             configurationDataSource = grazelComponent.configurationDataSource(),
             androidVariantDataSource = grazelComponent.androidVariantDataSource()
         )
+
+        // Analyze variant compression opportunities in topological order
+        val analyzeVariantCompressionTask = AnalyzeVariantCompressionTask.register(
+            rootProject = rootProject,
+            grazelComponent = grazelComponent
+        ) {
+            workspaceDependencies.set(computeWorkspaceDependenciesTask.flatMap { it.workspaceDependencies })
+        }
+
         // Root bazel file generation task that should run at the start of migration
         val rootGenerateBazelScriptsTasks = GenerateRootBazelScriptsTask.register(
             rootProject,
@@ -66,6 +75,7 @@ constructor(
         ) {
             workspaceDependencies.set(computeWorkspaceDependenciesTask.flatMap { it.workspaceDependencies })
             dependencyResolutionService.set(grazelComponent.dependencyResolutionService())
+            dependsOn(analyzeVariantCompressionTask)
         }
 
         val dataBindingMetaDataTask = AndroidDatabindingMetaDataTask.register(
@@ -119,6 +129,7 @@ constructor(
             ) {
                 dependencyResolutionService.set(grazelComponent.dependencyResolutionService())
                 workspaceDependencies.set(computeWorkspaceDependenciesTask.flatMap { it.workspaceDependencies })
+                variantCompressionResults.set(analyzeVariantCompressionTask.flatMap { it.compressionResultsFile })
             }
 
             // Post script generate task must run after project level tasks are generated

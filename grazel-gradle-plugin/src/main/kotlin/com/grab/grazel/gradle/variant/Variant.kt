@@ -17,13 +17,13 @@ import org.gradle.api.Project
 import org.gradle.api.artifacts.Configuration
 
 /**
- * Base marker interface that denotes a variant that needs to be migrated and is used to
- * encapsulate both Android and Jvm variants
+ * Base marker interface that denotes a variant that needs to be migrated and is used to encapsulate
+ * both Android and Jvm variants
  *
  * Variants are meant to be the first extracted item from a [Project] instance for migration.
- * @see VariantBuilder
  *
  * @param T The original backing variant type
+ * @see VariantBuilder
  */
 interface Variant<T> {
     val name: String
@@ -41,9 +41,7 @@ interface Variant<T> {
      */
     val extendsFrom: Set<String>
 
-    /**
-     * Return [Configuration]'s belonging only to this variant
-     */
+    /** Return [Configuration]'s belonging only to this variant */
     val variantConfigurations: Set<Configuration>
 
     val compileConfiguration: Set<Configuration>
@@ -82,7 +80,15 @@ enum class VariantType {
     AndroidTest,
     Test,
     JvmBuild,
-    Lint,
+    Lint;
+
+    /**
+     * Returns true if this variant type represents build-time dependencies (not test). Only build
+     * graphs should be included when merging for topological sorting to avoid artificial cycles
+     * from test dependencies.
+     */
+    val isBuildGraph: Boolean
+        get() = this == AndroidBuild || this == JvmBuild
 }
 
 fun BaseVariant.toVariantType(): VariantType = when (this) {
@@ -96,8 +102,8 @@ val Variant<*>.isBase get() = name == DEFAULT_VARIANT
 
 /**
  * Returns true if this variant only extends from default variants (default, test, androidTest).
- * Such variants define the hierarchy structure and must always resolve dependencies
- * to create proper maven buckets for downstream composite variants.
+ * Such variants define the hierarchy structure and must always resolve dependencies to create
+ * proper maven buckets for downstream composite variants.
  */
 val Variant<*>.extendsOnlyFromDefaultVariants: Boolean
     get() = extendsFrom.isEmpty() || extendsFrom.all {
@@ -131,9 +137,7 @@ val VariantType.toJvmVariantType: VariantType
         else -> JvmBuild
     }
 
-/**
- * Returns the default variant name for JVM projects based on variant type.
- */
+/** Returns the default variant name for JVM projects based on variant type. */
 val VariantType.jvmVariantName: String
     get() = when (this.toJvmVariantType) {
         JvmBuild -> DEFAULT_VARIANT
@@ -143,6 +147,7 @@ val VariantType.jvmVariantName: String
 
 /**
  * Return the migratable configurations for this variant. Currently all configurations are merged.
+ *
  * TODO("Migrate runtime, annotation processor and Kotlin compiler plugin configuration separately")
  */
 val Variant<*>.migratableConfigurations

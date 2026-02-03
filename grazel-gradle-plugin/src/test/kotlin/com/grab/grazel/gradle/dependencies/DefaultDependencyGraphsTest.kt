@@ -21,6 +21,7 @@ import com.google.common.graph.ValueGraphBuilder
 import com.grab.grazel.fake.FakeConfiguration
 import com.grab.grazel.fake.FakeProject
 import com.grab.grazel.gradle.variant.VariantGraphKey
+import com.grab.grazel.gradle.variant.VariantType
 import org.gradle.api.Project
 import org.gradle.api.artifacts.Configuration
 import org.junit.Test
@@ -36,8 +37,8 @@ class DefaultDependencyGraphsTest {
 
     private val dependenciesGraphs = DefaultDependencyGraphs(
         variantGraphs = mapOf(
-            VariantGraphKey(":A:debugAndroidBuild") to buildBuildGraphs(),
-            VariantGraphKey(":A:debugUnitTestTest") to buildTestGraphs()
+            VariantGraphKey(":A:debugAndroidBuild", VariantType.AndroidBuild) to buildBuildGraphs(),
+            VariantGraphKey(":A:debugUnitTestTest", VariantType.Test) to buildTestGraphs()
         )
     )
 
@@ -55,7 +56,7 @@ class DefaultDependencyGraphsTest {
         val buildNodes = setOf(projectA, projectB, projectC)
         assertEquals(
             buildNodes,
-            dependenciesGraphs.nodesByVariant(VariantGraphKey(":A:debugAndroidBuild"))
+            dependenciesGraphs.nodesByVariant(VariantGraphKey(":A:debugAndroidBuild", VariantType.AndroidBuild))
         )
     }
 
@@ -64,7 +65,7 @@ class DefaultDependencyGraphsTest {
         val testNodes = setOf(projectA, projectB, projectC, projectD, projectE)
         assertEquals(
             testNodes,
-            dependenciesGraphs.nodesByVariant(VariantGraphKey(":A:debugUnitTestTest"))
+            dependenciesGraphs.nodesByVariant(VariantGraphKey(":A:debugUnitTestTest", VariantType.Test))
         )
     }
 
@@ -75,8 +76,8 @@ class DefaultDependencyGraphsTest {
         assertEquals(
             testNodes + buildNodes,
             dependenciesGraphs.nodesByVariant(
-                VariantGraphKey(":A:debugAndroidBuild"),
-                VariantGraphKey(":A:debugUnitTestTest")
+                VariantGraphKey(":A:debugAndroidBuild", VariantType.AndroidBuild),
+                VariantGraphKey(":A:debugUnitTestTest", VariantType.Test)
             )
         )
     }
@@ -88,7 +89,7 @@ class DefaultDependencyGraphsTest {
             directDepsFromAWithBuildScope,
             dependenciesGraphs.directDependenciesByVariant(
                 projectA,
-                VariantGraphKey(":A:debugAndroidBuild")
+                VariantGraphKey(":A:debugAndroidBuild", VariantType.AndroidBuild)
             )
         )
     }
@@ -100,7 +101,7 @@ class DefaultDependencyGraphsTest {
             expectDeps,
             dependenciesGraphs.dependenciesSubGraphByVariant(
                 projectB,
-                VariantGraphKey(":A:debugAndroidBuild")
+                VariantGraphKey(":A:debugAndroidBuild", VariantType.AndroidBuild)
             )
         )
     }
@@ -112,7 +113,7 @@ class DefaultDependencyGraphsTest {
             expectDeps,
             dependenciesGraphs.dependenciesSubGraphByVariant(
                 projectB,
-                VariantGraphKey(":A:debugUnitTestTest")
+                VariantGraphKey(":A:debugUnitTestTest", VariantType.Test)
             )
         )
     }
@@ -133,8 +134,8 @@ class DefaultDependencyGraphsTest {
             expectDeps,
             dependenciesGraphs.dependenciesSubGraphByVariant(
                 projectB,
-                VariantGraphKey(":A:debugAndroidBuild"),
-                VariantGraphKey(":A:debugUnitTestTest")
+                VariantGraphKey(":A:debugAndroidBuild", VariantType.AndroidBuild),
+                VariantGraphKey(":A:debugUnitTestTest", VariantType.Test)
             )
         )
     }
@@ -161,5 +162,124 @@ class DefaultDependencyGraphsTest {
                 putEdgeValue(projectB, projectE, FakeConfiguration())
                 putEdgeValue(projectA, projectE, FakeConfiguration())
             }.run { ImmutableValueGraph.copyOf(this) }
+
+    @Test
+    fun `mergeToProjectGraph should filter test graphs by default`() {
+        // Create scenario where test graph would create artificial cycle
+        val projectX = FakeProject("X")
+        val projectY = FakeProject("Y")
+
+        // Build graph: X -> Y
+        val buildGraph = ValueGraphBuilder.directed()
+            .allowsSelfLoops(false)
+            .build<Project, Configuration>().apply {
+                putEdgeValue(projectX, projectY, FakeConfiguration())
+            }.run { ImmutableValueGraph.copyOf(this) }
+
+        // Test graph: Y -> X (would create cycle if merged)
+        val testGraph = ValueGraphBuilder.directed()
+            .allowsSelfLoops(false)
+            .build<Project, Configuration>().apply {
+                putEdgeValue(projectY, projectX, FakeConfiguration())
+            }.run { ImmutableValueGraph.copyOf(this) }
+
+        val graphs = DefaultDependencyGraphs(
+            variantGraphs = mapOf(
+                VariantGraphKey(":X:debugAndroidBuild", VariantType.AndroidBuild) to buildGraph,
+                VariantGraphKey(":Y:debugUnitTestTest", VariantType.Test) to testGraph
+            )
+        )
+
+        // Default filter excludes Test graphs
+        val merged = graphs.mergeToProjectGraph()
+
+        // Should only see X -> Y from build graph, not Y -> X from test graph
+        assertEquals(setOf(projectY), merged[projectX])
+        assertEquals(emptySet(), merged[projectY])
+    }
+
+    @Test
+    fun `mergeToProjectGraph should include all graphs when filter allows all`() {
+        val projectX = FakeProject("X")
+        val projectY = FakeProject("Y")
+
+        val buildGraph = ValueGraphBuilder.directed()
+            .allowsSelfLoops(false)
+            .build<Project, Configuration>().apply {
+                putEdgeValue(projectX, projectY, FakeConfiguration())
+            }.run { ImmutableValueGraph.copyOf(this) }
+
+        val testGraph = ValueGraphBuilder.directed()
+            .allowsSelfLoops(false)
+            .build<Project, Configuration>().apply {
+                putEdgeValue(projectY, projectX, FakeConfiguration())
+            }.run { ImmutableValueGraph.copyOf(this) }
+
+        val graphs = DefaultDependencyGraphs(
+            variantGraphs = mapOf(
+                VariantGraphKey(":X:debugAndroidBuild", VariantType.AndroidBuild) to buildGraph,
+                VariantGraphKey(":Y:debugUnitTestTest", VariantType.Test) to testGraph
+            )
+        )
+
+        // Allow all variant types
+        val merged = graphs.mergeToProjectGraph { true }
+
+        // Should see both X -> Y and Y -> X
+        assertEquals(setOf(projectY), merged[projectX])
+        assertEquals(setOf(projectX), merged[projectY])
+    }
+
+    @Test
+    fun `mergeToProjectGraph should filter only build graphs correctly`() {
+        val projectX = FakeProject("X")
+        val projectY = FakeProject("Y")
+        val projectZ = FakeProject("Z")
+
+        // AndroidBuild graph: X -> Y
+        val androidBuildGraph = ValueGraphBuilder.directed()
+            .allowsSelfLoops(false)
+            .build<Project, Configuration>().apply {
+                putEdgeValue(projectX, projectY, FakeConfiguration())
+            }.run { ImmutableValueGraph.copyOf(this) }
+
+        // JvmBuild graph: Y -> Z
+        val jvmBuildGraph = ValueGraphBuilder.directed()
+            .allowsSelfLoops(false)
+            .build<Project, Configuration>().apply {
+                putEdgeValue(projectY, projectZ, FakeConfiguration())
+            }.run { ImmutableValueGraph.copyOf(this) }
+
+        // Test graph: Z -> X (would create cycle)
+        val testGraph = ValueGraphBuilder.directed()
+            .allowsSelfLoops(false)
+            .build<Project, Configuration>().apply {
+                putEdgeValue(projectZ, projectX, FakeConfiguration())
+            }.run { ImmutableValueGraph.copyOf(this) }
+
+        // AndroidTest graph: also excluded
+        val androidTestGraph = ValueGraphBuilder.directed()
+            .allowsSelfLoops(false)
+            .build<Project, Configuration>().apply {
+                putEdgeValue(projectZ, projectY, FakeConfiguration())
+            }.run { ImmutableValueGraph.copyOf(this) }
+
+        val graphs = DefaultDependencyGraphs(
+            variantGraphs = mapOf(
+                VariantGraphKey(":X:debugAndroidBuild", VariantType.AndroidBuild) to androidBuildGraph,
+                VariantGraphKey(":Y:defaultJvmBuild", VariantType.JvmBuild) to jvmBuildGraph,
+                VariantGraphKey(":Z:debugUnitTestTest", VariantType.Test) to testGraph,
+                VariantGraphKey(":Z:debugAndroidTest", VariantType.AndroidTest) to androidTestGraph
+            )
+        )
+
+        // Default filter includes only build graphs (AndroidBuild, JvmBuild)
+        val merged = graphs.mergeToProjectGraph()
+
+        // Should only see build graph edges, not test edges
+        assertEquals(setOf(projectY), merged[projectX])
+        assertEquals(setOf(projectZ), merged[projectY])
+        assertEquals(emptySet(), merged[projectZ]) // No test edges included
+    }
 }
 

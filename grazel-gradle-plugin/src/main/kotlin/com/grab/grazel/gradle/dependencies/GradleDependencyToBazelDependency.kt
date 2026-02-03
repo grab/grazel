@@ -19,17 +19,20 @@ package com.grab.grazel.gradle.dependencies
 import com.grab.grazel.bazel.starlark.BazelDependency
 import com.grab.grazel.gradle.isAndroid
 import com.grab.grazel.gradle.isAndroidTest
+import com.grab.grazel.gradle.variant.DefaultVariantCompressionService
 import com.grab.grazel.gradle.variant.MatchedVariant
 import com.grab.grazel.gradle.variant.nameSuffix
+import com.grab.grazel.gradle.variant.resolveSuffix
+import com.grab.grazel.util.GradleProvider
 import org.gradle.api.Project
 import javax.inject.Inject
 
 internal class GradleDependencyToBazelDependency
 @Inject
-constructor() {
-    /**
-     * [matchedVariant] can only be null if and only if the [project] is a Java/Kotlin project
-     */
+constructor(
+    private val variantCompressionService: GradleProvider<DefaultVariantCompressionService>
+) {
+    /** [matchedVariant] can only be null if and only if the [project] is a Java/Kotlin project */
     fun map(
         project: Project,
         dependency: Project,
@@ -41,11 +44,18 @@ constructor() {
                     "please provide the variant for the android project=${project.name}"
                 )
             }
-            if (dependency.isAndroid) {// project is an android project, dependent is also
+            if (dependency.isAndroid) {
+                val baseSuffix = variantCompressionService.get().resolveSuffix(
+                    projectPath = dependency.path,
+                    variantName = matchedVariant.variantName,
+                    fallbackSuffix = matchedVariant.nameSuffix,
+                    logger = project.logger
+                )
+
                 val suffix = if (dependency.isAndroidTest) {
-                    "${matchedVariant.nameSuffix}_lib"
+                    "${baseSuffix}_lib"
                 } else {
-                    matchedVariant.nameSuffix
+                    baseSuffix
                 }
                 BazelDependency.ProjectDependency(
                     dependency,

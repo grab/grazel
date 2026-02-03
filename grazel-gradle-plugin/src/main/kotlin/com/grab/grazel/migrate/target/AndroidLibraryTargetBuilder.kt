@@ -16,11 +16,14 @@
 
 package com.grab.grazel.migrate.target
 
-import com.grab.grazel.gradle.variant.VariantType
 import com.grab.grazel.gradle.isAndroid
 import com.grab.grazel.gradle.isAndroidApplication
 import com.grab.grazel.gradle.isAndroidTest
+import com.grab.grazel.gradle.variant.DefaultVariantCompressionService
 import com.grab.grazel.gradle.variant.VariantMatcher
+import com.grab.grazel.gradle.variant.VariantType
+import com.grab.grazel.gradle.variant.nameSuffix
+import com.grab.grazel.gradle.variant.resolveSuffix
 import com.grab.grazel.migrate.BazelTarget
 import com.grab.grazel.migrate.TargetBuilder
 import com.grab.grazel.migrate.android.AndroidLibraryData
@@ -33,6 +36,7 @@ import com.grab.grazel.migrate.android.DefaultAndroidLibraryDataExtractor
 import com.grab.grazel.migrate.android.DefaultAndroidManifestParser
 import com.grab.grazel.migrate.android.DefaultAndroidUnitTestDataExtractor
 import com.grab.grazel.migrate.android.toUnitTestTarget
+import com.grab.grazel.util.GradleProvider
 import dagger.Binds
 import dagger.Module
 import dagger.multibindings.IntoSet
@@ -63,23 +67,54 @@ constructor(
     private val androidLibraryDataExtractor: AndroidLibraryDataExtractor,
     private val unitTestDataExtractor: AndroidUnitTestDataExtractor,
     private val variantMatcher: VariantMatcher,
+    private val variantCompressionService: GradleProvider<DefaultVariantCompressionService>
 ) : TargetBuilder {
 
     override fun build(project: Project): List<BazelTarget> {
-        return variantMatcher.matchedVariants(project, VariantType.AndroidBuild)
-            .map { matchedVariant ->
-                androidLibraryDataExtractor
-                    .extract(project, matchedVariant)
-                    .toAndroidLibTarget()
-            } + unitTestsTargets(project)
+        // Check if compression result exists for this project
+        val compressionResult = variantCompressionService.get().get(project.path)
+        val libraryTargets = // Use pre-computed compressed targets from the analysis phase
+            compressionResult?.targets?.map { it.toAndroidLibTarget() }
+                ?: run {
+                    // Fallback to extracting again
+                    project.logger.error("Compressed result does not exist for this project")
+                    variantMatcher.matchedVariants(project, VariantType.AndroidBuild)
+                        .map { matchedVariant ->
+                            androidLibraryDataExtractor
+                                .extract(project, matchedVariant)
+                                .toAndroidLibTarget()
+                        }
+                }
+        return libraryTargets + unitTestsTargets(project)
     }
 
     private fun unitTestsTargets(project: Project): List<AndroidUnitTestTarget> {
-        return variantMatcher.matchedVariants(
-            project,
-            VariantType.Test
-        ).map { matchedVariant ->
-            unitTestDataExtractor.extract(project, matchedVariant).toUnitTestTarget()
+        val compressionResult = variantCompressionService.get().get(project.path)
+        val testVariants = variantMatcher.matchedVariants(project, VariantType.Test)
+        return if (compressionResult != null) {
+            // Deduplicate by compression suffix: only emit one test per unique suffix
+            val variantsBySuffix = testVariants.groupBy { matchedVariant ->
+                variantCompressionService.get().resolveSuffix(
+                    projectPath = project.path,
+                    variantName = matchedVariant.variantName,
+                    fallbackSuffix = matchedVariant.nameSuffix,
+                    logger = project.logger
+                )
+            }
+
+            // Pick first variant alphabetically as representative for each suffix
+            variantsBySuffix.values.map { variantsForSuffix ->
+                val representative = variantsForSuffix.sortedBy { it.variantName }.first()
+                unitTestDataExtractor.extract(project, representative).toUnitTestTarget()
+            }
+        } else {
+            // Fallback: extract test for every variant
+            project.logger.warn(
+                "No compression result for ${project.path}, generating uncompressed unit test targets"
+            )
+            testVariants.map { matchedVariant ->
+                unitTestDataExtractor.extract(project, matchedVariant).toUnitTestTarget()
+            }
         }
     }
 

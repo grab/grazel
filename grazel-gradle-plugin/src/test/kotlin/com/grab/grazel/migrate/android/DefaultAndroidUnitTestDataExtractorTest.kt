@@ -23,6 +23,7 @@ import com.grab.grazel.GrazelPluginTest
 import com.grab.grazel.buildProject
 import com.grab.grazel.fake.FakeDependencyGraphs
 import com.grab.grazel.fake.FakeDependencyGraphsService
+import com.grab.grazel.fake.FakeVariantCompressionService
 import com.grab.grazel.gradle.ANDROID_LIBRARY_PLUGIN
 import com.grab.grazel.gradle.DefaultConfigurationDataSource
 import com.grab.grazel.gradle.KOTLIN_ANDROID_PLUGIN
@@ -35,6 +36,7 @@ import com.grab.grazel.gradle.variant.AndroidVariantsExtractor
 import com.grab.grazel.gradle.variant.DefaultAndroidVariantDataSource
 import com.grab.grazel.gradle.variant.DefaultAndroidVariantsExtractor
 import com.grab.grazel.gradle.variant.DefaultVariantBuilder
+import com.grab.grazel.gradle.variant.DefaultVariantCompressionService
 import com.grab.grazel.gradle.variant.MatchedVariant
 import com.grab.grazel.migrate.common.TestSizeCalculator
 import com.grab.grazel.util.GradleProvider
@@ -58,6 +60,7 @@ class DefaultAndroidUnitTestDataExtractorTest : GrazelPluginTest() {
     private lateinit var defaultAndroidUnitTestDataExtractor: DefaultAndroidUnitTestDataExtractor
     private lateinit var androidVariantsExtractor: AndroidVariantsExtractor
     private lateinit var gradleDependencyToBazelDependency: GradleDependencyToBazelDependency
+    private lateinit var fakeVariantCompressionService: GradleProvider<DefaultVariantCompressionService>
 
     @get:Rule
     val temporaryFolder = TemporaryFolder()
@@ -84,7 +87,10 @@ class DefaultAndroidUnitTestDataExtractorTest : GrazelPluginTest() {
             }
         }
         androidVariantsExtractor = DefaultAndroidVariantsExtractor()
-        gradleDependencyToBazelDependency = GradleDependencyToBazelDependency()
+
+        fakeVariantCompressionService = rootProject.provider { FakeVariantCompressionService() }
+        gradleDependencyToBazelDependency = GradleDependencyToBazelDependency(fakeVariantCompressionService)
+
         File(subProjectDir, "src/main/AndroidManifest.xml").apply {
             parentFile.mkdirs()
             createNewFile()
@@ -117,7 +123,7 @@ class DefaultAndroidUnitTestDataExtractorTest : GrazelPluginTest() {
         val testDependencyGraphsService = FakeDependencyGraphsService(dependencyGraphs)
 
         val mockDependencyGraphsService: GradleProvider<DefaultDependencyGraphsService> =
-            rootProject.provider { testDependencyGraphsService }
+            rootProject.provider { testDependencyGraphsService}
 
         val extension = GrazelExtension(rootProject)
         defaultAndroidUnitTestDataExtractor = DefaultAndroidUnitTestDataExtractor(
@@ -127,7 +133,8 @@ class DefaultAndroidUnitTestDataExtractorTest : GrazelPluginTest() {
             variantDataSource = variantDataSource,
             grazelExtension = extension,
             gradleDependencyToBazelDependency = gradleDependencyToBazelDependency,
-            testSizeCalculator = TestSizeCalculator(extension)
+            testSizeCalculator = TestSizeCalculator(extension),
+            variantCompressionService = fakeVariantCompressionService
         )
     }
 

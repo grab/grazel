@@ -26,12 +26,19 @@ import org.gradle.api.Project
  *
  * @property variantId Unique ID in format "projectPath:variantName" + "VariantType" (e.g.,
  *    ":sample-android:debugAndroidBuild")
+ * @property variantType The type of variant this key represents (AndroidBuild, Test, etc.)
  */
-data class VariantGraphKey(val variantId: String) {
+data class VariantGraphKey(
+    val variantId: String,
+    val variantType: VariantType
+) {
     companion object {
         /** Create from a Variant instance using its unique ID. */
         fun from(variant: Variant<*>): VariantGraphKey =
-            VariantGraphKey(variant.project.path + ":" + variant.id)
+            VariantGraphKey(
+                variantId = variant.project.path + ":" + variant.id,
+                variantType = variant.variantType
+            )
 
         /**
          * Create from Project + MatchedVariant + VariantType. Uses the full variant name (e.g.,
@@ -43,7 +50,10 @@ data class VariantGraphKey(val variantId: String) {
             matchedVariant: MatchedVariant,
             variantType: VariantType
         ): VariantGraphKey =
-            VariantGraphKey(project.path + ":" + matchedVariant.variant.name + variantType.toString())
+            VariantGraphKey(
+                variantId = project.path + ":" + matchedVariant.variant.name + variantType.toString(),
+                variantType = variantType
+            )
 
         /** Create from Project + variant name + VariantType. Used during graph building. */
         internal fun from(
@@ -51,6 +61,9 @@ data class VariantGraphKey(val variantId: String) {
             variantName: String,
             variantType: VariantType
         ): VariantGraphKey =
-            VariantGraphKey(project.path + ":" + variantName + variantType.toString())
+            VariantGraphKey(
+                variantId = project.path + ":" + variantName + variantType.toString(),
+                variantType = variantType
+            )
     }
 }
