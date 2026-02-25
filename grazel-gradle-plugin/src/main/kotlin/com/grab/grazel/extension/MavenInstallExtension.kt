@@ -74,7 +74,7 @@ data class MavenInstallExtension(
     var versionConflictPolicy: String? = null,
     var includeCredentials: Boolean = true,
     var additionalCoursierOptions: ListProperty<String> = objects.listProperty<String>().convention(
-        listOf("--parallel", "12")
+        emptyList()
     ),
 ) {
     // TODO GitRepositoryRule

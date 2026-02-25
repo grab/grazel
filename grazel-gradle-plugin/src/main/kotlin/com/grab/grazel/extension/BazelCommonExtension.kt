@@ -47,7 +47,7 @@ class BazelCommonExtension(
 ) {
     var pinnedMavenInstall: Property<Boolean>? = objects?.property<Boolean>()?.convention(true)
     var additionalCoursierOptions: ListProperty<String>? = objects?.listProperty<String>()?.convention(
-        listOf("--parallel", "12")
+        emptyList()
     )
 
     var preBazelCommonArchives: List<PreBazelCommonArchive>

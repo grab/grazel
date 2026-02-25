@@ -162,7 +162,7 @@ internal class WorkspaceBuilder(
             bazelCommonRepo,
             buildifier.releaseVersion,
             bazelCommon.pinnedMavenInstall?.get() ?: true,
-            bazelCommon.additionalCoursierOptions?.get() ?: listOf("--parallel", "12"),
+            bazelCommon.additionalCoursierOptions?.get() ?: emptyList(),
         )
     }
 

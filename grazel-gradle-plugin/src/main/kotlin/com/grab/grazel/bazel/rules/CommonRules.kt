@@ -52,7 +52,7 @@ fun StatementsBuilder.bazelCommonRepository(
     repositoryRule: GitRepositoryRule,
     buildifierVersion: String,
     pinnedMavenInstall: Boolean = true,
-    additionalCoursierOptions: List<String> = listOf("--parallel", "12"),
+    additionalCoursierOptions: List<String> = emptyList(),
 ) {
     add(repositoryRule)
     val bazelCommonRepoName = repositoryRule.name
@@ -86,7 +86,7 @@ fun StatementsBuilder.bazelCommonInitialize(
     bazelCommonRepoName: String,
     buildifierVersion: String,
     pinnedMavenInstall: Boolean = true,
-    additionalCoursierOptions: List<String> = listOf("--parallel", "12"),
+    additionalCoursierOptions: List<String> = emptyList(),
 ) {
     load("@${bazelCommonRepoName}//rules:setup.bzl", "bazel_common_setup")
     function("bazel_common_setup") {
