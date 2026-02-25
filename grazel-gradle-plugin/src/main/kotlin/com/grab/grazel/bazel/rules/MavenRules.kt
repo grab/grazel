@@ -91,6 +91,7 @@ fun StatementsBuilder.mavenInstall(
     overrideTargets: Map<String, String> = emptyMap(),
     versionConflictPolicy: String? = null,
     artifactPinning: Boolean = false,
+    additionalCoursierOptions: List<String> = emptyList(),
 ) {
     load("@$rulesJvmExternalName//:defs.bzl", "maven_install")
     load("@$rulesJvmExternalName//:specs.bzl", "maven")
@@ -145,6 +146,10 @@ fun StatementsBuilder.mavenInstall(
 
         if (artifactPinning) {
             "fail_if_repin_required" `=` "False"
+        }
+
+        if (additionalCoursierOptions.isNotEmpty()) {
+            "additional_coursier_options" `=` array(additionalCoursierOptions.quote)
         }
     }
 
