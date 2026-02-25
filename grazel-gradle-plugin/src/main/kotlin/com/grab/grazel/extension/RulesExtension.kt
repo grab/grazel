@@ -50,7 +50,7 @@ data class DependenciesExtension(
  */
 data class RulesExtension(
     private val objects: ObjectFactory,
-    val bazelCommon: BazelCommonExtension = BazelCommonExtension(),
+    val bazelCommon: BazelCommonExtension = BazelCommonExtension(objects),
     val googleServices: GoogleServicesExtension = GoogleServicesExtension(),
     val mavenInstall: MavenInstallExtension = MavenInstallExtension(objects),
     val kotlin: KotlinExtension = KotlinExtension(),

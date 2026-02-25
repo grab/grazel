@@ -70,7 +70,7 @@ grazel {
     rules {
         bazelCommon {
             gitRepository {
-                commit = "8cfb7bcb84f6d9631b01bb14c25644030ad2ecf8"
+                commit = "0962a9aaeee64ed17eb65b577060693c3b3dc244"
                 remote = "https://github.com/grab/grab-bazel-common.git"
             }
             toolchains {
@@ -80,6 +80,17 @@ grazel {
                     supportedArch = ["amd64", "arm64"]
                 }
             }
+            preBazelCommonArchives = [
+                [
+                    name: "rules_java",
+                    sha256: "f8ae9ed3887df02f40de9f4f7ac3873e6dd7a471f9cddf63952538b94b59aeb3",
+                    url: "",
+                    urls: ["https://github.com/bazelbuild/rules_java/releases/download/7.6.1/rules_java-7.6.1.tar.gz"],
+                    stripPrefix: null,
+                    patches: [],
+                    patchArgs: [],
+                ] as com.grab.grazel.extension.PreBazelCommonArchive,
+            ]
         }
         googleServices {
             crashlytics {
@@ -92,9 +103,9 @@ grazel {
         }
         mavenInstall {
             httpArchiveRepository {
-                sha256 = "d31e369b854322ca5098ea12c69d7175ded971435e55c18dd9dd5f29cc5249ac"
-                stripPrefix = "rules_jvm_external-5.3"
-                url = String.format("https://github.com/bazelbuild/rules_jvm_external/releases/download/%s/rules_jvm_external-%s.tar.gz", "5.3", "5.3")
+                sha256 = "e5f83b8f2678d2b26441e5eafefb1b061826608417b8d24e5e8e15e585eab1ba"
+                stripPrefix = "rules_jvm_external-6.10"
+                url = String.format("https://github.com/bazelbuild/rules_jvm_external/releases/download/%s/rules_jvm_external-%s.tar.gz", "6.10", "6.10")
             }
             includeCredentials = false
             resolveTimeout = 1000

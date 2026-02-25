@@ -18,9 +18,11 @@ package com.grab.grazel.bazel.rules
 
 import com.grab.grazel.bazel.starlark.StatementsBuilder
 import com.grab.grazel.bazel.starlark.add
+import com.grab.grazel.bazel.starlark.array
 import com.grab.grazel.bazel.starlark.function
 import com.grab.grazel.bazel.starlark.load
 import com.grab.grazel.bazel.starlark.quote
+import com.grab.grazel.extension.PreBazelCommonArchive
 
 const val GRAB_BAZEL_COMMON = "grab_bazel_common"
 const val GRAB_BAZEL_COMMON_ARTIFACTS = "GRAB_BAZEL_COMMON_ARTIFACTS"
@@ -49,13 +51,18 @@ fun StatementsBuilder.registerToolchain(toolchain: String) {
 fun StatementsBuilder.bazelCommonRepository(
     repositoryRule: GitRepositoryRule,
     buildifierVersion: String,
+    pinnedMavenInstall: Boolean = true,
+    additionalCoursierOptions: List<String> = emptyList(),
 ) {
     add(repositoryRule)
     val bazelCommonRepoName = repositoryRule.name
     bazelCommonDependencies(bazelCommonRepoName)
+    bazelCommonDepsInit(bazelCommonRepoName)
     bazelCommonInitialize(
         bazelCommonRepoName,
         buildifierVersion,
+        pinnedMavenInstall,
+        additionalCoursierOptions,
     )
     pinBazelCommonArtifacts(bazelCommonRepoName)
 }
@@ -70,13 +77,38 @@ fun StatementsBuilder.bazelCommonDependencies(bazelCommonRepoName: String) {
     function("bazel_common_dependencies")
 }
 
+fun StatementsBuilder.bazelCommonDepsInit(bazelCommonRepoName: String) {
+    load("@${bazelCommonRepoName}//rules:deps_init.bzl", "bazel_common_deps_init")
+    function("bazel_common_deps_init")
+}
+
 fun StatementsBuilder.bazelCommonInitialize(
     bazelCommonRepoName: String,
     buildifierVersion: String,
+    pinnedMavenInstall: Boolean = true,
+    additionalCoursierOptions: List<String> = emptyList(),
 ) {
     load("@${bazelCommonRepoName}//rules:setup.bzl", "bazel_common_setup")
     function("bazel_common_setup") {
         "patched_android_tools" `=` "True"
         "buildifier_version" `=` buildifierVersion.quote
+        "pinned_maven_install" `=` if (pinnedMavenInstall) "True" else "False"
+        if (additionalCoursierOptions.isNotEmpty()) {
+            "additional_coursier_options" `=` array(additionalCoursierOptions.quote)
+        }
+    }
+}
+
+fun StatementsBuilder.preBazelCommonArchives(archives: List<PreBazelCommonArchive>) {
+    archives.forEach { archive ->
+        add(HttpArchiveRule(
+            name = archive.name,
+            url = archive.url,
+            urls = archive.urls,
+            sha256 = archive.sha256,
+            stripPrefix = archive.stripPrefix,
+            patches = archive.patches,
+            patchArgs = archive.patchArgs
+        ))
     }
 }
