@@ -101,24 +101,14 @@ fun StatementsBuilder.bazelCommonInitialize(
 
 fun StatementsBuilder.preBazelCommonArchives(archives: List<PreBazelCommonArchive>) {
     archives.forEach { archive ->
-        function("http_archive") {
-            "name" `=` archive.name.quote
-            if (archive.urls.isNotEmpty()) {
-                "urls" `=` array(archive.urls.quote)
-            } else if (archive.url.isNotEmpty()) {
-                "url" `=` archive.url.quote
-            }
-            "sha256" `=` archive.sha256.quote
-            val stripPrefix = archive.stripPrefix
-            if (stripPrefix != null) {
-                "strip_prefix" `=` stripPrefix.quote
-            }
-            if (archive.patches.isNotEmpty()) {
-                "patches" `=` array(archive.patches.quote)
-            }
-            if (archive.patchArgs.isNotEmpty()) {
-                "patch_args" `=` array(archive.patchArgs.quote)
-            }
-        }
+        add(HttpArchiveRule(
+            name = archive.name,
+            url = archive.url,
+            urls = archive.urls,
+            sha256 = archive.sha256,
+            stripPrefix = archive.stripPrefix,
+            patches = archive.patches,
+            patchArgs = archive.patchArgs
+        ))
     }
 }
