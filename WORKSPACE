@@ -35,6 +35,14 @@ kotlin_repositories(
 
 register_toolchains("//:kotlin_toolchain")
 
+http_archive(
+    name = "rules_java",
+    sha256 = "f8ae9ed3887df02f40de9f4f7ac3873e6dd7a471f9cddf63952538b94b59aeb3",
+    urls = [
+        "https://github.com/bazelbuild/rules_java/releases/download/7.6.1/rules_java-7.6.1.tar.gz",
+    ],
+)
+
 load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository")
 
 git_repository(
@@ -54,10 +62,6 @@ bazel_common_deps_init()
 load("@grab_bazel_common//rules:setup.bzl", "bazel_common_setup")
 
 bazel_common_setup(
-    additional_coursier_options = [
-        "--parallel",
-        "12",
-    ],
     buildifier_version = "6.3.3",
     patched_android_tools = True,
     pinned_maven_install = True,
@@ -101,10 +105,6 @@ load("@rules_jvm_external//:specs.bzl", "maven")
 
 maven_install(
     name = "android_test_maven",
-    additional_coursier_options = [
-        "--parallel",
-        "12",
-    ],
     artifacts = [
         "androidx.annotation:annotation-experimental:1.1.0",
         "androidx.annotation:annotation:1.2.0",
@@ -143,10 +143,6 @@ android_test_maven_pinned_maven_install()
 
 maven_install(
     name = "debug_maven",
-    additional_coursier_options = [
-        "--parallel",
-        "12",
-    ],
     artifacts = [
         "androidx.annotation:annotation:1.1.0",
         "androidx.arch.core:core-common:2.1.0",
@@ -242,10 +238,6 @@ debug_maven_pinned_maven_install()
 
 maven_install(
     name = "ksp_maven",
-    additional_coursier_options = [
-        "--parallel",
-        "12",
-    ],
     artifacts = [
         "com.squareup.moshi:moshi-kotlin-codegen:1.15.0",
     ],
@@ -266,10 +258,6 @@ ksp_maven_pinned_maven_install()
 
 maven_install(
     name = "lint_maven",
-    additional_coursier_options = [
-        "--parallel",
-        "12",
-    ],
     artifacts = [
         "com.google.auto.service:auto-service-annotations:1.1.1",
         "com.slack.lint:slack-lint-checks:0.2.3",
@@ -302,10 +290,6 @@ lint_maven_pinned_maven_install()
 
 maven_install(
     name = "maven",
-    additional_coursier_options = [
-        "--parallel",
-        "12",
-    ],
     artifacts = DAGGER_ARTIFACTS + GRAB_BAZEL_COMMON_ARTIFACTS + [
         "androidx.activity:activity-compose:1.7.2",
         "androidx.activity:activity-ktx:1.7.2",
