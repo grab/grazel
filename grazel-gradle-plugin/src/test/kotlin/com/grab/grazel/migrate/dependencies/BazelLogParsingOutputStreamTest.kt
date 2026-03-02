@@ -70,6 +70,10 @@ class BazelLogParsingOutputStreamTest {
             "json have changed, but the lock file has not been regenerated",
             "Error in decode",
             "Error in path",
+            "contains an outdated input signature",
+            "does not contain a signature of the required artifacts",
+            "does not contain a signature entry of the dependency tree",
+            "does not contain an up to date hash",
         )
         errorMessages.forEach { message ->
             setup()
