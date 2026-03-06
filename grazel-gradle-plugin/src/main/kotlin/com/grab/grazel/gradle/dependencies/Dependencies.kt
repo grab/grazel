@@ -327,11 +327,13 @@ internal class DefaultDependenciesDataSource @Inject constructor(
         project: Project,
         variantKey: VariantGraphKey
     ): List<BazelDependency> {
+        val validProcessorShortIds = dependencyResolutionService.get().getValidKspProcessorShortIds()
         val grazelVariant: Variant<*> = findGrazelVariantByKey(project, variantKey)
         return grazelVariant.kspConfiguration
             .asSequence()
             .flatMap { config -> config.allDependencies.filterIsInstance<ExternalDependency>() }
             .distinctBy { it.shortId }
+            .filter { dep -> "${dep.module.group}:${dep.module.name}" in validProcessorShortIds }
             .map { dep ->
                 // Create a minimal KspProcessor just for target name generation
                 val processor = KspProcessor(

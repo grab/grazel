@@ -103,7 +103,7 @@ class DefaultDependenciesDataSourceTest {
                 .get().apply {
                     populateMavenStore(
                         workspaceDependencies = WorkspaceDependencies(
-                            result = buildMap {
+                            variantDeps = buildMap {
                                 put(
                                     "debug", listOf(
                                         from("com.android.support:appcompat-v7:28.0.0:debug:false:null"),
@@ -230,7 +230,7 @@ class DefaultDependenciesDataSourceTest {
         (dependencyResolutionService as DefaultDependencyResolutionService).apply {
             populateTransitiveDependenciesStore(
                 WorkspaceDependencies(
-                    result = emptyMap(),
+                    variantDeps = emptyMap(),
                     transitiveClasspath = mapOf(
                         "com.android.support:appcompat-v7" to setOf(
                             "com.android.support:support-v4:28.0.0",

@@ -31,6 +31,8 @@ import com.grab.grazel.extension.KspProcessorConfig
 import com.grab.grazel.gradle.GradleProjectInfo
 import com.grab.grazel.gradle.dependencies.model.WorkspaceDependencies
 import com.grab.grazel.migrate.BazelFileBuilder
+import org.gradle.api.logging.Logger
+import org.gradle.api.logging.Logging
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -39,6 +41,8 @@ internal class RootBazelFileBuilder(
     private val grazelExtension: GrazelExtension,
     private val workspaceDependencies: WorkspaceDependencies,
 ) : BazelFileBuilder {
+
+    private val logger: Logger = Logging.getLogger(RootBazelFileBuilder::class.java)
 
     @Singleton
     class Factory
@@ -72,12 +76,18 @@ internal class RootBazelFileBuilder(
     }
 
     private fun buildKspProcessors(): Set<KspProcessor> {
-        if (workspaceDependencies.kspResult.isEmpty()) return emptySet()
+        val kspDeps = workspaceDependencies.aggregatedRepos["ksp_maven"] ?: return emptySet()
         val kspProcessorConfigs = grazelExtension.rules.kotlin.ksp.processors
-        return workspaceDependencies.kspResult.values
+        return kspDeps
             .mapNotNull { dep ->
                 val processorClass = dep.processorClass
-                if (processorClass.isNullOrEmpty()) return@mapNotNull null
+                if (processorClass.isNullOrEmpty()) {
+                    logger.warn(
+                        "Grazel: KSP processor ${dep.shortId} has no " +
+                        "SymbolProcessorProvider service entry — skipping kt_ksp_plugin rule generation."
+                    )
+                    return@mapNotNull null
+                }
                 val (group, name, version) = dep.id.split(":")
                 val config = kspProcessorConfigs["$group:$name"] ?: KspProcessorConfig()
                 KspProcessor(

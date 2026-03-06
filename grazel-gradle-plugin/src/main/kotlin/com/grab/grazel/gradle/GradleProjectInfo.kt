@@ -70,7 +70,7 @@ internal class DefaultGradleProjectInfo(
 
     override val hasDagger: Boolean by lazy {
         workspaceDependencies
-            .result
+            .variantDeps
             .values
             .parallelStream()
             .flatMap { it.stream() }

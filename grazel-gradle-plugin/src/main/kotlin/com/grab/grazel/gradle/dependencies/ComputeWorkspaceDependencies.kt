@@ -152,8 +152,8 @@ internal class ComputeWorkspaceDependencies {
                 )
             ).toMap()
 
-        // Aggregate KSP deps across ALL variants into single bucket
-        val kspClassPath = compileDependenciesJsons
+        // Aggregate KSP deps across ALL variants into single bucket, deduplicated by max version
+        val kspDeps: List<ResolvedDependency> = compileDependenciesJsons
             .parallelStream()
             .map<ResolveDependenciesResult>(::fromJson)
             .flatMap { it.dependencies.getOrDefault(KSP.name, emptySet()).stream() }
@@ -162,7 +162,7 @@ internal class ComputeWorkspaceDependencies {
                     ResolvedDependency::shortId,
                     maxVersionReducer()
                 )
-            )
+            ).values.sortedBy(ResolvedDependency::id)
 
         // Clear maps to allow GC
         defaultFlatClasspath.clear()
@@ -171,8 +171,8 @@ internal class ComputeWorkspaceDependencies {
         defaultClasspath.clear()
         classPaths.clear()
         return WorkspaceDependencies(
-            result = reducedFinalClasspath,
-            kspResult = kspClassPath,
+            variantDeps = reducedFinalClasspath,
+            aggregatedRepos = if (kspDeps.isNotEmpty()) mapOf("ksp_maven" to kspDeps) else emptyMap(),
             transitiveClasspath = transitiveClasspath
         )
     }

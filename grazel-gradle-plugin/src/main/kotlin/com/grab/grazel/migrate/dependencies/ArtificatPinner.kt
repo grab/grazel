@@ -20,6 +20,7 @@ import com.grab.grazel.GrazelExtension
 import com.grab.grazel.bazel.exec.bazelCommand
 import com.grab.grazel.bazel.starlark.BazelDependency.MavenDependency
 import com.grab.grazel.di.GradleServices
+import com.grab.grazel.gradle.dependencies.model.ResolvedDependency
 import com.grab.grazel.gradle.dependencies.model.WorkspaceDependencies
 import com.grab.grazel.util.NoOpProgressLogger
 import com.grab.grazel.util.WORKSPACE
@@ -138,15 +139,11 @@ constructor(
             return true
         } else {
             failWhenOutOfDate(workspaceFile, true)
-            return workspaceDependencies.result.any { (repo, deps) ->
-                // Build any dependency with nobuild and check it fails due to maven_install.json
-                // being out of date
+
+            fun checkRepoOutOfDate(mavenRepo: String, deps: List<ResolvedDependency>): Boolean {
                 val dep = deps.first()
                 val (group, name) = dep.shortId.split(":")
-                val mavenRepo = repo.toMavenRepoName()
-
                 progress.progress("Checking $mavenRepo's pin status")
-
                 val target = MavenDependency(
                     repo = mavenRepo,
                     group = group,
@@ -167,8 +164,16 @@ constructor(
                     ignoreExit = true,
                     errorOutputStream = outputStream,
                 )
-                outputStream.isOutOfDate
-            }.also {
+                return outputStream.isOutOfDate
+            }
+
+            return (
+                workspaceDependencies.variantDeps.any { (variantName, deps) ->
+                    checkRepoOutOfDate(variantName.toMavenRepoName(), deps)
+                } || workspaceDependencies.aggregatedRepos.any { (repoName, deps) ->
+                    checkRepoOutOfDate(repoName, deps)
+                }
+            ).also {
                 // Revert the changes to the workspace file
                 failWhenOutOfDate(workspaceFile, false)
                 progress.completed()
@@ -207,8 +212,13 @@ constructor(
 
         if (shouldRun) {
             logger.quiet("Repinning all artifacts".ansiCyan)
-            val pinScripts = workspaceDependencies.result.mapValues { (repo, _) ->
-                val mavenRepoName = repo.toMavenRepoName()
+            val allRepos: Map<String, List<ResolvedDependency>> = buildMap {
+                workspaceDependencies.variantDeps.forEach { (variantName, deps) ->
+                    put(variantName.toMavenRepoName(), deps)
+                }
+                putAll(workspaceDependencies.aggregatedRepos)
+            }
+            val pinScripts = allRepos.mapValues { (mavenRepoName, _) ->
                 val scriptPath = layout
                     .buildDirectory
                     .file("grazel/maven/${mavenRepoName}_pin.sh").apply {
