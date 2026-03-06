@@ -35,11 +35,19 @@ kotlin_repositories(
 
 register_toolchains("//:kotlin_toolchain")
 
+http_archive(
+    name = "rules_java",
+    sha256 = "f8ae9ed3887df02f40de9f4f7ac3873e6dd7a471f9cddf63952538b94b59aeb3",
+    urls = [
+        "https://github.com/bazelbuild/rules_java/releases/download/7.6.1/rules_java-7.6.1.tar.gz",
+    ],
+)
+
 load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository")
 
 git_repository(
     name = "grab_bazel_common",
-    commit = "8cfb7bcb84f6d9631b01bb14c25644030ad2ecf8",
+    commit = "0962a9aaeee64ed17eb65b577060693c3b3dc244",
     remote = "https://github.com/grab/grab-bazel-common.git",
 )
 
@@ -47,11 +55,16 @@ load("@grab_bazel_common//rules:repositories.bzl", "bazel_common_dependencies")
 
 bazel_common_dependencies()
 
+load("@grab_bazel_common//rules:deps_init.bzl", "bazel_common_deps_init")
+
+bazel_common_deps_init()
+
 load("@grab_bazel_common//rules:setup.bzl", "bazel_common_setup")
 
 bazel_common_setup(
     buildifier_version = "6.3.3",
     patched_android_tools = True,
+    pinned_maven_install = True,
 )
 
 load("@grab_bazel_common//rules:maven.bzl", "pin_bazel_common_dependencies")
@@ -74,9 +87,9 @@ load("@grab_bazel_common//:workspace_defs.bzl", "GRAB_BAZEL_COMMON_ARTIFACTS")
 
 http_archive(
     name = "rules_jvm_external",
-    sha256 = "d31e369b854322ca5098ea12c69d7175ded971435e55c18dd9dd5f29cc5249ac",
-    strip_prefix = "rules_jvm_external-5.3",
-    url = "https://github.com/bazelbuild/rules_jvm_external/releases/download/5.3/rules_jvm_external-5.3.tar.gz",
+    sha256 = "e5f83b8f2678d2b26441e5eafefb1b061826608417b8d24e5e8e15e585eab1ba",
+    strip_prefix = "rules_jvm_external-6.10",
+    url = "https://github.com/bazelbuild/rules_jvm_external/releases/download/6.10/rules_jvm_external-6.10.tar.gz",
 )
 
 load("@rules_jvm_external//:repositories.bzl", "rules_jvm_external_deps")

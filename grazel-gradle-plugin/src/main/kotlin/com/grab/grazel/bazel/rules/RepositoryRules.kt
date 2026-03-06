@@ -17,6 +17,7 @@
 package com.grab.grazel.bazel.rules
 
 import com.grab.grazel.bazel.starlark.StatementsBuilder
+import com.grab.grazel.bazel.starlark.array
 import com.grab.grazel.bazel.starlark.load
 import com.grab.grazel.bazel.starlark.quote
 
@@ -68,17 +69,31 @@ fun StatementsBuilder.httpArchive(
     url: String,
     sha256: String? = null,
     type: String? = null,
-    stripPrefix: String? = null
+    stripPrefix: String? = null,
+    urls: List<String> = emptyList(),
+    patches: List<String> = emptyList(),
+    patchArgs: List<String> = emptyList()
 ) {
     load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
     rule("http_archive") {
         "name" `=` name.quote
         stripPrefix?.let { "strip_prefix" `=` stripPrefix }
         sha256?.let { "sha256" `=` sha256 }
-        "url" `=` url
+        if (urls.isNotEmpty()) {
+            "urls" `=` array(urls.quote)
+        } else if (url.isNotEmpty()) {
+            "url" `=` url
+        }
         type?.let { "type" `=` type }
+        if (patches.isNotEmpty()) {
+            "patches" `=` array(patches.quote)
+        }
+        if (patchArgs.isNotEmpty()) {
+            "patch_args" `=` array(patchArgs.quote)
+        }
     }
 }
+
 
 /**
  * Data structure denoting `http_archive`
@@ -90,16 +105,23 @@ data class HttpArchiveRule(
     var url: String,
     var sha256: String? = null,
     var type: String? = null,
-    var stripPrefix: String? = null
+    var stripPrefix: String? = null,
+    var urls: List<String> = emptyList(),
+    var patches: List<String> = emptyList(),
+    var patchArgs: List<String> = emptyList()
 ) : BazelRepositoryRule {
     override fun StatementsBuilder.statements() {
         httpArchive(
             name = name.quote,
             url = url.quote,
+            urls = urls,
             sha256 = sha256?.quote,
             type = type?.quote,
-            stripPrefix = stripPrefix?.quote
+            stripPrefix = stripPrefix?.quote,
+            patches = patches,
+            patchArgs = patchArgs
         )
     }
 }
+
 

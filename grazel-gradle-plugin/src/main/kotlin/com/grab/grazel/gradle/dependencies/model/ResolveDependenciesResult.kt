@@ -126,7 +126,7 @@ internal data class OverrideTarget(
 @Serializable
 internal data class WorkspaceDependencies(
     /**
-     * Compile/runtime dependencies grouped by Gradle variant name (e.g. "default", "gpsPax").
+     * Compile/runtime dependencies grouped by Gradle variant name (e.g. "default", "demoDebug").
      * Each entry maps 1:1 to a `maven_install` repository via [toMavenRepoName].
      * Keys are variant names, not repo names.
      */

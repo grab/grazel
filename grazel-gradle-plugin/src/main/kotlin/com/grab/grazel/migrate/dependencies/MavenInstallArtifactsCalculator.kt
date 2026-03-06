@@ -120,7 +120,8 @@ constructor(
                     artifactPinning = mavenInstallExtension.artifactPinning.enabled.get(),
                     versionConflictPolicy = mavenInstallExtension.versionConflictPolicy,
                     mavenInstallJson = mavenInstallJson.name,
-                    isMavenInstallJsonEnabled = mavenInstallExtension.artifactPinning.enabled.get() && mavenInstallJson.exists()
+                    isMavenInstallJsonEnabled = mavenInstallExtension.artifactPinning.enabled.get() && mavenInstallJson.exists(),
+                    additionalCoursierOptions = mavenInstallExtension.additionalCoursierOptions.get()
                 )
             }
 
@@ -150,8 +151,8 @@ constructor(
                     artifactPinning = mavenInstallExtension.artifactPinning.enabled.get(),
                     versionConflictPolicy = mavenInstallExtension.versionConflictPolicy,
                     mavenInstallJson = mavenInstallJson.name,
-                    isMavenInstallJsonEnabled = mavenInstallExtension.artifactPinning.enabled.get()
-                        && mavenInstallJson.exists()
+                    isMavenInstallJsonEnabled = mavenInstallExtension.artifactPinning.enabled.get() && mavenInstallJson.exists(),
+                    additionalCoursierOptions = mavenInstallExtension.additionalCoursierOptions.get()
                 )
             )
         }

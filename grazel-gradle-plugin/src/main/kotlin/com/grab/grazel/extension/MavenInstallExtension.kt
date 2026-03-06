@@ -29,14 +29,15 @@ import org.gradle.kotlin.dsl.property
 
 internal const val RULES_JVM_EXTERNAL_NAME = "rules_jvm_external"
 internal const val RULES_JVM_EXTERNAL_SHA256 =
-    "d31e369b854322ca5098ea12c69d7175ded971435e55c18dd9dd5f29cc5249ac"
-internal const val RULES_JVM_EXTERNAl_TAG = "5.3"
+    "e5f83b8f2678d2b26441e5eafefb1b061826608417b8d24e5e8e15e585eab1ba"
+internal const val RULES_JVM_EXTERNAl_TAG = "6.10"
 
 internal val MAVEN_INSTALL_REPOSITORY = HttpArchiveRule(
     name = RULES_JVM_EXTERNAL_NAME,
     sha256 = RULES_JVM_EXTERNAL_SHA256,
     stripPrefix = "rules_jvm_external-%s".format(RULES_JVM_EXTERNAl_TAG),
-    url = "https://github.com/bazelbuild/rules_jvm_external/archive/%s.zip".format(
+    url = "https://github.com/bazelbuild/rules_jvm_external/releases/download/%s/rules_jvm_external-%s.tar.gz".format(
+        RULES_JVM_EXTERNAl_TAG,
         RULES_JVM_EXTERNAl_TAG
     )
 )
@@ -57,6 +58,8 @@ internal val MAVEN_INSTALL_REPOSITORY = HttpArchiveRule(
  *    `maven_install.override_targets` param.
  * @param jetifyIncludeList Maven artifacts in `groupId:artifact` format that should be added
  *    `maven_install.jetify_include_list`
+ * @param additionalCoursierOptions Additional options to pass to Coursier, maps to
+ *    `maven_install.additional_coursier_options`
  */
 data class MavenInstallExtension(
     private val objects: ObjectFactory,
@@ -70,6 +73,9 @@ data class MavenInstallExtension(
     var jetifyExcludeList: ListProperty<String> = objects.listProperty(),
     var versionConflictPolicy: String? = null,
     var includeCredentials: Boolean = true,
+    var additionalCoursierOptions: ListProperty<String> = objects.listProperty<String>().convention(
+        emptyList()
+    ),
 ) {
     // TODO GitRepositoryRule
     /**

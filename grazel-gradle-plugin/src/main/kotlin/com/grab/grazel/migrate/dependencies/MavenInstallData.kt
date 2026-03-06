@@ -21,7 +21,8 @@ internal data class MavenInstallData(
      * then in generated code maven_install_json will be commented out
      */
     val isMavenInstallJsonEnabled: Boolean,
-    val versionConflictPolicy: String?
+    val versionConflictPolicy: String?,
+    val additionalCoursierOptions: List<String> = listOf("--parallel", "12")
 )
 
 internal data class JetifierConfig(

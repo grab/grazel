@@ -30,6 +30,7 @@ import com.grab.grazel.bazel.rules.kotlinRepository
 import com.grab.grazel.bazel.rules.loadBazelCommonArtifacts
 import com.grab.grazel.bazel.rules.loadDaggerArtifactsAndRepositories
 import com.grab.grazel.bazel.rules.mavenInstall
+import com.grab.grazel.bazel.rules.preBazelCommonArchives
 import com.grab.grazel.bazel.rules.registerKotlinToolchain
 import com.grab.grazel.bazel.rules.setupMavenInstall
 import com.grab.grazel.bazel.rules.toolAndroidRepository
@@ -87,6 +88,12 @@ internal class WorkspaceBuilder(
 
         kotlinRules()
 
+        // Generate pre-bazel_common http_archive rules
+        val bazelCommon = grazelExtension.rules.bazelCommon
+        if (bazelCommon.preBazelCommonArchives.isNotEmpty()) {
+            preBazelCommonArchives(bazelCommon.preBazelCommonArchives)
+        }
+
         bazelCommon()
 
         buildJvmRules()
@@ -139,6 +146,7 @@ internal class WorkspaceBuilder(
                 artifactPinning = mavenInstallData.artifactPinning,
                 mavenInstallJson = mavenInstallData.mavenInstallJson,
                 mavenInstallJsonEnabled = mavenInstallData.isMavenInstallJsonEnabled,
+                additionalCoursierOptions = mavenInstallData.additionalCoursierOptions,
             )
         }
     }
@@ -153,6 +161,8 @@ internal class WorkspaceBuilder(
         bazelCommonRepository(
             bazelCommonRepo,
             buildifier.releaseVersion,
+            bazelCommon.pinnedMavenInstall?.get() ?: true,
+            bazelCommon.additionalCoursierOptions?.get() ?: emptyList(),
         )
     }
 

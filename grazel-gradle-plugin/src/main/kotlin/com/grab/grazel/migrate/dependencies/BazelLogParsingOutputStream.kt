@@ -57,6 +57,11 @@ class BazelLogParsingOutputStream(
      */
     private val errorMessages = listOf(
         "contains an invalid signature",
+        "contains an invalid input signature",
+        "contains an outdated input signature",
+        "does not contain a signature of the required artifacts",
+        "does not contain a signature entry of the dependency tree",
+        "does not contain an up to date hash",
         "maven_install.json contains an invalid input signature and must be regenerated",
         "Lock file should be updated",
         "It is not a valid maven_install.json file",
