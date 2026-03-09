@@ -22,6 +22,7 @@ import com.grab.grazel.gradle.dependencies.DependencyResolutionService.Companion
 import com.grab.grazel.gradle.dependencies.model.WorkspaceDependencies
 import com.grab.grazel.tasks.internal.ComputeWorkspaceDependenciesTask
 import com.grab.grazel.tasks.internal.GenerateBazelScriptsTask
+import com.grab.grazel.util.KSP_MAVEN
 import com.grab.grazel.util.fromJson
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
@@ -90,7 +91,7 @@ internal abstract class DefaultDependencyResolutionService : DependencyResolutio
     override fun getValidKspProcessorShortIds(): Set<String> =
         workspaceDependencies
             ?.aggregatedRepos
-            ?.get("ksp_maven")
+            ?.get(KSP_MAVEN)
             ?.filter { it.processorClass != null }
             ?.map { it.shortId }
             ?.toSet()

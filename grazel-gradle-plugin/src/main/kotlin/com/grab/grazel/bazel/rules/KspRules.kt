@@ -21,6 +21,7 @@ import com.grab.grazel.bazel.starlark.StatementsBuilder
 import com.grab.grazel.bazel.starlark.array
 import com.grab.grazel.bazel.starlark.load
 import com.grab.grazel.bazel.starlark.quote
+import com.grab.grazel.util.KSP_MAVEN
 
 /**
  * Data holder for KSP processor dependencies.
@@ -72,7 +73,7 @@ fun kspPluginTarget(processor: KspProcessor): BazelDependency =
 private fun KspProcessor.toMavenLabel(): String {
     val groupPart = group.replace(".", "_").replace("-", "_")
     val namePart = name.replace(".", "_").replace("-", "_")
-    return "@ksp_maven//:${groupPart}_$namePart"
+    return "@${KSP_MAVEN}//:${groupPart}_$namePart"
 }
 
 /**

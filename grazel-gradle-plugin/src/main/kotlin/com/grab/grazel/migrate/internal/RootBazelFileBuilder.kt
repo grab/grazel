@@ -31,6 +31,7 @@ import com.grab.grazel.extension.KspProcessorConfig
 import com.grab.grazel.gradle.GradleProjectInfo
 import com.grab.grazel.gradle.dependencies.model.WorkspaceDependencies
 import com.grab.grazel.migrate.BazelFileBuilder
+import com.grab.grazel.util.KSP_MAVEN
 import org.gradle.api.logging.Logger
 import org.gradle.api.logging.Logging
 import javax.inject.Inject
@@ -76,7 +77,7 @@ internal class RootBazelFileBuilder(
     }
 
     private fun buildKspProcessors(): Set<KspProcessor> {
-        val kspDeps = workspaceDependencies.aggregatedRepos["ksp_maven"] ?: return emptySet()
+        val kspDeps = workspaceDependencies.aggregatedRepos[KSP_MAVEN] ?: return emptySet()
         val kspProcessorConfigs = grazelExtension.rules.kotlin.ksp.processors
         return kspDeps
             .mapNotNull { dep ->

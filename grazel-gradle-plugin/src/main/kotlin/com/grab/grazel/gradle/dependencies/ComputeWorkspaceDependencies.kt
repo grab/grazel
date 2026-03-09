@@ -11,6 +11,7 @@ import com.grab.grazel.gradle.dependencies.model.allDependencies
 import com.grab.grazel.gradle.dependencies.model.merge
 import com.grab.grazel.gradle.dependencies.model.versionInfo
 import com.grab.grazel.gradle.variant.DEFAULT_VARIANT
+import com.grab.grazel.util.KSP_MAVEN
 import com.grab.grazel.util.fromJson
 import org.gradle.api.file.RegularFile
 import java.util.stream.Collector
@@ -172,7 +173,7 @@ internal class ComputeWorkspaceDependencies {
         classPaths.clear()
         return WorkspaceDependencies(
             variantDeps = reducedFinalClasspath,
-            aggregatedRepos = if (kspDeps.isNotEmpty()) mapOf("ksp_maven" to kspDeps) else emptyMap(),
+            aggregatedRepos = if (kspDeps.isNotEmpty()) mapOf(KSP_MAVEN to kspDeps) else emptyMap(),
             transitiveClasspath = transitiveClasspath
         )
     }

@@ -31,3 +31,5 @@ internal const val BUILD_BAZEL_IGNORE = "BUILD$BAZEL_IGNORE"
 
 // Buildifier FILE NAME
 internal const val BUILDIFIER = "buildifier"
+
+internal const val KSP_MAVEN = "ksp_maven"
