@@ -51,7 +51,8 @@ class KotlinRootBazelRulesTest {
             .create(
                 gradleProjectInfo = grazelComponent.gradleProjectInfoFactory().get()
                     .create(workspaceDependencies),
-                workspaceDependencies = workspaceDependencies
+                workspaceDependencies = workspaceDependencies,
+                logger = rootProject.logger
             )
 
         subProject = buildProject("subproject", rootProject)
