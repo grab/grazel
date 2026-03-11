@@ -70,7 +70,7 @@ constructor(
         externalArtifacts: Set<String>,
         externalRepositories: Set<String>,
     ): Set<MavenInstallData> {
-        val result = workspaceDependencies.result
+        val result = workspaceDependencies.variantDeps
             .mapNotNullTo(TreeSet(compareBy(MavenInstallData::name))) { (variantName, artifacts) ->
                 val mavenInstallName = variantName.toMavenRepoName()
                 val allArtifacts = artifacts + grazelExtension
@@ -125,24 +125,23 @@ constructor(
                 )
             }
 
-        // Generate ksp_maven from aggregated KSP deps
-        if (workspaceDependencies.kspResult.isNotEmpty()) {
-            val kspArtifacts = workspaceDependencies.kspResult.values.toList()
-            val kspMavenInstallArtifacts = kspArtifacts
+        // Generate maven_install entries for aggregated repos (e.g. ksp_maven)
+        workspaceDependencies.aggregatedRepos.forEach { (repoName, artifacts) ->
+            val mavenInstallArtifacts = artifacts
                 .mapTo(TreeSet(compareBy(MavenInstallArtifact::id)), ::toMavenInstallArtifact)
+            if (mavenInstallArtifacts.isEmpty()) return@forEach
 
-            val kspRepositories = calculateRepositoriesIncludingTransitives(kspArtifacts)
-
-            val kspMavenInstallJson = layout
+            val repositories = calculateRepositoriesIncludingTransitives(artifacts)
+            val mavenInstallJson = layout
                 .projectDirectory
-                .file("ksp_maven_install.json").asFile
+                .file("${repoName}_install.json").asFile
 
             result.add(
                 MavenInstallData(
-                    name = "ksp_maven",
-                    artifacts = kspMavenInstallArtifacts,
+                    name = repoName,
+                    artifacts = mavenInstallArtifacts,
                     externalArtifacts = emptySet(),
-                    repositories = kspRepositories,
+                    repositories = repositories,
                     externalRepositories = emptySet(),
                     jetifierConfig = JetifierConfig(isEnabled = false, artifacts = emptySet()),
                     failOnMissingChecksum = false,
@@ -151,8 +150,8 @@ constructor(
                     resolveTimeout = mavenInstallExtension.resolveTimeout,
                     artifactPinning = mavenInstallExtension.artifactPinning.enabled.get(),
                     versionConflictPolicy = mavenInstallExtension.versionConflictPolicy,
-                    mavenInstallJson = kspMavenInstallJson.name,
-                    isMavenInstallJsonEnabled = mavenInstallExtension.artifactPinning.enabled.get() && kspMavenInstallJson.exists(),
+                    mavenInstallJson = mavenInstallJson.name,
+                    isMavenInstallJsonEnabled = mavenInstallExtension.artifactPinning.enabled.get() && mavenInstallJson.exists(),
                     additionalCoursierOptions = mavenInstallExtension.additionalCoursierOptions.get()
                 )
             )

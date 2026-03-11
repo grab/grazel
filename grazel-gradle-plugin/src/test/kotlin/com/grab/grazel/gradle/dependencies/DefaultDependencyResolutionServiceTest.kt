@@ -262,7 +262,7 @@ class DefaultDependencyResolutionServiceTest {
         )
 
         return WorkspaceDependencies(
-            result = mapOf(
+            variantDeps = mapOf(
                 "variant1" to variant1Dependencies,
                 "variant2" to variant2Dependencies
             ),
@@ -282,7 +282,7 @@ class DefaultDependencyResolutionServiceTest {
         )
 
         return WorkspaceDependencies(
-            result = mapOf(
+            variantDeps = mapOf(
                 "variant1" to variant1Dependencies
             ),
             transitiveClasspath = transitiveClasspath

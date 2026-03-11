@@ -27,6 +27,9 @@ kotlin_test(
     srcs = glob([
         "src/test/java/com/grab/grazel/sample/SampleTest.kt",
     ]),
+    additional_src_sets = [
+        "build/generated/ksp/test/kotlin",
+    ],
     associates = [
         "//sample-kotlin-library:sample-kotlin-library",
     ],

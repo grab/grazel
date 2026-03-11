@@ -95,7 +95,11 @@ constructor(
         logger.quiet("Generated WORKSPACE".ansiGreen)
 
         val rootBuildBazelContents = rootBazelBuilderFactory.get()
-            .create(gradleProjectInfo, workspaceDependencies)
+            .create(
+                gradleProjectInfo,
+                workspaceDependencies,
+                logger
+            )
             .build()
         if (rootBuildBazelContents.isNotEmpty()) {
             rootBuildBazelContents.writeToFile(buildBazel.get().asFile)

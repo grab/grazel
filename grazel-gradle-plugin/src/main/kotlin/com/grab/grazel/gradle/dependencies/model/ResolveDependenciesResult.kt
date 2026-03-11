@@ -17,6 +17,7 @@
 package com.grab.grazel.gradle.dependencies.model
 
 import com.grab.grazel.bazel.starlark.BazelDependency
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import org.gradle.api.artifacts.result.ResolvedComponentResult
 import org.gradle.api.internal.artifacts.ivyservice.ivyresolve.Versioned
@@ -124,8 +125,19 @@ internal data class OverrideTarget(
 
 @Serializable
 internal data class WorkspaceDependencies(
-    val result: Map<String, List<ResolvedDependency>>,
-    val kspResult: Map<String, ResolvedDependency> = emptyMap(),
+    /**
+     * Compile/runtime dependencies grouped by Gradle variant name (e.g. "default", "demoDebug").
+     * Each entry maps 1:1 to a `maven_install` repository via [toMavenRepoName].
+     * Keys are variant names, not repo names.
+     */
+    @SerialName("result")
+    val variantDeps: Map<String, List<ResolvedDependency>>,
+    /**
+     * Dependencies aggregated across all variants into a single repo, keyed directly by
+     * maven repo name (e.g. "ksp_maven"). Unlike [variantDeps], these do not go through
+     * the variant deduplication/reduction pipeline.
+     */
+    val aggregatedRepos: Map<String, List<ResolvedDependency>> = emptyMap(),
     val transitiveClasspath: Map<String, Set<String>> = emptyMap()
 )
 

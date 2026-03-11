@@ -31,6 +31,8 @@ import com.grab.grazel.extension.KspProcessorConfig
 import com.grab.grazel.gradle.GradleProjectInfo
 import com.grab.grazel.gradle.dependencies.model.WorkspaceDependencies
 import com.grab.grazel.migrate.BazelFileBuilder
+import com.grab.grazel.util.KSP_MAVEN
+import org.gradle.api.logging.Logger
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -38,6 +40,7 @@ internal class RootBazelFileBuilder(
     private val gradleProjectInfo: GradleProjectInfo,
     private val grazelExtension: GrazelExtension,
     private val workspaceDependencies: WorkspaceDependencies,
+    private val logger: Logger,
 ) : BazelFileBuilder {
 
     @Singleton
@@ -46,11 +49,13 @@ internal class RootBazelFileBuilder(
     constructor(private val grazelExtension: GrazelExtension) {
         fun create(
             gradleProjectInfo: GradleProjectInfo,
-            workspaceDependencies: WorkspaceDependencies
+            workspaceDependencies: WorkspaceDependencies,
+            logger: Logger,
         ) = RootBazelFileBuilder(
             gradleProjectInfo,
             grazelExtension,
-            workspaceDependencies
+            workspaceDependencies,
+            logger,
         )
     }
 
@@ -72,12 +77,18 @@ internal class RootBazelFileBuilder(
     }
 
     private fun buildKspProcessors(): Set<KspProcessor> {
-        if (workspaceDependencies.kspResult.isEmpty()) return emptySet()
+        val kspDeps = workspaceDependencies.aggregatedRepos[KSP_MAVEN] ?: return emptySet()
         val kspProcessorConfigs = grazelExtension.rules.kotlin.ksp.processors
-        return workspaceDependencies.kspResult.values
+        return kspDeps
             .mapNotNull { dep ->
                 val processorClass = dep.processorClass
-                if (processorClass.isNullOrEmpty()) return@mapNotNull null
+                if (processorClass.isNullOrEmpty()) {
+                    logger.warn(
+                        "Grazel: KSP processor ${dep.shortId} has no " +
+                        "SymbolProcessorProvider service entry — skipping kt_ksp_plugin rule generation."
+                    )
+                    return@mapNotNull null
+                }
                 val (group, name, version) = dep.id.split(":")
                 val config = kspProcessorConfigs["$group:$name"] ?: KspProcessorConfig()
                 KspProcessor(

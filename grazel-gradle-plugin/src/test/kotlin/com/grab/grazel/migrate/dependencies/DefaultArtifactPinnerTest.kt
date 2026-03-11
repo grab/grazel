@@ -113,7 +113,7 @@ class DefaultArtifactPinnerTest {
             val gradleServices = GradleServices.from(rootProject)
             artifactPinner.shouldRunPinning(
                 workspace,
-                workspaceDependencies = WorkspaceDependencies(result = buildMap {
+                workspaceDependencies = WorkspaceDependencies(variantDeps = buildMap {
                     put(
                         DEFAULT_VARIANT,
                         listOf(ResolvedDependency.from("androidx.annotation:annotation:1.2.0:maven:false:null"))
@@ -146,7 +146,7 @@ class DefaultArtifactPinnerTest {
         assertTrue("Pinning is done and maven install json is generated") {
             artifactPinner.pinArtifacts(
                 workspace,
-                workspaceDependencies = WorkspaceDependencies(result = buildMap {
+                workspaceDependencies = WorkspaceDependencies(variantDeps = buildMap {
                     put(
                         DEFAULT_VARIANT,
                         listOf(ResolvedDependency.from("androidx.annotation:annotation:1.1.0:maven:false:null"))

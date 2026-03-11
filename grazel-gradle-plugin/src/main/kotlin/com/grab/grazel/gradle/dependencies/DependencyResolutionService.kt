@@ -22,6 +22,7 @@ import com.grab.grazel.gradle.dependencies.DependencyResolutionService.Companion
 import com.grab.grazel.gradle.dependencies.model.WorkspaceDependencies
 import com.grab.grazel.tasks.internal.ComputeWorkspaceDependenciesTask
 import com.grab.grazel.tasks.internal.GenerateBazelScriptsTask
+import com.grab.grazel.util.KSP_MAVEN
 import com.grab.grazel.util.fromJson
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
@@ -63,6 +64,13 @@ internal interface DependencyResolutionService : BuildService<DependencyResoluti
      */
     fun getTransitiveDependencies(shortId: String): Set<String>
 
+    /**
+     * Returns shortIds of KSP processors that have a valid [kt_ksp_plugin] target generated
+     * (i.e. whose processorClass was successfully extracted from the processor JAR).
+     * Processors absent from this set should not generate Bazel target references.
+     */
+    fun getValidKspProcessorShortIds(): Set<String>
+
     fun init(workspaceDependenciesJson: File): WorkspaceDependencies
 
     companion object {
@@ -79,6 +87,15 @@ internal abstract class DefaultDependencyResolutionService : DependencyResolutio
     private val initMutex = Mutex()
     private val mavenStoreLock = Mutex()
     private val transitiveDepsStoreLock = Mutex()
+
+    override fun getValidKspProcessorShortIds(): Set<String> =
+        workspaceDependencies
+            ?.aggregatedRepos
+            ?.get(KSP_MAVEN)
+            ?.filter { it.processorClass != null }
+            ?.map { it.shortId }
+            ?.toSet()
+            ?: emptySet()
 
     override fun getMavenDependency(
         variants: Set<String>,
@@ -116,10 +133,16 @@ internal abstract class DefaultDependencyResolutionService : DependencyResolutio
                 mavenStoreLock.withLock {
                     if (mavenInstallStore == null) {
                         mavenInstallStore = DefaultMavenInstallStore().apply {
-                            workspaceDependencies.result.forEach { (variantName, dependencies) ->
+                            workspaceDependencies.variantDeps.forEach { (variantName, dependencies) ->
                                 dependencies.forEach { dependency ->
                                     val (group, name, _) = dependency.id.split(":")
                                     set(variantName, group, name)
+                                }
+                            }
+                            workspaceDependencies.aggregatedRepos.forEach { (repoName, dependencies) ->
+                                dependencies.forEach { dependency ->
+                                    val (group, name, _) = dependency.id.split(":")
+                                    set(repoName, group, name)
                                 }
                             }
                         }

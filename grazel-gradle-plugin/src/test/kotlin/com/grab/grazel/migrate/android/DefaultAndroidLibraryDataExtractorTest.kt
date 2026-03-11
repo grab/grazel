@@ -88,7 +88,7 @@ class DefaultAndroidLibraryDataExtractorTest {
 
         dependencyResolutionService.get().populateMavenStore(
             workspaceDependencies = WorkspaceDependencies(
-                result = buildMap {
+                variantDeps = buildMap {
                     put(
                         "maven", listOf(
                             from("com.android.databinding:viewbinding:1.0.0:maven:false:null"),

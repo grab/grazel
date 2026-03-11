@@ -57,7 +57,7 @@ class MavenInstallArtifactsCalculatorTest {
         val repository = "MavenRepo"
 
         val workspaceDependencies = WorkspaceDependencies(
-            result = mapOf(
+            variantDeps = mapOf(
                 "debug" to listOf(
                     ResolvedDependency.fromId("androidx.core:core:1.0.0", repository)
                         .copy(requiresJetifier = true),
