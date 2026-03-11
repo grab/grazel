@@ -33,7 +33,6 @@ import com.grab.grazel.gradle.dependencies.model.WorkspaceDependencies
 import com.grab.grazel.migrate.BazelFileBuilder
 import com.grab.grazel.util.KSP_MAVEN
 import org.gradle.api.logging.Logger
-import org.gradle.api.logging.Logging
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -41,9 +40,8 @@ internal class RootBazelFileBuilder(
     private val gradleProjectInfo: GradleProjectInfo,
     private val grazelExtension: GrazelExtension,
     private val workspaceDependencies: WorkspaceDependencies,
+    private val logger: Logger,
 ) : BazelFileBuilder {
-
-    private val logger: Logger = Logging.getLogger(RootBazelFileBuilder::class.java)
 
     @Singleton
     class Factory
@@ -51,11 +49,13 @@ internal class RootBazelFileBuilder(
     constructor(private val grazelExtension: GrazelExtension) {
         fun create(
             gradleProjectInfo: GradleProjectInfo,
-            workspaceDependencies: WorkspaceDependencies
+            workspaceDependencies: WorkspaceDependencies,
+            logger: Logger,
         ) = RootBazelFileBuilder(
             gradleProjectInfo,
             grazelExtension,
-            workspaceDependencies
+            workspaceDependencies,
+            logger,
         )
     }
 
