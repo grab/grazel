@@ -34,6 +34,7 @@ import com.grab.grazel.gradle.variant.VariantType
 import com.grab.grazel.migrate.android.AndroidLibraryDataExtractor
 import com.grab.grazel.util.GradleProvider
 import com.grab.grazel.util.Json
+import com.grab.grazel.util.logHeap
 import dagger.Lazy
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
@@ -85,6 +86,7 @@ constructor(
 
     @TaskAction
     fun action() {
+        logger.logHeap("AnalyzeVariantCompression:start")
         dependencyResolutionService
             .get()
             .init(workspaceDependencies.get().asFile)

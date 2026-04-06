@@ -26,6 +26,7 @@ import com.grab.grazel.util.BUILD_BAZEL
 import com.grab.grazel.util.BUILD_BAZEL_IGNORE
 import com.grab.grazel.util.ansiGreen
 import com.grab.grazel.util.ansiYellow
+import com.grab.grazel.util.logHeap
 import dagger.Lazy
 import org.gradle.api.DefaultTask
 import org.gradle.api.Project
@@ -74,6 +75,7 @@ constructor(
 
     @TaskAction
     fun action() {
+        logger.logHeap("GeneratebazelScripts:${project.path}:start")
         val buildBazelFile = buildBazel.get().asFile
         val bazelIgnoreFile = project.file(BUILD_BAZEL_IGNORE)
 
