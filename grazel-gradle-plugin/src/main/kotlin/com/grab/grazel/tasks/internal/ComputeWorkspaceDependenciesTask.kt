@@ -24,6 +24,7 @@ import com.grab.grazel.gradle.dependencies.DependenciesDataSource
 import com.grab.grazel.gradle.variant.AndroidVariantDataSource
 import com.grab.grazel.gradle.variant.VariantBuilder
 import com.grab.grazel.util.GradleProvider
+import com.grab.grazel.util.logHeap
 import com.grab.grazel.util.writeJson
 import dagger.Lazy
 import kotlinx.coroutines.Dispatchers
@@ -37,6 +38,7 @@ import org.gradle.api.file.RegularFileProperty
 import org.gradle.api.provider.ListProperty
 import org.gradle.api.provider.Property
 import org.gradle.api.tasks.CacheableTask
+import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.InputFiles
 import org.gradle.api.tasks.Internal
 import org.gradle.api.tasks.OutputFile
@@ -65,7 +67,9 @@ internal abstract class ComputeWorkspaceDependenciesTask : DefaultTask() {
 
     @TaskAction
     fun action() {
+        logger.logHeap("ComputeWorkspaceDeps:start")
         val result = ComputeWorkspaceDependencies().compute(compileDependenciesJsons.get())
+        logger.logHeap("ComputeWorkspaceDeps:computed")
         runBlocking {
             val populateCache = async(Dispatchers.Default) {
                 dependencyResolutionService.get().populateCache(result)
@@ -75,6 +79,7 @@ internal abstract class ComputeWorkspaceDependenciesTask : DefaultTask() {
             }
             awaitAll<Any>(populateCache, writeResult)
         }
+        logger.logHeap("ComputeWorkspaceDeps:done")
     }
 
     companion object {

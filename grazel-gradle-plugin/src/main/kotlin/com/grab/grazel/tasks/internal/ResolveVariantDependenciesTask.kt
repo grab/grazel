@@ -31,6 +31,7 @@ import com.grab.grazel.gradle.variant.isBase
 import com.grab.grazel.gradle.variant.isTest
 import com.grab.grazel.util.dependsOn
 import com.grab.grazel.util.fromJson
+import com.grab.grazel.util.logHeap
 import com.grab.grazel.util.writeJson
 import dagger.Lazy
 import org.gradle.api.DefaultTask
@@ -52,6 +53,7 @@ import org.gradle.api.provider.Provider
 import org.gradle.api.tasks.CacheableTask
 import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.InputFiles
+import org.gradle.api.tasks.Internal
 import org.gradle.api.tasks.OutputFile
 import org.gradle.api.tasks.PathSensitive
 import org.gradle.api.tasks.PathSensitivity
@@ -64,7 +66,6 @@ import java.util.TreeMap
 import java.util.TreeSet
 import kotlin.streams.asSequence
 
-@CacheableTask
 internal abstract class ResolveVariantDependenciesTask : DefaultTask() {
 
     @get:Input
@@ -73,7 +74,7 @@ internal abstract class ResolveVariantDependenciesTask : DefaultTask() {
     @get:Input
     abstract val base: Property<Boolean>
 
-    @get:Input
+    @get:Internal
     abstract val compileConfiguration: ListProperty<ResolvedComponentResult>
 
     @get:Input
@@ -82,13 +83,13 @@ internal abstract class ResolveVariantDependenciesTask : DefaultTask() {
     @get:Input
     abstract val compileExcludeRules: MapProperty</*shortId*/ String, Set<ExcludeRule>>
 
-    @get:Input
+    @get:Internal
     abstract val annotationProcessorConfiguration: ListProperty<ResolvedComponentResult>
 
-    @get:Input
+    @get:Internal
     abstract val kotlinCompilerPluginConfiguration: ListProperty<ResolvedComponentResult>
 
-    @get:Input
+    @get:Internal
     abstract val kspConfiguration: ListProperty<ResolvedComponentResult>
 
     @get:Input
@@ -156,6 +157,8 @@ internal abstract class ResolveVariantDependenciesTask : DefaultTask() {
 
     @TaskAction
     fun action() {
+        logger.logHeap("ResolveVariantDeps:${variantName.get()}:start")
+
         if (compileConfiguration.get().isEmpty()) {
             val emptyResult = ResolveDependenciesResult(
                 variantName = variantName.get(),
@@ -211,6 +214,22 @@ internal abstract class ResolveVariantDependenciesTask : DefaultTask() {
             }
         )
         writeJson(resolvedDependenciesResult, resolvedDependencies.get())
+
+        releaseResolvedGraphs()
+        logger.logHeap("ResolveVariantDeps:${variantName.get()}:done")
+    }
+
+    /**
+     * Clears the heavy [ResolvedComponentResult] properties after task execution.
+     * These hold the full transitive dependency graph in memory. In large project with thousand tasks,
+     * keeping them alive for the entire build causes OOM. The JSON output is already
+     * written to disk, so these are no longer needed.
+     */
+    private fun releaseResolvedGraphs() {
+        compileConfiguration.empty()
+        kspConfiguration.empty()
+        annotationProcessorConfiguration.empty()
+        kotlinCompilerPluginConfiguration.empty()
     }
 
     private data class KspDependencyInfo(

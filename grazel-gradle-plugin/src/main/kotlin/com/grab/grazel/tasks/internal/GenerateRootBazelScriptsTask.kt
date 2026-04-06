@@ -29,6 +29,7 @@ import com.grab.grazel.util.BUILD_BAZEL
 import com.grab.grazel.util.BUILD_BAZEL_IGNORE
 import com.grab.grazel.util.WORKSPACE
 import com.grab.grazel.util.ansiGreen
+import com.grab.grazel.util.logHeap
 import dagger.Lazy
 import org.gradle.api.DefaultTask
 import org.gradle.api.Project
@@ -76,6 +77,7 @@ constructor(
 
     @TaskAction
     fun action() {
+        logger.logHeap("GenerateRootBazelScripts:start")
         val rootProject = project.rootProject
         val projectsToMigrate = rootProject
             .subprojects
@@ -93,6 +95,7 @@ constructor(
             workspaceDependencies = workspaceDependencies
         ).build().writeToFile(workspaceFile.get().asFile)
         logger.quiet("Generated WORKSPACE".ansiGreen)
+        logger.logHeap("GenerateRootBazelScripts:workspace-done")
 
         val rootBuildBazelContents = rootBazelBuilderFactory.get()
             .create(
