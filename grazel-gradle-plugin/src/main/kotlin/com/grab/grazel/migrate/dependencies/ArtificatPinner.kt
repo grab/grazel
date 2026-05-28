@@ -260,7 +260,7 @@ constructor(
                 progressLogger.completed()
                 return true
             } else {
-                progressLogger.completed(null, true)
+                progressLogger.completed("", true)
                 throw RuntimeException("Failed to pin artifacts")
             }
         } else {
