@@ -22,14 +22,11 @@ import com.grab.grazel.bazel.rules.androidNdkRepository
 import com.grab.grazel.bazel.rules.androidSdkRepository
 import com.grab.grazel.bazel.rules.bazelCommonRepository
 import com.grab.grazel.bazel.rules.daggerWorkspaceRules
-import com.grab.grazel.bazel.rules.kotlinCompiler
 import com.grab.grazel.bazel.rules.kotlinRepository
 import com.grab.grazel.bazel.rules.loadBazelCommonArtifacts
 import com.grab.grazel.bazel.rules.loadDaggerArtifactsAndRepositories
 import com.grab.grazel.bazel.rules.mavenInstall
 import com.grab.grazel.bazel.rules.preBazelCommonArchives
-import com.grab.grazel.bazel.rules.registerKotlinToolchain
-import com.grab.grazel.bazel.rules.setupMavenInstall
 import com.grab.grazel.bazel.rules.toolAndroidRepository
 import com.grab.grazel.bazel.rules.workspace
 import com.grab.grazel.bazel.starlark.LoadStrategy
@@ -90,7 +87,6 @@ internal class WorkspaceBuilder(
 
         kotlinRules()
 
-        // Generate pre-bazel_common http_archive rules
         val bazelCommon = grazelExtension.rules.bazelCommon
         if (bazelCommon.preBazelCommonArchives.isNotEmpty()) {
             preBazelCommonArchives(bazelCommon.preBazelCommonArchives)
@@ -133,10 +129,7 @@ internal class WorkspaceBuilder(
 
         loadBazelCommonArtifacts(grazelExtension.rules.bazelCommon.repository.name)
 
-        val mavenInstall = grazelExtension.rules.mavenInstall.apply {
-            add(repository)
-            setupMavenInstall()
-        }
+        val mavenInstall = grazelExtension.rules.mavenInstall
         mavenInstallData.forEach { mavenInstallData ->
             mavenInstall(
                 name = mavenInstallData.name,
@@ -211,7 +204,7 @@ internal class WorkspaceBuilder(
         }
     }
 
-    /**
+     /**
      * Add Kotlin specific statements to WORKSPACE namely
      * * Kotlin repository
      * * Kotlin compiler
@@ -221,12 +214,16 @@ internal class WorkspaceBuilder(
     private fun StatementsBuilder.kotlinRules() {
         val kotlin = grazelExtension.rules.kotlin
         kotlinRepository(repositoryRule = kotlin.repository)
-        kotlinCompiler(
-            kotlinCompilerVersion = kotlin.compiler.tag,
-            kotlinCompilerReleaseSha = kotlin.compiler.sha,
-            kspCompilerVersion = kotlin.ksp.compiler.tag,
-            kspCompilerReleaseSha = kotlin.ksp.compiler.sha
-        )
-        registerKotlinToolchain(toolchain = kotlin.toolchain)
+        // TODO: Re-enable once pax-android forks rules_android and declares it (with patches)
+        // in preBazelCommonArchives. Currently kotlin_repositories() transitively declares
+        // rules_android (without patches), rules_cc 0.0.16, and rules_java via maybe(),
+        // which prevents grab_bazel_common from applying its patches to rules_android.
+        // kotlinCompiler(
+        //     kotlinCompilerVersion = kotlin.compiler.tag,
+        //     kotlinCompilerReleaseSha = kotlin.compiler.sha,
+        //     kspCompilerVersion = kotlin.ksp.compiler.tag,
+        //     kspCompilerReleaseSha = kotlin.ksp.compiler.sha
+        // )
+        // registerKotlinToolchain(toolchain = kotlin.toolchain)
     }
 }

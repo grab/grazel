@@ -58,6 +58,7 @@ fun StatementsBuilder.bazelCommonRepository(
     val bazelCommonRepoName = repositoryRule.name
     bazelCommonDependencies(bazelCommonRepoName)
     bazelCommonDepsInit(bazelCommonRepoName)
+    bazelCommonTransitiveDepsInit()
     bazelCommonInitialize(
         bazelCommonRepoName,
         buildifierVersion,
@@ -82,6 +83,22 @@ fun StatementsBuilder.bazelCommonDepsInit(bazelCommonRepoName: String) {
     function("bazel_common_deps_init")
 }
 
+fun StatementsBuilder.bazelCommonTransitiveDepsInit() {
+    load("@rules_cc//cc:extensions.bzl", "compatibility_proxy_repo")
+    function("compatibility_proxy_repo")
+
+    load("@rules_java//java:rules_java_deps.bzl", "rules_java_dependencies")
+    function("rules_java_dependencies")
+
+    load("@com_google_protobuf//bazel/private:proto_bazel_features.bzl", "proto_bazel_features")
+    function("proto_bazel_features") {
+        "name" `=` "proto_bazel_features".quote
+    }
+
+    load("@rules_java//java:repositories.bzl", "rules_java_toolchains")
+    function("rules_java_toolchains")
+}
+
 fun StatementsBuilder.bazelCommonInitialize(
     bazelCommonRepoName: String,
     buildifierVersion: String,
@@ -90,7 +107,6 @@ fun StatementsBuilder.bazelCommonInitialize(
 ) {
     load("@${bazelCommonRepoName}//rules:setup.bzl", "bazel_common_setup")
     function("bazel_common_setup") {
-        "patched_android_tools" `=` "True"
         "buildifier_version" `=` buildifierVersion.quote
         "pinned_maven_install" `=` if (pinnedMavenInstall) "True" else "False"
         if (additionalCoursierOptions.isNotEmpty()) {

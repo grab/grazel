@@ -22,6 +22,7 @@ import com.grab.grazel.bazel.starlark.BazelDependency
 import com.grab.grazel.bazel.starlark.StatementsBuilder
 import com.grab.grazel.bazel.starlark.array
 import com.grab.grazel.bazel.starlark.asString
+import com.grab.grazel.bazel.starlark.function
 import com.grab.grazel.bazel.starlark.glob
 import com.grab.grazel.bazel.starlark.load
 import com.grab.grazel.bazel.starlark.quote
@@ -35,6 +36,7 @@ fun StatementsBuilder.androidSdkRepository(
     apiLevel: Int? = null,
     buildToolsVersion: String? = null
 ) {
+    load("@rules_android//rules:rules.bzl", "android_sdk_repository")
     rule("android_sdk_repository") {
         "name" `=` name.quote
         apiLevel?.let {
@@ -51,15 +53,14 @@ fun StatementsBuilder.androidNdkRepository(
     path: String? = null,
     ndkApiLevel: Int? = null
 ) {
-    rule("android_ndk_repository") {
-        "name" `=` name.quote
-        path?.let {
-            "path" `=` path.quote
-        }
-        ndkApiLevel?.let {
-            "api_level" `=` ndkApiLevel
-        }
-    }
+    load("@grab_bazel_common//rules:ndk_setup.bzl", "android_ndk_setup")
+    function("android_ndk_setup")
+    add(
+        """register_toolchains(
+    "@androidndk//:toolchain_aarch64-linux-android",
+    "@androidndk//:toolchain_x86_64-linux-android",
+)""".trimIndent()
+    )
 }
 
 fun StatementsBuilder.buildConfig(
@@ -146,7 +147,7 @@ internal fun StatementsBuilder.androidBinary(
         "name" `=` name.quote
         "crunch_png" `=` crunchPng.toString().capitalize()
         "custom_package" `=` customPackage.quote
-        "incremental_dexing" `=` incrementalDexing.toString().capitalize()
+        "incremental_dexing" `=` if (incrementalDexing) "1" else "0"
         dexShards?.let { "dex_shards" `=` dexShards }
         debugKey?.let { "debug_key" `=` debugKey.quote }
         "multidex" `=` multidex.name.toLowerCase().quote
