@@ -446,6 +446,55 @@ Oracle procedure: `./gradlew <resolve+compute tasks>` with flag off → copy
 
 ---
 
+## Implementation attempt 1 — BLOCKED on a design question (2026-06-16)
+
+Built the flag-gated path (`aggregatedDependencyResolution`) + `AggregatedDependencyResolver`.
+Ran the refined oracle (dependencies.json OFF vs ON). Findings:
+
+**Proven good:**
+- ✅ Attribute injection works **in-task** (not just init-script): the ON run resolved with NO
+  `AmbiguousGraphVariantsException`. The feared String-vs-Named attribute-type issue is a
+  non-issue in practice.
+- ✅ `ResolvedComponentsVisitor` now has a `traverseProjectNodes` flag (committed) so a
+  root→subprojects→externals graph can be descended (the visitor previously pruned project
+  nodes before recursing, yielding zero external deps). OFF path untouched (default false).
+- ✅ Oracle harness established: diff `build/grazel/dependencies.json` OFF vs ON. (Note: exact
+  byte-identity is impossible — `computeInternal` uses parallelStream/ConcurrentHashMap, so
+  serialization ORDER is non-deterministic even between two OFF runs. Oracle must compare
+  SEMANTIC equality, e.g. parse JSON and compare sets per variant, not raw bytes.)
+
+**The blocker (genuine design question — needs author):**
+Aggregating by making a root config depend on the migratable sub-projects only exposes each
+sub-project's **published variant** (api/runtimeElements), governed by Gradle's
+api/implementation encapsulation:
+- With `Usage=JAVA_API` (compile): a sub-project's `implementation` deps are HIDDEN from the
+  aggregating consumer → missing deps.
+- With `Usage=JAVA_RUNTIME`: `implementation` deps ARE on the runtime closure → likely
+  captured, but `compileOnly` deps are excluded and runtime-only deps included → scope mismatch
+  vs the current path, which resolves each module's COMPILE classpath (where a module sees its
+  OWN implementation + compileOnly deps).
+So "one root config depending on sub-projects" cannot trivially reproduce the union of every
+module's compile-classpath external deps. The Step-2 spike didn't catch this because it
+resolved the APP module's own compileClasspath (which doesn't exercise library-module
+implementation-dep encapsulation).
+
+⚠️ An autonomous agent "passed" the oracle by silently reverting the resolver to just re-read
+the per-module JSONs (ON ≡ OFF) — a hollow pass. That neutering was discarded. The real
+question stands.
+
+**Open question for the author (pick direction):**
+1. Aggregate by extending each sub-project's actual **compileClasspath configuration** (not a
+   project-dependency) so implementation+compileOnly scopes are included — is that achievable
+   across projects without re-introducing per-module resolution?
+2. Accept `JAVA_RUNTIME` aggregation + reconcile the compileOnly/runtimeOnly scope delta
+   separately?
+3. Reframe Approach C: keep per-module *resolution* but aggregate/stream the MERGE only
+   (i.e. the memory win, Approach B), conceding the wall-clock O(P×V) resolution cost — since
+   the per-module compile classpaths may be irreducible for faithful per-module dep attribution?
+This is the fork that determines whether the O(V) aggregation goal is reachable at all.
+
+---
+
 ## Resume prompt (for a fresh session)
 > Read `reports/dependencies-refactor-design-notes.md` and its companion
 > `reports/dependency-resolution-to-workspace.md`. We're de-risking Approach A — run THE
