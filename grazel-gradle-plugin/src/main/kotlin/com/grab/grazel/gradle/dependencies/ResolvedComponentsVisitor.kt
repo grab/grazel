@@ -59,7 +59,15 @@ internal class ResolvedComponentsVisitor {
         val component: Node,
         val repository: String,
         val transitiveDeps: Set<DependencyResult>,
-        val requiresJetifier: Boolean
+        val requiresJetifier: Boolean,
+        /**
+         * Set to `true` only when [visit] is called with `traverseProjectNodes = true` and this
+         * external dep is an immediate child of a project node in the graph. This corresponds to
+         * the "direct" notion in per-module resolution where a dep is "direct" iff it is declared
+         * directly in the module's compile configuration (not just transitively reachable).
+         * Always `false` in the default (non-traversing) mode.
+         */
+        val directFromProject: Boolean = false
     ) : Comparable<VisitResult> {
         override fun compareTo(
             other: VisitResult
@@ -88,11 +96,21 @@ internal class ResolvedComponentsVisitor {
      *
      * @param root The root component usually [ResolutionResult.getRoot]
      * @param logger The logger to print traversal information in tree format
+     * @param traverseProjectNodes When `true`, project nodes are descended through (not emitted)
+     *   so that their external-dependency children are reachable. An external dep whose immediate
+     *   parent in the graph is a project node is considered a **direct** dependency (the caller
+     *   receives it via [VisitResult.directFromProject] = `true`). This mode is used by
+     *   [AggregatedDependencyResolver] where the graph root is the Gradle root project and the
+     *   sub-projects are intermediate project nodes between the root and the real external deps.
+     *   When `false` (the default), project nodes are filtered out before recursion — this is the
+     *   original behaviour used by per-module resolution in
+     *   [com.grab.grazel.tasks.internal.ResolveVariantDependenciesTask].
      * @param transform The callback used to convert to [T]
      */
     fun <T : Comparable<T>> visit(
         root: Node,
         logger: (message: String) -> Unit = { },
+        traverseProjectNodes: Boolean = false,
         transform: (visitResult: VisitResult) -> T?
     ): Set<T> {
         val dfsResults = hashMapOf<Node, DFSResult>()
@@ -101,9 +119,16 @@ internal class ResolvedComponentsVisitor {
 
         /**
          * Do a depth-first visit to collect all transitive dependencies and track jetifier
-         * requirements
+         * requirements.
+         *
+         * @param node Current node being visited.
+         * @param level Indentation level for logging.
+         * @param parentIsProject When [traverseProjectNodes] is `true`, indicates that the direct
+         *   parent of [node] was a project node. External deps that are direct children of a project
+         *   node are "direct" from the aggregated perspective and should be emitted with
+         *   [VisitResult.directFromProject] = `true`.
          */
-        fun dfs(node: Node, level: Int = 0): DFSResult {
+        fun dfs(node: Node, level: Int = 0, parentIsProject: Boolean = false): DFSResult {
             if (node in visited) {
                 return dfsResults[node] ?: DFSResult(emptySet(), false)
             }
@@ -117,21 +142,31 @@ internal class ResolvedComponentsVisitor {
                 .asSequence()
                 .filterIsInstance<ResolvedDependencyResult>()
                 .map { it.selected to it.requested }
-                .filter { (selected, _) -> !selected.isProject }
+                .let { seq ->
+                    if (traverseProjectNodes) seq // keep project nodes so we can descend through them
+                    else seq.filter { (selected, _) -> !selected.isProject }
+                }
                 .filter { (dep, _) -> IGNORED_ARTIFACTS.none { dep.toString().startsWith(it) } }
-                .forEach { (directDependency, requested) ->
-                    val childResult = dfs(directDependency, level + 1)
-                    val directDepResult = DependencyResult(
-                        dependency = directDependency,
-                        requiresJetifier = requested.isLegacySupportLibrary,
-                        unjetifiedSource = JetifiedArtifacts[directDependency.shortId]
-                    )
-                    allDependencies.add(directDepResult)
-                    allDependencies.addAll(childResult.dependencies)
+                .forEach { (child, requested) ->
+                    if (traverseProjectNodes && child.isProject) {
+                        // Descend through the project node — its external children are "direct"
+                        val childResult = dfs(child, level + 1, parentIsProject = true)
+                        allDependencies.addAll(childResult.dependencies)
+                        requiresJetifier = requiresJetifier || childResult.requiresJetifier
+                    } else {
+                        val childResult = dfs(child, level + 1, parentIsProject = false)
+                        val directDepResult = DependencyResult(
+                            dependency = child,
+                            requiresJetifier = requested.isLegacySupportLibrary,
+                            unjetifiedSource = JetifiedArtifacts[child.shortId]
+                        )
+                        allDependencies.add(directDepResult)
+                        allDependencies.addAll(childResult.dependencies)
 
-                    requiresJetifier = requiresJetifier ||
-                        directDepResult.requiresJetifier ||
-                        childResult.requiresJetifier
+                        requiresJetifier = requiresJetifier ||
+                            directDepResult.requiresJetifier ||
+                            childResult.requiresJetifier
+                    }
                 }
 
             val dfsResult = DFSResult(allDependencies, requiresJetifier)
@@ -143,7 +178,8 @@ internal class ResolvedComponentsVisitor {
                         component = node,
                         repository = node.repository,
                         transitiveDeps = allDependencies,
-                        requiresJetifier = requiresJetifier
+                        requiresJetifier = requiresJetifier,
+                        directFromProject = traverseProjectNodes && parentIsProject
                     )
                 )?.let(result::add)
             }
