@@ -59,4 +59,29 @@ data class ExperimentsExtension(private val objects: ObjectFactory) {
     val minSdkVersionWorkaround: Property<Boolean> = objects
         .property<Boolean>()
         .convention(false)
+
+    /**
+     * Experimental: resolve dependencies via a single aggregated configuration per variant at the
+     * root project instead of the per-(project × variant) resolution fan-out followed by an
+     * in-memory merge.
+     *
+     * The current pipeline resolves every project's variant classpath independently and then
+     * reconstructs the cross-project union (max-version selection, deduplication, transitive
+     * flattening, override targets) in [com.grab.grazel.gradle.dependencies.ComputeWorkspaceDependencies].
+     * This is O(projects × variants) full resolutions and holds all intermediate graphs in memory.
+     *
+     * When enabled, Grazel instead creates one aggregating resolvable configuration per variant on
+     * the root project, extending every migratable project's matching-variant classpath, with the
+     * AGP variant attributes (`BuildTypeAttr` + `ProductFlavorAttr` per dimension) injected so Gradle
+     * can disambiguate the correct variant of each project dependency. Gradle then performs the
+     * cross-project conflict resolution natively in a single pass per variant, removing both the
+     * fan-out and the hand-rolled merge.
+     *
+     * This produces the same [com.grab.grazel.gradle.dependencies.model.WorkspaceDependencies] as the
+     * existing path, so all downstream Bazel generation is unchanged. The flag exists to gate the new
+     * resolution strategy while it is validated against the existing output.
+     */
+    val aggregatedDependencyResolution: Property<Boolean> = objects
+        .property<Boolean>()
+        .convention(false)
 }
