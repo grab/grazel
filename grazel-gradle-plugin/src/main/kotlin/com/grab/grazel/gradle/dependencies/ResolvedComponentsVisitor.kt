@@ -154,7 +154,9 @@ internal class ResolvedComponentsVisitor {
                         allDependencies.addAll(childResult.dependencies)
                         requiresJetifier = requiresJetifier || childResult.requiresJetifier
                     } else {
-                        val childResult = dfs(child, level + 1, parentIsProject = false)
+                        // parentIsProject: true when the current node is a project being traversed
+                        // through. This propagates "directFromProject" to the external child.
+                        val childResult = dfs(child, level + 1, parentIsProject = node.isProject && traverseProjectNodes)
                         val directDepResult = DependencyResult(
                             dependency = child,
                             requiresJetifier = requested.isLegacySupportLibrary,

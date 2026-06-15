@@ -267,24 +267,45 @@ internal class AggregatedDependencyResolver(
      * used in [com.grab.grazel.tasks.internal.ResolveVariantDependenciesTask] — and map each
      * visited component to a [ResolvedDependency].
      *
-     * All deps are marked `direct = true` here because the per-variant aggregated resolution
-     * produces the full transitive closure in a single graph; the distinction between direct
-     * and transitive at the per-module level is not relevant at this stage (it is handled by
-     * [ComputeWorkspaceDependencies] downstream via `allDependencies` flattening).
+     * Resolve [config]'s transitive graph via [ResolvedComponentsVisitor] with
+     * [traverseProjectNodes] = `true` so that the visitor descends through the sub-project nodes
+     * (which are intermediate nodes in the aggregated root graph) and collects their external
+     * dependency children.
+     *
+     * Only deps that are **direct children of a project node** in the aggregated graph are emitted
+     * (i.e. [ResolvedComponentsVisitor.VisitResult.directFromProject] == `true`). This mirrors
+     * the OFF-path behaviour where [ResolveVariantDependenciesTask] passes `removeTransitives=true`
+     * and only retains deps that appear in `directDependenciesMap`.  Each direct dep still carries
+     * its full [ResolvedComponentsVisitor.VisitResult.transitiveDeps] encoded in
+     * [ResolvedDependency.dependencies], which [ComputeWorkspaceDependencies.computeInternal]
+     * uses via [allDependencies] to re-expand the classpath.
+     *
+     * Exclude rules are not available at the aggregated level (they are per-module declarations);
+     * they are left empty here, consistent with the intent that the ON path can be reconciled via
+     * the downstream pipeline.
      */
     private fun resolveCompileDeps(
         config: Configuration,
         variantName: String
     ): Set<ResolvedDependency> = try {
         val root = config.incoming.resolutionResult.root
-        ResolvedComponentsVisitor().visit(root, rootProject.logger::info) { visitResult ->
+        ResolvedComponentsVisitor().visit(
+            root = root,
+            logger = rootProject.logger::info,
+            traverseProjectNodes = true
+        ) { visitResult ->
+            // Only emit deps that are direct children of a sub-project node, mirroring the OFF
+            // path which retains only deps flagged as direct (i.e. declared directly in a module).
+            // Transitive-only deps will be reconstructed by computeInternal via allDependencies.
+            if (!visitResult.directFromProject) return@visit null
+
             val component = visitResult.component
             val moduleVersion = component.moduleVersion ?: return@visit null
             val shortId = "${moduleVersion.group}:${moduleVersion.name}"
             ResolvedDependency(
                 id = component.toString(),
                 shortId = shortId,
-                direct = true,
+                direct = true, // all emitted deps are direct-from-project
                 version = moduleVersion.version,
                 dependencies = visitResult.transitiveDeps.mapTo(TreeSet()) { depResult ->
                     ResolvedDependency.createDependencyNotation(
