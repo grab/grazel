@@ -189,6 +189,77 @@ on synthetic buckets → quantify the gap and decide A-partial + B-streaming hyb
   closure diffs; declared-config reads for per-module direct deps). Spike still needed to
   de-risk the attribute obstacle before writing the spec.
 
+## Spike Results (2026-06-16)
+
+Run as throwaway init-scripts (`/tmp/agg-spike-*.init.gradle`); real pipeline untouched.
+Comparison target: **demoFreeDebug** on the sample project.
+
+**Sample reality that reshaped the test:** the sample's flavor variants contribute **zero
+unique *external* deps** — flavor deltas are *project* dependencies (`demoImplementation
+project(...)`), which don't go to maven buckets. The only real external split is `default`
+(163) vs `@debug_maven` (+29, from `debugImplementation androidx.paging:paging-runtime`). So
+the external-dep comparison is `default ∪ debug` (168 entries).
+
+### Step 2 — easy case (real AGP leaf variant): ✅ SUCCEEDED
+Aggregating the **real AGP `demoFreeDebugCompileClasspath`** across projects resolves
+correctly — cross-project variant selection "just works" because those configs carry AGP's
+full attributes. Resolved in ~9s. **113 external deps.**
+- ⚠️ **API caveat:** `incoming.resolutionResult` (graph-walk) OOM-killed the daemon *inside
+  an init script* that also loaded the plugin's Kotlin compilation; the older
+  `resolvedConfiguration.lenientConfiguration.allModuleDependencies` was memory-safe. This is
+  likely an init-script artifact — the real `ResolveVariantDependenciesTask` already uses
+  `resolutionResult` fine in the normal task graph. Note it; not a blocker.
+
+### Step 3 — diff vs baseline: explained
+111 exact · 2 only-aggregated · 57 only-baseline · 24 version mismatches.
+- **2 only-aggregated:** `kotlin-parcelize-runtime`, `kotlin-android-extensions-runtime` —
+  Kotlin plugin runtime, harmless.
+- **57 only-baseline:** test / lint-tooling (`com.android.tools.*`) / KSP-processor-transitive
+  deps. These exist because Grazel's *synthetic* `grazelDefaultCompileClasspath` extends a
+  **broader scope set** (test, KSP, lint) than a pure `*CompileClasspath`. ⟹ **Real design
+  requirement:** the aggregation must cover the same scopes Grazel covers today (compile +
+  test + KSP + lint), not just compile classpath. Not a blocker, but it means "one config per
+  variant" is really "one config per (variant × scope-group)".
+- **24 version mismatches:** aggregated versions are higher. The subagent read this as
+  "more correct (native conflict resolution)". ⚠️ **Treat with care:** the baseline side was
+  a *reconstructed union* of `default ∪ debug` buckets, not a true single-variant resolution,
+  so this diff is partly apples-to-oranges. The leaf-variant resolution *is* the right
+  per-variant answer; the spec's correctness check should compare aggregated-leaf-resolution
+  against a freshly-resolved single AGP variant classpath, NOT against the bucket union.
+
+### Step 4 — hard case (synthetic bucket, no buildType/flavor attr): ❌ FAILS (as feared)
+- No-flavor project (`sample-android-library`): silently picks `debug` — undefined/accidental.
+- Multi-flavor project (`flavors/sample-android-flavor`, 8 ApiElements variants):
+  **`AmbiguousGraphVariantsException`** — Gradle cannot choose between
+  `demoFreeDebug/demoPaidDebug/fullFreeDebug/fullPaidDebugApiElements`.
+- **Required to fix:** set `com.android.build.api.attributes.BuildTypeAttr` **and every**
+  `ProductFlavorAttr:<dimension>` on the aggregating config. No partial disambiguation exists.
+
+### VERDICT: **PARTIAL → VIABLE with a clear prerequisite**
+Approach C/A works **if the aggregating config carries full variant attributes**. The clean
+path is to **aggregate the real AGP per-variant configs** (`${variant}CompileClasspath` etc.,
+which already carry the attributes) rather than Grazel's attribute-light synthetic configs —
+OR to copy AGP's `BuildTypeAttr`+`ProductFlavorAttr` onto the aggregating config. Either way
+the gating unknown (fact #2) is resolved: it's a known, mechanical fix, not a dead end.
+
+### Implications for the spec
+1. Aggregate per variant at the root using **attribute-complete** configs (prefer real AGP
+   variant configs; carry buildType + all flavor attrs).
+2. Aggregate **all scope-groups** Grazel covers (compile, test, androidTest, KSP, lint) — the
+   57-dep gap proves compile-only is insufficient.
+3. Per-bucket lists = ordered set-difference across the V variant closures along `extendsFrom`
+   (unchanged from the plan).
+4. Per-module **direct** deps from declared configs + version lookup (the C-specific piece).
+5. Correctness check must compare against **true single-variant resolutions**, not the
+   bucket-union (see Step 3 caveat).
+6. Decide resolution API (`resolutionResult` vs `resolvedConfiguration`) with the OOM note in
+   mind.
+
+**Next step:** write the design spec
+(`docs/superpowers/specs/YYYY-MM-DD-dependencies-refactor-design.md`), then writing-plans.
+
+---
+
 ## Resume prompt (for a fresh session)
 > Read `reports/dependencies-refactor-design-notes.md` and its companion
 > `reports/dependency-resolution-to-workspace.md`. We're de-risking Approach A — run THE
