@@ -109,9 +109,23 @@ lookup."
 - ✅ Strictly best on both axes if per-module attribution holds.
 - ⚠️ Most invasive; must match today's direct-dep correctness.
 
-**Recommendation:** Target **A → evolving to C**, with **B's streaming as a safety net** for
-any variants where aggregation's attribute matching can't be solved (aggregate what we can,
-stream-merge the rest).
+**DECISION (author):** Target **C**. Desired end state, in the author's words: *"root-call the
+resolution, let Gradle handle it, and give me the full list per bucket."* I.e. one aggregated
+resolution per variant at the root; Gradle produces each variant's full closure; the
+per-bucket lists are then derived (see below). **B's streaming is the safety net** only for
+variants where aggregation's attribute matching (fact #2) can't be solved.
+
+**How "full list per bucket" is derived under C:**
+- One root resolution per variant V → the full resolved closure for V (Gradle does conflict
+  resolution natively; replaces the hand-rolled merge).
+- A dependency is assigned to the **most-general variant whose aggregated closure contains it
+  at that (group:artifact, version)** — i.e. bucket = diff across the V closures along the
+  `extendsFrom` hierarchy (`freeDebug`'s bucket = freeDebug closure − debug closure − default
+  closure, etc.). This diff is cheap set math over already-resolved lists, NOT a per-project
+  merge.
+- Per-module **direct** deps (for each module's BUILD target) come from reading *declared*
+  configs (no resolution) + version lookup against the variant closure. This is the C-specific
+  piece that must reproduce today's direct-dep correctness.
 
 ---
 
@@ -171,7 +185,9 @@ on synthetic buckets → quantify the gap and decide A-partial + B-streaming hyb
   implementation of the refactor — keep spike code out of the real pipeline.
 - After the spike: resume design → write spec to
   `docs/superpowers/specs/YYYY-MM-DD-dependencies-refactor-design.md` → writing-plans.
-- Decision still pending from user before spec: which approach (A / A→C / hybrid).
+- Approach decided: **C** (root-aggregated resolution per variant → full list per bucket via
+  closure diffs; declared-config reads for per-module direct deps). Spike still needed to
+  de-risk the attribute obstacle before writing the spec.
 
 ## Resume prompt (for a fresh session)
 > Read `reports/dependencies-refactor-design-notes.md` and its companion
