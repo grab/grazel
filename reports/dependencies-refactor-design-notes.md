@@ -495,6 +495,41 @@ This is the fork that determines whether the O(V) aggregation goal is reachable 
 
 ---
 
+## Implementation attempt 2 — the real gap is BUCKETING, not scope (2026-06-16)
+
+Wired genuine runtime-usage aggregation (root config per variant + `traverseProjectNodes=true`
+so externals under sub-projects are collected; `direct` = immediate child of a project node).
+It compiles and genuinely resolves (NOT re-reading JSONs). Oracle delta vs OFF revealed the
+true mismatch is **the variant→bucket model**, not compileOnly/runtimeOnly scope:
+
+- **OFF buckets:** `default`, `debug`, `androidTest`, `lint` (4). Produced by the per-module
+  `extendsFrom` base-subtraction — each dep lands in the most-GENERAL variant that introduces
+  it. This synthetic hierarchy is resolved per-module via Grazel's `grazel*CompileClasspath`
+  configs (which extend that module's own implementation/api → no cross-flavor ambiguity).
+- **ON buckets:** one per LEAF AGP variant (`demoFreeDebug`, `demoPaidDebug`, … 12). The
+  aggregation resolves leaf variants at the root and never reconstructs the collapse.
+
+So the deps are largely correct but **bucketed under different keys**. Only `default` overlaps,
+partially (flavored modules' deps live in leaf buckets in ON, in `default` in OFF).
+
+**Why this is hard / the core tension:** the OFF bucketing is built on the SYNTHETIC variant
+hierarchy (default→buildType→leaf), and the base buckets (`default`, `debug`) are a *per-module*
+concept (a module's flavor-agnostic deps). At the ROOT, asking for `default` of a flavored
+module is ambiguous (which flavor?) → the Step-4 `AmbiguousGraphVariantsException`. So the
+synthetic base buckets have no clean cross-project aggregated analog. Two ways out:
+  (b1) Resolve all leaf variants at root (works), then DERIVE the default/debug/etc. buckets by
+       set intersection/difference along the hierarchy (default = ∩ all variants; debug = ∩ all
+       debug-* minus default; …). This is the design-notes "closure diff" vision, but matching
+       computeInternal's exact maxVersion+subtraction output byte-for-byte is intricate.
+  (b2) Change downstream (WorkspaceBuilder/MavenInstallStore) to consume per-leaf-variant
+       buckets directly — breaks the "downstream unchanged / oracle = identical output" premise.
+
+⚠️ The author's earlier pick ("runtime + reconcile scopes") was premised on a scope delta; the
+oracle disproved that hypothesis — the real reconciliation is the bucket model above. NEW
+DECISION NEEDED.
+
+---
+
 ## Resume prompt (for a fresh session)
 > Read `reports/dependencies-refactor-design-notes.md` and its companion
 > `reports/dependency-resolution-to-workspace.md`. We're de-risking Approach A — run THE
