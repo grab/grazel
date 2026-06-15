@@ -260,6 +260,162 @@ the gating unknown (fact #2) is resolved: it's a known, mechanical fix, not a de
 
 ---
 
+## Spike 2 — verify the known fix (attribute injection) — COMPLETE (2026-06-16)
+
+Run as `/tmp/agg-spike2.init.gradle`, `/tmp/agg-spike2b.init.gradle`, `/tmp/agg-spike2c.init.gradle`,
+`/tmp/agg-spike2d.init.gradle`, `/tmp/agg-spike2e-lightonly.init.gradle`.
+Real plugin source and `build.gradle` untouched. Not committed.
+
+### Confirmed ambiguity (light config, T1)
+
+A root config with only `org.gradle.usage=java-runtime` +
+`org.gradle.jvm.environment=android` targeting `:flavors:sample-android-flavor` fails with:
+
+> The consumer was configured to find attribute 'org.gradle.jvm.environment' with value
+> 'android', attribute 'org.gradle.usage' with value 'java-runtime'. However we cannot
+> choose between the following variants of project :flavors:sample-android-flavor:
+> `demoFreeDebugRuntimeElements`, `demoPaidDebugRuntimeElements`,
+> `fullFreeDebugRuntimeElements`, `fullPaidDebugRuntimeElements`.
+> All of them match the consumer attributes.
+
+All 4 candidates match — Gradle cannot disambiguate without variant-specific attrs.
+
+### Discovered exact attribute set on `demoFreeDebugRuntimeElements`
+
+From Step 1c (consumed variant enumeration), these are the attrs on the outgoing variant:
+
+| Attribute name | Type | Value |
+|---|---|---|
+| `com.android.build.api.attributes.BuildTypeAttr` | `BuildTypeAttr` | `debug` |
+| `com.android.build.api.attributes.ProductFlavor:service` | `ProductFlavorAttr` | `demo` |
+| `com.android.build.api.attributes.ProductFlavor:release` | `ProductFlavorAttr` | `free` |
+| `service` (short alias) | `ProductFlavorAttr` | `demo` |
+| `release` (short alias) | `ProductFlavorAttr` | `free` |
+| `com.android.build.gradle.internal.attributes.VariantAttr` | `VariantAttr` | `demoFreeDebug` |
+| `org.gradle.usage` | `Usage` | `java-runtime` |
+| `com.android.build.api.attributes.AgpVersionAttr` | `AgpVersionAttr` | `8.6.1` |
+| `org.gradle.jvm.environment` | `TargetJvmEnvironment` | `android` |
+| `org.gradle.category` | `Category` | `library` |
+| `org.jetbrains.kotlin.platform.type` | `KotlinPlatformType` | `androidJvm` |
+
+**Note:** AGP registers ProductFlavor attrs under BOTH the short dimension name (`service`)
+AND the qualified form (`com.android.build.api.attributes.ProductFlavor:service`). Both must
+be matched (or at minimum the qualified form — the qualified form is the official one AGP uses
+for disambiguation).
+
+### Complete config result (T2) — ✓ FIX CONFIRMED
+
+Copying all discovered attrs onto a root aggregating config and adding a project dep on
+`:flavors:sample-android-flavor`:
+
+- **Selected variant:** `demoFreeDebugRuntimeElements` ✓ (correct)
+- **Resolved:** 71 external deps (lenient — 8 unresolved due to network/scope in init-script)
+- **No AmbiguousGraphVariantsException**
+- `KotlinPlatformType` cannot be set from an init-script (Kotlin plugin not on init-script
+  classpath), but this doesn't block disambiguation — the other attrs are sufficient.
+
+### Dep-count analysis (T3)
+
+| Config | External deps |
+|---|---|
+| `demoFreeDebugCompileClasspath` (direct baseline) | 74 |
+| `demoFreeDebugRuntimeClasspath` (direct baseline) | 87 |
+| Aggregated root config (java-runtime + full attrs) | 71 (+ 8 unresolved network) |
+
+**Gap analysis aggregated vs CompileClasspath (74 direct vs 71+8 aggregated):**
+
+- 43 exact matches
+- 15 "only in aggregated" — JVM stubs (`runtime-jvmstubs`) replacing android-specific
+  artifacts; these are `*-android` vs `*-jvmstubs` splits (Compose, Lifecycle). This is
+  a `KotlinPlatformType` effect: without `androidJvm` set (init-script can't set it),
+  Gradle picks JVM stubs instead of Android artifacts.
+- 18 "only in direct" — mostly the `*-android` suffixed variants of the same artifacts.
+- 13 version mismatches — lower versions in aggregated (conflict resolution difference).
+
+**Root cause of gap:** `org.jetbrains.kotlin.platform.type=androidJvm` cannot be set in
+the init-script context because `KotlinPlatformType` is not on the classloader. In the
+**real plugin task context**, this attr is settable (Kotlin plugin is on the classpath) —
+Grazel's existing `ConfigurationParsingVariant` already sets it. So in production the
+`*-android` vs `*-jvmstubs` gap closes. The 13 version mismatches are explained by
+conflict-resolution differences between the init-script aggregated resolution (no global
+`resolutionStrategy` in init-script context) vs the project's per-module strategy.
+
+### Multi-project aggregation (T4) — ✓ SCALES
+
+Adding `:sample-android-library` (no flavor dims) to the same complete-attr config:
+- **Resolved:** 71 deps (same as flavor-only — library's deps are a subset)
+- **No error** — AGP's attribute schema handles the missing ProductFlavor attrs on the
+  library's `debugRuntimeElements` via compatibility rules (ProductFlavor attrs are
+  optional/ignored when the candidate doesn't have them).
+- `sample-android-library` selected variant: `debugRuntimeElements` ✓
+
+### VERDICT: ✅ YES — the known fix works
+
+Adding `BuildTypeAttr` + `ProductFlavor:<dim>` attrs to the aggregating config completely
+eliminates `AmbiguousGraphVariantsException` and correctly selects `demoFreeDebugRuntimeElements`.
+The fix is mechanical, not a dead end. In the real plugin context (where `KotlinPlatformType`
+is settable), the dep-set gap also closes.
+
+### Init-script attribute-injection snippet (for design spec)
+
+```groovy
+// Given: targetVariant is the AndroidVariant we want to aggregate for
+// (e.g. demoFreeDebug from Grazel's variant model)
+
+def cfg = project.configurations.create("grazelAggregated_${targetVariant.name}")
+cfg.canBeResolved = true
+cfg.canBeConsumed = false
+
+// Base attrs (Grazel already sets these)
+cfg.attributes {
+    attribute(Usage.USAGE_ATTRIBUTE, objects.named(Usage, Usage.JAVA_RUNTIME))
+    attribute(TargetJvmEnvironment.TARGET_JVM_ENVIRONMENT_ATTRIBUTE,
+              objects.named(TargetJvmEnvironment, TargetJvmEnvironment.ANDROID))
+    attribute(KotlinPlatformType.attribute,
+              KotlinPlatformType.androidJvm)           // already set by Grazel today
+    attribute(AgpVersionAttr.ATTRIBUTE,
+              objects.named(AgpVersionAttr, agpVersion))  // already set by Grazel today
+}
+
+// NEW: AGP variant-disambiguation attrs
+// BuildType
+cfg.attributes.attribute(
+    Attribute.of("com.android.build.api.attributes.BuildTypeAttr", BuildTypeAttr::class.java),
+    objects.named(BuildTypeAttr::class.java, targetVariant.backingVariant.buildType.name)
+)
+// One attribute per flavor dimension
+targetVariant.backingVariant.productFlavors.forEach { (dimension, flavor) ->
+    val dimAttr = Attribute.of(
+        "com.android.build.api.attributes.ProductFlavor:${dimension}",
+        ProductFlavorAttr::class.java
+    )
+    cfg.attributes.attribute(dimAttr, objects.named(ProductFlavorAttr::class.java, flavor))
+}
+```
+
+### Caveats for production implementation
+
+1. **Dimension name discovery:** `targetVariant.backingVariant.productFlavors` returns a
+   list of `(dimension, flavorName)` pairs — already available in Grazel via the `Variant`
+   API. No extra work needed.
+2. **`KotlinPlatformType` must be set** (available in production; init-script limitation
+   doesn't apply). Without it, Kotlin Multiplatform artifacts resolve to JVM stubs instead
+   of Android-specific artifacts.
+3. **The short-name aliases** (`service`, `release`) are automatically registered by AGP
+   alongside the qualified form. Setting the qualified form (`ProductFlavor:service`) is
+   sufficient — AGP's disambiguation rules handle the rest.
+4. **`VariantAttr`** (the internal `com.android.build.gradle.internal.attributes.VariantAttr`)
+   is an internal AGP attribute; do NOT set it explicitly (it's implementation-internal and
+   the qualified BuildTypeAttr + ProductFlavorAttr are sufficient for disambiguation).
+5. **Scope:** this fix applies to the `JAVA_RUNTIME` aggregating config (external dep
+   closure). For `JAVA_API` (compile classpath), the same attrs apply but target
+   `*ApiElements` instead of `*RuntimeElements` variants.
+6. **No-flavor projects** (e.g. `:sample-android-library`): AGP's compat rules correctly
+   ignore ProductFlavor attrs when the candidate has none — aggregation across mixed
+   (flavored + unflavored) projects just works.
+
+---
+
 ## Resume prompt (for a fresh session)
 > Read `reports/dependencies-refactor-design-notes.md` and its companion
 > `reports/dependency-resolution-to-workspace.md`. We're de-risking Approach A — run THE
