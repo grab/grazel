@@ -416,6 +416,36 @@ targetVariant.backingVariant.productFlavors.forEach { (dimension, flavor) ->
 
 ---
 
+## Implementation: determinism baseline + REFINED ORACLE (2026-06-16)
+
+Ran `./gradlew migrateToBazel` flag-OFF on a clean tree to test the byte-diff oracle premise.
+**Result: regeneration is NOT byte-clean — but the drift is all environmental/tooling, NOT
+dependency resolution.** Three files drift:
+1. `WORKSPACE`: only `fail_if_repin_required = False → True` — artifact-**pinning state**
+   (committed golden is post-pin; fresh run is pre-pin). Not resolution.
+2. `keystore/BUILD.bazel`: 4-space → 2-space indent + trailing newline — **buildifier
+   formatting** not applied identically in this env. Not resolution.
+3. `sample-kotlin-library/BUILD.bazel`: drops `additional_src_sets =
+   ["build/generated/ksp/test/kotlin"]` — that dir only exists after a prior KSP run;
+   **environment-dependent**. Not resolution.
+
+⟹ A whole-tree `git diff --exit-code` oracle is INVALID (always fails on this noise,
+independent of any change). **Refined oracle (sound + faster):**
+- **Primary:** diff `build/grazel/dependencies.json` (the serialized `WorkspaceDependencies`,
+  the exact intermediate the refactor changes) between **flag-OFF and flag-ON** runs → must be
+  byte-identical. Only needs the resolve + compute tasks, not full migration. Environmental
+  noise cancels (hits both runs). This is correctness-by-construction since downstream is reused.
+- **Secondary (full):** full `migrateToBazel` ON vs OFF → identical `*_maven_install.json`
+  artifact lists + identical maven_install blocks in WORKSPACE, ignoring the 3 known
+  environmental diffs above.
+
+Oracle procedure: `./gradlew <resolve+compute tasks>` with flag off → copy
+`build/grazel/dependencies.json` to a temp; run again with flag on (via a temp
+`grazel { experiments { aggregatedDependencyResolution = true } }` override or an init script)
+→ diff the two dependencies.json. Empty diff = correct.
+
+---
+
 ## Resume prompt (for a fresh session)
 > Read `reports/dependencies-refactor-design-notes.md` and its companion
 > `reports/dependency-resolution-to-workspace.md`. We're de-risking Approach A — run THE
