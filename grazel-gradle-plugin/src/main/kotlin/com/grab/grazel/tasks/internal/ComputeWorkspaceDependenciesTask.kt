@@ -17,6 +17,8 @@
 package com.grab.grazel.tasks.internal
 
 import com.grab.grazel.gradle.ConfigurationDataSource
+import com.grab.grazel.gradle.MigrationChecker
+import com.grab.grazel.gradle.dependencies.AggregatedDependencyResolver
 import com.grab.grazel.gradle.dependencies.ComputeWorkspaceDependencies
 import com.grab.grazel.gradle.dependencies.DefaultDependencyGraphsService
 import com.grab.grazel.gradle.dependencies.DefaultDependencyResolutionService
@@ -57,6 +59,26 @@ internal abstract class ComputeWorkspaceDependenciesTask : DefaultTask() {
     @get:Internal
     abstract val dependencyResolutionService: Property<DefaultDependencyResolutionService>
 
+    /**
+     * When `true`, skip the per-(project × variant) JSON fan-out and instead use
+     * [AggregatedDependencyResolver] to resolve the full dependency set in O(V) root
+     * configurations. The downstream [ComputeWorkspaceDependencies] pipeline is unchanged.
+     *
+     * Corresponds to [com.grab.grazel.extension.ExperimentsExtension.aggregatedDependencyResolution].
+     */
+    @get:Input
+    abstract val aggregatedDependencyResolution: Property<Boolean>
+
+    /**
+     * Root project reference, needed to construct [AggregatedDependencyResolver] at task-action
+     * time (only used when [aggregatedDependencyResolution] is `true`).
+     */
+    @get:Internal
+    abstract val migrationCheckerProvider: Property<MigrationChecker>
+
+    @get:Internal
+    abstract val variantBuilderProvider: Property<VariantBuilder>
+
     @get:OutputFile
     abstract val workspaceDependencies: RegularFileProperty
 
@@ -68,7 +90,22 @@ internal abstract class ComputeWorkspaceDependenciesTask : DefaultTask() {
     @TaskAction
     fun action() {
         logger.logHeap("ComputeWorkspaceDeps:start")
-        val result = ComputeWorkspaceDependencies().compute(compileDependenciesJsons.get())
+
+        val result = if (aggregatedDependencyResolution.get()) {
+            // ON path: resolve via root-level aggregating configurations (O(V) resolutions)
+            logger.info("Grazel: using aggregated dependency resolution (aggregatedDependencyResolution=true)")
+            val resolver = AggregatedDependencyResolver(
+                rootProject = project.rootProject,
+                migrationChecker = migrationCheckerProvider.get(),
+                variantBuilder = variantBuilderProvider.get(),
+            )
+            val results = resolver.resolve()
+            ComputeWorkspaceDependencies().computeFromResults(results)
+        } else {
+            // OFF path: existing per-(project × variant) JSON fan-out — unchanged
+            ComputeWorkspaceDependencies().compute(compileDependenciesJsons.get())
+        }
+
         logger.logHeap("ComputeWorkspaceDeps:computed")
         runBlocking {
             val populateCache = async(Dispatchers.Default) {
@@ -88,6 +125,8 @@ internal abstract class ComputeWorkspaceDependenciesTask : DefaultTask() {
             rootProject: Project,
             variantBuilderProvider: Lazy<VariantBuilder>,
             limitDependencyResolutionParallelism: Property<Boolean>,
+            aggregatedDependencyResolution: Property<Boolean>,
+            migrationChecker: Lazy<MigrationChecker>,
             dependencyResolutionService: GradleProvider<DefaultDependencyResolutionService>,
             dependencyGraphsService: GradleProvider<DefaultDependencyGraphsService>,
             dependenciesDataSource: Lazy<DependenciesDataSource>,
@@ -107,6 +146,9 @@ internal abstract class ComputeWorkspaceDependenciesTask : DefaultTask() {
                         rootProject.layout.buildDirectory.file("grazel/dependencies.json")
                     )
                     this.dependencyResolutionService.set(dependencyResolutionService)
+                    this.aggregatedDependencyResolution.set(aggregatedDependencyResolution)
+                    this.migrationCheckerProvider.set(migrationChecker.get())
+                    this.variantBuilderProvider.set(variantBuilderProvider.get())
                 }
             ResolveVariantDependenciesTask.register(
                 rootProject,

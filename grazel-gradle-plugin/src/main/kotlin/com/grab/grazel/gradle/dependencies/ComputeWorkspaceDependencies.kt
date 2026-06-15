@@ -19,14 +19,46 @@ import java.util.stream.Collectors
 
 internal class ComputeWorkspaceDependencies {
 
+    /**
+     * Compute [WorkspaceDependencies] from already-resolved [ResolveDependenciesResult] instances.
+     *
+     * Used when [com.grab.grazel.extension.ExperimentsExtension.aggregatedDependencyResolution]
+     * is enabled. The results produced by [AggregatedDependencyResolver] are fed here directly,
+     * bypassing JSON deserialization. The downstream grouping, version arbitration, transitive
+     * flattening, override-target computation, and KSP aggregation are byte-identical to the JSON
+     * path because both paths delegate to [computeInternal].
+     *
+     * @param results One [ResolveDependenciesResult] per variant from [AggregatedDependencyResolver].
+     */
+    fun computeFromResults(results: List<ResolveDependenciesResult>): WorkspaceDependencies =
+        computeInternal(results)
+
+    /**
+     * Parse JSON files produced by [com.grab.grazel.tasks.internal.ResolveVariantDependenciesTask]
+     * and compute [WorkspaceDependencies]. This is the existing (flag-OFF) path, unchanged.
+     */
     fun compute(compileDependenciesJsons: List<RegularFile>): WorkspaceDependencies {
+        val results = compileDependenciesJsons
+            .parallelStream()
+            .map<ResolveDependenciesResult>(::fromJson)
+            .collect(Collectors.toList())
+        return computeInternal(results)
+    }
+
+    /**
+     * Core pipeline shared by both the JSON path (flag OFF) and the aggregated path (flag ON).
+     *
+     * Accepts a materialized [List] of [ResolveDependenciesResult] — one per (project × variant)
+     * in the JSON path, or one per variant in the aggregated path — and runs the 5-stage
+     * pipeline: group → reduce → flatten → override-target → transitive-map, plus KSP aggregation.
+     */
+    private fun computeInternal(allResults: List<ResolveDependenciesResult>): WorkspaceDependencies {
         // Parse all jsons parallely and compute the classPaths among all variants.
         // Maximum compatible version is picked using [maxVersionReducer] since jsons produced by
         // [ResolveVariantDependenciesTask] is module specific and we can have two version of the
         // same dependency.
-        val classPaths = compileDependenciesJsons
+        val classPaths = allResults
             .parallelStream()
-            .map<ResolveDependenciesResult>(::fromJson)
             .collect(
                 Collectors.groupingByConcurrent(
                     ResolveDependenciesResult::variantName,
@@ -154,9 +186,8 @@ internal class ComputeWorkspaceDependencies {
             ).toMap()
 
         // Aggregate KSP deps across ALL variants into single bucket, deduplicated by max version
-        val kspDeps: List<ResolvedDependency> = compileDependenciesJsons
+        val kspDeps: List<ResolvedDependency> = allResults
             .parallelStream()
-            .map<ResolveDependenciesResult>(::fromJson)
             .flatMap { it.dependencies.getOrDefault(KSP.name, emptySet()).stream() }
             .collect(
                 Collectors.groupingByConcurrent(
