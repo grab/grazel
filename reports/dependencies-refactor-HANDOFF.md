@@ -40,6 +40,24 @@ NOT raw bytes (parallelStream ordering). Warm the cache first.
   not just an oracle "PASS". Require honest residuals.
 - This final step resists fire-and-forget delegation — build it directly/iteratively with the oracle loop.
 
+## Current attempt state (O(V) v1 — committed, FAILS oracle)
+An O(V) custom-consumable-config aggregation is committed in `AggregatedDependencyResolver.kt`
+(supersedes the per-module attempt-3). It **compiles and runs cleanly but FAILS the oracle**:
+- ON yields only a `default` bucket (19 deps, JVM-project-only); OFF has default:163, debug:29,
+  androidTest:5, lint:2. **Android projects' deps are not surfaced through the aggregation.**
+- 4 version mismatches (ON lower) — `resolutionStrategy { force }` not applied to the root configs.
+
+**Top next step (likely fix):** the consumable currently `extendsFrom grazel<V>CompileClasspath`
+(a resolvable config); that indirection appears not to propagate Android modules' deps as outgoing.
+Investigation B (design §4.3) instead extended the **declared scopes directly**
+(`implementation`/`api`/`<buildType>Implementation`/`<flavor>Implementation`) and DID expose impl
+deps — switch the consumable to that. Then apply force/substitution `resolutionStrategy` to the root
+configs. Add instrumentation (per-variant participating-project count + selected consumable variant)
+to pinpoint where Android projects drop out. Full diagnosis: `/tmp/grazel-dep-refactor-worklog.md`.
+
+**To restore a WORKING (O(P×V)) ON path:** revert the resolver to commit `9c714fe`
+(`git show 9c714fe:grazel-gradle-plugin/src/main/kotlin/com/grab/grazel/gradle/dependencies/AggregatedDependencyResolver.kt`).
+
 ## Working state
 Live scratchpad (survives compaction): `/tmp/grazel-dep-refactor-worklog.md`.
 
