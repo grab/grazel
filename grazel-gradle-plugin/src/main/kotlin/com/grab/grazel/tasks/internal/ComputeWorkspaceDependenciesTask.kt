@@ -60,9 +60,14 @@ internal abstract class ComputeWorkspaceDependenciesTask : DefaultTask() {
     abstract val dependencyResolutionService: Property<DefaultDependencyResolutionService>
 
     /**
-     * When `true`, skip the per-(project × variant) JSON fan-out and instead use
-     * [AggregatedDependencyResolver] to resolve the full dependency set in O(V) root
-     * configurations. The downstream [ComputeWorkspaceDependencies] pipeline is unchanged.
+     * When `true`, skip the per-(project × variant) JSON fan-out and disk I/O and instead use
+     * [AggregatedDependencyResolver] to resolve dependencies in-process. The resolver iterates each
+     * migratable project's own grazel-synthesized compile classpath configurations per variant and
+     * unions the results with max-version selection — an O(P × V) operation where P is the number
+     * of migratable projects and V is the number of distinct variant names. This is faster than
+     * the fan-out path because it avoids task scheduling overhead and disk I/O for each
+     * (project × variant) JSON file. The downstream [ComputeWorkspaceDependencies] pipeline is
+     * unchanged — both paths feed into [ComputeWorkspaceDependencies.computeFromResults].
      *
      * Corresponds to [com.grab.grazel.extension.ExperimentsExtension.aggregatedDependencyResolution].
      */
