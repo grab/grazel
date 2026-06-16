@@ -564,6 +564,19 @@ for perf; it should NOT be shipped as "aggregation".
 **Recommendation to author:** pivot to Approach B (memory-only), OR stop here. Pursuing root
 aggregation further is chasing a goal the bucket model forbids.
 
+**NUANCE / correction (important):** the block above is partly an artifact of the DEGENERATE
+SAMPLE, which migrates only `*Debug` leaf variants (no release). With only one build type,
+`default` and `debug` can't be separated by leaf-intersection, forcing per-module base
+resolution. In a project migrating MULTIPLE build types (debug+release), the base buckets ARE
+reconstructable from leaf aggregations: `default` = deps common to ALL leaves; `debug` =
+(common to debug leaves) − default; etc. Leaf aggregation at the root is O(V_leaf) (one
+resolution per leaf variant across all projects) — the genuine win — and attribute injection
+for leaves is already proven. So root aggregation is viable for multi-build-type projects; it's
+just (a) unvalidatable on THIS debug-only sample without per-module base resolution, and (b)
+byte-matching the exact base-bucket contents via set-reconstruction is intricate. Open question
+for the author: is the debug-only sample representative of real targets, or should aggregation
+be validated against a richer multi-build-type scenario?
+
 ---
 
 ## Resume prompt (for a fresh session)
