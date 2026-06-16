@@ -40,7 +40,22 @@ NOT raw bytes (parallelStream ordering). Warm the cache first.
   not just an oracle "PASS". Require honest residuals.
 - This final step resists fire-and-forget delegation — build it directly/iteratively with the oracle loop.
 
-## Current attempt state (O(V) v1 — committed, FAILS oracle)
+## STATUS (after 3 O(V) iterations — all fail; STOP blind iteration, INSTRUMENT next)
+Three iterations of the custom-consumable O(V) approach all fail the oracle, and iteration 3
+**regressed** (default bucket 19→0). Blind edit→oracle cycles are thrashing — guessing at Gradle
+attribute-matching without seeing the actual resolution. **The next session must add instrumentation
+FIRST** (log per variant: root config requested attrs; selected consumable variant per project dep
+or the selection failure; resolved-graph node/child counts; whether grazelExportCompile<V> was
+created + its outgoing deps) to learn WHY buckets come back empty — before any more code changes.
+Full iteration log + hypotheses: `/tmp/grazel-dep-refactor-worklog.md`.
+
+**KNOWN-GOOD FALLBACK:** the per-module resolver at commit `9c714fe` PASSES the oracle (correct
+output, but O(P×V) — no perf win). If O(V) proves too costly to land, that is the shippable option
+(behind the flag, honestly documented). The two failing leads: export-attr-only → shallow transitive
+resolution; export+standard-attrs → variant selection breaks. Likely a real Android+JVM single-config
+tension (may need per-ecosystem root configs). HEAD currently has iter2 (regressed) committed as WIP.
+
+## (historical) Current attempt state (O(V) v1 — committed, FAILS oracle)
 An O(V) custom-consumable-config aggregation is committed in `AggregatedDependencyResolver.kt`
 (supersedes the per-module attempt-3). It **compiles and runs cleanly but FAILS the oracle**:
 - ON yields only a `default` bucket (19 deps, JVM-project-only); OFF has default:163, debug:29,
