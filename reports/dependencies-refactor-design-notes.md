@@ -57,7 +57,9 @@ Both capture the full cross-project per-variant closure in one resolution per va
   resolves once. Verified: exposes `moshi`, `kotlin-stdlib`, and the full transitive closure (76
   deps across two sample projects). The custom attribute **uniquely identifies** the variant, so
   it sidesteps AGP's `AmbiguousGraphVariantsException` entirely — no `BuildTypeAttr`/`ProductFlavorAttr`
-  juggling needed. See snippet in §4.3.
+  juggling needed. See snippet in §4.3. **Caveat:** this is verified for **leaf** AGP variants.
+  The *synthetic base buckets* (`default`, `debug`) are not real AGP leaf variants and have no
+  clean root-aggregated analog for flavored projects — see §4.4.
 
 ### 2.3 The real remaining challenge: BUCKETING
 Capturing the per-variant **union** is solved. The open problem is assigning each dep to the
@@ -88,6 +90,12 @@ flag-ON** runs of `computeWorkspaceDependencies`. Parse the JSON and compare per
 (ids/versions/`direct`/`overrideTarget`/`repository`/`dependencies`) — *not* raw bytes:
 `computeInternal` uses `parallelStream`/`ConcurrentHashMap`, so serialization order is
 non-deterministic even between two OFF runs. Environmental noise cancels because it hits both runs.
+
+**Procedure:** run `./gradlew computeWorkspaceDependencies` (flag OFF) → copy
+`build/grazel/dependencies.json` aside → toggle the flag ON by adding
+`grazel { experiments { aggregatedDependencyResolution = true } }` to the root `build.gradle`
+(or via an init-script) → run the task again → semantic-diff the two JSONs (a small Python/jq
+script comparing per-variant sets). Empty semantic diff = correct.
 
 ---
 
@@ -126,8 +134,26 @@ download for class-name extraction). Interaction with variant compression
 
 ### 4.2 AGP variant attribute injection (only if aggregating real AGP variants directly)
 Needed only if NOT using the custom-attribute approach (§4.3). Confirmed to eliminate
-`AmbiguousGraphVariantsException`. `KotlinPlatformType` must be set (Grazel already does in-task;
-not settable from an init-script). Do **not** set the internal `VariantAttr`.
+`AmbiguousGraphVariantsException`. Do **not** set the internal `VariantAttr`.
+
+The exact attribute set AGP puts on a leaf variant's outgoing config (e.g.
+`demoFreeDebugRuntimeElements`), discovered by enumerating it:
+
+| Attribute | Value (example) |
+|---|---|
+| `com.android.build.api.attributes.BuildTypeAttr` | `debug` |
+| `com.android.build.api.attributes.ProductFlavor:<dimension>` (one per dim) | e.g. `service`→`demo`, `release`→`free` |
+| `org.gradle.usage` | `java-runtime` |
+| `com.android.build.api.attributes.AgpVersionAttr` | `8.6.1` |
+| `org.gradle.jvm.environment` | `android` |
+| `org.gradle.category` | `library` |
+| `org.jetbrains.kotlin.platform.type` | `androidJvm` |
+
+AGP registers ProductFlavor attrs under both a short alias (`service`) and the qualified form
+(`com.android.build.api.attributes.ProductFlavor:service`) — setting the **qualified form** is
+sufficient. **`KotlinPlatformType` must be set** to `androidJvm` (Grazel already does in-task; it
+is *not* settable from an init-script). If omitted, Kotlin-Multiplatform artifacts resolve to JVM
+stubs (`*-jvmstubs`) instead of the Android artifacts (`*-android`), silently changing the dep set.
 
 ```kotlin
 attribute(Attribute.of("com.android.build.api.attributes.BuildTypeAttr", BuildTypeAttr::class.java),
@@ -161,12 +187,33 @@ configurations.create("grazelExportAll<Variant>") {
 
 ### 4.4 Current code state (committed on this branch)
 - `ExperimentsExtension.aggregatedDependencyResolution` flag (default off).
-- `ResolvedComponentsVisitor.traverseProjectNodes` option (default false; lets a
-  root→subprojects→externals graph be descended). OFF path untouched.
+- `ResolvedComponentsVisitor.traverseProjectNodes` option (default false). Committed for the
+  root→subprojects→externals traversal, but the current resolver hardcodes `false` and does **not**
+  use it yet. OFF path untouched.
 - `AggregatedDependencyResolver` + `ComputeWorkspaceDependencies.computeFromResults` wired into
-  `ComputeWorkspaceDependenciesTask` behind the flag. **The current resolver is per-module**
-  (resolves each project's synthesized config and unions in memory) — it passes the oracle but is
-  O(P×V), no perf win. **It is a placeholder to be replaced** by the §3 aggregate approach.
+  `ComputeWorkspaceDependenciesTask` behind the flag.
+
+**What the committed `AggregatedDependencyResolver` actually is:** a complete (~300-line)
+**per-module** resolver — for each `(project, synthetic-variant)` it resolves that project's own
+`grazel<Variant>CompileClasspath`, max-version-merges across projects, and handles exclude rules +
+KSP. It **passes the §2.4 oracle** (correct output, including flavor buckets) but is **O(P×V) — no
+perf win**. It is *not* a stub; it is a correct fallback to be **superseded** by the §3 root-aggregation
+approach. (Note: the `ComputeWorkspaceDependenciesTask` KDoc currently claims "O(V) root
+configurations" — that comment is inaccurate; the resolver is O(P×V). Fix the comment when reworking it.)
+
+**Why it resolves per-module (the constraint a rewrite must respect):** the synthetic base buckets
+(`default`, `debug`) are *not* real AGP leaf variants. Asking a root config for `default`/`debug` of
+a flavored module throws `AmbiguousGraphVariantsException` unless you inject `BuildTypeAttr` + every
+`ProductFlavorAttr` (§4.2). The custom-attribute vehicle (§4.3) avoids this **for leaf variants only**.
+So root-aggregating the *synthetic base buckets* directly is the hard part — the §3 plan resolves
+**leaf** variants at the root and reconstructs the base buckets via set-diff, rather than aggregating
+the base buckets directly.
+
+**Direct-only emission (constraint — a rewrite WILL trip on this):** the resolver emits only **direct**
+deps per result, with transitives carried in `ResolvedDependency.dependencies`. If you instead emit all
+transitive components, `computeInternal`'s `reducedClasspath` step collapses every non-`default` bucket
+to empty (every transitive also appears in the large `default` closure and gets subtracted away),
+silently merging the whole graph into `default`. Keep emission direct-only.
 
 ### 4.5 File index
 | Concern | Path (under `grazel-gradle-plugin/src/main/kotlin/com/grab/grazel/`) |
@@ -211,8 +258,10 @@ Chronological record so the reasoning isn't re-derived. Conclusions superseded b
 
 ## 6. Next Steps
 
-1. Implement §3: replace the placeholder `AggregatedDependencyResolver` with custom-consumable-config
-   aggregation (one resolution per variant), warm-cache, resolution-graph API.
+1. Implement §3: supersede the current per-module `AggregatedDependencyResolver` (§4.4) with
+   custom-consumable-config aggregation (one resolution per variant), warm-cache, resolution-graph API.
+   Respect the §4.4 constraints (synthetic base buckets via leaf set-diff, not direct root aggregation;
+   direct-only emission).
 2. Reconstruct collapsed buckets via `extendsFrom` set-diff; feed into `computeFromResults`. Keep an
    open mind on the accumulation method (module-level dedup likely unnecessary — §3).
 3. Validate with the §2.4 semantic oracle (OFF vs ON `dependencies.json`), then measure wall-clock +
