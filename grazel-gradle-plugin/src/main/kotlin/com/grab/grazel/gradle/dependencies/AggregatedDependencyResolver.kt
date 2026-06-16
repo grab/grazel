@@ -22,7 +22,6 @@ import com.grab.grazel.gradle.dependencies.model.ResolveDependenciesResult
 import com.grab.grazel.gradle.dependencies.model.ResolveDependenciesResult.Companion.Scope.COMPILE
 import com.grab.grazel.gradle.dependencies.model.ResolveDependenciesResult.Companion.Scope.KSP
 import com.grab.grazel.gradle.dependencies.model.ResolvedDependency
-import com.grab.grazel.gradle.dependencies.model.VersionInfo
 import com.grab.grazel.gradle.hasKsp
 import com.grab.grazel.gradle.variant.Variant
 import com.grab.grazel.gradle.variant.VariantBuilder
@@ -32,35 +31,41 @@ import org.gradle.api.Project
 import org.gradle.api.artifacts.Configuration
 import org.gradle.api.artifacts.ExternalDependency
 import org.gradle.api.artifacts.component.ModuleComponentIdentifier
-import java.util.TreeMap
+import org.gradle.api.attributes.Attribute
 import java.util.TreeSet
 
 /**
- * Resolves all external dependencies for the migratable project set by iterating each
- * project's own grazel-synthesized classpath configurations per variant and aggregating the
- * results in memory via max-version selection.
+ * Resolves all external dependencies for the migratable project set by performing **one aggregated
+ * root resolution per synthetic variant** (O(V)) instead of the per-(project × variant) fan-out the
+ * OFF path uses.
  *
  * When [aggregatedDependencyResolution][com.grab.grazel.extension.ExperimentsExtension.aggregatedDependencyResolution]
  * is enabled, this class produces one [ResolveDependenciesResult] per synthetic variant name
- * (e.g. "default", "debug", "androidTest", "lint", "demoFree", etc.) which is then fed into
+ * (e.g. "default", "debug", "androidTest", "lint", flavor singles) which is then fed into
  * [ComputeWorkspaceDependencies.computeFromResults]. The downstream pipeline (grouping, version
- * arbitration, transitive flattening, override-target computation, KSP aggregation) is
- * unchanged — only the resolution source changes.
+ * arbitration, transitive flattening, override-target computation, KSP aggregation) is unchanged —
+ * only the resolution source changes.
  *
- * **Approach — per-project synthetic config aggregation:**
- * For each synthetic variant name, for each migratable project that exposes this variant,
- * we resolve the project's own grazel-synthesized compile classpath configuration
- * (e.g., `grazelDefaultCompileClasspath`, `grazelDebugCompileClasspath`). These configs are
- * already set up by [com.grab.grazel.gradle.variant.ConfigurationParsingVariant.classpathConfiguration]
- * and represent the per-module deps for that variant. We visit each config with
- * [ResolvedComponentsVisitor] (in default mode, without traverseProjectNodes), collect
- * direct+transitive external deps, then union them across all projects using max-version
- * selection — mirroring what [com.grab.grazel.gradle.dependencies.ComputeWorkspaceDependencies]
- * does in the OFF path but performing it at the variant-closure level.
+ * **Approach — custom-consumable-config root aggregation:**
+ * For each synthetic variant `V`, on every migratable project we create a *consumable* configuration
+ * (`grazelExportCompile<V>`) that `extendsFrom` that project's grazel-synthesized
+ * `grazel<V>CompileClasspath` (so it exposes the project's full declared closure for `V`, including
+ * `implementation` deps) and is tagged with a unique custom attribute `com.grab.grazel.export`. A
+ * single resolvable configuration on the root project (`grazelAggregatedCompile<V>`) carrying the
+ * same attribute depends on all participating projects and is resolved **once** — Gradle performs the
+ * cross-project conflict resolution natively in a single pass.
  *
- * This avoids the need to create a root-level aggregating configuration with project
- * dependencies (which requires precise AGP variant-disambiguation attributes and doesn't
- * work cleanly for synthetic/base variants that are not real AGP leaf variants).
+ * The custom attribute uniquely identifies the consumable, so it sidesteps AGP's
+ * `AmbiguousGraphVariantsException` entirely (no `BuildTypeAttr`/`ProductFlavorAttr` juggling) and
+ * still correctly separates `default` from `debug` because each project's underlying
+ * `grazel<V>CompileClasspath` extends the right declared scopes (e.g. `default` excludes
+ * `debugImplementation`).
+ *
+ * A dependency is emitted as **direct** iff its `shortId` is declared by some project for this
+ * variant (the union of the projects' declared compile deps), mirroring the per-module "direct"
+ * notion the OFF path uses. Only direct deps are emitted; transitives are carried in
+ * [ResolvedDependency.dependencies] and re-expanded by [ComputeWorkspaceDependencies]. (Emitting
+ * transitives here would make every non-`default` bucket collapse into `default`.)
  *
  * @param rootProject The Gradle root project.
  * @param migrationChecker Identifies which sub-projects are migratable.
@@ -72,11 +77,14 @@ internal class AggregatedDependencyResolver(
     private val variantBuilder: VariantBuilder,
 ) {
 
+    private val exportAttribute = Attribute.of("com.grab.grazel.export", String::class.java)
+
     /**
-     * Resolve all variants across all migratable projects by aggregating each project's
-     * own per-variant grazel-synthesized classpath configurations.
+     * Resolve all variants across all migratable projects via one aggregated root resolution per
+     * synthetic variant.
      *
-     * @return One [ResolveDependenciesResult] per unique variant name, covering COMPILE and KSP scopes.
+     * @return One [ResolveDependenciesResult] per unique synthetic variant name, covering COMPILE and
+     *   KSP scopes.
      */
     fun resolve(): List<ResolveDependenciesResult> {
         val migratableProjects = rootProject.subprojects
@@ -84,13 +92,10 @@ internal class AggregatedDependencyResolver(
 
         if (migratableProjects.isEmpty()) return emptyList()
 
-        // Build a map from variant-name → list of (project, variant) pairs.
-        // Only include "synthetic" variants (base / extends-only-from-defaults) because these
-        // are the bucket-defining variants that the OFF path also resolves independently.
-        // Leaf variants (e.g., demoFreeDebug) inherit their deps from these base variants and
-        // are excluded here — their deps are already captured in the base variant buckets.
-        // This mirrors [com.grab.grazel.tasks.internal.ResolveVariantDependenciesTask] which
-        // always resolves variants where `isBase || extendsOnlyFromDefaultVariants`.
+        // Map variant-name → list of (project, variant). Only "synthetic" variants (base /
+        // extends-only-from-defaults) — the bucket-defining variants the OFF path resolves. Leaf
+        // variants (e.g. demoFreeDebug) inherit their deps from these and are excluded. Mirrors
+        // [ResolveVariantDependenciesTask] which resolves `isBase || extendsOnlyFromDefaultVariants`.
         val variantToProjectVariants: Map<String, List<Pair<Project, Variant<*>>>> =
             migratableProjects
                 .flatMap { project ->
@@ -111,105 +116,133 @@ internal class AggregatedDependencyResolver(
                     valueTransform = { (_, projectVariant) -> projectVariant }
                 )
 
-        // Deterministic ordering: sort by variant name length then lexicographically,
-        // matching the VariantBuilder sort order.
+        // Deterministic ordering: sort by variant name length then lexicographically, matching the
+        // VariantBuilder sort order.
         return variantToProjectVariants.entries
             .sortedWith(compareBy({ it.key.length }, { it.key }))
             .map { (variantName, projectVariants) ->
-                resolveVariant(variantName, projectVariants)
+                ResolveDependenciesResult(
+                    variantName = variantName,
+                    dependencies = mapOf(
+                        COMPILE.name to resolveAggregatedCompileDeps(variantName, projectVariants),
+                        KSP.name to resolveKspDeps(projectVariants, variantName)
+                    )
+                )
             }
     }
 
     /**
-     * For [variantName], resolve each project's own compile classpath configuration for that
-     * variant and union the results via max-version selection.
-     *
-     * Each project's variant config is a grazel-synthesized resolvable config
-     * (e.g., `grazelDefaultCompileClasspath`, `grazelDebugCompileClasspath`) that already
-     * encodes the module's per-variant deps. We visit each config using [ResolvedComponentsVisitor]
-     * in default mode (no project-node traversal required — these configs already resolve only
-     * external deps), collect the results, and merge them with max-version deduplication.
-     *
-     * Direct/transitive distinction:
-     * - A dep is **direct** if it is a direct dependency of the config (i.e., appears in
-     *   `configuration.dependencies`). We identify direct deps by comparing shortIds against the
-     *   config's `allDependencies` set (external deps only), mirroring the per-module logic in
-     *   [com.grab.grazel.tasks.internal.ResolveVariantDependenciesTask].
-     * - All deps still carry their full `transitiveDeps` via [ResolvedDependency.dependencies],
-     *   used by [ComputeWorkspaceDependencies.computeInternal] to re-expand the classpath.
-     *
-     * Exclude rules are collected from each config's `ExternalDependency.excludeRules` and
-     * attached to the corresponding [ResolvedDependency], matching the per-module behavior.
+     * Resolve the compile deps for [variantName] across all [projectVariants] in ONE root
+     * resolution. Builds a consumable config per project (exposing its declared closure for this
+     * variant) plus a single root resolvable config that consumes them, then walks the resolved
+     * graph descending through the project nodes.
      */
-    private fun resolveVariant(
+    private fun resolveAggregatedCompileDeps(
         variantName: String,
         projectVariants: List<Pair<Project, Variant<*>>>
-    ): ResolveDependenciesResult {
-        // Aggregate compile deps across all projects for this variant name.
-        // Use a TreeMap keyed by shortId for max-version deduplication.
-        val compileDepsMap: TreeMap<String, ResolvedDependency> = TreeMap()
+    ): Set<ResolvedDependency> {
+        val attrValue = "compile-$variantName"
+        val consumableName = "grazelExportCompile${variantName.capitalize()}"
+
+        // Union of declared external deps across all projects = the "direct" set, plus their exclude
+        // rules. Collected from declared dependencies only (no resolution).
+        val directDepShortIds = hashSetOf<String>()
+        val excludeRulesMap = hashMapOf<String, MutableSet<ExcludeRule>>()
+        val participatingProjects = mutableListOf<Project>()
 
         for ((project, variant) in projectVariants) {
-            val perProjectDeps = resolveCompileDepsForVariant(project, variant)
-            for (dep in perProjectDeps) {
-                val existing = compileDepsMap[dep.shortId]
-                if (existing == null) {
-                    compileDepsMap[dep.shortId] = dep
-                } else {
-                    // Max-version selection, mirroring ComputeWorkspaceDependencies.maxVersionReducer
-                    compileDepsMap[dep.shortId] = if (
-                        VersionInfo(existing.version) >= VersionInfo(dep.version)
-                    ) existing.mergeWith(dep) else dep.mergeWith(existing)
+            val sourceConfigs = getCompileConfigurations(project, variant)
+            if (sourceConfigs.isEmpty()) continue
+
+            sourceConfigs.asSequence()
+                .flatMap { it.allDependencies }
+                .filterIsInstance<ExternalDependency>()
+                .forEach { dep ->
+                    val shortId = "${dep.group}:${dep.name}"
+                    directDepShortIds.add(shortId)
+                    val rules = dep.excludeRules.mapNotNull { rule ->
+                        @Suppress("USELESS_ELVIS") // Gradle lying, module and group can be null
+                        val group = rule.group ?: ""
+                        @Suppress("USELESS_ELVIS")
+                        val module = rule.module ?: ""
+                        if (group.isBlank() || module.isBlank()) null else ExcludeRule(group, module)
+                    }
+                    if (rules.isNotEmpty()) excludeRulesMap.getOrPut(shortId) { hashSetOf() }.addAll(rules)
                 }
+
+            // Consumable exposing this project's full declared closure for the variant, matched by
+            // the unique custom attribute only.
+            project.configurations.maybeCreate(consumableName).apply {
+                isCanBeConsumed = true
+                isCanBeResolved = false
+                sourceConfigs.forEach { extendsFrom(it) }
+                attributes.attribute(exportAttribute, attrValue)
+            }
+            participatingProjects += project
+        }
+
+        if (participatingProjects.isEmpty()) return emptySet()
+
+        // Single root resolvable config consuming every participating project's consumable.
+        val rootConfig = rootProject.configurations.maybeCreate(
+            "grazelAggregatedCompile${variantName.capitalize()}"
+        ).apply {
+            isCanBeResolved = true
+            isCanBeConsumed = false
+            attributes.attribute(exportAttribute, attrValue)
+            participatingProjects.forEach { p ->
+                dependencies.add(rootProject.dependencies.project(mapOf("path" to p.path)))
             }
         }
 
-        val kspDeps = resolveKspDeps(projectVariants, variantName)
+        val result = TreeSet<ResolvedDependency>()
+        try {
+            val root = rootConfig.incoming.resolutionResult.root
+            ResolvedComponentsVisitor().visit(
+                root = root,
+                logger = rootProject.logger::info,
+                traverseProjectNodes = true
+            ) { visitResult ->
+                val moduleVersion = visitResult.component.moduleVersion ?: return@visit null
+                val shortId = "${moduleVersion.group}:${moduleVersion.name}"
 
-        return ResolveDependenciesResult(
-            variantName = variantName,
-            dependencies = mapOf(
-                COMPILE.name to compileDepsMap.values.toSortedSet(),
-                KSP.name to kspDeps
+                // DIRECT-ONLY emission: only deps declared by some project for this variant.
+                // Transitives are carried in `dependencies` and re-expanded by computeInternal;
+                // emitting them here would collapse every non-default bucket into default.
+                if (shortId !in directDepShortIds) return@visit null
+
+                ResolvedDependency(
+                    id = visitResult.component.toString(),
+                    shortId = shortId,
+                    direct = true,
+                    version = moduleVersion.version,
+                    dependencies = visitResult.transitiveDeps.mapTo(TreeSet()) { depResult ->
+                        ResolvedDependency.createDependencyNotation(
+                            depResult.dependency,
+                            depResult.requiresJetifier,
+                            depResult.unjetifiedSource
+                        )
+                    },
+                    repository = visitResult.repository,
+                    excludeRules = excludeRulesMap[shortId] ?: emptySet(),
+                    requiresJetifier = visitResult.requiresJetifier,
+                )
+            }.let(result::addAll)
+        } catch (e: Exception) {
+            rootProject.logger.warn(
+                "Grazel[AggregatedDependencyResolver]: aggregated compile resolution failed for " +
+                    "$variantName: ${e.message}"
             )
-        )
-    }
-
-    /**
-     * Resolve [variant]'s compile classpath for [project] by visiting the grazel-synthesized
-     * compile configurations. Returns the set of [ResolvedDependency] for this (project, variant)
-     * pair, with direct/transitive distinction encoded in [ResolvedDependency.direct].
-     *
-     * We look up the grazel-synthesized config **by name** rather than calling
-     * `variant.compileConfiguration` (which would invoke `classpathConfiguration()` and attempt
-     * to call `setExtendsFrom` again — forbidden once a config has been locked for mutation after
-     * prior resolution in [com.grab.grazel.tasks.internal.ResolveVariantDependenciesTask]).
-     *
-     * Config name pattern: `grazel${variantName.capitalize()}CompileClasspath`
-     * (matches [com.grab.grazel.gradle.variant.ConfigurationParsingVariant.classpathConfiguration]).
-     * For JVM variants that use standard `compileClasspath` / `testCompileClasspath`, we fall
-     * back to those names.
-     */
-    private fun resolveCompileDepsForVariant(
-        project: Project,
-        variant: Variant<*>
-    ): Set<ResolvedDependency> {
-        // Look up existing grazel-synthesized config by the known naming convention.
-        // This avoids re-invoking classpathConfiguration() which would mutate the config.
-        val configs: List<Configuration> = getCompileConfigurations(project, variant)
-        if (configs.isEmpty()) return emptySet()
-
-        return resolveFromConfigs(project, variant.name, configs)
+        }
+        return result
     }
 
     /**
      * Find the resolvable compile configurations for [variant] on [project].
      *
-     * Strategy:
      * 1. Look up the grazel-synthesized config by name (`grazel${name.capitalize()}CompileClasspath`).
      * 2. For JVM projects' default/test variants, fall back to the standard Gradle config names.
-     * 3. If none found by name, try creating via `variant.compileConfiguration` — this may fail
-     *    if the config was already locked for mutation; if so, return empty.
+     * 3. Otherwise try `variant.compileConfiguration` — may fail if locked for mutation; then empty.
      */
     private fun getCompileConfigurations(
         project: Project,
@@ -218,17 +251,15 @@ internal class AggregatedDependencyResolver(
         val grazelConfigName = "grazel${variant.name.capitalize()}CompileClasspath"
         val byName = project.configurations.findByName(grazelConfigName)
             ?: when (variant.name) {
-                // JVM variants use standard Gradle names, not grazel-synthesized ones
                 "default" -> project.configurations.findByName("compileClasspath")
                 "test" -> project.configurations.findByName("testCompileClasspath")
                 else -> null
             }
 
-        if (byName != null && byName.isCanBeResolved) return listOf(byName)
+        if (byName != null) return listOf(byName)
 
-        // Fallback: create via variant API (may throw if config is locked for mutation)
         return try {
-            variant.compileConfiguration.filter { it.isCanBeResolved }
+            variant.compileConfiguration.toList()
         } catch (e: Exception) {
             rootProject.logger.info(
                 "Grazel[AggregatedDependencyResolver]: could not get compileConfiguration " +
@@ -239,103 +270,11 @@ internal class AggregatedDependencyResolver(
     }
 
     /**
-     * Resolve all external deps reachable through [configs] and return them as [ResolvedDependency].
-     *
-     * Direct deps are identified by comparing against the configs' `allDependencies` (external only).
-     * Exclude rules are extracted from direct [ExternalDependency] declarations.
-     */
-    private fun resolveFromConfigs(
-        project: Project,
-        variantName: String,
-        configs: List<Configuration>
-    ): Set<ResolvedDependency> {
-        // Collect direct dependency shortIds from the configs' declared dependencies.
-        val directDepShortIds: Set<String> = configs
-            .asSequence()
-            .flatMap { it.allDependencies }
-            .filterIsInstance<ExternalDependency>()
-            .map { "${it.group}:${it.name}" }
-            .toSet()
-
-        // Collect exclude rules per shortId from direct external deps.
-        val excludeRulesMap: Map<String, Set<ExcludeRule>> = configs
-            .asSequence()
-            .flatMap { it.allDependencies }
-            .filterIsInstance<ExternalDependency>()
-            .groupBy { "${it.group}:${it.name}" }
-            .mapValues { (_, deps) ->
-                deps.flatMap { dep ->
-                    dep.excludeRules.mapNotNull { rule ->
-                        @Suppress("USELESS_ELVIS") // Gradle lying, module and group can be null
-                        val group = rule.group ?: ""
-                        @Suppress("USELESS_ELVIS")
-                        val module = rule.module ?: ""
-                        if (group.isBlank() || module.isBlank()) null
-                        else ExcludeRule(group, module)
-                    }
-                }.toSet()
-            }.filterValues { it.isNotEmpty() }
-
-        val result = TreeSet<ResolvedDependency>()
-
-        for (config in configs) {
-            try {
-                val root = config.incoming.resolutionResult.root
-                val visited = ResolvedComponentsVisitor().visit(
-                    root = root,
-                    logger = project.logger::info,
-                    traverseProjectNodes = false
-                ) { visitResult ->
-                    val component = visitResult.component
-                    val moduleVersion = component.moduleVersion ?: return@visit null
-                    val shortId = "${moduleVersion.group}:${moduleVersion.name}"
-                    val isDirect = shortId in directDepShortIds
-
-                    // Only emit DIRECT deps — transitives are encoded in ResolvedDependency.dependencies.
-                    // This mirrors the OFF path (ResolveVariantDependenciesTask with removeTransitives=true):
-                    // the per-variant JSON files only contain direct deps; computeInternal's flattenClasspath
-                    // step re-expands them from the ResolvedDependency.dependencies field.
-                    // Including transitives here would make reducedClasspath["variant"] = empty for all
-                    // non-default variants (since all transitives appear in the huge default classpath),
-                    // collapsing the entire dependency graph into just the default bucket.
-                    if (!isDirect) return@visit null
-
-                    ResolvedDependency(
-                        id = component.toString(),
-                        shortId = shortId,
-                        direct = true,
-                        version = moduleVersion.version,
-                        dependencies = visitResult.transitiveDeps.mapTo(TreeSet()) { depResult ->
-                            ResolvedDependency.createDependencyNotation(
-                                depResult.dependency,
-                                depResult.requiresJetifier,
-                                depResult.unjetifiedSource
-                            )
-                        },
-                        repository = visitResult.repository,
-                        excludeRules = excludeRulesMap.getOrDefault(shortId, emptySet()),
-                        requiresJetifier = visitResult.requiresJetifier,
-                    )
-                }
-                result.addAll(visited)
-            } catch (e: Exception) {
-                project.logger.warn(
-                    "Grazel[AggregatedDependencyResolver]: compile resolution failed for " +
-                        "${project.path}/$variantName: ${e.message}"
-                )
-            }
-        }
-
-        return result
-    }
-
-    /**
      * Collect KSP processor dependencies across all [projectVariants] for [variantName].
      *
-     * KSP processor class name extraction requires downloading per-project JARs and reading
-     * their service files. We collect KSP deps from each project's existing KSP classpath
-     * configuration for this variant, mirroring the per-project logic in
-     * [com.grab.grazel.tasks.internal.ResolveVariantDependenciesTask].
+     * KSP processor class-name extraction needs per-project JAR download, so this stays per-project
+     * (mirroring [com.grab.grazel.tasks.internal.ResolveVariantDependenciesTask]); KSP deps are
+     * aggregated downstream by [ComputeWorkspaceDependencies].
      */
     private fun resolveKspDeps(
         projectVariants: List<Pair<Project, Variant<*>>>,
@@ -353,7 +292,6 @@ internal class AggregatedDependencyResolver(
             }
             if (kspConfigs.isEmpty()) continue
 
-            // Collect direct KSP dependency shortIds without triggering resolution
             val directDepShortIds: Set<String> = kspConfigs
                 .asSequence()
                 .flatMap { it.allDependencies }
@@ -363,7 +301,6 @@ internal class AggregatedDependencyResolver(
 
             if (directDepShortIds.isEmpty()) continue
 
-            // Download only direct KSP processor JARs (for class name extraction)
             val artifactResults: List<Pair<String, java.io.File>> = kspConfigs.flatMap { cfg ->
                 cfg.incoming
                     .artifactView {
@@ -387,7 +324,6 @@ internal class AggregatedDependencyResolver(
                     artifactMapping
                 )
 
-            // Resolve KSP graph and collect direct processor entries
             kspConfigs.forEach { cfg ->
                 try {
                     val root = cfg.incoming.resolutionResult.root
@@ -421,16 +357,3 @@ internal class AggregatedDependencyResolver(
         return kspDeps
     }
 }
-
-/**
- * Merge [other] into this dependency, taking the higher-version entry's core fields
- * while combining direct, dependencies, excludeRules, jetifierSource, overrideTarget, processorClass.
- */
-private fun ResolvedDependency.mergeWith(other: ResolvedDependency): ResolvedDependency = copy(
-    direct = direct || other.direct,
-    dependencies = (dependencies + other.dependencies).toSortedSet(),
-    jetifierSource = jetifierSource ?: other.jetifierSource,
-    overrideTarget = overrideTarget ?: other.overrideTarget,
-    excludeRules = (excludeRules + other.excludeRules).toSortedSet(compareBy(ExcludeRule::toString)),
-    processorClass = processorClass ?: other.processorClass,
-)
