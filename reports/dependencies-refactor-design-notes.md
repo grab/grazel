@@ -530,6 +530,42 @@ DECISION NEEDED.
 
 ---
 
+## Attempt 3 — DECISIVE FINDING: root aggregation can't deliver the perf goal (2026-06-16)
+
+Implemented b1 (reconstruct collapsed buckets). The result **passes the oracle** (default:163,
+debug:29, androidTest:5, lint:2 — exact semantic match) and is GENUINE (really resolves
+`grazel{Variant}CompileClasspath` per project, not re-reading JSONs).
+
+**BUT it does not meet the objective.** `AggregatedDependencyResolver.resolve()` iterates
+`migratableProjects × syntheticVariants`, resolves EACH project's own synthesized compile
+config per variant, and unions in memory. That is **still O(P×V) resolutions** — the very same
+per-module configs `ResolveVariantDependenciesTask` already resolves on the OFF path. It is NOT
+root aggregation; it is per-module resolution re-inlined into one task with an in-memory union.
+No wall-clock win; memory likely WORSE (holds all per-project results at once instead of the
+JSON round-trip).
+
+**Why this is forced (the architectural truth, now empirically confirmed):** the bucket-defining
+variants are the SYNTHETIC base variants (`default`, `debug`, `androidTest`, `lint`). Each is
+resolved from a module's OWN `grazel*CompileClasspath` config (which extends that module's
+`implementation`/`api`). There is NO root-aggregated analog:
+- A root config asking for `default`/`debug` of a flavored module → `AmbiguousGraphVariantsException`.
+- Cross-project you cannot `extendsFrom` another module's internal resolvable config.
+So the base buckets are **intrinsically per-module**. Root aggregation only ever helps for
+LEAF-variant-unique deps — which in real Grazel projects are usually minimal/empty (in the
+sample: zero). ⟹ **Approach C / root aggregation cannot reduce the resolution count for
+Grazel's bucket model.** The O(V) wall-clock dream is blocked by the (sound) synthetic-variant
+bucket design.
+
+**Consequence:** the only genuinely available win is **Approach B** — keep per-module
+resolution, make the MERGE/accumulation streaming to cut peak memory (no wall-clock gain). Or
+accept no change. The aggregated path committed so far is correctness-equivalent but pointless
+for perf; it should NOT be shipped as "aggregation".
+
+**Recommendation to author:** pivot to Approach B (memory-only), OR stop here. Pursuing root
+aggregation further is chasing a goal the bucket model forbids.
+
+---
+
 ## Resume prompt (for a fresh session)
 > Read `reports/dependencies-refactor-design-notes.md` and its companion
 > `reports/dependency-resolution-to-workspace.md`. We're de-risking Approach A — run THE
