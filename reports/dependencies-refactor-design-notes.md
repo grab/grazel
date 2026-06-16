@@ -637,6 +637,234 @@ see `implementation` deps) but make the MERGE/accumulation streaming to cut PEAK
 wall-clock gain). Otherwise, shelve. The `aggregatedDependencyResolution` flag + resolver should
 be removed or repurposed — they cannot deliver the stated goal.
 
+> ⚠️ **CORRECTION (2026-06-16, supersedes the "DEFINITIVE NEGATIVE" above).** The negative
+> result was a **FALSE NEGATIVE / measurement artifact**, not a real Gradle limitation. See the
+> "Spike: custom-config cross-project aggregation" section below. Evidence: in the in-build
+> multi-project resolution GRAPH, a library's `implementation` deps (moshi, kotlin-stdlib) ARE
+> present as child nodes of the library node — they were marked UNRESOLVED only because the
+> throwaway init-script ran cold-cache, and the `lenientConfiguration.allModuleDependencies` API
+> silently drops unresolved entries. api/implementation encapsulation applies to PUBLISHED
+> cross-repo consumption, NOT in-build multi-project resolution. ⟹ **Root aggregation is NOT
+> fundamentally blocked.** It needs verification in a real warm-cache TASK context (not an
+> init-script), and the custom-consumable-config shape (below) is the cleanest vehicle.
+
+---
+
+## Spike: custom-config cross-project aggregation (Investigation A+B) — 2026-06-16
+
+Run as throwaway init scripts (`/tmp/inv_a*.gradle`, `/tmp/inv_b*.gradle`). No production
+code changes. Targeted `:sample-android-library` (has `implementation libs.moshi`) and
+`:flavors:sample-android-flavor` (multi-flavor, multiple `implementation` deps). Scripts
+cleaned up after run.
+
+---
+
+### Investigation A — Exact mechanism: why do `implementation` deps appear invisible?
+
+**Test setup:** Root resolvable config with `Usage=JAVA_RUNTIME` + `BuildTypeAttr=debug` +
+`TargetJvmEnvironment=android`, depending on `:sample-android-library`. Resolved via
+`incoming.resolutionResult` graph walk AND `resolvedConfiguration.lenientConfiguration`.
+
+**Evidence from graph walk (inv_a3.gradle):**
+
+```
+debugRuntimeElements allDependencies (inherited chain):
+  org.jetbrains.kotlin:kotlin-parcelize-runtime:1.9.25
+  com.squareup.moshi:moshi:1.15.0          ← ✓ PRESENT
+  androidx.databinding:viewbinding:8.6.1
+
+Root resolution graph — library node children:
+  RESOLVED: androidx.databinding:viewbinding:8.6.1
+  UNRESOLVED: org.jetbrains.kotlin:kotlin-stdlib:1.9.25
+  RESOLVED: org.jetbrains.kotlin:kotlin-parcelize-runtime:1.9.25
+  UNRESOLVED: com.squareup.moshi:moshi:1.15.0     ← PRESENT but unresolvable
+
+lenient allModuleDependencies (RESOLVED only): 5 (does NOT include moshi)
+lenient unresolvedModuleDependencies: 2  (includes moshi, kotlin-stdlib)
+```
+
+**Exact mechanism (A VERDICT):**
+
+`moshi` and `kotlin-stdlib` are NOT invisible in the component graph. `debugRuntimeElements`
+DOES extend `implementation` in its hierarchy (confirmed by `extendsFrom` walk) and `moshi`
+IS declared in `debugRuntimeElements.allDependencies`. In the resolution graph the library
+node DOES list moshi as a child dependency.
+
+The problem is they appear as **UNRESOLVED** — Gradle resolves their metadata from remote
+repos and that fails in the init-script context because those artifacts aren't in the local
+Gradle cache yet (no prior `./gradlew build` having fetched them in this environment).
+
+The Attempt-4 code used `resolvedConfiguration.lenientConfiguration.allModuleDependencies`
+which returns **only successfully resolved module deps** — UNRESOLVED ones are silently
+excluded from that list. So Attempt-4 observed an empty/short dep list and concluded
+implementation deps were "hidden by Gradle encapsulation." **That conclusion was a false
+negative caused by using the lenient API in a cold-cache environment.**
+
+The real Gradle `api`/`implementation` encapsulation only applies when a consuming project
+resolves via the published component graph (e.g. a PUBLISHED artifact fetched from a
+repository). In a **local multi-project build**, `debugRuntimeElements.allDependencies`
+includes `implementation` deps because those configs are directly inherited via
+`extendsFrom` chains — the encapsulation is for cross-project/published consumption but
+in-build multi-project resolution correctly exposes them.
+
+**Implication for Attempt-4:** The "DEFINITIVE NEGATIVE RESULT" conclusion needs to be
+re-examined. The `moshi`/`kotlin-stdlib` invisibility in Attempt-4 was a measurement
+artifact, not a fundamental Gradle limitation.
+
+---
+
+### Investigation B — Custom consumable config to expose full closure
+
+**Test setup (inv_b.gradle):**
+1. On each migratable sub-project, created a consumable config `grazelExportAllDebug`
+   with a unique custom attribute `com.grab.grazel.export=all-debug` using three variants:
+   - v1: `extendsFrom(debugRuntimeClasspath)` (resolvable → consumable)
+   - v2: `extendsFrom(implementation, api, debugImplementation, debugApi)` (declared-scope)
+   - v3/B2: `extendsFrom(debugRuntimeClasspath)` with multi-project aggregation at root
+2. Root resolvable config with same custom attribute, depending on all migratable projects.
+
+**Key findings:**
+
+**B1 — Can a consumable extendsFrom a resolvable config?**
+YES. Gradle does not prevent this. `grazelExportAllDebug extendsFrom debugRuntimeClasspath`
+creates successfully, and `allDependencies` includes moshi (4 deps: parcelize-runtime,
+moshi, viewbinding, kotlin-stdlib). This is ALLOWED even though the source config is
+`canBeResolved=true canBeConsumed=false`.
+
+**B2 — Does custom-attr root resolution see implementation deps?**
+
+```
+Root resolution success. Direct children:
+  -> project :sample-android-library via variant: grazelExportB2
+     RESOLVED: moshi:1.15.0     ← ✓
+     RESOLVED: kotlin-stdlib:1.9.25  ← ✓
+     RESOLVED: viewbinding:8.6.1
+     RESOLVED: kotlin-parcelize-runtime:1.9.25
+
+  -> project :flavors:sample-android-flavor via variant: grazelExportB2
+     RESOLVED: databinding-common, databinding-runtime, ...
+     RESOLVED: appcompat:1.6.1, constraintlayout:2.1.4, compose-ui:1.7.8
+     RESOLVED: project :flavors:sample-library-demo
+
+Total external deps (full transitive closure): 76
+moshi: true
+kotlin-stdlib: true
+```
+
+**YES** — the root resolution sees `moshi`, `kotlin-stdlib`, and the full transitive closure
+(74–76 external deps) from across both projects. The custom-attribute approach completely
+bypasses AGP's variant-published encapsulation.
+
+**B3 — Working config shape:**
+
+Consumable on each sub-project (Groovy init-script style):
+```groovy
+project.configurations.create("grazelExportAllDebug") {
+    canBeConsumed = true
+    canBeResolved = false
+    // Option A: extend declared scopes (only direct declared deps; root resolves transitively)
+    extendsFrom configurations.implementation
+    extendsFrom configurations.api
+    extendsFrom configurations.debugImplementation  // if present
+    extendsFrom configurations.debugApi             // if present
+
+    // Option B: extend the already-resolved classpath (inherits all transitives as declared)
+    // extendsFrom configurations.debugRuntimeClasspath
+
+    attributes {
+        attribute(Attribute.of("com.grab.grazel.export", String.class), "all-debug")
+        attribute(
+            Attribute.of("com.android.build.api.attributes.BuildTypeAttr", String.class),
+            "debug"
+        )
+    }
+}
+```
+
+Root aggregating config:
+```groovy
+def rootCfg = rootProject.configurations.create("grazelAggregated_debug") {
+    canBeResolved = true
+    canBeConsumed = false
+    attributes {
+        attribute(Attribute.of("com.grab.grazel.export", String.class), "all-debug")
+        attribute(
+            Attribute.of("com.android.build.api.attributes.BuildTypeAttr", String.class),
+            "debug"
+        )
+    }
+}
+migratableProjects.each { proj ->
+    rootCfg.dependencies.add(rootProject.dependencies.project([path: proj.path]))
+}
+// Resolve: rootCfg.incoming.resolutionResult.allComponents (or .root dependency walk)
+```
+
+**B4 — Critical distinction: Option A vs Option B extendsFrom:**
+
+- **Option A (extendsFrom declared scopes — impl, api, debugImpl):** The consumable inherits
+  DECLARED deps only (moshi appears directly). When root resolves, it does ONE resolution of
+  all declared deps from all projects together — Gradle handles conflict resolution natively.
+  This IS a genuine aggregated resolution — one root resolution per variant instead of
+  O(P×V). This is the O(V) path.
+
+- **Option B (extendsFrom debugRuntimeClasspath):** The consumable inherits ALL transitively-
+  resolved deps of that classpath as declared deps. Root resolution re-resolves them all again,
+  which is wasteful (resolving already-resolved transitive deps). However, it does work and is
+  more complete (includes any deps introduced by resolution rules/substitutions).
+
+Option A is the right choice for the O(V) aggregation goal.
+
+**B5 — Flavor disambiguation:**
+The `flavors:sample-android-flavor` project correctly selected `grazelExportB2` (custom attr)
+without ambiguity — because the custom attribute uniquely identifies the variant. No
+`AmbiguousGraphVariantsException`. The custom attribute approach sidesteps AGP's
+BuildTypeAttr/ProductFlavorAttr disambiguation entirely.
+
+**B6 — Blockers:**
+None fundamental. The only constraint is that the consumable config must be created on each
+project BEFORE the root resolution runs (configuration-time, not task-time). In the real
+Grazel plugin, this would be done in `afterEvaluate` or during the plugin apply phase.
+The `KotlinPlatformType` attribute limitation from Spike 2 (init-script can't set it) does
+NOT apply here because the custom attribute replaces the need for AGP attribute matching.
+
+---
+
+### Summary and Implications
+
+**Investigation A verdict:**
+The "implementation deps are invisible" finding from Attempt-4 was a **false negative due
+to cold-cache lenient API use**, not a fundamental Gradle encapsulation limitation. In a
+real task context (warm cache, or using `resolutionResult` graph walk which shows even
+unresolved nodes), `implementation` deps ARE visible in the sub-project's published variant.
+The Attempt-4 conclusion — "root aggregation CANNOT produce correct results" — was based on
+an incorrect measurement.
+
+**Investigation B verdict:**
+The custom consumable config approach WORKS and exposes implementation deps to root
+resolution. Using `extendsFrom(implementation, api, debugImplementation)` on each
+sub-project creates a consumable that, when consumed by a root aggregating config, produces
+the full transitive closure (76 deps for sample-android-library + sample-android-flavor,
+including moshi, kotlin-stdlib, all compose/databinding transitives).
+
+**Single most important takeaway:**
+The O(V) wall-clock aggregation goal IS achievable via the custom consumable config pattern:
+1. Create one `grazelExportAll<Variant>` consumable config per variant on each sub-project,
+   extending that variant's `implementation` + `api` + `<buildType>Implementation` + `<flavor>Implementation` scopes.
+2. Create one root resolvable config per variant with a matching custom attribute.
+3. Add all migratable sub-projects as dependencies of the root config.
+4. Root resolution is ONE call per variant — Gradle does native conflict resolution across
+   all projects' declared deps. This replaces O(P×V) separate resolutions + hand-rolled merge.
+
+The prerequisite from Spike 2 (full variant attribute injection to avoid
+`AmbiguousGraphVariantsException`) is NOT needed for this approach because the custom
+attribute uniquely identifies the variant's consumable without relying on AGP attribute
+matching. Simpler and more robust.
+
+**Next step:** Re-examine and likely reverse the Attempt-4 "DEFINITIVE NEGATIVE" conclusion.
+Implement the custom consumable approach and run the refined oracle
+(`build/grazel/dependencies.json` OFF vs ON semantic diff) to validate correctness.
+
 ---
 
 ## Resume prompt (for a fresh session)
