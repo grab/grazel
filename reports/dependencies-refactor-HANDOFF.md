@@ -40,20 +40,27 @@ NOT raw bytes (parallelStream ordering). Warm the cache first.
   not just an oracle "PASS". Require honest residuals.
 - This final step resists fire-and-forget delegation — build it directly/iteratively with the oracle loop.
 
-## STATUS (after 3 O(V) iterations — all fail; STOP blind iteration, INSTRUMENT next)
-Three iterations of the custom-consumable O(V) approach all fail the oracle, and iteration 3
-**regressed** (default bucket 19→0). Blind edit→oracle cycles are thrashing — guessing at Gradle
-attribute-matching without seeing the actual resolution. **The next session must add instrumentation
-FIRST** (log per variant: root config requested attrs; selected consumable variant per project dep
-or the selection failure; resolved-graph node/child counts; whether grazelExportCompile<V> was
-created + its outgoing deps) to learn WHY buckets come back empty — before any more code changes.
-Full iteration log + hypotheses: `/tmp/grazel-dep-refactor-worklog.md`.
+## STATUS (O(V) converging — config-targeting breakthrough; ONE clear blocker left)
+The custom-consumable O(V) approach now largely works after targeting the consumable BY
+CONFIGURATION NAME (`project(path, configuration:"grazelExportCompile<V>")`) — this forces selection
+of our consumable over the project's standard `apiElements`. Current oracle (relaxed bar): all 4
+buckets populated; `lint` perfect (2/2); `androidTest` matches all 5; `debug` 18/29; `default` 30/163.
 
-**KNOWN-GOOD FALLBACK:** the per-module resolver at commit `9c714fe` PASSES the oracle (correct
-output, but O(P×V) — no perf win). If O(V) proves too costly to land, that is the shippable option
-(behind the flag, honestly documented). The two failing leads: export-attr-only → shallow transitive
-resolution; export+standard-attrs → variant selection breaks. Likely a real Android+JVM single-config
-tension (may need per-ecosystem root configs). HEAD currently has iter2 (regressed) committed as WIP.
+**ONE remaining blocker:** `default` & `test` aggregate BOTH Android and JVM projects, but a single
+root config carries one ecosystem attribute set. For `default` the donor heuristic picked JVM attrs
+(`standard-jvm`), so the 4 Android projects come back UNRESOLVED → the 133 missing `default` deps
+(moshi/dagger/compose). `debug` works because all its projects are Android.
+
+**NEXT FIX (clear, not guesswork): per-ecosystem root configs.** Group participating projects by
+ecosystem (source config's `org.gradle.jvm.environment` = `android` vs `standard-jvm`/absent); create
+one root config per ecosystem group with that group's donor attrs, target consumables by name,
+resolve, union. O(V × ecosystems) ≈ O(2V), still ≪ O(P×V). Then reconcile the secondary tail
+(`androidTest` 19 only-ON over-inclusion; new `test` bucket; 2 `debug` version mismatches).
+Full iteration log: `/tmp/grazel-dep-refactor-worklog.md`. Temporary `Grazel[AggDbg]` instrumentation
+is in the resolver (remove before finishing).
+
+**KNOWN-GOOD FALLBACK:** the per-module resolver at commit `9c714fe` PASSES the oracle (correct, but
+O(P×V) — no perf win). HEAD currently has the config-targeting WIP (best version so far).
 
 ## (historical) Current attempt state (O(V) v1 — committed, FAILS oracle)
 An O(V) custom-consumable-config aggregation is committed in `AggregatedDependencyResolver.kt`
