@@ -579,6 +579,24 @@ be validated against a richer multi-build-type scenario?
 
 ---
 
+## Flavor bucketing CONFIRMED (2026-06-16)
+
+Author flagged: flavor buckets were never exercised (zero unique flavor deps in sample).
+Test: added `demoImplementation "com.google.code.gson:gson:2.10.1"` to
+`flavors/sample-android-flavor`. Result: OFF produced a distinct non-empty `demo` bucket
+(gson, direct, repo MavenRepo). Oracle OFF vs ON: IDENTICAL across all buckets
+(default:163, debug:29, androidTest:5, lint:2, demo:1), gson in `demo` with byte-identical
+metadata both paths. ⟹ flavor-dimension bucketing is correct in the current ON path. (Sample
+change reverted.)
+
+CAVEAT: this validates the CURRENT committed ON path, which is still per-module (attempt 3) —
+correctness baseline, NOT the O(V) perf goal. Next: expand sample to a release build type
+(author approved) to (a) validate bucketing across the full matrix and (b) enable building +
+proving TRUE leaf-aggregation (root config per leaf variant → base buckets via set-reconstruction),
+which is where the real wall-clock/memory win lives.
+
+---
+
 ## Resume prompt (for a fresh session)
 > Read `reports/dependencies-refactor-design-notes.md` and its companion
 > `reports/dependency-resolution-to-workspace.md`. We're de-risking Approach A — run THE
