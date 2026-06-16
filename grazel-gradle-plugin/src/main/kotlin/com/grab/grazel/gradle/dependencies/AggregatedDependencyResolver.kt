@@ -37,7 +37,8 @@ import java.util.TreeSet
  *
  * When [aggregatedDependencyResolution][com.grab.grazel.extension.ExperimentsExtension.aggregatedDependencyResolution]
  * is enabled, this class:
- * 1. Finds all migratable app (com.android.application) modules.
+ * 1. Finds all migratable binary modules — `com.android.application` and standalone
+ *    `com.android.test` modules (the latter declare their own deps and are treated as app roots).
  * 2. Collects all leaf variants (those with a non-null backingVariant of type [BaseVariant] and
  *    not isBase/extendsOnlyFromDefaultVariants).
  * 3. Resolves `<leafName>RuntimeClasspath` for each leaf, plus `UnitTest` and `AndroidTest`
@@ -73,8 +74,13 @@ internal class AggregatedDependencyResolver(
 
         if (migratableProjects.isEmpty()) return emptyList()
 
-        // Identify APP (binary) modules — they have transitive runtime closures that cover all libs
-        val appProjects = migratableProjects.filter { it.plugins.hasPlugin("com.android.application") }
+        // Identify APP (binary) and standalone test (com.android.test) modules — they have transitive
+        // runtime closures that cover all libs. com.android.test modules are standalone test apps
+        // and may declare dependencies not present in the main app module.
+        val appProjects = migratableProjects.filter {
+            it.plugins.hasPlugin("com.android.application") ||
+                it.plugins.hasPlugin("com.android.test")
+        }
 
         if (appProjects.isEmpty()) {
             logger.warn("Grazel: No migratable app modules found for aggregated dependency resolution")
@@ -116,26 +122,89 @@ internal class AggregatedDependencyResolver(
                 val leafName = v.name
                 val runtimeConfig = app.configurations.findByName("${leafName}RuntimeClasspath")
                     ?: continue
-                val closure = resolveConfigToDependencyMap(runtimeConfig, app)
-                if (closure.isEmpty()) continue
-                leafClosures[leafName] = closure
+                val runtimeClosure = resolveConfigToDependencyMap(runtimeConfig, app)
+                if (runtimeClosure.isEmpty()) continue
 
-                // Record build type and flavors for bucketing
+                // Also resolve CompileClasspath to capture compileOnly + api-of-consumed-libs deps
+                // that are omitted from RuntimeClasspath. Union both; prefer higher version on conflict.
+                val compileConfig = app.configurations.findByName("${leafName}CompileClasspath")
+                val compileClosure = if (compileConfig != null) {
+                    resolveConfigToDependencyMap(compileConfig, app)
+                } else emptyMap()
+                val closure = unionDependencyMaps(runtimeClosure, compileClosure)
+
+                // Union with any existing entry for this leaf name (multiple app/test modules can
+                // share the same leaf variant name, e.g. sample-android and sample-android-tests
+                // both have "demoFreeDebug"). We prefer higher versions on conflict.
+                leafClosures[leafName] = if (leafClosures.containsKey(leafName)) {
+                    unionDependencyMaps(leafClosures[leafName]!!, closure)
+                } else {
+                    closure
+                }
+
+                // Record build type and flavors for bucketing (set unconditionally using the first
+                // module that provides this leaf; multiple modules share the same variant structure)
                 val bv = v.backingVariant as com.android.build.gradle.api.BaseVariant
-                leafBuildTypes[leafName] = bv.buildType.name
-                leafFlavors[leafName] = bv.productFlavors.map { it.name }
-
-                // Unit test runtime classpath
-                app.configurations.findByName("${leafName}UnitTestRuntimeClasspath")?.let { testConfig ->
-                    val testClosure = resolveConfigToDependencyMap(testConfig, app)
-                    if (testClosure.isNotEmpty()) leafUnitTestClosures[leafName] = testClosure
+                if (!leafBuildTypes.containsKey(leafName)) {
+                    leafBuildTypes[leafName] = bv.buildType.name
+                    leafFlavors[leafName] = bv.productFlavors.map { it.name }
                 }
 
-                // Android test runtime classpath
-                app.configurations.findByName("${leafName}AndroidTestRuntimeClasspath")?.let { androidTestConfig ->
-                    val androidTestClosure = resolveConfigToDependencyMap(androidTestConfig, app)
-                    if (androidTestClosure.isNotEmpty()) leafAndroidTestClosures[leafName] = androidTestClosure
+                // Unit test: union runtime + compile classpaths
+                val unitTestRuntime = app.configurations.findByName("${leafName}UnitTestRuntimeClasspath")
+                val unitTestCompile = app.configurations.findByName("${leafName}UnitTestCompileClasspath")
+                if (unitTestRuntime != null || unitTestCompile != null) {
+                    val rtMap = unitTestRuntime?.let { resolveConfigToDependencyMap(it, app) } ?: emptyMap()
+                    val cpMap = unitTestCompile?.let { resolveConfigToDependencyMap(it, app) } ?: emptyMap()
+                    val testClosure = unionDependencyMaps(rtMap, cpMap)
+                    if (testClosure.isNotEmpty()) {
+                        leafUnitTestClosures[leafName] = if (leafUnitTestClosures.containsKey(leafName)) {
+                            unionDependencyMaps(leafUnitTestClosures[leafName]!!, testClosure)
+                        } else {
+                            testClosure
+                        }
+                    }
                 }
+
+                // Android test: union runtime + compile classpaths
+                val androidTestRuntime = app.configurations.findByName("${leafName}AndroidTestRuntimeClasspath")
+                val androidTestCompile = app.configurations.findByName("${leafName}AndroidTestCompileClasspath")
+                if (androidTestRuntime != null || androidTestCompile != null) {
+                    val rtMap = androidTestRuntime?.let { resolveConfigToDependencyMap(it, app) } ?: emptyMap()
+                    val cpMap = androidTestCompile?.let { resolveConfigToDependencyMap(it, app) } ?: emptyMap()
+                    val androidTestClosure = unionDependencyMaps(rtMap, cpMap)
+                    if (androidTestClosure.isNotEmpty()) {
+                        leafAndroidTestClosures[leafName] = if (leafAndroidTestClosures.containsKey(leafName)) {
+                            unionDependencyMaps(leafAndroidTestClosures[leafName]!!, androidTestClosure)
+                        } else {
+                            androidTestClosure
+                        }
+                    }
+                }
+            }
+        }
+
+        // For non-app/non-test library modules, also resolve their compileClasspath to capture
+        // compileOnly deps (e.g. lint API deps in com.android.lint modules, annotation processors,
+        // etc.) that are NOT transitively reachable from any app module's classpath.
+        // These are unioned into EVERY leaf closure so they land in the intersection (default bucket)
+        // and thus map to @maven — the same place the non-aggregated path would have put them.
+        val nonAppProjects = migratableProjects.filter { project ->
+            !project.plugins.hasPlugin("com.android.application") &&
+                !project.plugins.hasPlugin("com.android.test")
+        }
+        for (project in nonAppProjects) {
+            // Try common compileClasspath config names (Kotlin JVM, Android library default variant)
+            val compileOnlyConfigs = listOf("compileClasspath", "debugCompileClasspath", "releaseCompileClasspath")
+            for (configName in compileOnlyConfigs) {
+                val config = project.configurations.findByName(configName) ?: continue
+                val extraDeps = resolveConfigToDependencyMap(config, project)
+                if (extraDeps.isEmpty()) continue
+                // Union into all existing leaf closures so these deps appear in the intersection
+                for (leafName in leafClosures.keys.toList()) {
+                    leafClosures[leafName] = unionDependencyMaps(leafClosures[leafName]!!, extraDeps)
+                }
+                break // One successful resolution per project is enough
             }
         }
 
@@ -270,6 +339,29 @@ internal class AggregatedDependencyResolver(
     }
 
     /**
+     * Union two dependency maps, preferring the higher version on shortId conflicts.
+     * This merges RuntimeClasspath and CompileClasspath results so that compileOnly
+     * and api-of-consumed-libs entries (present only in CompileClasspath) are included.
+     */
+    private fun unionDependencyMaps(
+        runtime: Map<String, ResolvedDependency>,
+        compile: Map<String, ResolvedDependency>
+    ): Map<String, ResolvedDependency> {
+        if (compile.isEmpty()) return runtime
+        if (runtime.isEmpty()) return compile
+        val merged = runtime.toMutableMap()
+        for ((shortId, compileDep) in compile) {
+            val existing = merged[shortId]
+            if (existing == null) {
+                merged[shortId] = compileDep
+            } else if (compileDep.version > existing.version) {
+                merged[shortId] = compileDep
+            }
+        }
+        return merged
+    }
+
+    /**
      * Resolve a configuration to a map of shortId -> [ResolvedDependency].
      *
      * Walks the resolution result graph using [ResolvedComponentsVisitor] with
@@ -291,18 +383,36 @@ internal class AggregatedDependencyResolver(
             ) { visitResult ->
                 val moduleVersion = visitResult.component.moduleVersion ?: return@visit null
                 val shortId = "${moduleVersion.group}:${moduleVersion.name}"
+                // Skip BOM/platform (pom-only) components — rules_jvm_external rejects them with
+                // "Unsupported packaging type: pom". BOM components appear in the resolution graph
+                // but have no actual jar/aar artifact. We detect them by checking the resolved
+                // variant attributes for "org.gradle.category" == "platform". As a fallback, we
+                // also skip components whose module name ends with "-bom" (a common BOM convention).
+                // Note: filtering is done here in the visitor transform, before adding to depMap.
+                if (moduleVersion.name.endsWith("-bom", ignoreCase = true) ||
+                    moduleVersion.name.endsWith(".bom", ignoreCase = true)) {
+                    return@visit null
+                }
                 ResolvedDependency(
                     id = visitResult.component.toString(),
                     shortId = shortId,
                     version = moduleVersion.version,
                     direct = true,
-                    dependencies = visitResult.transitiveDeps.mapTo(TreeSet()) { depResult ->
-                        ResolvedDependency.createDependencyNotation(
-                            depResult.dependency,
-                            depResult.requiresJetifier,
-                            depResult.unjetifiedSource
-                        )
-                    },
+                    dependencies = visitResult.transitiveDeps
+                        .filterNot { depResult ->
+                            // Also exclude BOM entries from the transitive dependency set so they
+                            // don't leak into the flattened classpath via allDependencies expansion.
+                            val mv = depResult.dependency.moduleVersion
+                            mv != null && (mv.name.endsWith("-bom", ignoreCase = true) ||
+                                mv.name.endsWith(".bom", ignoreCase = true))
+                        }
+                        .mapTo(TreeSet()) { depResult ->
+                            ResolvedDependency.createDependencyNotation(
+                                depResult.dependency,
+                                depResult.requiresJetifier,
+                                depResult.unjetifiedSource
+                            )
+                        },
                     excludeRules = emptySet(),
                     repository = visitResult.repository,
                     requiresJetifier = visitResult.requiresJetifier

@@ -168,6 +168,7 @@ grazel {
     experiments {
         limitDependencyResolutionParallelism.set(true)
         minSdkVersionWorkaround.set(true)
+        aggregatedDependencyResolution.set(true)
     }
     test {
         testSizeProvider = { testData ->
