@@ -149,6 +149,11 @@ internal class AggregatedDependencyResolver(
         val directDepShortIds = hashSetOf<String>()
         val excludeRulesMap = hashMapOf<String, MutableSet<ExcludeRule>>()
         val participatingProjects = mutableListOf<Project>()
+        // Donor config whose standard attributes (Usage/Category/TargetJvmEnvironment/
+        // KotlinPlatformType/AgpVersion) we copy onto the aggregating configs. Without these, Gradle
+        // cannot select correct variants for TRANSITIVE external deps → shallow graph + wrong
+        // versions. Prefer the richest attribute set (Android configs carry more attrs than plain JVM).
+        var attributeDonor: Configuration? = null
 
         for ((project, variant) in projectVariants) {
             val sourceConfigs = getCompileConfigurations(project, variant)
@@ -170,12 +175,25 @@ internal class AggregatedDependencyResolver(
                     if (rules.isNotEmpty()) excludeRulesMap.getOrPut(shortId) { hashSetOf() }.addAll(rules)
                 }
 
-            // Consumable exposing this project's full declared closure for the variant, matched by
-            // the unique custom attribute only.
+            val source = sourceConfigs.first()
+            if (source.attributes.keySet().size > (attributeDonor?.attributes?.keySet()?.size ?: -1)) {
+                attributeDonor = source
+            }
+
+            // Consumable exposing this project's full declared closure for the variant. Extend the
+            // DECLARABLE parent scopes (implementation/api/compileOnly/...) that the resolvable
+            // grazel<V>CompileClasspath itself extends — extending that resolvable config directly
+            // does NOT propagate Android modules' deps as outgoing. Configs that hold direct deps
+            // themselves (e.g. `lintChecks`, empty extendsFrom) are extended directly. Copy the
+            // source's standard attributes, then add the unique export attr for selection.
             project.configurations.maybeCreate(consumableName).apply {
                 isCanBeConsumed = true
                 isCanBeResolved = false
-                sourceConfigs.forEach { extendsFrom(it) }
+                sourceConfigs.forEach { src ->
+                    if (src.extendsFrom.isNotEmpty()) src.extendsFrom.forEach { extendsFrom(it) }
+                    else extendsFrom(src)
+                }
+                copyAttributes(source, this)
                 attributes.attribute(exportAttribute, attrValue)
             }
             participatingProjects += project
@@ -183,12 +201,16 @@ internal class AggregatedDependencyResolver(
 
         if (participatingProjects.isEmpty()) return emptySet()
 
-        // Single root resolvable config consuming every participating project's consumable.
+        // Single root resolvable config consuming every participating project's consumable. Carries
+        // the donor's standard attributes (so transitive external deps resolve to the right variants
+        // and versions) plus the unique export attr (so each project's grazelExport consumable is
+        // selected without AGP variant ambiguity).
         val rootConfig = rootProject.configurations.maybeCreate(
             "grazelAggregatedCompile${variantName.capitalize()}"
         ).apply {
             isCanBeResolved = true
             isCanBeConsumed = false
+            attributeDonor?.let { copyAttributes(it, this) }
             attributes.attribute(exportAttribute, attrValue)
             participatingProjects.forEach { p ->
                 dependencies.add(rootProject.dependencies.project(mapOf("path" to p.path)))
@@ -235,6 +257,27 @@ internal class AggregatedDependencyResolver(
             )
         }
         return result
+    }
+
+    /**
+     * Copy every attribute from [from] onto [to] (preserving key types). Used to give the
+     * aggregating configs the same standard attributes (Usage/Category/TargetJvmEnvironment/
+     * KotlinPlatformType/AgpVersion) as the per-variant source config, so Gradle resolves transitive
+     * external deps to the correct variants. Best-effort: silently skips on the rare
+     * already-resolved case (mirrors [com.grab.grazel.gradle.variant.ConfigurationParsingVariant]).
+     */
+    private fun copyAttributes(from: Configuration, to: Configuration) {
+        val src = from.attributes
+        src.keySet().forEach { key ->
+            @Suppress("UNCHECKED_CAST")
+            val typed = key as Attribute<Any>
+            val value = src.getAttribute(typed) ?: return@forEach
+            try {
+                to.attributes.attribute(typed, value)
+            } catch (e: IllegalArgumentException) {
+                // Configuration already resolved in this Gradle execution; ignore.
+            }
+        }
     }
 
     /**
