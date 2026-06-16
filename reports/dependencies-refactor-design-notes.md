@@ -597,6 +597,48 @@ which is where the real wall-clock/memory win lives.
 
 ---
 
+## Attempt 4 — DEFINITIVE NEGATIVE RESULT, with proof (2026-06-16)
+
+Enabled release build types in the sample (10 leaf variants) and implemented TRUE O(V_leaf)
+root aggregation: ONE root resolution per leaf variant (logged: "10 leaf variants → 10 root
+resolutions, O(V_leaf)", NOT O(P×V)) + base-bucket reconstruction via set-intersection.
+
+**Result: oracle FAILS — and the cause is fundamental and unfixable.**
+
+**Gradle/AGP `implementation` encapsulation kills root aggregation.** A root aggregating config
+resolving via `incoming.resolutionResult` descends through sub-project nodes using their
+PUBLISHED component graph. Android libraries expose only their `api` deps + a few AGP-injected
+artifacts in `runtimeElements`; **`implementation` deps are NOT in the consumer-visible
+component graph**. So aggregating across projects at the root SILENTLY DROPS every library's
+`implementation` (and `compileOnly`) deps.
+
+Hard evidence: `:sample-android-library`'s children in the `demoFreeDebug` root resolution were
+only `[androidx.databinding:viewbinding, kotlin-parcelize-runtime]` — NOT `moshi`
+(`implementation libs.moshi`), NOT `kotlin-stdlib`, NOT dagger. ON undercounted by ~80
+artifacts vs OFF. Those deps are only visible by resolving each module's OWN
+`runtimeClasspath`/`compileClasspath` — i.e. per-module = O(P×V).
+
+### CONCLUSION (the whole investigation, settled)
+- ✅ Attribute injection works in-task (proven).
+- ✅ True root aggregation IS O(V_leaf) (proven).
+- ❌ But root aggregation CANNOT produce correct results for any real Android project, because
+  Gradle's api/implementation encapsulation hides sub-projects' `implementation` deps from the
+  aggregating consumer. This is inherent to Gradle's component model, not a bug.
+- ⟹ **The bucket-defining work (each module's full compile/runtime closure) is irreducibly
+  per-module. The O(V) wall-clock dream is impossible for Grazel's multi-module Android model.**
+
+Two implementations exist on the journey, neither shippable as "aggregation":
+- attempt-3 (committed): per-module union — CORRECT (passes oracle incl. flavor) but O(P×V), no win.
+- attempt-4 (discarded): true O(V_leaf) — but INCORRECT (drops `implementation` deps).
+
+### RECOMMENDATION
+The only genuine perf win available is **Approach B**: keep per-module resolution (required to
+see `implementation` deps) but make the MERGE/accumulation streaming to cut PEAK MEMORY (no
+wall-clock gain). Otherwise, shelve. The `aggregatedDependencyResolution` flag + resolver should
+be removed or repurposed — they cannot deliver the stated goal.
+
+---
+
 ## Resume prompt (for a fresh session)
 > Read `reports/dependencies-refactor-design-notes.md` and its companion
 > `reports/dependency-resolution-to-workspace.md`. We're de-risking Approach A — run THE
