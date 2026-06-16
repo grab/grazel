@@ -31,6 +31,8 @@ import org.gradle.api.Project
 import org.gradle.api.artifacts.Configuration
 import org.gradle.api.artifacts.ExternalDependency
 import org.gradle.api.artifacts.component.ModuleComponentIdentifier
+import org.gradle.api.artifacts.result.ResolvedDependencyResult
+import org.gradle.api.artifacts.result.UnresolvedDependencyResult
 import org.gradle.api.attributes.Attribute
 import java.util.TreeSet
 
@@ -220,6 +222,34 @@ internal class AggregatedDependencyResolver(
         val result = TreeSet<ResolvedDependency>()
         try {
             val root = rootConfig.incoming.resolutionResult.root
+            // ---- TEMPORARY DIAGNOSTIC INSTRUMENTATION (remove after debugging) ----
+            val dbg = rootProject.logger
+            @Suppress("UNCHECKED_CAST")
+            val rootAttrs = rootConfig.attributes.let { a ->
+                a.keySet().joinToString { "${it.name}=${a.getAttribute(it as Attribute<Any>)}" }
+            }
+            dbg.lifecycle(
+                "Grazel[AggDbg] variant=$variantName projects=${participatingProjects.size} " +
+                    "directShortIds=${directDepShortIds.size} rootAttrs={$rootAttrs}"
+            )
+            root.dependencies.forEach { dep ->
+                when (dep) {
+                    is ResolvedDependencyResult -> {
+                        val sel = dep.selected
+                        val variants = sel.variants.joinToString { it.displayName }
+                        dbg.lifecycle(
+                            "Grazel[AggDbg]   ${dep.requested} -> $sel variant=[$variants] " +
+                                "children=${sel.dependencies.size}"
+                        )
+                    }
+
+                    is UnresolvedDependencyResult ->
+                        dbg.lifecycle("Grazel[AggDbg]   UNRESOLVED ${dep.requested}: ${dep.failure.message}")
+
+                    else -> {}
+                }
+            }
+            // ---- end instrumentation ----
             ResolvedComponentsVisitor().visit(
                 root = root,
                 logger = rootProject.logger::info,
@@ -256,6 +286,7 @@ internal class AggregatedDependencyResolver(
                     "$variantName: ${e.message}"
             )
         }
+        rootProject.logger.lifecycle("Grazel[AggDbg] variant=$variantName emitted=${result.size}")
         return result
     }
 
