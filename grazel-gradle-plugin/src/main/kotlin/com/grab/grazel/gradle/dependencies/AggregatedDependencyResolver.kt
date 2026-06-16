@@ -215,7 +215,15 @@ internal class AggregatedDependencyResolver(
             attributeDonor?.let { copyAttributes(it, this) }
             attributes.attribute(exportAttribute, attrValue)
             participatingProjects.forEach { p ->
-                dependencies.add(rootProject.dependencies.project(mapOf("path" to p.path)))
+                // Target the consumable BY CONFIGURATION NAME, bypassing attribute matching: this
+                // forces selection of grazelExportCompile<V> (instead of the project's standard
+                // apiElements/runtimeElements, which only expose `api` deps) and avoids the
+                // cross-ecosystem attribute mismatch that left Android projects UNRESOLVED.
+                dependencies.add(
+                    rootProject.dependencies.project(
+                        mapOf("path" to p.path, "configuration" to consumableName)
+                    )
+                )
             }
         }
 
