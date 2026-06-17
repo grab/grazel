@@ -53,7 +53,8 @@ internal interface DependencyResolutionService : BuildService<DependencyResoluti
     fun getMavenDependency(
         variants: Set<String>,
         group: String,
-        name: String
+        name: String,
+        version: String? = null
     ): MavenDependency?
 
     /**
@@ -100,8 +101,9 @@ internal abstract class DefaultDependencyResolutionService : DependencyResolutio
     override fun getMavenDependency(
         variants: Set<String>,
         group: String,
-        name: String
-    ): MavenDependency? = mavenInstallStore?.get(variants, group, name)
+        name: String,
+        version: String?
+    ): MavenDependency? = mavenInstallStore?.get(variants, group, name, version)
 
     override fun getTransitiveDependencies(shortId: String): Set<String> =
         transitiveDependenciesStore?.get(shortId) ?: emptySet()
@@ -135,14 +137,28 @@ internal abstract class DefaultDependencyResolutionService : DependencyResolutio
                         mavenInstallStore = DefaultMavenInstallStore().apply {
                             workspaceDependencies.variantDeps.forEach { (variantName, dependencies) ->
                                 dependencies.forEach { dependency ->
-                                    val (group, name, _) = dependency.id.split(":")
-                                    set(variantName, group, name, dependency.overrideTarget?.label)
+                                    if (dependency.direct || dependency.overrideTarget != null) {
+                                        val (group, name, _) = dependency.id.split(":")
+                                        set(
+                                            variantName,
+                                            group,
+                                            name,
+                                            dependency.version,
+                                            dependency.overrideTarget?.label
+                                        )
+                                    }
                                 }
                             }
                             workspaceDependencies.aggregatedRepos.forEach { (repoName, dependencies) ->
                                 dependencies.forEach { dependency ->
                                     val (group, name, _) = dependency.id.split(":")
-                                    set(repoName, group, name, dependency.overrideTarget?.label)
+                                    set(
+                                        repoName,
+                                        group,
+                                        name,
+                                        dependency.version,
+                                        dependency.overrideTarget?.label
+                                    )
                                 }
                             }
                         }

@@ -140,8 +140,8 @@ constructor(
         } else {
             failWhenOutOfDate(workspaceFile, true)
 
-            fun checkRepoOutOfDate(mavenRepo: String, deps: List<ResolvedDependency>): Boolean {
-                val dep = deps.first()
+            fun checkRepoOutOfDate(mavenRepo: String, rootArtifacts: List<ResolvedDependency>): Boolean {
+                val dep = rootArtifacts.pinStatusProbeArtifact()
                 val (group, name) = dep.shortId.split(":")
                 progress.progress("Checking $mavenRepo's pin status")
                 val target = MavenDependency(
@@ -168,10 +168,8 @@ constructor(
             }
 
             return (
-                workspaceDependencies.variantDeps.any { (variantName, deps) ->
-                    checkRepoOutOfDate(variantName.toMavenRepoName(), deps)
-                } || workspaceDependencies.aggregatedRepos.any { (repoName, deps) ->
-                    checkRepoOutOfDate(repoName, deps)
+                workspaceDependencies.pinnableMavenInstallRepos().any { (mavenRepo, rootArtifacts) ->
+                    checkRepoOutOfDate(mavenRepo, rootArtifacts)
                 }
             ).also {
                 // Revert the changes to the workspace file
@@ -212,12 +210,7 @@ constructor(
 
         if (shouldRun) {
             logger.quiet("Repinning all artifacts".ansiCyan)
-            val allRepos: Map<String, List<ResolvedDependency>> = buildMap {
-                workspaceDependencies.variantDeps.forEach { (variantName, deps) ->
-                    put(variantName.toMavenRepoName(), deps)
-                }
-                putAll(workspaceDependencies.aggregatedRepos)
-            }
+            val allRepos = workspaceDependencies.pinnableMavenInstallRepos()
             val pinScripts = allRepos.mapValues { (mavenRepoName, _) ->
                 val scriptPath = layout
                     .buildDirectory
@@ -300,6 +293,30 @@ constructor(
         }
     }
 }
+
+internal fun WorkspaceDependencies.pinnableMavenInstallRepos(): Map<String, List<ResolvedDependency>> =
+    buildMap {
+        variantDeps.forEach { (variantName, deps) ->
+            val rootArtifacts = deps.mavenInstallRootArtifacts(
+                variantName = variantName,
+                transitiveClasspath = variantTransitiveClasspath[variantName]
+                    ?: transitiveClasspath
+            )
+            if (rootArtifacts.isNotEmpty()) {
+                put(variantName.toMavenRepoName(), rootArtifacts)
+            }
+        }
+        aggregatedRepos.forEach { (repoName, deps) ->
+            if (deps.isNotEmpty()) {
+                put(repoName, deps)
+            }
+        }
+    }
+
+internal fun List<ResolvedDependency>.pinStatusProbeArtifact(): ResolvedDependency =
+    firstOrNull { it.direct && it.overrideTarget == null }
+        ?: firstOrNull { it.overrideTarget == null }
+        ?: first()
 
 internal open class PinningWorkAction
 @Inject

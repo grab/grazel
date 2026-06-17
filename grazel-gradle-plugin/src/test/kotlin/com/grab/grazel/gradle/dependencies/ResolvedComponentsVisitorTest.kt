@@ -28,6 +28,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
 import java.io.File
+import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 class ResolvedComponentsVisitorTest {
@@ -173,7 +174,7 @@ class ResolvedComponentsVisitorTest {
         ) {
             addDependencyTo(directTransitiveComponent)
         }
-        val rootComponent = fakeComponentResult {
+        val rootComponent = fakeComponentResult(projectPath = ":empty") {
             addDependencyTo(directParentComponent)
             addDependencyTo(directTransitiveComponent)
         }
@@ -198,7 +199,7 @@ class ResolvedComponentsVisitorTest {
             version = "1.0",
             isProject = false
         )
-        val rootComponent = fakeComponentResult {
+        val rootComponent = fakeComponentResult(projectPath = ":empty") {
             addDependencyTo(constrainedComponent, constraint = true)
         }
 
@@ -212,6 +213,77 @@ class ResolvedComponentsVisitorTest {
         assertTrue("Root dependency constraints are not direct dependencies") {
             directComponents.isEmpty()
         }
+    }
+
+    @Test
+    fun `assert direct dependencies below project nodes include owner project path`() {
+        val library = fakeComponentResult(
+            group = "com.example",
+            name = "library",
+            version = "1.0",
+            isProject = false
+        )
+        val libProject = fakeComponentResult(
+            isProject = true,
+            projectPath = ":lib"
+        ) {
+            addDependencyTo(library)
+        }
+        val appProject = fakeComponentResult(
+            isProject = true,
+            projectPath = ":app"
+        ) {
+            addDependencyTo(libProject)
+        }
+
+        val directComponents = ResolvedComponentsVisitor().visit(
+            root = appProject,
+            traverseProjectNodes = true
+        ) { visitResult ->
+            visitResult.takeIf { it.directFromProject }
+        }
+
+        val libraryResult = directComponents.first {
+            it.component.toString() == "com.example:library:1.0"
+        }
+        assertEquals(":lib", libraryResult.directProjectPath)
+    }
+
+    @Test
+    fun `assert direct dependencies below project nodes include selected project variant`() {
+        val library = fakeComponentResult(
+            group = "com.example",
+            name = "library",
+            version = "1.0",
+            isProject = false
+        )
+        val libProject = fakeComponentResult(
+            isProject = true,
+            projectPath = ":lib"
+        ) {
+            addDependencyTo(library)
+        }
+        val appProject = fakeComponentResult(
+            isProject = true,
+            projectPath = ":app"
+        ) {
+            addDependencyTo(
+                component = libProject,
+                selectedVariantDisplayName = "paidDebugRuntimeElements"
+            )
+        }
+
+        val directComponents = ResolvedComponentsVisitor().visit(
+            root = appProject,
+            traverseProjectNodes = true
+        ) { visitResult ->
+            visitResult.takeIf { it.directFromProject }
+        }
+
+        val libraryResult = directComponents.first {
+            it.component.toString() == "com.example:library:1.0"
+        }
+        assertEquals("paidDebugRuntimeElements", libraryResult.directProjectVariantDisplayName)
     }
 
     @Test
@@ -248,7 +320,8 @@ class ResolvedComponentsVisitorTest {
 
     private fun org.gradle.api.internal.artifacts.result.DefaultResolvedComponentResult.addDependencyTo(
         component: org.gradle.api.artifacts.result.ResolvedComponentResult,
-        constraint: Boolean = false
+        constraint: Boolean = false,
+        selectedVariantDisplayName: String = ""
     ) {
         val moduleVersion = component.moduleVersion!!
         val moduleIdentifier = DefaultModuleIdentifier.newId(
@@ -265,8 +338,8 @@ class ResolvedComponentsVisitorTest {
                     /* owner = */ DefaultModuleComponentIdentifier
                         .newId(moduleIdentifier, moduleVersion.version),
                     /* displayName = */ object : DisplayName {
-                        override fun getDisplayName(): String = ""
-                        override fun getCapitalizedDisplayName(): String = ""
+                        override fun getDisplayName(): String = selectedVariantDisplayName
+                        override fun getCapitalizedDisplayName(): String = selectedVariantDisplayName.capitalize()
                     },
                     /* attributes = */ FakeAttributeContainer(),
                     /* capabilities = */ ImmutableCapabilities.EMPTY,

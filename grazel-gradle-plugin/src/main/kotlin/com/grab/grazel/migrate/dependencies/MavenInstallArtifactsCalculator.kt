@@ -73,7 +73,17 @@ constructor(
         val result = workspaceDependencies.variantDeps
             .mapNotNullTo(TreeSet(compareBy(MavenInstallData::name))) { (variantName, artifacts) ->
                 val mavenInstallName = variantName.toMavenRepoName()
-                val allArtifacts = artifacts + grazelExtension
+                val artifactsToResolve = artifacts.mavenInstallRootArtifacts(
+                    variantName = variantName,
+                    transitiveClasspath = workspaceDependencies.variantTransitiveClasspath[variantName]
+                        ?: workspaceDependencies.transitiveClasspath
+                )
+                val defaultOwnedExclusions = defaultOwnedExclusions(
+                    variantName = variantName,
+                    defaultArtifacts = workspaceDependencies.variantDeps[DEFAULT_VARIANT].orEmpty(),
+                    artifacts = artifacts,
+                )
+                val allArtifacts = artifactsToResolve + grazelExtension
                     .dependencies
                     .overrideArtifactVersions
                     .get()
@@ -81,20 +91,22 @@ constructor(
                     .asSequence()
 
                 val mavenInstallArtifacts = allArtifacts
-                    .mapTo(TreeSet(compareBy(MavenInstallArtifact::id)), ::toMavenInstallArtifact)
+                    .mapTo(TreeSet(compareBy(MavenInstallArtifact::id))) {
+                        toMavenInstallArtifact(it, defaultOwnedExclusions)
+                    }
                     .also { if (it.isEmpty()) return@mapNotNullTo null }
 
-                val repositories = calculateRepositories(artifacts)
+                val repositories = calculateSupportedRepositories()
 
                 // Overrides
-                val overrideTargets = calculateOverrideTargets(artifacts)
+                val overrideTargets = calculateOverrideTargets(artifactsToResolve)
 
                 val mavenInstallJson = layout
                     .projectDirectory
                     .file("${mavenInstallName}_install.json").asFile
 
                 val jetifierArtifacts = (
-                    artifacts
+                    artifactsToResolve
                         .asSequence()
                         .mapNotNull { if (it.requiresJetifier) it.shortId else it.jetifierSource }
                         .toList()
@@ -118,7 +130,8 @@ constructor(
                     overrideTargets = overrideTargets,
                     resolveTimeout = mavenInstallExtension.resolveTimeout,
                     artifactPinning = mavenInstallExtension.artifactPinning.enabled.get(),
-                    versionConflictPolicy = mavenInstallExtension.versionConflictPolicy,
+                    versionConflictPolicy = mavenInstallExtension.versionConflictPolicy
+                        .takeIf { variantName == DEFAULT_VARIANT },
                     mavenInstallJson = mavenInstallJson.name,
                     isMavenInstallJsonEnabled = mavenInstallExtension.artifactPinning.enabled.get() && mavenInstallJson.exists(),
                     additionalCoursierOptions = mavenInstallExtension.additionalCoursierOptions.get()
@@ -131,7 +144,7 @@ constructor(
                 .mapTo(TreeSet(compareBy(MavenInstallArtifact::id)), ::toMavenInstallArtifact)
             if (mavenInstallArtifacts.isEmpty()) return@forEach
 
-            val repositories = calculateRepositoriesIncludingTransitives(artifacts)
+            val repositories = calculateSupportedRepositories()
             val mavenInstallJson = layout
                 .projectDirectory
                 .file("${repoName}_install.json").asFile
@@ -175,12 +188,32 @@ constructor(
             .toMap()
     }
 
-    private fun toMavenInstallArtifact(dependency: ResolvedDependency): MavenInstallArtifact {
+    private fun defaultOwnedExclusions(
+        variantName: String,
+        defaultArtifacts: List<ResolvedDependency>,
+        artifacts: List<ResolvedDependency>,
+    ): Set<String> {
+        if (variantName == DEFAULT_VARIANT) return emptySet()
+        val artifactShortIds = artifacts.mapTo(mutableSetOf(), ResolvedDependency::shortId)
+        return defaultArtifacts
+            .asSequence()
+            .map(ResolvedDependency::shortId)
+            .filterNot { it in artifactShortIds }
+            .toSortedSet()
+    }
+
+    private fun toMavenInstallArtifact(
+        dependency: ResolvedDependency,
+        additionalExclusions: Set<String> = emptySet(),
+    ): MavenInstallArtifact {
         val (group, name, version) = dependency.id.split(":")
         val shortId = "${group}:${name}"
         val overrideVersion = overrideVersionsMap[shortId] ?: version
         val artifactId = "$group:$name:$overrideVersion"
-        val exclusions = dependency.excludeRules.mapNotNull(::toExclusion)
+        val exclusions = (
+            dependency.excludeRules.mapNotNull(::toExclusion) +
+                additionalExclusions.mapNotNull(::toExclusion)
+            ).distinct()
         return when {
             exclusions.isEmpty() -> SimpleArtifact(artifactId)
             else -> DetailedArtifact(
@@ -191,6 +224,12 @@ constructor(
             )
         }
     }
+
+    private fun toExclusion(id: String): SimpleExclusion? =
+        when (id) {
+            !in excludeArtifactsDenyList -> SimpleExclusion(id)
+            else -> null
+        }
 
     private fun toExclusion(excludeRule: ExcludeRule): SimpleExclusion? {
         return when (val id = "${excludeRule.group}:${excludeRule.artifact}") {
@@ -215,28 +254,29 @@ constructor(
         )
     }
 
-    private fun calculateRepositories(artifacts: List<ResolvedDependency>): Set<DefaultMavenRepository> {
-        val gradleRepositories = artifacts.map(ResolvedDependency::repository)
-            .asSequence()
-            .map { repositoryDataSource.allRepositoriesByName.getValue(it) }
-            .sortedBy {
-                val name: String = it.name
-                repositoryDataSource.allRepositoriesByName.entries.indexOf<Any>(name) // Preserve order
-            }.toSet()
-        return gradleRepositories.map { it.toMavenRepository() }.toSet()
+    private fun calculateSupportedRepositories(): Set<DefaultMavenRepository> =
+        repositoryDataSource
+            .supportedRepositories
+            .map { it.toMavenRepository() }
+            .toSet()
+}
+
+internal fun List<ResolvedDependency>.mavenInstallRootArtifacts(
+    variantName: String,
+    transitiveClasspath: Map<String, Set<String>> = emptyMap()
+): List<ResolvedDependency> {
+    if (variantName == DEFAULT_VARIANT) {
+        return filter { it.overrideTarget == null }
     }
 
-    /**
-     * Calculate repositories from both direct artifacts and their transitive dependencies.
-     * This is needed for KSP where we only include direct processors as artifacts,
-     * but transitives may come from different repositories (e.g., Maven Central).
-     */
-    private fun calculateRepositoriesIncludingTransitives(
-        artifacts: List<ResolvedDependency>
-    ): Set<DefaultMavenRepository> =
-        artifacts
-            .flatMap(ResolvedDependency::dependencies)
-            .map(ResolvedDependency::from)
-            .plus(artifacts)
-            .let(::calculateRepositories)
+    val overrideCarriersRequiredByDirectRoots = asSequence()
+        .filter(ResolvedDependency::direct)
+        .flatMap { dependency -> transitiveClasspath[dependency.shortId].orEmpty().asSequence() }
+        .toSet()
+
+    return filter { dependency ->
+        dependency.direct ||
+            (dependency.overrideTarget != null &&
+                dependency.shortId in overrideCarriersRequiredByDirectRoots)
+        }
 }

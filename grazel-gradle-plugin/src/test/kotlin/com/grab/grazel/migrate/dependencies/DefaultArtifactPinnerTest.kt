@@ -2,11 +2,13 @@ package com.grab.grazel.migrate.dependencies
 
 import com.android.build.gradle.AppExtension
 import com.grab.grazel.bazel.exec.bazelCommand
+import com.grab.grazel.bazel.starlark.BazelDependency.MavenDependency
 import com.grab.grazel.buildProject
 import com.grab.grazel.di.GradleServices
 import com.grab.grazel.fake.FakeLogger
 import com.grab.grazel.fake.FakeWorkerExecutor
 import com.grab.grazel.gradle.ANDROID_APPLICATION_PLUGIN
+import com.grab.grazel.gradle.dependencies.model.OverrideTarget
 import com.grab.grazel.gradle.dependencies.model.ResolvedDependency
 import com.grab.grazel.gradle.dependencies.model.WorkspaceDependencies
 import com.grab.grazel.gradle.variant.DEFAULT_VARIANT
@@ -28,6 +30,7 @@ import org.junit.Test
 import org.junit.rules.TemporaryFolder
 import java.io.File
 import kotlin.io.path.copyTo
+import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 class DefaultArtifactPinnerTest {
@@ -172,6 +175,85 @@ class DefaultArtifactPinnerTest {
                 rootProject.layout,
                 "maven"
             ) == "@maven//:pin"
+        }
+    }
+
+    @Test
+    fun `pinnable repos only include generated maven install repos`() {
+        val debugDirect = ResolvedDependency.fromId("com.example:debug-only:1.0.0", "MavenRepo")
+        val fullPaidDirect = ResolvedDependency.fromId("com.example:full-paid-only:1.0.0", "MavenRepo")
+        val transitiveOnly = ResolvedDependency.fromId("com.example:transitive-only:1.0.0", "MavenRepo")
+            .copy(direct = false)
+        val overrideCarrier = ResolvedDependency.fromId("com.example:covered:1.0.0", "MavenRepo")
+            .copy(
+                direct = false,
+                overrideTarget = OverrideTarget(
+                    artifactShortId = "com.example:covered",
+                    label = MavenDependency(group = "com.example", name = "covered")
+                )
+            )
+        val kspProcessor = ResolvedDependency.fromId("com.example:processor:1.0.0", "MavenRepo")
+
+        val repos = WorkspaceDependencies(
+            variantDeps = mapOf(
+                DEFAULT_VARIANT to listOf(transitiveOnly),
+                "debug" to listOf(transitiveOnly, debugDirect),
+                "fullPaidDebug" to listOf(transitiveOnly, fullPaidDirect, overrideCarrier)
+            ),
+            aggregatedRepos = mapOf(
+                "ksp_maven" to listOf(kspProcessor),
+                "empty_maven" to emptyList()
+            ),
+            transitiveClasspath = mapOf(
+                fullPaidDirect.shortId to setOf(overrideCarrier.shortId)
+            )
+        ).pinnableMavenInstallRepos()
+
+        assertEquals(setOf("maven", "debug_maven", "full_paid_debug_maven", "ksp_maven"), repos.keys)
+        assertEquals(listOf(transitiveOnly), repos.getValue("maven"))
+        assertEquals(listOf(debugDirect), repos.getValue("debug_maven"))
+        assertEquals(listOf(fullPaidDirect, overrideCarrier), repos.getValue("full_paid_debug_maven"))
+        assertEquals(listOf(kspProcessor), repos.getValue("ksp_maven"))
+    }
+
+    @Test
+    fun `pin status probe prefers direct repo root over reachable override carrier`() {
+        val directRoot = ResolvedDependency.fromId("com.example:zzz-direct-root:1.0.0", "MavenRepo")
+        val overrideCarrier = ResolvedDependency.fromId("com.example:aaa-carrier:1.0.0", "MavenRepo")
+            .copy(
+                direct = false,
+                overrideTarget = OverrideTarget(
+                    artifactShortId = "com.example:aaa-carrier",
+                    label = MavenDependency(group = "com.example", name = "aaa-carrier")
+                )
+            )
+
+        val probeArtifact = listOf(overrideCarrier, directRoot).pinStatusProbeArtifact()
+
+        assertEquals(directRoot, probeArtifact)
+    }
+
+    @Test
+    fun `pinning skips non default repos without root artifacts`() {
+        val workspace = rootProject.file(WORKSPACE).apply {
+            writeText("")
+        }
+        val transitiveOnly = ResolvedDependency.fromId("com.example:covered:1.0.0", "MavenRepo")
+            .copy(direct = false)
+
+        val gradleServices = GradleServices.from(rootProject).copy(
+            workerExecutor = FakeWorkerExecutor()
+        )
+
+        assertTrue("Pinning skips repos that were not generated") {
+            artifactPinner.pinArtifacts(
+                workspace,
+                workspaceDependencies = WorkspaceDependencies(
+                    variantDeps = mapOf("fullPaidDebug" to listOf(transitiveOnly))
+                ),
+                gradleServices = gradleServices,
+                logger = rootProject.logger,
+            )
         }
     }
 

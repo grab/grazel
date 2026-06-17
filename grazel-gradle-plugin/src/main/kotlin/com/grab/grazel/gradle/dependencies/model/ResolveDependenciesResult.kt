@@ -117,6 +117,25 @@ internal fun ResolvedDependency.merge(other: ResolvedDependency): ResolvedDepend
     )
 }
 
+internal fun ResolvedDependency.hasSameEffectiveIdentityAs(other: ResolvedDependency): Boolean {
+    return shortId == other.shortId &&
+        version == other.version &&
+        dependencies == other.dependencies &&
+        excludeRules == other.excludeRules &&
+        repository == other.repository &&
+        requiresJetifier == other.requiresJetifier &&
+        jetifierSource == other.jetifierSource
+}
+
+internal fun ResolvedDependency.hasSameBucketOwnerAs(other: ResolvedDependency): Boolean {
+    return shortId == other.shortId &&
+        version == other.version &&
+        excludeRules == other.excludeRules &&
+        repository == other.repository &&
+        requiresJetifier == other.requiresJetifier &&
+        jetifierSource == other.jetifierSource
+}
+
 @Serializable
 internal data class OverrideTarget(
     val artifactShortId: String,
@@ -136,9 +155,17 @@ internal data class WorkspaceDependencies(
      * Dependencies aggregated across all variants into a single repo, keyed directly by
      * maven repo name (e.g. "ksp_maven"). Unlike [variantDeps], these do not go through
      * the variant deduplication/reduction pipeline.
-     */
+    */
     val aggregatedRepos: Map<String, List<ResolvedDependency>> = emptyMap(),
-    val transitiveClasspath: Map<String, Set<String>> = emptyMap()
+    val transitiveClasspath: Map<String, Set<String>> = emptyMap(),
+    /**
+     * Variant-scoped view of [transitiveClasspath].
+     *
+     * The legacy transitive dependency store is intentionally keyed only by direct dependency
+     * shortId, but Maven install root selection needs the current repo's direct-root closure so
+     * override-target carriers do not leak between variants that share the same direct root.
+     */
+    val variantTransitiveClasspath: Map<String, Map<String, Set<String>>> = emptyMap()
 )
 
 /**

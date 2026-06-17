@@ -30,6 +30,7 @@ fun fakeComponentResult(
     name: String = "",
     version: String = "",
     isProject: Boolean = true,
+    projectPath: String = "empty",
     action: DefaultResolvedComponentResult.() -> Unit = {}
 ): ResolvedComponentResult = DefaultResolvedComponentResult(
     /* moduleVersion = */ DefaultModuleVersionIdentifier.newId(group, name, version),
@@ -37,9 +38,9 @@ fun fakeComponentResult(
     /* componentId = */ when {
         isProject -> DefaultProjectComponentIdentifier(
             /* buildIdentifier = */ DefaultBuildIdentifier(Path.path(":empty")),
-            /* identityPath = */ Path.path("empty"),
-            /* projectPath = */ Path.path("empty"),
-            /* projectName = */ ""
+            /* identityPath = */ Path.path(projectPath),
+            /* projectPath = */ Path.path(projectPath),
+            /* projectName = */ projectPath.substringAfterLast(":")
         )
 
         else -> DefaultModuleComponentIdentifier.newId(

@@ -241,7 +241,9 @@ constructor(
         // Combine library deps with test deps, but filter out the target app
         // (it's handled via 'instruments' and 'associates')
         val variantKey = VariantGraphKey.from(this, matchedVariant, VariantType.AndroidBuild)
-        val combinedDeps = (androidLibraryData.deps + dependenciesDataSource.collectMavenDeps(
+        val libraryDeps = androidLibraryData.deps
+            .filterNot { it is BazelDependency.MavenDependency }
+        val combinedDeps = (libraryDeps + dependenciesDataSource.collectMavenDeps(
             this,
             variantKey
         )).filterNot { dep ->

@@ -29,6 +29,7 @@ import com.grab.grazel.gradle.ConfigurationDataSource
 import com.grab.grazel.gradle.hasDatabinding
 import com.grab.grazel.gradle.hasKotlinAndroidExtensions
 import com.grab.grazel.gradle.variant.AndroidVariant
+import com.grab.grazel.gradle.variant.DEFAULT_VARIANT
 import com.grab.grazel.gradle.variant.Variant
 import com.grab.grazel.gradle.variant.VariantBuilder
 import com.grab.grazel.gradle.variant.VariantGraphKey
@@ -36,6 +37,7 @@ import com.grab.grazel.gradle.variant.VariantType
 import com.grab.grazel.gradle.variant.id
 import com.grab.grazel.gradle.variant.isTest
 import com.grab.grazel.gradle.variant.migratableConfigurations
+import com.grab.grazel.migrate.dependencies.toMavenRepoName
 import com.grab.grazel.util.GradleProvider
 import com.grab.grazel.util.addTo
 import org.gradle.api.Project
@@ -120,8 +122,12 @@ internal interface DependenciesDataSource {
         fileExtension: String? = null
     ): Map<MavenArtifact, File>
 
-    /** Non project dependencies for the given [variantKey] */
-    fun collectMavenDeps(project: Project, variantKey: VariantGraphKey): List<BazelDependency>
+    /** Non project dependencies for the given [variantKey]. */
+    fun collectMavenDeps(
+        project: Project,
+        variantKey: VariantGraphKey,
+        preferredVariantNames: List<String> = emptyList()
+    ): List<BazelDependency>
 
     /** Collects all transitive maven dependencies for the given [variantKey] */
     fun collectTransitiveMavenDeps(project: Project, variantKey: VariantGraphKey): Set<MavenDependency>
@@ -201,33 +207,93 @@ internal class DefaultDependenciesDataSource @Inject constructor(
 
     override fun collectMavenDeps(
         project: Project,
-        variantKey: VariantGraphKey
+        variantKey: VariantGraphKey,
+        preferredVariantNames: List<String>
     ): List<BazelDependency> {
-        val grazelVariant: Variant<*> = findGrazelVariantByKey(project, variantKey)
+        val allVariants = variantBuilder.build(project)
+        val grazelVariant: Variant<*> = findGrazelVariantByKey(allVariants, variantKey)
+        fun ExternalDependency.shouldUseForBazel(): Boolean {
+            if (group in IGNORED_ARTIFACT_GROUPS) return false
+
+            val artifact = MavenArtifact(group, name)
+            if (artifact.isExcluded || artifact.isIgnored) return false
+
+            return if (project.hasDatabinding) {
+                group != DATABINDING_GROUP && (group != ANDROIDX_GROUP && name != ANNOTATION_ARTIFACT)
+            } else true
+        }
+
+        val lookupVariantHierarchy = buildSet {
+            addAll(preferredVariantNames)
+            if (variantKey.variantType.prefersDefaultMavenDeps) {
+                add(DEFAULT_VARIANT)
+            }
+            add(grazelVariant.name)
+            addAll(grazelVariant.extendsFrom.reversed())
+        }
+        val repoPriority = buildSet {
+            addAll(preferredVariantNames)
+            add(grazelVariant.name)
+            addAll(grazelVariant.extendsFrom.reversed())
+        }.mapIndexed { index, variantName ->
+            variantName.toMavenRepoName() to index
+        }.toMap()
+
+        fun BazelDependency.repoRank(): Int = when (this) {
+            is MavenDependency -> repoPriority[repo] ?: Int.MAX_VALUE
+            else -> Int.MAX_VALUE
+        }
+
+        val directDeclarationVariantNames = buildSet {
+            add(grazelVariant.name)
+            addAll(grazelVariant.extendsFrom)
+        }
+        val directVariantDeclarationsByShortId = allVariants
+            .asSequence()
+            .filter { variant -> variant.variantType == grazelVariant.variantType }
+            .filter { variant -> variant.name in directDeclarationVariantNames }
+            .flatMap { variant ->
+                variant.variantConfigurations
+                    .asSequence()
+                    .filter { configuration -> configuration.isExternalDependencyDeclaration }
+            }
+            .flatMap { configuration ->
+                configuration.dependencies
+                    .filterIsInstance<ExternalDependency>()
+                    .asSequence()
+            }
+            .filter { dependency -> dependency.shouldUseForBazel() }
+            .groupBy { dependency -> dependency.shortId }
+
         return grazelVariant.migratableConfigurations
             .asSequence()
             .flatMap { it.allDependencies.filterIsInstance<ExternalDependency>() }
-            .filter { it.group !in IGNORED_ARTIFACT_GROUPS }
-            .filter {
-                val artifact = MavenArtifact(it.group, it.name)
-                !artifact.isExcluded && !artifact.isIgnored
-            }.filter {
-                if (project.hasDatabinding) {
-                    it.group != DATABINDING_GROUP && (it.group != ANDROIDX_GROUP && it.name != ANNOTATION_ARTIFACT)
-                } else true
-            }.map { dependency ->
-                val variantHierarchy = buildSet {
-                    add(grazelVariant.name)
-                    addAll(grazelVariant.extendsFrom.reversed())
-                }
-                when (dependency.group) {
+            .filter { dependency -> dependency.shouldUseForBazel() }
+            .groupBy { dependency -> dependency.shortId }
+            .values
+            .map { dependencies ->
+                when (dependencies.first().group) {
                     DAGGER_GROUP -> StringDependency("//:dagger")
-                    else -> dependencyResolutionService.get().getMavenDependency(
-                        variants = variantHierarchy,
-                        group = dependency.group!!,
-                        name = dependency.name!!
-                    ) ?: run {
-                        error("$dependency cant be found for migrating ${project.name}")
+                    else -> {
+                        val directVariantDeclarations =
+                            directVariantDeclarationsByShortId[dependencies.first().shortId].orEmpty()
+                        val candidateDeclarations = directVariantDeclarations.ifEmpty {
+                            dependencies.take(1)
+                        }
+                        val useExactVersion = directVariantDeclarations.isNotEmpty()
+                        candidateDeclarations
+                            .asSequence()
+                            .map { dependency ->
+                                dependencyResolutionService.get().getMavenDependency(
+                                    variants = lookupVariantHierarchy,
+                                    group = dependency.group!!,
+                                    name = dependency.name!!,
+                                    version = dependency.version.takeIf { useExactVersion }
+                                ) ?: run {
+                                    error("$dependency cant be found for migrating ${project.name}")
+                                }
+                            }.minWithOrNull(compareBy<BazelDependency> { it.repoRank() })
+                            ?: error("${dependencies.first()} cant be found for migrating ${project.name}")
                     }
                 }
             }.distinct()
@@ -263,10 +329,20 @@ internal class DefaultDependenciesDataSource @Inject constructor(
      */
     private fun findGrazelVariantByKey(project: Project, variantKey: VariantGraphKey): Variant<*> {
         val variants = variantBuilder.build(project)
+        return findGrazelVariantByKey(variants, variantKey)
+    }
+
+    private fun findGrazelVariantByKey(
+        variants: Set<Variant<*>>,
+        variantKey: VariantGraphKey
+    ): Variant<*> {
         // Strip project path prefix from variantId to match Variant.id format
         val variantIdWithoutProject = variantKey.variantId.substringAfterLast(":")
         return variants.first { it.id == variantIdWithoutProject }
     }
+
+    private val VariantType.prefersDefaultMavenDeps: Boolean
+        get() = this == VariantType.AndroidTest || this == VariantType.Test
 
     /**
      * Collects first level module dependencies from their resolved configuration. Additionally,
@@ -322,6 +398,18 @@ internal class DefaultDependenciesDataSource @Inject constructor(
     }
 
     private val ExternalDependency.shortId get() = module.group + ":" + module.name
+
+    private val Configuration.isExternalDependencyDeclaration: Boolean
+        get() {
+            val normalizedName = name.lowercase()
+            if ("dependenciesmetadata" in normalizedName || "classpath" in normalizedName) {
+                return false
+            }
+            return normalizedName.endsWith("implementation") ||
+                normalizedName.endsWith("api") ||
+                normalizedName.endsWith("compileonly") ||
+                normalizedName.endsWith("runtimeonly")
+        }
 
     override fun collectKspPluginDeps(
         project: Project,

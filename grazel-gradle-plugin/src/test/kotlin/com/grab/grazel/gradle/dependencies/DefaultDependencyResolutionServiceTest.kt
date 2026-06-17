@@ -109,6 +109,54 @@ class DefaultDependencyResolutionServiceTest {
     }
 
     @Test
+    fun `test getMavenDependency prefers exact version before broad fallback`() {
+        // Given
+        val defaultDependency = ResolvedDependency.fromId(
+            "com.example:library:1.0",
+            "default"
+        )
+        val testDependency = ResolvedDependency.fromId(
+            "com.example:library:2.0",
+            "test"
+        )
+        val workspaceDependencies = WorkspaceDependencies(
+            variantDeps = mapOf(
+                "default" to listOf(defaultDependency),
+                "test" to listOf(testDependency)
+            )
+        )
+        writeWorkspaceDependenciesToFile(workspaceDependencies)
+        dependencyResolutionService.init(workspaceDependenciesFile)
+
+        // When
+        val testVersionDep = dependencyResolutionService.getMavenDependency(
+            setOf("default", "test"),
+            "com.example",
+            "library",
+            version = "2.0"
+        )
+        val defaultVersionDep = dependencyResolutionService.getMavenDependency(
+            setOf("default", "test"),
+            "com.example",
+            "library",
+            version = "1.0"
+        )
+        val broadDep = dependencyResolutionService.getMavenDependency(
+            setOf("default", "test"),
+            "com.example",
+            "library"
+        )
+
+        // Then
+        assertNotNull(testVersionDep)
+        assertEquals("test_maven", testVersionDep?.repo)
+        assertNotNull(defaultVersionDep)
+        assertEquals("maven", defaultVersionDep?.repo)
+        assertNotNull(broadDep)
+        assertEquals("maven", broadDep?.repo)
+    }
+
+    @Test
     fun `test getMavenDependency returns override target instead of leaf repo for duplicate`() {
         // Given
         val commonDependency = ResolvedDependency.fromId(
@@ -147,6 +195,40 @@ class DefaultDependencyResolutionServiceTest {
         assertEquals("maven", mavenDep?.repo)
         assertEquals("androidx.activity", mavenDep?.group)
         assertEquals("activity", mavenDep?.name)
+    }
+
+    @Test
+    fun `test transitive child dependency does not shadow direct default dependency`() {
+        // Given
+        val defaultDependency = ResolvedDependency.fromId(
+            "androidx.core:core:1.13.1",
+            "default"
+        )
+        val debugTransitiveDependency = ResolvedDependency.fromId(
+            "androidx.core:core:1.3.2",
+            "debug"
+        ).copy(direct = false)
+        val workspaceDependencies = WorkspaceDependencies(
+            variantDeps = mapOf(
+                "default" to listOf(defaultDependency),
+                "debug" to listOf(debugTransitiveDependency)
+            )
+        )
+        writeWorkspaceDependenciesToFile(workspaceDependencies)
+        dependencyResolutionService.init(workspaceDependenciesFile)
+
+        // When
+        val mavenDep = dependencyResolutionService.getMavenDependency(
+            setOf("debug", "default"),
+            "androidx.core",
+            "core"
+        )
+
+        // Then
+        assertNotNull(mavenDep)
+        assertEquals("maven", mavenDep?.repo)
+        assertEquals("androidx.core", mavenDep?.group)
+        assertEquals("core", mavenDep?.name)
     }
 
     @Test

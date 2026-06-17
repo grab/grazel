@@ -9,6 +9,7 @@ import org.gradle.api.Project
 import org.junit.Before
 import org.junit.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class DefaultVariantBuilderTest {
@@ -148,6 +149,42 @@ class DefaultVariantBuilderTest {
             flavorVariants.filter { it.variantType == VariantType.JvmBuild }.size,
             "Jvm variants are not built",
         )
+    }
+
+    @Test
+    fun `default android variants ignore configurations for filtered build types`() {
+        val rootProject = buildProject("root").also {
+            it.addGrazelExtension {
+                android {
+                    variantFilter {
+                        if (name.contains("Release")) {
+                            setIgnore(true)
+                        }
+                    }
+                }
+            }
+        }
+        val androidProject = buildProject("android", rootProject).also {
+            setupAndroidVariantProject(it)
+        }
+
+        val variants = rootProject
+            .createGrazelComponent()
+            .variantBuilder()
+            .get()
+            .build(androidProject)
+
+        val defaultAndroidBuild = variants.first {
+            it is AndroidDefaultVariant && it.variantType == VariantType.AndroidBuild
+        }
+
+        assertFalse(
+            "Default AndroidBuild variant should not parse ignored release configurations"
+        ) {
+            defaultAndroidBuild.variantConfigurations.any { configuration ->
+                configuration.name.contains("release", ignoreCase = true)
+            }
+        }
     }
 
     @Test

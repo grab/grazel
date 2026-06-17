@@ -99,6 +99,7 @@ android_binary(
         "//sample-android-library:sample-android-library-debug",
         "//sample-kotlin-library",
         "@debug_maven//:androidx_paging_paging_runtime",
+        "@free_maven//:androidx_constraintlayout_constraintlayout",
         "@maven//:androidx_activity_activity",
         "@maven//:androidx_activity_activity_compose",
         "@maven//:androidx_appcompat_appcompat",
@@ -107,7 +108,6 @@ android_binary(
         "@maven//:androidx_compose_material_material",
         "@maven//:androidx_compose_ui_ui",
         "@maven//:androidx_compose_ui_ui_tooling",
-        "@maven//:androidx_constraintlayout_constraintlayout",
         "@maven//:androidx_core_core",
         "@maven//:androidx_emoji2_emoji2",
         "@maven//:androidx_lifecycle_lifecycle_common",
@@ -224,7 +224,6 @@ android_binary(
         "@maven//:androidx_compose_material_material",
         "@maven//:androidx_compose_ui_ui",
         "@maven//:androidx_compose_ui_ui_tooling",
-        "@maven//:androidx_constraintlayout_constraintlayout",
         "@maven//:androidx_core_core",
         "@maven//:androidx_emoji2_emoji2",
         "@maven//:androidx_lifecycle_lifecycle_common",
@@ -233,6 +232,7 @@ android_binary(
         "@maven//:com_google_ar_sceneform_ux_sceneform_ux",
         "@maven//:com_jakewharton_timber_timber",
         "@maven//:com_squareup_moshi_moshi",
+        "@paid_maven//:androidx_constraintlayout_constraintlayout",
     ],
 )
 
@@ -333,6 +333,7 @@ android_binary(
         "//sample-android-library:sample-android-library-debug",
         "//sample-kotlin-library",
         "@debug_maven//:androidx_paging_paging_runtime",
+        "@free_maven//:androidx_constraintlayout_constraintlayout",
         "@maven//:androidx_activity_activity",
         "@maven//:androidx_activity_activity_compose",
         "@maven//:androidx_appcompat_appcompat",
@@ -341,7 +342,6 @@ android_binary(
         "@maven//:androidx_compose_material_material",
         "@maven//:androidx_compose_ui_ui",
         "@maven//:androidx_compose_ui_ui_tooling",
-        "@maven//:androidx_constraintlayout_constraintlayout",
         "@maven//:androidx_core_core",
         "@maven//:androidx_emoji2_emoji2",
         "@maven//:androidx_lifecycle_lifecycle_common",
@@ -458,7 +458,6 @@ android_binary(
         "@maven//:androidx_compose_material_material",
         "@maven//:androidx_compose_ui_ui",
         "@maven//:androidx_compose_ui_ui_tooling",
-        "@maven//:androidx_constraintlayout_constraintlayout",
         "@maven//:androidx_core_core",
         "@maven//:androidx_emoji2_emoji2",
         "@maven//:androidx_lifecycle_lifecycle_common",
@@ -467,6 +466,7 @@ android_binary(
         "@maven//:com_google_ar_sceneform_ux_sceneform_ux",
         "@maven//:com_jakewharton_timber_timber",
         "@maven//:com_squareup_moshi_moshi",
+        "@paid_maven//:androidx_constraintlayout_constraintlayout",
     ],
 )
 

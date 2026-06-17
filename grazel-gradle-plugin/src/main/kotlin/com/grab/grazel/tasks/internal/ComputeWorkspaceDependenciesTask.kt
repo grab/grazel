@@ -35,6 +35,7 @@ import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.runBlocking
 import org.gradle.api.DefaultTask
 import org.gradle.api.Project
+import org.gradle.api.file.ConfigurableFileCollection
 import org.gradle.api.file.RegularFile
 import org.gradle.api.file.RegularFileProperty
 import org.gradle.api.provider.ListProperty
@@ -55,6 +56,10 @@ internal abstract class ComputeWorkspaceDependenciesTask : DefaultTask() {
     @get:InputFiles
     @get:PathSensitive(PathSensitivity.RELATIVE)
     abstract val compileDependenciesJsons: ListProperty<RegularFile>
+
+    @get:InputFiles
+    @get:PathSensitive(PathSensitivity.RELATIVE)
+    abstract val dependencyDeclarationFiles: ConfigurableFileCollection
 
     @get:Internal
     abstract val dependencyResolutionService: Property<DefaultDependencyResolutionService>
@@ -152,6 +157,19 @@ internal abstract class ComputeWorkspaceDependenciesTask : DefaultTask() {
                     )
                     this.dependencyResolutionService.set(dependencyResolutionService)
                     compileDependenciesJsons.convention(emptyList())
+                    dependencyDeclarationFiles.from(
+                        rootProject.fileTree(rootProject.projectDir) {
+                            include("*.gradle")
+                            include("*.gradle.kts")
+                            include("**/*.gradle")
+                            include("**/*.gradle.kts")
+                            include("gradle/**/*.toml")
+                            exclude(".gradle/**")
+                            exclude("**/.gradle/**")
+                            exclude("build/**")
+                            exclude("**/build/**")
+                        }
+                    )
                     this.aggregatedDependencyResolution.set(aggregatedDependencyResolution)
                     this.migrationCheckerProvider.set(migrationChecker.get())
                     this.variantBuilderProvider.set(variantBuilderProvider.get())

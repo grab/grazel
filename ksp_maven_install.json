@@ -3,7 +3,7 @@
   "__INPUT_ARTIFACTS_HASH": {
     "androidx.test.espresso:espresso-contrib": 1406236047,
     "com.squareup.moshi:moshi-kotlin-codegen": 1322346320,
-    "repositories": -842695579
+    "repositories": 2040469386
   },
   "__RESOLVED_ARTIFACTS_HASH": {
     "com.google.auto.service:auto-service-annotations": 471325166,
@@ -434,6 +434,28 @@
     ]
   },
   "repositories": {
+    "https://dl.google.com/dl/android/maven2/": [
+      "com.google.auto.service:auto-service-annotations",
+      "com.google.code.findbugs:jsr305",
+      "com.google.errorprone:error_prone_annotations",
+      "com.google.guava:failureaccess",
+      "com.google.guava:guava",
+      "com.google.guava:listenablefuture",
+      "com.google.j2objc:j2objc-annotations",
+      "com.squareup.moshi:moshi",
+      "com.squareup.moshi:moshi-kotlin-codegen",
+      "com.squareup.okio:okio",
+      "com.squareup:kotlinpoet",
+      "com.squareup:kotlinpoet-ksp",
+      "org.checkerframework:checker-qual",
+      "org.jetbrains.kotlin:kotlin-reflect",
+      "org.jetbrains.kotlin:kotlin-stdlib",
+      "org.jetbrains.kotlin:kotlin-stdlib-common",
+      "org.jetbrains.kotlin:kotlin-stdlib-jdk7",
+      "org.jetbrains.kotlin:kotlin-stdlib-jdk8",
+      "org.jetbrains:annotations",
+      "org.ow2.asm:asm"
+    ],
     "https://repo.maven.apache.org/maven2/": [
       "com.google.auto.service:auto-service-annotations",
       "com.google.code.findbugs:jsr305",

@@ -8,6 +8,7 @@ import com.grab.grazel.gradle.dependencies.model.ResolveDependenciesResult.Compa
 import com.grab.grazel.gradle.dependencies.model.ResolvedDependency
 import com.grab.grazel.gradle.dependencies.model.WorkspaceDependencies
 import com.grab.grazel.gradle.dependencies.model.allDependencies
+import com.grab.grazel.gradle.dependencies.model.hasSameEffectiveIdentityAs
 import com.grab.grazel.gradle.dependencies.model.merge
 import com.grab.grazel.gradle.dependencies.model.versionInfo
 import com.grab.grazel.gradle.variant.DEFAULT_VARIANT
@@ -92,7 +93,9 @@ internal class ComputeWorkspaceDependencies {
                 Collectors.toConcurrentMap({ it.key }, { (_, dependencies) ->
                     dependencies.entries
                         .parallelStream()
-                        .filter { it.key !in defaultClasspath }
+                        .filter { (shortId, dependency) ->
+                            !defaultClasspath.containsSameEffectiveDependency(shortId, dependency)
+                        }
                         .collect(Collectors.toMap({ it.key }, { it.value }))
                 })
             ).apply { put(DEFAULT_VARIANT, defaultClasspath) }
@@ -142,15 +145,21 @@ internal class ComputeWorkspaceDependencies {
                     { (_, dependencies) ->
                         dependencies.entries
                             .parallelStream()
+                            .filter { (shortId, dependency) ->
+                                val defaultDependency = defaultFlatClasspath[shortId]
+                                !dependency.isDirectOverrideCarrier() &&
+                                    !dependency.isDirectDependencyCoveredBy(defaultDependency)
+                            }
                             .collect(
                                 Collectors.toMap(
                                     { (shortId, _) -> shortId },
                                     { (shortId, dependency) ->
                                         // If a transitive dependency is already in default classpath,
                                         // then we override it to point to default classpath instead
-                                        if (shortId in defaultFlatClasspath && !dependency.direct) {
-                                            val (group, name, _, _) = dependency!!.id.split(":")
-                                            dependency.copy(
+                                        val defaultDependency = defaultFlatClasspath[shortId]
+                                        if (defaultDependency != null && dependency.shouldUseDefaultOwner(defaultDependency)) {
+                                            val (group, name) = shortId.split(":")
+                                            defaultDependency.copy(
                                                 overrideTarget = OverrideTarget(
                                                     artifactShortId = shortId,
                                                     label = BazelDependency.MavenDependency(
@@ -167,23 +176,12 @@ internal class ComputeWorkspaceDependencies {
             .mapValues { it.value.values.sortedBy(ResolvedDependency::id) }
 
 
-        // Compute the transitive classpath map with shortId as key and list of dependency shortIds as values
-        val transitiveClasspath = reducedClasspath
-            .entries
-            .parallelStream()
-            .flatMap { it.value.values.stream() }
-            .filter(ResolvedDependency::direct)
-            .collect(
-                Collectors.groupingByConcurrent(
-                    ResolvedDependency::shortId,
-                    Collectors.flatMapping({
-                        it.dependencies
-                            .parallelStream()
-                            .map(ResolvedDependency::from)
-                            .map(ResolvedDependency::shortId)
-                    }, Collectors.toCollection { sortedSetOf() })
-                )
-            ).toMap()
+        val variantTransitiveClasspath = reducedClasspath
+            .mapValues { (_, dependencies) -> dependencies.values.directTransitiveClasspath() }
+            .filterValues(Map<String, Set<String>>::isNotEmpty)
+
+        // Preserve the legacy global shortId index for generated target transitive tags.
+        val transitiveClasspath = variantTransitiveClasspath.globalTransitiveClasspath()
 
         // Aggregate KSP deps across ALL variants into single bucket, deduplicated by max version
         val kspDeps: List<ResolvedDependency> = allResults
@@ -205,9 +203,33 @@ internal class ComputeWorkspaceDependencies {
         return WorkspaceDependencies(
             variantDeps = reducedFinalClasspath,
             aggregatedRepos = if (kspDeps.isNotEmpty()) mapOf(KSP_MAVEN to kspDeps) else emptyMap(),
-            transitiveClasspath = transitiveClasspath
+            transitiveClasspath = transitiveClasspath,
+            variantTransitiveClasspath = variantTransitiveClasspath
         )
     }
+
+    private fun Collection<ResolvedDependency>.directTransitiveClasspath(): Map<String, Set<String>> =
+        asSequence()
+            .filter(ResolvedDependency::direct)
+            .groupBy(ResolvedDependency::shortId)
+            .mapValues { (_, dependencies) ->
+                dependencies
+                    .asSequence()
+                    .flatMap { it.dependencies.asSequence() }
+                    .map(ResolvedDependency::from)
+                    .map(ResolvedDependency::shortId)
+                    .toSortedSet()
+            }
+            .filterValues(Set<String>::isNotEmpty)
+
+    private fun Map<String, Map<String, Set<String>>>.globalTransitiveClasspath(): Map<String, Set<String>> =
+        buildMap<String, MutableSet<String>> {
+            this@globalTransitiveClasspath.values.forEach { variantClasspath ->
+                variantClasspath.forEach { (shortId, dependencies) ->
+                    getOrPut(shortId) { sortedSetOf() }.addAll(dependencies)
+                }
+            }
+        }
 
     /**
      * A reducing collector that picks the [ResolvedDependency] with higher
@@ -223,5 +245,34 @@ internal class ComputeWorkspaceDependencies {
                 else -> if (old.versionInfo > new.versionInfo) old.merge(new) else new.merge(old)
             }
         }
+    }
+
+    private fun Map<String, ResolvedDependency>.containsSameEffectiveDependency(
+        shortId: String,
+        dependency: ResolvedDependency
+    ): Boolean {
+        val defaultDependency = this[shortId] ?: return false
+        return defaultDependency.hasSameEffectiveIdentityAs(dependency) &&
+            (!dependency.direct || defaultDependency.direct)
+    }
+
+    private fun ResolvedDependency.isDirectDependencyCoveredBy(
+        defaultDependency: ResolvedDependency?
+    ): Boolean {
+        return direct &&
+            defaultDependency?.direct == true &&
+            defaultDependency.hasSameEffectiveIdentityAs(this)
+    }
+
+    private fun ResolvedDependency.isDirectOverrideCarrier(): Boolean {
+        return direct && overrideTarget != null
+    }
+
+    private fun ResolvedDependency.shouldUseDefaultOwner(
+        defaultDependency: ResolvedDependency
+    ): Boolean {
+        return !direct &&
+            (defaultDependency.hasSameEffectiveIdentityAs(this) ||
+                defaultDependency.versionInfo > versionInfo)
     }
 }

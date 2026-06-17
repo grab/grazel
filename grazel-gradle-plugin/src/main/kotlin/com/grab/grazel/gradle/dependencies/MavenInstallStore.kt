@@ -31,11 +31,24 @@ internal interface MavenInstallStore : AutoCloseable {
      * `@maven` repository then will return `@maven//:androidx_activity_activity` in form of
      * [MavenDependency]
      */
-    operator fun get(variants: Set<String>, group: String, name: String): MavenDependency?
+    operator fun get(
+        variants: Set<String>,
+        group: String,
+        name: String,
+        version: String? = null
+    ): MavenDependency?
 
     operator fun set(variantRepoName: String, group: String, name: String)
 
     fun set(variantRepoName: String, group: String, name: String, target: MavenDependency?)
+
+    fun set(
+        variantRepoName: String,
+        group: String,
+        name: String,
+        version: String?,
+        target: MavenDependency?
+    )
 }
 
 class DefaultMavenInstallStore : MavenInstallStore {
@@ -44,16 +57,31 @@ class DefaultMavenInstallStore : MavenInstallStore {
         val variant: String,
         val group: String,
         val name: String,
+        val version: String? = null,
     )
 
     private val cache = ConcurrentHashMap<ArtifactKey, MavenDependency>()
 
-    override fun get(variants: Set<String>, group: String, name: String): MavenDependency {
-        fun get(variant: String): MavenDependency? =
-            cache[ArtifactKey(variant, group, name)]
+    override fun get(
+        variants: Set<String>,
+        group: String,
+        name: String,
+        version: String?
+    ): MavenDependency {
+        fun get(variant: String, requestedVersion: String?): MavenDependency? =
+            cache[ArtifactKey(variant, group, name, requestedVersion)]
 
-        return variants.asSequence().mapNotNull(::get).firstOrNull()
-            ?: get(DEFAULT_VARIANT)
+        if (version != null) {
+            variants.asSequence()
+                .mapNotNull { variant -> get(variant, version) }
+                .firstOrNull()
+                ?.let { return it }
+
+            get(DEFAULT_VARIANT, version)?.let { return it }
+        }
+
+        return variants.asSequence().mapNotNull { variant -> get(variant, null) }.firstOrNull()
+            ?: get(DEFAULT_VARIANT, null)
             ?: run {
                 // When no dependency is found in the index, assume @maven. This could be incorrect
                 // but makes for easier testing
@@ -71,8 +99,21 @@ class DefaultMavenInstallStore : MavenInstallStore {
         name: String,
         target: MavenDependency?
     ) {
-        cache[ArtifactKey(variantRepoName, group, name)] =
-            target ?: MavenDependency(variantRepoName.toMavenRepoName(), group, name)
+        set(variantRepoName, group, name, version = null, target = target)
+    }
+
+    override fun set(
+        variantRepoName: String,
+        group: String,
+        name: String,
+        version: String?,
+        target: MavenDependency?
+    ) {
+        val dependency = target ?: MavenDependency(variantRepoName.toMavenRepoName(), group, name)
+        if (version != null) {
+            cache[ArtifactKey(variantRepoName, group, name, version)] = dependency
+        }
+        cache[ArtifactKey(variantRepoName, group, name)] = dependency
     }
 
     override fun close() = cache.clear()

@@ -43,6 +43,13 @@ constructor(
         if (variantCache.contains(project.path)) return variantCache.getValue(project.path) else {
             val variants = if (project.isAndroid) {
                 val migratableVariants = variantDataSource.getMigratableVariants(project)
+                val allFlavorNames = variantDataSource.getFlavors(project)
+                    .map { it.name }
+                    .toSet()
+                val allBuildTypeNames = variantDataSource.getBuildTypes(project)
+                    .map { it.name }
+                    .toSet()
+                val allFlavorBuildTypes = (allFlavorNames + allBuildTypeNames).toSet()
                 val flavors = migratableVariants
                     .flatMap { it.productFlavors }
                     .map { it.name }
@@ -50,28 +57,27 @@ constructor(
                 val buildTypes = migratableVariants
                     .map { it.buildType.name }
                     .toSet()
-                val flavorsBuildTypes = (flavors + buildTypes).toSet()
 
                 val defaultVariants = listOf<Variant<*>>(
                     AndroidDefaultVariant(
                         project = project,
                         variantType = AndroidBuild,
-                        ignoreKeywords = flavorsBuildTypes
+                        ignoreKeywords = allFlavorBuildTypes
                     ),
                     AndroidDefaultVariant(
                         project = project,
                         variantType = Test,
-                        ignoreKeywords = flavorsBuildTypes
+                        ignoreKeywords = allFlavorBuildTypes
                     ),
                     AndroidDefaultVariant(
                         project = project,
                         variantType = AndroidTest,
-                        ignoreKeywords = flavorsBuildTypes
+                        ignoreKeywords = allFlavorBuildTypes
                     ),
                     AndroidDefaultVariant(
                         project = project,
                         variantType = Lint,
-                        ignoreKeywords = flavorsBuildTypes
+                        ignoreKeywords = allFlavorBuildTypes
                     )
                 )
 

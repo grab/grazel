@@ -67,7 +67,19 @@ internal class ResolvedComponentsVisitor {
          * "direct" iff it is a first-level dependency of the resolved configuration (not just
          * transitively reachable). Always `false` in the default (non-traversing) mode.
          */
-        val directFromProject: Boolean = false
+        val directFromProject: Boolean = false,
+        /**
+         * Project path of the configuration owner that declared this direct external dependency.
+         * This is populated only when [directFromProject] is true and the owning Gradle project can
+         * be inferred from the resolved component graph.
+         */
+        val directProjectPath: String? = null,
+        /**
+         * Gradle selected variant display name for the project edge that owns this direct external
+         * dependency. This stays raw because AGP/Gradle names are configuration-like strings such
+         * as `paidDebugRuntimeElements`.
+         */
+        val directProjectVariantDisplayName: String? = null
     ) : Comparable<VisitResult> {
         override fun compareTo(
             other: VisitResult
@@ -89,6 +101,11 @@ internal class ResolvedComponentsVisitor {
         val dependencies: Set<DependencyResult>,
         val requiresJetifier: Boolean
     )
+
+    private val Node.projectPath: String?
+        get() = toString()
+            .takeIf { it.startsWith("project :") }
+            ?.substringAfter("project ")
 
     /**
      * Visit all external dependency nodes in the graph and map them to [T] using the [transform]
@@ -117,7 +134,12 @@ internal class ResolvedComponentsVisitor {
         val visited = hashSetOf<Node>()
         val result = sortedSetOf<T>()
 
-        fun emit(node: Node, dfsResult: DFSResult, parentIsDirect: Boolean) {
+        fun emit(
+            node: Node,
+            dfsResult: DFSResult,
+            directProjectPath: String?,
+            directProjectVariantDisplayName: String?
+        ) {
             if (!node.isProject) {
                 transform(
                     VisitResult(
@@ -125,7 +147,9 @@ internal class ResolvedComponentsVisitor {
                         repository = node.repository,
                         transitiveDeps = dfsResult.dependencies,
                         requiresJetifier = dfsResult.requiresJetifier,
-                        directFromProject = traverseProjectNodes && parentIsDirect
+                        directFromProject = traverseProjectNodes && directProjectPath != null,
+                        directProjectPath = directProjectPath,
+                        directProjectVariantDisplayName = directProjectVariantDisplayName
                     )
                 )?.let(result::add)
             }
@@ -134,7 +158,8 @@ internal class ResolvedComponentsVisitor {
         data class ChildDependency(
             val selected: Node,
             val requested: ComponentSelector,
-            val constraint: Boolean
+            val constraint: Boolean,
+            val selectedVariantDisplayName: String
         )
 
         /**
@@ -148,10 +173,16 @@ internal class ResolvedComponentsVisitor {
          *   a parent are first-level dependencies from the aggregated perspective and should be
          *   emitted with [VisitResult.directFromProject] = `true`.
          */
-        fun dfs(node: Node, level: Int = 0, parentIsDirect: Boolean = false): DFSResult {
+        fun dfs(
+            node: Node,
+            level: Int = 0,
+            directProjectPath: String? = null,
+            directProjectVariantDisplayName: String? = null,
+            projectVariantDisplayName: String? = null
+        ): DFSResult {
             if (node in visited) {
                 val cachedResult = dfsResults[node] ?: return DFSResult(emptySet(), false)
-                emit(node, cachedResult, parentIsDirect)
+                emit(node, cachedResult, directProjectPath, directProjectVariantDisplayName)
                 return cachedResult
             }
             visited.add(node)
@@ -163,25 +194,48 @@ internal class ResolvedComponentsVisitor {
             node.dependencies
                 .asSequence()
                 .filterIsInstance<ResolvedDependencyResult>()
-                .map { ChildDependency(it.selected, it.requested, it.isConstraint) }
+                .map {
+                    ChildDependency(
+                        selected = it.selected,
+                        requested = it.requested,
+                        constraint = it.isConstraint,
+                        selectedVariantDisplayName = it.resolvedVariant.displayName
+                    )
+                }
                 .let { seq ->
                     if (traverseProjectNodes) seq // keep project nodes so we can descend through them
                     else seq.filter { (selected, _, _) -> !selected.isProject }
                 }
                 .filter { (dep, _, _) -> IGNORED_ARTIFACTS.none { dep.toString().startsWith(it) } }
-                .forEach { (child, requested, constraint) ->
+                .forEach { (child, requested, constraint, selectedVariantDisplayName) ->
                     if (traverseProjectNodes && child.isProject) {
-                        // Descend through the project node — its external children are "direct"
-                        val childResult = dfs(child, level + 1, parentIsDirect = !constraint)
+                        // Descend through the project node. Its external children are handled as
+                        // direct when that project node becomes their parent below.
+                        val childResult = dfs(
+                            child,
+                            level + 1,
+                            projectVariantDisplayName = selectedVariantDisplayName
+                        )
                         allDependencies.addAll(childResult.dependencies)
                         requiresJetifier = requiresJetifier || childResult.requiresJetifier
                     } else {
                         // First-level external children can hang directly off the resolved root
                         // (for configuration-level deps) or under a traversed project node.
-                        val directChild = traverseProjectNodes &&
-                            !constraint &&
-                            (level == 0 || node.isProject)
-                        val childResult = dfs(child, level + 1, parentIsDirect = directChild)
+                        val childDirectProjectPath = if (traverseProjectNodes && !constraint) {
+                            when {
+                                node.isProject -> node.projectPath
+                                level == 0 -> root.projectPath
+                                else -> null
+                            }
+                        } else {
+                            null
+                        }
+                        val childResult = dfs(
+                            child,
+                            level + 1,
+                            directProjectPath = childDirectProjectPath,
+                            directProjectVariantDisplayName = projectVariantDisplayName
+                        )
                         val directDepResult = DependencyResult(
                             dependency = child,
                             requiresJetifier = requested.isLegacySupportLibrary,
@@ -199,7 +253,7 @@ internal class ResolvedComponentsVisitor {
             val dfsResult = DFSResult(allDependencies, requiresJetifier)
             dfsResults[node] = dfsResult
 
-            emit(node, dfsResult, parentIsDirect)
+            emit(node, dfsResult, directProjectPath, directProjectVariantDisplayName)
             return dfsResult
         }
 

@@ -39,9 +39,11 @@ android {
     productFlavors {
         flavor1 {
             dimension "service"
+            matchingFallbacks = ["paid"]
         }
         flavor2 {
             dimension "service"
+            matchingFallbacks = ["paid"]
         }
     }
 }
@@ -60,7 +62,26 @@ dependencies {
     implementation 'androidx.constraintlayout:constraintlayout:2.0.1'
     implementation 'androidx.navigation:navigation-fragment-ktx:2.1.0'
     implementation 'androidx.navigation:navigation-ui-ktx:2.1.0'
+    implementation 'org.apache.commons:commons-lang3:3.9'
+    debugImplementation 'org.apache.commons:commons-lang3:3.12.0'
+    implementation 'com.google.code.findbugs:jsr305:3.0.1'
+    flavor2Implementation 'com.google.code.findbugs:jsr305:3.0.2'
+    implementation('com.google.j2objc:j2objc-annotations:1.1') {
+        exclude group: 'com.example', module: 'main-only-exclude'
+    }
     testImplementation 'junit:junit:4.12'
+    testCompileOnly('commons-io:commons-io:2.11.0') {
+        exclude group: 'com.example', module: 'same-project-test-only-exclude'
+    }
+    androidTestCompileOnly('com.google.j2objc:j2objc-annotations:1.3') {
+        exclude group: 'com.example', module: 'android-test-only-exclude'
+    }
+    androidTestCompileOnly('commons-io:commons-io:2.11.0') {
+        exclude group: 'com.example', module: 'same-project-android-test-only-exclude'
+    }
+    androidTestCompileOnly('org.hamcrest:hamcrest-library:1.3') {
+        exclude group: 'com.example', module: 'android-test-only-hamcrest-exclude'
+    }
     androidTestImplementation 'androidx.test.ext:junit:1.1.2'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.3.0'
 }
