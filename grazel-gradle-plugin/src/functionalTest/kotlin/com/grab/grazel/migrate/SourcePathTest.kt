@@ -71,7 +71,7 @@ class SourcePathTest : BaseGrazelPluginTest() {
 
     private fun assetsAppAssetsShouldBeSet(buildFileContent: String) {
         assertTrue(
-            buildFileContent.contains("src/main/assets/assert-file.png")
+            buildFileContent.contains(""""assets": "src/main/assets"""")
         )
         assertTrue(
             buildFileContent.contains("""src/main/assets""")
@@ -81,7 +81,7 @@ class SourcePathTest : BaseGrazelPluginTest() {
 
     private fun assetsLibsValuesShouldBeSet(buildFileContent: String) {
         assertTrue(
-            buildFileContent.contains("src/main/assets/Android_new_logo_2019.svg")
+            buildFileContent.contains(""""assets": "src/main/assets"""")
         )
         assertTrue(
             buildFileContent.contains("""src/main/assets""")

@@ -26,7 +26,6 @@ import com.grab.grazel.gradle.dependencies.DefaultDependencyResolutionService
 import com.grab.grazel.migrate.internal.RootBazelFileBuilder
 import com.grab.grazel.migrate.internal.WorkspaceBuilder
 import com.grab.grazel.util.BUILD_BAZEL
-import com.grab.grazel.util.BUILD_BAZEL_IGNORE
 import com.grab.grazel.util.WORKSPACE
 import com.grab.grazel.util.ansiGreen
 import com.grab.grazel.util.logHeap
@@ -69,7 +68,7 @@ constructor(
     @get:OutputFile
     val buildBazel: RegularFileProperty = objectFactory
         .fileProperty()
-        .convention(layout.buildDirectory.file("grazel/$BUILD_BAZEL_IGNORE"))
+        .convention(layout.projectDirectory.file(BUILD_BAZEL))
 
     @get:Internal
     val dependencyResolutionService: Property<DefaultDependencyResolutionService> = project

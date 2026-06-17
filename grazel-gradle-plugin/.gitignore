@@ -49,4 +49,9 @@ bazel-out
 bazel-testlogs
 BUILD.bazel
 WORKSPACE
+MODULE.bazel
+MODULE.bazel.lock
+bazel_downloader.cfg
+maven_install.json
+*_maven_install.json
 /.idea/.gitignore

@@ -34,6 +34,8 @@ internal interface MavenInstallStore : AutoCloseable {
     operator fun get(variants: Set<String>, group: String, name: String): MavenDependency?
 
     operator fun set(variantRepoName: String, group: String, name: String)
+
+    fun set(variantRepoName: String, group: String, name: String, target: MavenDependency?)
 }
 
 class DefaultMavenInstallStore : MavenInstallStore {
@@ -44,13 +46,11 @@ class DefaultMavenInstallStore : MavenInstallStore {
         val name: String,
     )
 
-    private val cache = ConcurrentHashMap<ArtifactKey, String>()
+    private val cache = ConcurrentHashMap<ArtifactKey, MavenDependency>()
 
     override fun get(variants: Set<String>, group: String, name: String): MavenDependency {
         fun get(variant: String): MavenDependency? =
-            if (cache.containsKey(ArtifactKey(variant, group, name))) {
-                MavenDependency(variant.toMavenRepoName(), group, name)
-            } else null
+            cache[ArtifactKey(variant, group, name)]
 
         return variants.asSequence().mapNotNull(::get).firstOrNull()
             ?: get(DEFAULT_VARIANT)
@@ -62,7 +62,17 @@ class DefaultMavenInstallStore : MavenInstallStore {
     }
 
     override fun set(variantRepoName: String, group: String, name: String) {
-        cache[ArtifactKey(variantRepoName, group, name)] = variantRepoName
+        set(variantRepoName, group, name, target = null)
+    }
+
+    override fun set(
+        variantRepoName: String,
+        group: String,
+        name: String,
+        target: MavenDependency?
+    ) {
+        cache[ArtifactKey(variantRepoName, group, name)] =
+            target ?: MavenDependency(variantRepoName.toMavenRepoName(), group, name)
     }
 
     override fun close() = cache.clear()

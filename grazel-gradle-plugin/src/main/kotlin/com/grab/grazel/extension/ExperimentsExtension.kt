@@ -61,9 +61,8 @@ data class ExperimentsExtension(private val objects: ObjectFactory) {
         .convention(false)
 
     /**
-     * Experimental: resolve dependencies via a single aggregated configuration per variant at the
-     * root project instead of the per-(project × variant) resolution fan-out followed by an
-     * in-memory merge.
+     * Resolve dependencies through aggregated variant classpaths instead of the per-(project ×
+     * variant) resolution fan-out followed by an in-memory merge.
      *
      * The current pipeline resolves every project's variant classpath independently and then
      * reconstructs the cross-project union (max-version selection, deduplication, transitive
@@ -83,5 +82,5 @@ data class ExperimentsExtension(private val objects: ObjectFactory) {
      */
     val aggregatedDependencyResolution: Property<Boolean> = objects
         .property<Boolean>()
-        .convention(false)
+        .convention(true)
 }

@@ -17,11 +17,20 @@
 package com.grab.grazel.gradle.dependencies
 
 import com.grab.grazel.gradle.MigrationChecker
+import com.grab.grazel.gradle.dependencies.model.ExcludeRule
 import com.grab.grazel.gradle.dependencies.model.ResolveDependenciesResult
 import com.grab.grazel.gradle.dependencies.model.ResolveDependenciesResult.Companion.Scope.COMPILE
 import com.grab.grazel.gradle.dependencies.model.ResolveDependenciesResult.Companion.Scope.KSP
 import com.grab.grazel.gradle.dependencies.model.ResolvedDependency
+import com.grab.grazel.gradle.dependencies.model.versionInfo
+import com.grab.grazel.gradle.variant.ANDROID_TEST_VARIANT
+import com.grab.grazel.gradle.variant.DEFAULT_VARIANT
+import com.grab.grazel.gradle.variant.TEST_VARIANT
+import com.grab.grazel.gradle.variant.Variant
 import com.grab.grazel.gradle.hasKsp
+import com.grab.grazel.gradle.variant.VariantType.AndroidBuild
+import com.grab.grazel.gradle.variant.VariantType.AndroidTest
+import com.grab.grazel.gradle.variant.VariantType.Test
 import com.grab.grazel.gradle.variant.VariantBuilder
 import com.grab.grazel.gradle.variant.extendsOnlyFromDefaultVariants
 import com.grab.grazel.gradle.variant.isBase
@@ -74,6 +83,8 @@ internal class AggregatedDependencyResolver(
 
         if (migratableProjects.isEmpty()) return emptyList()
 
+        val excludeRulesByShortId = collectExcludeRules(migratableProjects)
+
         // Identify APP (binary) and standalone test (com.android.test) modules — they have transitive
         // runtime closures that cover all libs. com.android.test modules are standalone test apps
         // and may declare dependencies not present in the main app module.
@@ -95,9 +106,14 @@ internal class AggregatedDependencyResolver(
         val leafBuildTypes = mutableMapOf<String, String>()
         // leaf name -> flavor names
         val leafFlavors = mutableMapOf<String, List<String>>()
+        // Synthetic hierarchy buckets such as default/debug/free, resolved from their own Gradle
+        // declaration buckets. These prevent filtered leaves from making debug/flavor deps look
+        // like default deps.
+        val hierarchyBucketClosures = mutableMapOf<String, Map<String, ResolvedDependency>>()
+        val testHierarchyBucketClosures = mutableMapOf<String, Map<String, ResolvedDependency>>()
 
         // Lint deps across all migratable projects
-        val lintDeps = mutableMapOf<String, ResolvedDependency>()
+        var lintDeps = emptyMap<String, ResolvedDependency>()
 
         // KSP deps: collected from all migratable projects across all (synthetic) variants
         // We collect projectVariant pairs keyed by variantName for later KSP resolution
@@ -111,10 +127,36 @@ internal class AggregatedDependencyResolver(
                 continue
             }
 
-            // Leaf variants: have non-null backingVariant of BaseVariant type (not JvmVariantData),
-            // not isBase, not extendsOnlyFromDefaultVariants
+            variants
+                .filter { v -> v.variantType == AndroidBuild && (v.isBase || v.extendsOnlyFromDefaultVariants) }
+                .forEach { v ->
+                    val closure = resolveVariantToDependencyMap(v, app, excludeRulesByShortId)
+                    if (closure.isNotEmpty()) {
+                        hierarchyBucketClosures[v.name] = hierarchyBucketClosures[v.name]
+                            ?.let { existing -> unionDependencyMaps(existing, closure) }
+                            ?: closure
+                    }
+                }
+            variants
+                .filter { v ->
+                    (v.variantType == Test && v.name == TEST_VARIANT) ||
+                        (v.variantType == AndroidTest && v.name == ANDROID_TEST_VARIANT)
+                }
+                .forEach { v ->
+                    val closure = resolveVariantToDependencyMap(v, app, excludeRulesByShortId)
+                    if (closure.isNotEmpty()) {
+                        testHierarchyBucketClosures[v.name] = testHierarchyBucketClosures[v.name]
+                            ?.let { existing -> unionDependencyMaps(existing, closure) }
+                            ?: closure
+                    }
+                }
+
+            // Leaf variants: every concrete AGP BaseVariant is a binary/root classpath we can
+            // resolve directly. Build-type-only apps expose debug/release as BaseVariants that
+            // extend only default; they still need to be treated as leaves or the aggregated path
+            // has no root classpath to resolve.
             val leafVariants = variants.filter { v ->
-                !v.isBase && !v.extendsOnlyFromDefaultVariants &&
+                v.variantType == AndroidBuild &&
                     v.backingVariant is com.android.build.gradle.api.BaseVariant
             }
 
@@ -122,14 +164,18 @@ internal class AggregatedDependencyResolver(
                 val leafName = v.name
                 val runtimeConfig = app.configurations.findByName("${leafName}RuntimeClasspath")
                     ?: continue
-                val runtimeClosure = resolveConfigToDependencyMap(runtimeConfig, app)
+                val runtimeClosure = resolveConfigToDependencyMap(
+                    runtimeConfig,
+                    app,
+                    excludeRulesByShortId
+                )
                 if (runtimeClosure.isEmpty()) continue
 
                 // Also resolve CompileClasspath to capture compileOnly + api-of-consumed-libs deps
                 // that are omitted from RuntimeClasspath. Union both; prefer higher version on conflict.
                 val compileConfig = app.configurations.findByName("${leafName}CompileClasspath")
                 val compileClosure = if (compileConfig != null) {
-                    resolveConfigToDependencyMap(compileConfig, app)
+                    resolveConfigToDependencyMap(compileConfig, app, excludeRulesByShortId)
                 } else emptyMap()
                 val closure = unionDependencyMaps(runtimeClosure, compileClosure)
 
@@ -154,8 +200,12 @@ internal class AggregatedDependencyResolver(
                 val unitTestRuntime = app.configurations.findByName("${leafName}UnitTestRuntimeClasspath")
                 val unitTestCompile = app.configurations.findByName("${leafName}UnitTestCompileClasspath")
                 if (unitTestRuntime != null || unitTestCompile != null) {
-                    val rtMap = unitTestRuntime?.let { resolveConfigToDependencyMap(it, app) } ?: emptyMap()
-                    val cpMap = unitTestCompile?.let { resolveConfigToDependencyMap(it, app) } ?: emptyMap()
+                    val rtMap = unitTestRuntime
+                        ?.let { resolveConfigToDependencyMap(it, app, excludeRulesByShortId) }
+                        ?: emptyMap()
+                    val cpMap = unitTestCompile
+                        ?.let { resolveConfigToDependencyMap(it, app, excludeRulesByShortId) }
+                        ?: emptyMap()
                     val testClosure = unionDependencyMaps(rtMap, cpMap)
                     if (testClosure.isNotEmpty()) {
                         leafUnitTestClosures[leafName] = if (leafUnitTestClosures.containsKey(leafName)) {
@@ -170,8 +220,12 @@ internal class AggregatedDependencyResolver(
                 val androidTestRuntime = app.configurations.findByName("${leafName}AndroidTestRuntimeClasspath")
                 val androidTestCompile = app.configurations.findByName("${leafName}AndroidTestCompileClasspath")
                 if (androidTestRuntime != null || androidTestCompile != null) {
-                    val rtMap = androidTestRuntime?.let { resolveConfigToDependencyMap(it, app) } ?: emptyMap()
-                    val cpMap = androidTestCompile?.let { resolveConfigToDependencyMap(it, app) } ?: emptyMap()
+                    val rtMap = androidTestRuntime
+                        ?.let { resolveConfigToDependencyMap(it, app, excludeRulesByShortId) }
+                        ?: emptyMap()
+                    val cpMap = androidTestCompile
+                        ?.let { resolveConfigToDependencyMap(it, app, excludeRulesByShortId) }
+                        ?: emptyMap()
                     val androidTestClosure = unionDependencyMaps(rtMap, cpMap)
                     if (androidTestClosure.isNotEmpty()) {
                         leafAndroidTestClosures[leafName] = if (leafAndroidTestClosures.containsKey(leafName)) {
@@ -198,7 +252,7 @@ internal class AggregatedDependencyResolver(
             val compileOnlyConfigs = listOf("compileClasspath", "debugCompileClasspath", "releaseCompileClasspath")
             for (configName in compileOnlyConfigs) {
                 val config = project.configurations.findByName(configName) ?: continue
-                val extraDeps = resolveConfigToDependencyMap(config, project)
+                val extraDeps = resolveConfigToDependencyMap(config, project, excludeRulesByShortId)
                 if (extraDeps.isEmpty()) continue
                 // Union into all existing leaf closures so these deps appear in the intersection
                 for (leafName in leafClosures.keys.toList()) {
@@ -211,7 +265,10 @@ internal class AggregatedDependencyResolver(
         // Collect lint deps from all migratable projects
         for (project in migratableProjects) {
             project.configurations.findByName("lintChecks")?.let { lintConfig ->
-                lintDeps.putAll(resolveConfigToDependencyMap(lintConfig, project))
+                lintDeps = unionDependencyMaps(
+                    lintDeps,
+                    resolveConfigToDependencyMap(lintConfig, project, excludeRulesByShortId)
+                )
             }
         }
 
@@ -237,9 +294,16 @@ internal class AggregatedDependencyResolver(
         val allLeafNames = leafClosures.keys.toList()
 
         // default = intersection of all leaf closures
-        val defaultIds: Set<String> = allLeafNames
+        val leafIntersectionIds: Set<String> = allLeafNames
             .map { leafClosures[it]!!.keys }
             .reduce { a, b -> a intersect b }
+        val hierarchyDefaultIds = hierarchyBucketClosures[DEFAULT_VARIANT]?.keys ?: emptySet()
+        val nonDefaultHierarchyIds = hierarchyBucketClosures
+            .filterKeys { it != DEFAULT_VARIANT }
+            .values
+            .flatMapTo(mutableSetOf()) { it.keys }
+        val defaultIds = (leafIntersectionIds + hierarchyDefaultIds) -
+            (nonDefaultHierarchyIds - hierarchyDefaultIds)
 
         // Build type buckets: intersection of all leaves for a given build type, minus default
         val buildTypeBuckets = mutableMapOf<String, Map<String, ResolvedDependency>>()
@@ -247,25 +311,39 @@ internal class AggregatedDependencyResolver(
         for (bt in buildTypes) {
             val btLeaves = allLeafNames.filter { leafBuildTypes[it] == bt }
             if (btLeaves.isEmpty()) continue
-            val btIntersection = btLeaves.map { leafClosures[it]!!.keys }.reduce { a, b -> a intersect b }
-            val btIds = btIntersection - defaultIds
+            val hierarchyDeps = hierarchyBucketClosures[bt]
+            val btIds = if (hierarchyDeps != null) {
+                hierarchyDeps.keys - defaultIds
+            } else {
+                btLeaves.map { leafClosures[it]!!.keys }.reduce { a, b -> a intersect b } - defaultIds
+            }
             if (btIds.isNotEmpty()) {
                 val firstLeaf = btLeaves.first()
-                buildTypeBuckets[bt] = btIds.associateWith { id -> leafClosures[firstLeaf]!![id]!! }
+                buildTypeBuckets[bt] = btIds.associateWith { id ->
+                    hierarchyDeps?.get(id) ?: leafClosures[firstLeaf]!![id]!!
+                }
             }
         }
 
         // Flavor buckets: intersection of all leaves sharing a flavor, minus default
         val flavorBuckets = mutableMapOf<String, Map<String, ResolvedDependency>>()
         val allFlavors = leafFlavors.values.flatten().toSet()
+        val buildTypeBucketIds = buildTypeBuckets.values.flatMapTo(mutableSetOf()) { it.keys }
         for (flavor in allFlavors) {
             val flavorLeaves = allLeafNames.filter { leafFlavors[it]?.contains(flavor) == true }
             if (flavorLeaves.isEmpty()) continue
-            val flavorIntersection = flavorLeaves.map { leafClosures[it]!!.keys }.reduce { a, b -> a intersect b }
-            val flavorIds = flavorIntersection - defaultIds
+            val hierarchyDeps = hierarchyBucketClosures[flavor]
+            val flavorIds = if (hierarchyDeps != null) {
+                hierarchyDeps.keys - defaultIds - buildTypeBucketIds
+            } else {
+                flavorLeaves.map { leafClosures[it]!!.keys }.reduce { a, b -> a intersect b } -
+                    defaultIds - buildTypeBucketIds
+            }
             if (flavorIds.isNotEmpty()) {
                 val firstLeaf = flavorLeaves.first()
-                flavorBuckets[flavor] = flavorIds.associateWith { id -> leafClosures[firstLeaf]!![id]!! }
+                flavorBuckets[flavor] = flavorIds.associateWith { id ->
+                    hierarchyDeps?.get(id) ?: leafClosures[firstLeaf]!![id]!!
+                }
             }
         }
 
@@ -283,25 +361,47 @@ internal class AggregatedDependencyResolver(
             }
         }
 
-        // Test bucket: intersection of all leaf unit-test closures, minus default
-        val testIds: Set<String> = if (leafUnitTestClosures.isNotEmpty()) {
-            leafUnitTestClosures.values
-                .map { it.keys }
-                .reduce { a, b -> a intersect b } - defaultIds
-        } else emptySet()
-        val testDeps: Map<String, ResolvedDependency> = testIds.associateWith { id ->
-            leafUnitTestClosures.values.first()[id]!!
+        val defaultDeps: Map<String, ResolvedDependency> = defaultIds.associateWith { id ->
+            hierarchyBucketClosures[DEFAULT_VARIANT]?.get(id) ?: leafClosures[allLeafNames.first()]!![id]!!
+        }
+        val mainCoveredDeps = buildMap {
+            putAll(defaultDeps)
+            buildTypeBuckets.values.forEach(::putAll)
+            flavorBuckets.values.forEach(::putAll)
         }
 
-        // AndroidTest bucket: intersection of all leaf android-test closures, minus default
-        val androidTestIds: Set<String> = if (leafAndroidTestClosures.isNotEmpty()) {
-            leafAndroidTestClosures.values
+        fun isDirectlyCoveredByMain(id: String): Boolean = mainCoveredDeps[id]?.direct == true
+
+        fun intersectClosures(
+            closures: Map<String, Map<String, ResolvedDependency>>
+        ): Map<String, ResolvedDependency> {
+            if (closures.isEmpty()) return emptyMap()
+            val intersectionIds = closures.values
                 .map { it.keys }
-                .reduce { a, b -> a intersect b } - defaultIds
-        } else emptySet()
-        val androidTestDeps: Map<String, ResolvedDependency> = androidTestIds.associateWith { id ->
-            leafAndroidTestClosures.values.first()[id]!!
+                .reduce { a, b -> a intersect b }
+            val firstClosure = closures.values.first()
+            return intersectionIds.associateWith { id -> firstClosure[id]!! }
         }
+
+        // Test bucket: explicit test deps, or intersection of all leaf unit-test closures,
+        // minus deps already directly covered by main buckets. This matches the legacy per-variant
+        // resolver: non-base variants subtract direct base deps, but can still own first-level deps
+        // that only appear transitively in the base/default flattened repo.
+        val testCandidates = unionDependencyMaps(
+            testHierarchyBucketClosures[TEST_VARIANT].orEmpty(),
+            intersectClosures(leafUnitTestClosures)
+        )
+        val testDeps = testCandidates
+            .filterKeys { id -> !isDirectlyCoveredByMain(id) }
+
+        // AndroidTest bucket: explicit androidTest deps, or intersection of all leaf android-test
+        // closures, minus deps already directly covered by main buckets.
+        val androidTestCandidates = unionDependencyMaps(
+            testHierarchyBucketClosures[ANDROID_TEST_VARIANT].orEmpty(),
+            intersectClosures(leafAndroidTestClosures)
+        )
+        val androidTestDeps = androidTestCandidates
+            .filterKeys { id -> !isDirectlyCoveredByMain(id) }
 
         // Build the ResolveDependenciesResult list
         val results = mutableListOf<ResolveDependenciesResult>()
@@ -323,9 +423,6 @@ internal class AggregatedDependencyResolver(
         }
 
         // Default bucket (required — ComputeWorkspaceDependencies.computeInternal calls getValue(DEFAULT_VARIANT))
-        val defaultDeps: Map<String, ResolvedDependency> = defaultIds.associateWith { id ->
-            leafClosures[allLeafNames.first()]!![id]!!
-        }
         results.add(buildResult("default", defaultDeps))
 
         buildTypeBuckets.forEach { (bt, deps) -> results.add(buildResult(bt, deps)) }
@@ -336,6 +433,37 @@ internal class AggregatedDependencyResolver(
         if (lintDeps.isNotEmpty()) results.add(buildResult("lint", lintDeps))
 
         return results
+    }
+
+    private fun resolveVariantToDependencyMap(
+        variant: Variant<*>,
+        project: Project,
+        excludeRulesByShortId: Map<String, Set<ExcludeRule>>
+    ): Map<String, ResolvedDependency> {
+        val runtimeClosure = resolveConfigurationsToDependencyMap(
+            variant.runtimeConfiguration,
+            project,
+            excludeRulesByShortId
+        )
+        val compileClosure = resolveConfigurationsToDependencyMap(
+            variant.compileConfiguration,
+            project,
+            excludeRulesByShortId
+        )
+        return unionDependencyMaps(runtimeClosure, compileClosure)
+    }
+
+    private fun resolveConfigurationsToDependencyMap(
+        configurations: Set<Configuration>,
+        project: Project,
+        excludeRulesByShortId: Map<String, Set<ExcludeRule>>
+    ): Map<String, ResolvedDependency> {
+        return configurations.fold(emptyMap()) { result, configuration ->
+            unionDependencyMaps(
+                result,
+                resolveConfigToDependencyMap(configuration, project, excludeRulesByShortId)
+            )
+        }
     }
 
     /**
@@ -354,7 +482,7 @@ internal class AggregatedDependencyResolver(
             val existing = merged[shortId]
             if (existing == null) {
                 merged[shortId] = compileDep
-            } else if (compileDep.version > existing.version) {
+            } else if (compileDep.versionInfo > existing.versionInfo) {
                 merged[shortId] = compileDep
             }
         }
@@ -364,14 +492,15 @@ internal class AggregatedDependencyResolver(
     /**
      * Resolve a configuration to a map of shortId -> [ResolvedDependency].
      *
-     * Walks the resolution result graph using [ResolvedComponentsVisitor] with
-     * `traverseProjectNodes = false` (project nodes in the graph are filtered out as usual).
-     * All external components (direct and transitive) are emitted with `direct = true`; the
-     * upstream [ComputeWorkspaceDependencies] pipeline handles deduplication.
+     * Walks through project nodes so a binary/root classpath can contribute direct external
+     * dependencies declared by any project in that classpath. Only those direct external
+     * dependencies are emitted; their transitive closures stay nested in
+     * [ResolvedDependency.dependencies], matching [com.grab.grazel.tasks.internal.ResolveVariantDependenciesTask].
      */
     private fun resolveConfigToDependencyMap(
         config: Configuration,
-        project: Project
+        project: Project,
+        excludeRulesByShortId: Map<String, Set<ExcludeRule>>
     ): Map<String, ResolvedDependency> {
         return try {
             val root = config.incoming.resolutionResult.root
@@ -379,9 +508,10 @@ internal class AggregatedDependencyResolver(
             ResolvedComponentsVisitor().visit(
                 root = root,
                 logger = logger::info,
-                traverseProjectNodes = false
+                traverseProjectNodes = true
             ) { visitResult ->
                 val moduleVersion = visitResult.component.moduleVersion ?: return@visit null
+                if (!visitResult.directFromProject) return@visit null
                 val shortId = "${moduleVersion.group}:${moduleVersion.name}"
                 // Skip BOM/platform (pom-only) components — rules_jvm_external rejects them with
                 // "Unsupported packaging type: pom". BOM components appear in the resolution graph
@@ -413,7 +543,7 @@ internal class AggregatedDependencyResolver(
                                 depResult.unjetifiedSource
                             )
                         },
-                    excludeRules = emptySet(),
+                    excludeRules = excludeRulesByShortId[shortId].orEmpty(),
                     repository = visitResult.repository,
                     requiresJetifier = visitResult.requiresJetifier
                 ).also { dep ->
@@ -428,6 +558,34 @@ internal class AggregatedDependencyResolver(
             )
             emptyMap()
         }
+    }
+
+    private fun collectExcludeRules(projects: Collection<Project>): Map<String, Set<ExcludeRule>> {
+        return projects
+            .asSequence()
+            .flatMap { project -> project.configurations.asSequence() }
+            .flatMap { configuration -> configuration.dependencies.asSequence() }
+            .filterIsInstance<ExternalDependency>()
+            .groupBy { dependency -> "${dependency.group}:${dependency.name}" }
+            .mapValues { (_, dependencies) ->
+                dependencies
+                    .flatMap { dependency -> dependency.extractExcludeRules() }
+                    .toSortedSet(compareBy(ExcludeRule::toString))
+            }
+            .filterValues { it.isNotEmpty() }
+    }
+
+    private fun ExternalDependency.extractExcludeRules(): Set<ExcludeRule> {
+        return excludeRules
+            .map {
+                @Suppress("USELESS_ELVIS") // Gradle metadata can expose null group/module values.
+                ExcludeRule(
+                    group = it.group ?: "",
+                    artifact = it.module ?: ""
+                )
+            }
+            .filterNot { it.group.isBlank() || it.artifact.isBlank() }
+            .toSet()
     }
 
     /**

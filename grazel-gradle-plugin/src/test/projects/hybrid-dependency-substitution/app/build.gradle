@@ -4,6 +4,7 @@ plugins {
 }
 
 android {
+    namespace "com.grab.example"
     compileSdkVersion 33
     buildToolsVersion "33.0.1"
 

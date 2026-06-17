@@ -92,6 +92,14 @@ dependencies {
     testImplementation gradleTestKit()
 }
 
+configurations {
+    pluginUnderTestCompileOnlyClasspath {
+        canBeConsumed = false
+        canBeResolved = true
+        extendsFrom compileOnly
+    }
+}
+
 tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompilationTask.class).configureEach {
     compilerOptions.freeCompilerArgs.add("-Xopt-in=kotlin.ExperimentalStdlibApi")
 }
@@ -100,6 +108,10 @@ tasks.withType(Test).configureEach {
     testLogging {
         showStandardStreams = true
     }
+}
+
+tasks.named("pluginUnderTestMetadata") {
+    pluginClasspath.from(configurations.pluginUnderTestCompileOnlyClasspath)
 }
 
 afterEvaluate {

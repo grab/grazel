@@ -1,1 +1,8 @@
-../../../../../.bazelrc
+common --enable_bzlmod=false
+common --verbose_failures
+common --java_runtime_version=remotejdk_17
+common --tool_java_runtime_version=remotejdk_17
+common --tool_java_language_version=17
+common --java_language_version=17
+common --experimental_google_legacy_api
+test --test_output=errors

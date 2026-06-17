@@ -158,6 +158,63 @@ class ResolvedComponentsVisitorTest {
     }
 
     @Test
+    fun `assert repeated root dependency remains direct when first visited transitively`() {
+        val directTransitiveComponent = fakeComponentResult(
+            group = "com.example",
+            name = "direct-transitive",
+            version = "1.0",
+            isProject = false
+        )
+        val directParentComponent = fakeComponentResult(
+            group = "com.example",
+            name = "direct-parent",
+            version = "1.0",
+            isProject = false
+        ) {
+            addDependencyTo(directTransitiveComponent)
+        }
+        val rootComponent = fakeComponentResult {
+            addDependencyTo(directParentComponent)
+            addDependencyTo(directTransitiveComponent)
+        }
+
+        val directComponents = ResolvedComponentsVisitor().visit(
+            root = rootComponent,
+            traverseProjectNodes = true
+        ) { visitResult ->
+            visitResult.component.toString().takeIf { visitResult.directFromProject }
+        }
+
+        assertTrue("Repeated first-level dependencies remain direct") {
+            "com.example:direct-transitive:1.0" in directComponents
+        }
+    }
+
+    @Test
+    fun `assert root dependency constraints are not direct dependencies`() {
+        val constrainedComponent = fakeComponentResult(
+            group = "com.example",
+            name = "constrained",
+            version = "1.0",
+            isProject = false
+        )
+        val rootComponent = fakeComponentResult {
+            addDependencyTo(constrainedComponent, constraint = true)
+        }
+
+        val directComponents = ResolvedComponentsVisitor().visit(
+            root = rootComponent,
+            traverseProjectNodes = true
+        ) { visitResult ->
+            visitResult.component.toString().takeIf { visitResult.directFromProject }
+        }
+
+        assertTrue("Root dependency constraints are not direct dependencies") {
+            directComponents.isEmpty()
+        }
+    }
+
+    @Test
     fun `assert resolved component visitor flattens the graph`() {
         val results = compileConfigurations.flatMap { configuration ->
             ResolvedComponentsVisitor().visit(configuration.incoming.resolutionResult.root) { it }
@@ -187,5 +244,36 @@ class ResolvedComponentsVisitorTest {
                 "com.android.support:support-core-utils:26.0.2"
             )
         }
+    }
+
+    private fun org.gradle.api.internal.artifacts.result.DefaultResolvedComponentResult.addDependencyTo(
+        component: org.gradle.api.artifacts.result.ResolvedComponentResult,
+        constraint: Boolean = false
+    ) {
+        val moduleVersion = component.moduleVersion!!
+        val moduleIdentifier = DefaultModuleIdentifier.newId(
+            /* group = */ moduleVersion.group,
+            /* name = */ moduleVersion.name
+        )
+        addDependency(
+            DefaultResolvedDependencyResult(
+                /* requested = */ DefaultModuleComponentSelector
+                    .newSelector(/* id = */ moduleIdentifier, /* version = */ moduleVersion.version),
+                /* constraint = */ constraint,
+                /* selectedComponent = */ component,
+                /* selectedVariant = */ DefaultResolvedVariantResult(
+                    /* owner = */ DefaultModuleComponentIdentifier
+                        .newId(moduleIdentifier, moduleVersion.version),
+                    /* displayName = */ object : DisplayName {
+                        override fun getDisplayName(): String = ""
+                        override fun getCapitalizedDisplayName(): String = ""
+                    },
+                    /* attributes = */ FakeAttributeContainer(),
+                    /* capabilities = */ ImmutableCapabilities.EMPTY,
+                    /* externalVariant = */ null
+                ),
+                /* from = */ this
+            )
+        )
     }
 }

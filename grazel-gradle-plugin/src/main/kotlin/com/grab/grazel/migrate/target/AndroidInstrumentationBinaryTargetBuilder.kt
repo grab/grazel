@@ -61,7 +61,9 @@ internal class AndroidInstrumentationBinaryTargetBuilder
                 matchedVariant = matchedVariant,
                 sourceSetType = SourceSetType.JAVA_KOTLIN,
             )
-            add(androidInstrumentationBinData.toTarget())
+            if (androidInstrumentationBinData.srcs.isNotEmpty()) {
+                add(androidInstrumentationBinData.toTarget())
+            }
         }
     }
 

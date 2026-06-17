@@ -17,6 +17,7 @@
 package com.grab.grazel.gradle.dependencies
 
 import com.grab.grazel.bazel.starlark.BazelDependency.MavenDependency
+import com.grab.grazel.gradle.dependencies.model.OverrideTarget
 import com.grab.grazel.gradle.dependencies.model.ResolvedDependency
 import com.grab.grazel.gradle.dependencies.model.WorkspaceDependencies
 import com.grab.grazel.util.Json
@@ -105,6 +106,47 @@ class DefaultDependencyResolutionServiceTest {
         assertEquals("variant2_maven", mavenDep?.repo)
         assertEquals("com.example", mavenDep?.group)
         assertEquals("library1", mavenDep?.name)
+    }
+
+    @Test
+    fun `test getMavenDependency returns override target instead of leaf repo for duplicate`() {
+        // Given
+        val commonDependency = ResolvedDependency.fromId(
+            "androidx.activity:activity:1.0",
+            "default"
+        )
+        val leafDuplicate = commonDependency.copy(
+            repository = "demoFreeDebug",
+            overrideTarget = OverrideTarget(
+                artifactShortId = "androidx.activity:activity",
+                label = MavenDependency(
+                    repo = "maven",
+                    group = "androidx.activity",
+                    name = "activity"
+                )
+            )
+        )
+        val workspaceDependencies = WorkspaceDependencies(
+            variantDeps = mapOf(
+                "default" to listOf(commonDependency),
+                "demoFreeDebug" to listOf(leafDuplicate)
+            )
+        )
+        writeWorkspaceDependenciesToFile(workspaceDependencies)
+        dependencyResolutionService.init(workspaceDependenciesFile)
+
+        // When
+        val mavenDep = dependencyResolutionService.getMavenDependency(
+            setOf("demoFreeDebug", "debug", "free", "default"),
+            "androidx.activity",
+            "activity"
+        )
+
+        // Then
+        assertNotNull(mavenDep)
+        assertEquals("maven", mavenDep?.repo)
+        assertEquals("androidx.activity", mavenDep?.group)
+        assertEquals("activity", mavenDep?.name)
     }
 
     @Test
@@ -292,4 +334,4 @@ class DefaultDependencyResolutionServiceTest {
     private fun writeWorkspaceDependenciesToFile(workspaceDependencies: WorkspaceDependencies) {
         workspaceDependenciesFile.writeText(Json.encodeToString(workspaceDependencies))
     }
-} 
+}

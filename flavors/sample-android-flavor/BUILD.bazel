@@ -37,11 +37,11 @@ android_library(
     deps = [
         "//:parcelize",
         "//flavors/sample-library-demo",
-        "@demo_free_debug_maven//:androidx_compose_ui_ui",
-        "@demo_free_debug_maven//:androidx_constraintlayout_constraintlayout_core",
-        "@demo_free_debug_maven//:androidx_core_core",
         "@maven//:androidx_appcompat_appcompat",
+        "@maven//:androidx_compose_ui_ui",
         "@maven//:androidx_constraintlayout_constraintlayout",
+        "@maven//:androidx_constraintlayout_constraintlayout_core",
+        "@maven//:androidx_core_core",
     ],
 )
 
@@ -79,11 +79,11 @@ android_library(
     deps = [
         "//:parcelize",
         "//flavors/sample-library-demo",
-        "@demo_paid_debug_maven//:androidx_compose_ui_ui",
-        "@demo_paid_debug_maven//:androidx_constraintlayout_constraintlayout_core",
-        "@demo_paid_debug_maven//:androidx_core_core",
         "@maven//:androidx_appcompat_appcompat",
+        "@maven//:androidx_compose_ui_ui",
         "@maven//:androidx_constraintlayout_constraintlayout",
+        "@maven//:androidx_constraintlayout_constraintlayout_core",
+        "@maven//:androidx_core_core",
     ],
 )
 
@@ -124,11 +124,11 @@ android_library(
     deps = [
         "//:parcelize",
         "//flavors/sample-library-full",
-        "@full_free_debug_maven//:androidx_compose_ui_ui",
-        "@full_free_debug_maven//:androidx_constraintlayout_constraintlayout_core",
-        "@full_free_debug_maven//:androidx_core_core",
         "@maven//:androidx_appcompat_appcompat",
+        "@maven//:androidx_compose_ui_ui",
         "@maven//:androidx_constraintlayout_constraintlayout",
+        "@maven//:androidx_constraintlayout_constraintlayout_core",
+        "@maven//:androidx_core_core",
     ],
 )
 
@@ -166,10 +166,10 @@ android_library(
     deps = [
         "//:parcelize",
         "//flavors/sample-library-full",
-        "@full_paid_debug_maven//:androidx_compose_ui_ui",
-        "@full_paid_debug_maven//:androidx_constraintlayout_constraintlayout_core",
-        "@full_paid_debug_maven//:androidx_core_core",
         "@maven//:androidx_appcompat_appcompat",
+        "@maven//:androidx_compose_ui_ui",
         "@maven//:androidx_constraintlayout_constraintlayout",
+        "@maven//:androidx_constraintlayout_constraintlayout_core",
+        "@maven//:androidx_core_core",
     ],
 )

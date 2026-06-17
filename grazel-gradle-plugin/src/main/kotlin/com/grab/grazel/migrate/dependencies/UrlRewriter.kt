@@ -25,9 +25,7 @@ internal class UrlRewriter {
         outputFile: File,
         allRepositories: Set<Repository>
     ) {
-        require(outputFile.exists()) {
-            "Output file ${outputFile.absolutePath} does not exist"
-        }
+        outputFile.parentFile?.mkdirs()
         outputFile.writeText(
             allRepositories
                 .asSequence()

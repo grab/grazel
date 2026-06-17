@@ -151,6 +151,7 @@ internal abstract class ComputeWorkspaceDependenciesTask : DefaultTask() {
                         rootProject.layout.buildDirectory.file("grazel/dependencies.json")
                     )
                     this.dependencyResolutionService.set(dependencyResolutionService)
+                    compileDependenciesJsons.convention(emptyList())
                     this.aggregatedDependencyResolution.set(aggregatedDependencyResolution)
                     this.migrationCheckerProvider.set(migrationChecker.get())
                     this.variantBuilderProvider.set(variantBuilderProvider.get())
@@ -159,6 +160,7 @@ internal abstract class ComputeWorkspaceDependenciesTask : DefaultTask() {
                 rootProject,
                 variantBuilderProvider,
                 limitDependencyResolutionParallelism,
+                aggregatedDependencyResolution,
             ) { taskProvider ->
                 computeTask.configure {
                     compileDependenciesJsons.add(taskProvider.flatMap { it.resolvedDependencies })

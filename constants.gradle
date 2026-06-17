@@ -16,6 +16,8 @@
 ext {
     groupId = "com.grab.grazel"
     versionName = project.hasProperty("versionName") ? versionName : "0.4.2-alpha.14"
+    agpVersion = "8.6.1"
+    kotlinVersion = "1.9.25"
 
     website = "https://grab.github.io/Grazel/"
 }

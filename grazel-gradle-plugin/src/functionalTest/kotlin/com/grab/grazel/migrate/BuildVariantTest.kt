@@ -55,6 +55,23 @@ class BuildVariantTest : BaseGrazelPluginTest() {
         }
     }
 
+    @Test
+    fun computeWorkspaceDependenciesDoesNotScheduleLegacyResolveTasksByDefault() {
+        val result = runGradleBuild(
+            arrayOf("computeWorkspaceDependencies", "--dry-run", "--console=plain"),
+            rootProject
+        )
+
+        Assert.assertFalse(
+            "Default dependency resolution must not schedule legacy per-variant ResolveVariantDependenciesTask tasks",
+            result.output.lines().any { it.contains("ResolveDependencies SKIPPED") }
+        )
+        Assert.assertTrue(
+            "computeWorkspaceDependencies should still be present in the task graph",
+            result.output.contains(":computeWorkspaceDependencies SKIPPED")
+        )
+    }
+
     private fun moduleDepsShouldOnlyContainEnabledFlavor(buildFileContent: String) {
         Assert.assertTrue(
             "Contains Kotlin library flavor2",
@@ -86,15 +103,15 @@ class BuildVariantTest : BaseGrazelPluginTest() {
     private fun resourceShouldOnlyContainEnabledFlavorAndVariant(buildFileContent: String) {
         Assert.assertTrue(
             "Contains flavor2 resources",
-            buildFileContent.contains("""src/flavor2/res/""")
+            buildFileContent.contains(""""res": "src/flavor2/res"""")
         )
         Assert.assertFalse(
             "Does not contain flavor1 resources",
-            buildFileContent.contains("""src/flavor1/res/""")
+            buildFileContent.contains("""src/flavor1/res""")
         )
         Assert.assertTrue(
             "Contains main resources",
-            buildFileContent.contains("""src/main/res/""")
+            buildFileContent.contains(""""res": "src/main/res"""")
         )
     }
 

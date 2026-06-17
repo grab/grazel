@@ -136,13 +136,13 @@ internal abstract class DefaultDependencyResolutionService : DependencyResolutio
                             workspaceDependencies.variantDeps.forEach { (variantName, dependencies) ->
                                 dependencies.forEach { dependency ->
                                     val (group, name, _) = dependency.id.split(":")
-                                    set(variantName, group, name)
+                                    set(variantName, group, name, dependency.overrideTarget?.label)
                                 }
                             }
                             workspaceDependencies.aggregatedRepos.forEach { (repoName, dependencies) ->
                                 dependencies.forEach { dependency ->
                                     val (group, name, _) = dependency.id.split(":")
-                                    set(repoName, group, name)
+                                    set(repoName, group, name, dependency.overrideTarget?.label)
                                 }
                             }
                         }

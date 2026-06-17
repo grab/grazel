@@ -244,6 +244,7 @@ internal abstract class ResolveVariantDependenciesTask : DefaultTask() {
             rootProject: Project,
             variantBuilderProvider: Lazy<VariantBuilder>,
             limitDependencyResolutionParallelism: Property<Boolean>,
+            aggregatedDependencyResolution: Property<Boolean>,
             subprojectTaskConfigure: (TaskProvider<ResolveVariantDependenciesTask>) -> Unit
         ) {
             // Register a lifecycle to aggregate all subproject tasks
@@ -252,6 +253,14 @@ internal abstract class ResolveVariantDependenciesTask : DefaultTask() {
                 description = "Resolve variant tasks dependencies"
             }
             rootProject.afterEvaluate {
+                if (aggregatedDependencyResolution.get()) {
+                    rootProject.logger.info(
+                        "Grazel: skipping legacy per-variant dependency resolution tasks " +
+                            "(aggregatedDependencyResolution=true)"
+                    )
+                    return@afterEvaluate
+                }
+
                 val variantBuilder = variantBuilderProvider.get()
                 subprojects.forEach { project ->
                     val projectResolveDependenciesTask = project.tasks

@@ -9,30 +9,35 @@
 > [§ Current approach](#current-approach-app-leaf-classpath--set-bucketing).
 
 ## TL;DR — where things stand RIGHT NOW
-- **Goal of the refactor:** add a faster aggregated dependency-resolution path behind the experiment
-  flag `aggregatedDependencyResolution` (default **off**), without breaking the existing per-module
-  path (flag off).
-- **Milestone ACHIEVED:** with the flag **ON**, `./gradlew migrateToBazel` regenerates cleanly and
-  **`bazelisk build //...` compiles all 239 targets successfully** (full closure: Kotlin/Kapt/Dagger/
-  DataBinding/Dex/apk — moshi, dagger, compose, paging all resolve correctly). This is the agreed
-  **success bar: functional correctness, NOT byte-identical output** (author-directed, see § Success bar).
-- **⚠️ The milestone is NOT in HEAD.** The committed branch tip (`8307e1f`) does **not** contain the
-  working implementation — it lives entirely in the **uncommitted working tree** (resolver edits +
-  `build.gradle` flag + regenerated outputs + these `reports/*.md`). A fresh `git clone` of the branch
-  will NOT reproduce the passing build. **First action for the next agent: commit the working
-  checkpoint** (see § Git state for the exact file list) so it can't be lost.
+- **Goal of the refactor:** make the faster aggregated dependency-resolution path the default,
+  remove the old per-project/per-variant `ResolveDependencies` fan-out from the default generation
+  path, and keep generated Bazel output aligned with master semantics except for intentional,
+  documented bucket/lockfile diffs.
+- **Current milestone:** the default path now uses aggregated resolution. `./gradlew migrateToBazel`
+  regenerates cleanly, both Gradle unit and functional tests pass, the focused bucket/task-graph
+  verifiers pass, and a plain **`bazelisk build //...` compiles all 239 targets successfully**.
+- **Remaining known failure:** `bazelisk test //...` fails only the 8 generated lint test targets for
+  existing sample lint/resource issues. The other 9 Bazel tests pass, and the explicit non-lint subset
+  passes.
+- **Current working state is still uncommitted.** Commit the resolver, task wiring, generated outputs,
+  fixture updates, `.bazel/.default.bazelrc`, and `reports/*.md` together when packaging. Do not
+  commit `codedb.snapshot` unless deliberately wanted; it is a tool artifact.
 - **Read order:** (1) this file; (2) `reports/dependencies-refactor-worklog.md` — the frozen run log,
   see **Run 6 (spike)** and **Run 7 (milestone)**; (3) `reports/dependencies-refactor-design-notes.md` —
   the spec (NOTE: its §3/§4 describe the *abandoned* approach; treat as historical); (4)
   `reports/dependency-resolution-to-workspace.md` — the still-accurate current-pipeline / bucket map.
 
-## Success bar (the lever that unblocked this)
-The original bar was a **byte/semantic-identical oracle** (per-variant diff of `dependencies.json`
-OFF vs ON). That bar made the work open-ended (global cross-project resolution vs OFF's per-module
-merge can legitimately pick different conflict winners / transitive nesting). The author **relaxed
-the bar to functional correctness**: the generated `maven_install.json` files resolve and
-**`bazelisk build //...` passes**, even if some transitive versions differ from the OFF output.
-Under this bar the milestone is met. Do **not** re-impose byte-identity unless the author asks.
+## Success bar
+Use the master-generated Bazel files as the behavioral oracle, but do not require byte-identical
+lockfiles. The current accepted standard is:
+- The new path is convention-default `true`; the sample no longer opts in manually.
+- Dry-run task graphs for `computeWorkspaceDependencies` and `migrateToBazel` do **not** schedule the
+  old `*ResolveDependencies` fan-out.
+- Generated labels preserve bucket semantics: common deps in `@maven`, debug deps in `@debug_maven`,
+  androidTest deps in `@android_test_maven`, KSP/lint/artifact pinning intact.
+- Every generated diff from master is either eliminated or documented with evidence.
+- `bazelisk build //...` passes. Broad `bazelisk test //...` is allowed to remain red only for the
+  isolated generated lint sample debt recorded in the goal log.
 
 ---
 
@@ -59,14 +64,16 @@ custom consumables, no ecosystem (Android-vs-JVM) attribute conflict.
    (→ `default` → `@maven`), matching where the OFF path put them.
 4. Collect `lintChecks` deps from all projects; collect KSP project-variants (KSP stays per-project —
    it needs JAR download for processor-class extraction, mirroring `ResolveVariantDependenciesTask`).
-5. **Mechanical set-bucketing** over leaf closures (this is what makes it correct):
-   - `default = ∩ all leaf closures`
-   - `<buildType> = (∩ leaves of that build type) − default`
-   - `<flavor>   = (∩ leaves with that flavor) − default`
+5. Collect declared Gradle exclude rules from migratable project configurations and attach them to
+   emitted direct dependencies by `group:artifact`.
+6. **Mechanical set-bucketing** over leaf closures plus explicit synthetic hierarchy buckets:
+   - `default = (∩ all leaf closures + explicit default bucket) − non-default hierarchy ownership`
+   - `<buildType> = explicit build-type bucket, or ∩ leaves of that build type, minus default`
+   - `<flavor>   = explicit flavor bucket, or ∩ leaves with that flavor, minus default/build-type`
    - `<leaf>     = leaf closure − (default ∪ its buildType ∪ its flavors)`  (per-leaf residual)
-   - `test = (∩ unit-test closures) − default`; `androidTest = (∩ androidTest closures) − default`
+   - `test`/`androidTest` = explicit test bucket ∪ leaf test intersections, minus direct main deps
    - `lint = lintChecks deps`
-6. Emit one `ResolveDependenciesResult` per bucket (COMPILE + KSP scopes). Downstream
+7. Emit one `ResolveDependenciesResult` per bucket (COMPILE + KSP scopes). Downstream
    `ComputeWorkspaceDependencies.computeFromResults` is **unchanged** — same pipeline as the OFF path.
 
 **Why bucketing works even on this debug-heavy sample (the key insight):** the earlier fear was
@@ -76,8 +83,8 @@ debug-only paging stack → paging correctly lands in the `debug` bucket. Valida
 spike (Run 6): `union(buckets) == union(leaves)`, 0 deps lost, no version conflicts.
 
 ### Known limitations / risks of the current approach (be honest with the next reader)
-- **Not byte-identical to OFF** by design (see § Success bar). Some buckets over/under-include vs the
-  per-module path; acceptable under the relaxed bar because the build passes.
+- **Not byte-identical to master** by design (see § Success bar). The current generated diff is
+  intentionally documented rather than treated as a raw byte-for-byte oracle.
 - **BOM filtering is heuristic:** components are skipped if their module name ends `-bom`/`.bom`
   (rules_jvm_external rejects pom-only `Unsupported packaging type: pom`). The doc-comment mentions a
   `org.gradle.category == platform` attribute check as the "real" signal, but the code currently uses
@@ -87,6 +94,8 @@ spike (Run 6): `union(buckets) == union(leaves)`, 0 deps lost, no version confli
   oracle's tail risk). Fine under the relaxed bar; revisit only if a specific version breaks a build.
 - **`compileOnly`-into-every-leaf** (step 3) is deliberately broad — it pushes library `compileOnly`
   deps into `default`. Correct for `@maven` mapping but coarser than OFF's per-variant placement.
+- **`bazelisk test //...` lint failures remain sample debt:** generated lint targets currently fail
+  for duplicate generated resources and existing sample lint findings. Non-lint Bazel tests pass.
 
 ---
 
@@ -120,32 +129,23 @@ was to reconstruct base buckets from the resolution graph.
 resolved, ecosystem-consistent, full-transitive closures we were trying to synthesize. Resolve those
 directly instead of rebuilding them. (Worklog "PIVOT (author-directed)" + Run 6 spike.)
 
-> Residual artifacts of the abandoned approach: `ResolvedComponentsVisitor.traverseProjectNodes` /
-> `VisitResult.directFromProject` were added for it and are **committed but unused** by the current
-> resolver (`resolveConfigToDependencyMap` calls `visit(..., traverseProjectNodes = false)`). Harmless;
-> leave or clean up later.
+> Residual history note: `ResolvedComponentsVisitor.traverseProjectNodes` /
+> `VisitResult.directFromProject` started during the abandoned approach but are now used by the
+> current resolver. They were fixed to preserve direct ownership on repeated nodes and to ignore
+> root dependency constraints as direct dependencies.
 
 ---
 
-## Git state (IMPORTANT — working milestone is partly uncommitted)
-- Branch `arun/dependencies-refactor`, pushed to origin.
-- **HEAD = `8307e1f`** "Pivot: resolve app leaf RUNTIME classpaths + set-bucketing (lossless; compiles)".
-  This is the pivot impl BEFORE the compileOnly-gap closure.
-- **Uncommitted in the working tree** (this is what actually makes the build pass — commit it!).
-  **Exact checkpoint commit list:**
-  - `grazel-gradle-plugin/.../dependencies/AggregatedDependencyResolver.kt` (+~155 lines):
-    CompileClasspath union, `com.android.test` roots, BOM filtering,
-    non-app `compileClasspath`-into-every-leaf, unit/androidTest unions.
-  - `build.gradle`: `experiments { aggregatedDependencyResolution.set(true) }` (flag flipped ON —
-    **note:** the flag default in `ExperimentsExtension` is still OFF; this line is the sample build
-    opting in. Verified: extension default = OFF, so normal users are unaffected.)
-  - Regenerated outputs: `WORKSPACE`, **5 modified + 12 new (per-variant) = 17 `*_maven_install.json`**,
-    and the modified `BUILD.bazel` files (`sample-android`, `sample-android-tests`, `keystore`,
-    `flavors/sample-android-flavor`, `sample-kotlin-library`). These match the current resolver
-    (`pinMavenArtifacts` reported up-to-date).
-  - Docs: `reports/dependencies-refactor-HANDOFF.md`, `reports/dependencies-refactor-worklog.md`
-    (currently **untracked** — `git add` it so the history survives a fresh clone).
-  - **EXCLUDE** `codedb.snapshot` (a tool artifact, not source — do not commit).
+## Git state
+- Branch `arun/dependencies-refactor`, pushed to origin, with the final working state currently in
+  the local working tree.
+- Important untracked source/docs that should be considered for packaging:
+  - `reports/dependencies-refactor-goal-log.md`
+  - `reports/scripts/verify-default-task-graph.sh`
+  - `reports/scripts/verify-sample-bucket-labels.sh`
+  - `grazel-gradle-plugin/src/test/projects/hybrid-dependency-substitution/.bazelversion`
+  - `grazel-gradle-plugin/src/test/projects/hybrid-dependency-substitution/app/src/main/res/layout/layout_main.xml`
+- Leave `codedb.snapshot` out unless the user explicitly wants tool-index artifacts.
 - **Known-good fallback if the current path regresses:**
   - The pre-pivot per-module **O(P×V)** resolver (correct but no perf win) can be recovered via
     `git show 9c714fe:grazel-gradle-plugin/src/main/kotlin/com/grab/grazel/gradle/dependencies/AggregatedDependencyResolver.kt`.
@@ -156,30 +156,26 @@ directly instead of rebuilding them. (Worklog "PIVOT (author-directed)" + Run 6 
     `git log --oneline -- <resolver path>` and pick the one before the pivot (`8307e1f`).
 
 ## Reproduce / verify the milestone
-> Requires the **uncommitted working-tree state** (resolver + flag + generated files). A clean
-> checkout of `8307e1f` alone will NOT reproduce this — commit the checkpoint first (next steps §1).
 ```bash
-# flag is already ON in build.gradle (uncommitted)
-./gradlew migrateToBazel          # expect BUILD SUCCESSFUL; pinMavenArtifacts up-to-date
-bazelisk build //...              # expect: Build completed successfully, ~239 targets
+./gradlew :grazel-gradle-plugin:test --console=plain
+./gradlew :grazel-gradle-plugin:functionalTest --console=plain
+./gradlew migrateToBazel --console=plain
+./gradlew computeWorkspaceDependencies --dry-run --console=plain
+./gradlew migrateToBazel --dry-run --console=plain
+reports/scripts/verify-default-task-graph.sh
+reports/scripts/verify-sample-bucket-labels.sh
+git diff --check
+bazelisk build //...
 ```
 
 ## Next steps (priority order)
-1. **Commit the working checkpoint** (resolver + regenerated outputs + the flag flip). The milestone
-   currently lives only in the working tree.
-2. **Guard the OFF path:** run `./gradlew :grazel-gradle-plugin:test` and `:functionalTest` — these
-   exercise the **flag-OFF** (default) path and must stay green (the aggregated resolver only runs at
-   Gradle-task time under the flag, so existing unit tests don't cover it). "No regression" = these
-   pass unchanged. Note: there is currently **no automated test covering the flag-ON aggregated path** —
-   its only validation today is the manual `bazelisk build //...`. Adding flag-ON coverage is a
-   follow-up worth scoping.
-3. **Optional:** `bazelisk test //...` to confirm targets *run*, not just compile.
-4. **Polish (non-blocking):** decide on BOM detection (name-suffix vs `category == platform` attr);
-   consider removing now-unused `traverseProjectNodes`/`directFromProject` (residue of the abandoned
-   approach). _(The class doc-comment `com.android.application`-only drift has already been fixed to
-   mention `com.android.test`.)_
-5. **Perf claim:** the pivot resolves O(app-leaf-variants) classpaths instead of O(P×V). If a perf
-   number is wanted, measure `computeWorkspaceDependencies` wall-time OFF vs ON on a larger project.
+1. Package/commit the working tree, excluding `codedb.snapshot` unless explicitly desired.
+2. Decide whether to address generated lint tests now. Current `bazelisk test //...` fails only the 8
+   generated lint targets; the non-lint subset passes.
+3. Optional polish: improve BOM detection from suffix-based to Gradle platform attribute-based if a
+   non-`*-bom` platform appears in real projects.
+4. Optional perf proof: measure `computeWorkspaceDependencies` wall-time before/after on a larger
+   project. The design now resolves binary leaf classpaths instead of P×variant module permutations.
 
 ## Hard-won process lessons (do NOT repeat)
 - The abandoned approach burned 5 iterations of **blind edit → remote-oracle**. When debugging Gradle

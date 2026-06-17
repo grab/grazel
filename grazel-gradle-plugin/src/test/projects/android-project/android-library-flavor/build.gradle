@@ -4,6 +4,7 @@ apply plugin: "kotlin-kapt"
 apply plugin: "kotlin-parcelize"
 
 android {
+    namespace "com.grab.grazel.android.flavor"
     compileSdkVersion 33
     buildToolsVersion "33.0.1"
 

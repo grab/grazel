@@ -23,29 +23,50 @@ allprojects {
 grazel {
     android {
         features {
-            dataBinding = findProperty("grazel.migrateDataBinding") != null
+            dataBindingMetaData = findProperty("grazel.migrateDataBinding") != null
         }
     }
     rules {
         bazelCommon {
             gitRepository {
-                commit = "1d48088efeb6de455350192e10437abc2c2e0f7a"
+                commit = "0962a9aaeee64ed17eb65b577060693c3b3dc244"
                 remote = "https://github.com/grab/grab-bazel-common.git"
             }
+            preBazelCommonArchives = [
+                [
+                    name: "rules_java",
+                    sha256: "f8ae9ed3887df02f40de9f4f7ac3873e6dd7a471f9cddf63952538b94b59aeb3",
+                    url: "",
+                    urls: ["https://github.com/bazelbuild/rules_java/releases/download/7.6.1/rules_java-7.6.1.tar.gz"],
+                    stripPrefix: null,
+                    patches: [],
+                    patchArgs: [],
+                ] as com.grab.grazel.extension.PreBazelCommonArchive,
+            ]
         }
         kotlin {
-            gitRepository {
-                commit = "eae21653baad4b403fee9e8a706c9d4fbd0c27c6"
-                remote = "https://github.com/bazelbuild/rules_kotlin.git"
+            httpArchiveRepository {
+                url = "https://github.com/bazelbuild/rules_kotlin/releases/download/v1.9.6/rules_kotlin-v1.9.6.tar.gz"
+                sha256 = "3b772976fec7bdcda1d84b9d39b176589424c047eb2175bed09aac630e50af43"
             }
             compiler {
-                tag = "1.6.10"
-                sha = "432267996d0d6b4b17ca8de0f878e44d4a099b7e9f1587a98edc4d27e76c215a"
+                tag = "1.9.25"
+                sha = "6ab72d6144e71cbbc380b770c2ad380972548c63ab6ed4c79f11c88f2967332e"
             }
             toolchain {
                 enabled = true
+                apiVersion = "1.7"
+                reportUnusedDeps = "off"
+                strictKotlinDeps = "off"
+                abiJars = true
+                multiplexWorkers = true
+                languageVersion = "1.7"
+                jvmTarget = "17"
             }
         }
+    }
+    experiments {
+        minSdkVersionWorkaround.set(true)
     }
 }
 
