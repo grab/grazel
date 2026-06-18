@@ -166,7 +166,6 @@ grazel {
         }
     }
     experiments {
-        limitDependencyResolutionParallelism.set(true)
         minSdkVersionWorkaround.set(true)
     }
     test {

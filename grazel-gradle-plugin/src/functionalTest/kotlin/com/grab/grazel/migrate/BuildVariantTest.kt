@@ -24,6 +24,7 @@ import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.gradle.testkit.runner.TaskOutcome.SUCCESS
+import org.gradle.testkit.runner.TaskOutcome.UP_TO_DATE
 import org.junit.Assert
 import org.junit.Before
 import org.junit.Test
@@ -98,8 +99,16 @@ class BuildVariantTest : BaseGrazelPluginTest() {
             rootProject
         )
 
+        Assert.assertTrue(
+            "Dependency resolution should collect declared metadata via a task",
+            result.output.contains(":collectDeclaredDependencyMetadata SKIPPED")
+        )
+        Assert.assertTrue(
+            "Dependency resolution should collect KSP processor metadata via a task",
+            result.output.contains(":collectKspProcessorDependencies SKIPPED")
+        )
         Assert.assertFalse(
-            "Default dependency resolution must not schedule legacy per-variant ResolveVariantDependenciesTask tasks",
+            "Dependency resolution must not schedule legacy per-variant ResolveDependencies tasks",
             result.output.lines().any { it.contains("ResolveDependencies SKIPPED") }
         )
         Assert.assertTrue(
@@ -109,36 +118,23 @@ class BuildVariantTest : BaseGrazelPluginTest() {
     }
 
     @Test
-    fun computeWorkspaceDependenciesSchedulesLegacyResolveTasksWhenAggregatedResolutionDisabled() {
+    fun computeWorkspaceDependenciesIsUpToDateWithoutInputChanges() {
         val fixtureRoot = copyAndroidProjectFixture()
-        val fixtureBuildGradle = File(fixtureRoot, "build.gradle")
-        val originalBuildGradle = fixtureBuildGradle.readText()
-        val updatedBuildGradle = originalBuildGradle.replace(
-            "        minSdkVersionWorkaround.set(true)",
-            """
-        minSdkVersionWorkaround.set(true)
-        aggregatedDependencyResolution.set(false)
-            """.trimIndent()
-        )
-        Assert.assertNotEquals(
-            "Fixture build.gradle should be updated to disable aggregated dependency resolution",
-            originalBuildGradle,
-            updatedBuildGradle
-        )
-        fixtureBuildGradle.writeText(updatedBuildGradle)
 
-        val result = runGradleBuild(
-            arrayOf("computeWorkspaceDependencies", "--dry-run", "--console=plain"),
+        val firstResult = runGradleBuild(
+            arrayOf("computeWorkspaceDependencies", "--console=plain"),
             fixtureRoot
         )
+        Assert.assertEquals(SUCCESS, firstResult.task(":computeWorkspaceDependencies")?.outcome)
 
-        Assert.assertTrue(
-            "Explicit opt-out should keep legacy per-variant ResolveVariantDependenciesTask tasks available",
-            result.output.lines().any { it.contains("ResolveDependencies SKIPPED") }
+        val secondResult = runGradleBuild(
+            arrayOf("computeWorkspaceDependencies", "--console=plain"),
+            fixtureRoot
         )
-        Assert.assertTrue(
-            "computeWorkspaceDependencies should still be present in the opt-out task graph",
-            result.output.contains(":computeWorkspaceDependencies SKIPPED")
+        Assert.assertEquals(
+            "No-edit computeWorkspaceDependencies run should be up-to-date",
+            UP_TO_DATE,
+            secondResult.task(":computeWorkspaceDependencies")?.outcome
         )
     }
 
@@ -184,6 +180,163 @@ class BuildVariantTest : BaseGrazelPluginTest() {
         )
     }
 
+    @Test
+    fun computeWorkspaceDependenciesInvalidatesWhenProjectDependencyEdgesChange() {
+        val fixtureRoot = copyAndroidProjectFixture()
+        val fixtureDependenciesJson = File(fixtureRoot, "build/grazel/dependencies.json")
+        val fixtureAppBuildGradle = File(fixtureRoot, "app/build.gradle")
+        val originalBuildGradle = fixtureAppBuildGradle.readText()
+
+        val firstResult = runGradleBuild(
+            arrayOf("computeWorkspaceDependencies", "--console=plain"),
+            fixtureRoot
+        )
+        Assert.assertEquals(SUCCESS, firstResult.task(":computeWorkspaceDependencies")?.outcome)
+        Assert.assertTrue(
+            "Initial dependency data should include Maven deps reachable through android-library-flavor",
+            fixtureDependenciesJson.readText().contains(""""shortId":"com.google.dagger:dagger"""")
+        )
+
+        fixtureAppBuildGradle.writeText(
+            originalBuildGradle.replace(
+                """    implementation project(":android-library-flavor")""",
+                """    implementation project(":android-library-mismatch")"""
+            )
+        )
+
+        val secondResult = runGradleBuild(
+            arrayOf("computeWorkspaceDependencies", "--console=plain"),
+            fixtureRoot
+        )
+        Assert.assertEquals(
+            "Project dependency edge edits should invalidate computeWorkspaceDependencies",
+            SUCCESS,
+            secondResult.task(":computeWorkspaceDependencies")?.outcome
+        )
+        Assert.assertFalse(
+            "Updated dependency data should not include deps reachable only through the removed project edge",
+            fixtureDependenciesJson.readText().contains(""""shortId":"com.google.dagger:dagger"""")
+        )
+    }
+
+    @Test
+    fun computeWorkspaceDependenciesInvalidatesWhenProjectDependencyExcludeRulesChange() {
+        val fixtureRoot = copyAndroidProjectFixture()
+        val fixtureDependenciesJson = File(fixtureRoot, "build/grazel/dependencies.json")
+        val fixtureAppBuildGradle = File(fixtureRoot, "app/build.gradle")
+        val originalBuildGradle = fixtureAppBuildGradle.readText()
+
+        val firstResult = runGradleBuild(
+            arrayOf("computeWorkspaceDependencies", "--console=plain"),
+            fixtureRoot
+        )
+        Assert.assertEquals(SUCCESS, firstResult.task(":computeWorkspaceDependencies")?.outcome)
+        Assert.assertTrue(
+            "Initial dependency data should include Maven deps reachable through android-library-flavor",
+            fixtureDependenciesJson.readText().contains(""""shortId":"com.google.dagger:dagger"""")
+        )
+
+        fixtureAppBuildGradle.writeText(
+            originalBuildGradle.replace(
+                """    implementation project(":android-library-flavor")""",
+                """
+    implementation(project(":android-library-flavor")) {
+        exclude group: "com.google.dagger", module: "dagger"
+    }
+                """.trimIndent()
+            )
+        )
+
+        val secondResult = runGradleBuild(
+            arrayOf("computeWorkspaceDependencies", "--console=plain"),
+            fixtureRoot
+        )
+        Assert.assertEquals(
+            "Project dependency exclude edits should invalidate computeWorkspaceDependencies",
+            SUCCESS,
+            secondResult.task(":computeWorkspaceDependencies")?.outcome
+        )
+        Assert.assertFalse(
+            "Updated dependency data should remove excluded deps reachable through the project edge",
+            fixtureDependenciesJson.readText().contains(""""shortId":"com.google.dagger:dagger"""")
+        )
+    }
+
+    @Test
+    fun computeWorkspaceDependenciesDoesNotPromoteUnreachableNonAppImplementationDeps() {
+        val fixtureRoot = copyAndroidProjectFixture()
+        val fixtureDependenciesJson = File(fixtureRoot, "build/grazel/dependencies.json")
+        val fixtureUnusedFlavorBuildGradle = File(fixtureRoot, "kotlin-library-flavor1/build.gradle")
+
+        fixtureUnusedFlavorBuildGradle.appendText(
+            """
+
+dependencies {
+    implementation "com.squareup.okio:okio:2.8.0"
+}
+            """.trimIndent()
+        )
+
+        val result = runGradleBuild(
+            arrayOf("computeWorkspaceDependencies", "--console=plain"),
+            fixtureRoot
+        )
+        Assert.assertEquals(SUCCESS, result.task(":computeWorkspaceDependencies")?.outcome)
+        Assert.assertFalse(
+            "Implementation deps from non-app modules unreachable from the selected binary root should not be promoted",
+            fixtureDependenciesJson.readText().contains(""""shortId":"com.squareup.okio:okio"""")
+        )
+    }
+
+    @Test
+    fun computeWorkspaceDependenciesInvalidatesWhenKspDependencyChanges() {
+        val fixtureRoot = copyAndroidProjectFixture()
+        val fixtureDependenciesJson = File(fixtureRoot, "build/grazel/dependencies.json")
+        val fixtureAppBuildGradle = File(fixtureRoot, "app/build.gradle")
+        enableKspInFixture(fixtureRoot, moshiVersion = "1.15.0")
+
+        val firstResult = runGradleBuild(
+            arrayOf("computeWorkspaceDependencies", "--console=plain"),
+            fixtureRoot
+        )
+        Assert.assertEquals(SUCCESS, firstResult.task(":computeWorkspaceDependencies")?.outcome)
+        val initialDependencies = fixtureDependenciesJson.readText()
+        Assert.assertTrue(
+            "Initial KSP dependency data should include the Moshi KSP processor",
+            initialDependencies.contains(""""shortId":"com.squareup.moshi:moshi-kotlin-codegen"""") &&
+                initialDependencies.contains(""""version":"1.15.0"""")
+        )
+
+        fixtureAppBuildGradle.writeText(
+            fixtureAppBuildGradle.readText()
+                .replace(
+                    """ksp 'com.squareup.moshi:moshi-kotlin-codegen:1.15.0'""",
+                    """ksp 'com.squareup.moshi:moshi-kotlin-codegen:1.14.0'"""
+                )
+        )
+
+        val secondResult = runGradleBuild(
+            arrayOf("computeWorkspaceDependencies", "--console=plain"),
+            fixtureRoot
+        )
+        Assert.assertEquals(
+            "KSP dependency declaration edits should invalidate computeWorkspaceDependencies",
+            SUCCESS,
+            secondResult.task(":computeWorkspaceDependencies")?.outcome
+        )
+        val updatedDependencies = fixtureDependenciesJson.readText()
+        Assert.assertNotEquals(
+            "KSP dependency data should change after the KSP processor version changes",
+            initialDependencies,
+            updatedDependencies
+        )
+        Assert.assertTrue(
+            "Updated KSP dependency data should include the changed Moshi KSP processor version",
+            updatedDependencies.contains(""""shortId":"com.squareup.moshi:moshi-kotlin-codegen"""") &&
+                updatedDependencies.contains(""""version":"1.14.0"""")
+        )
+    }
+
     private fun copyAndroidProjectFixture(): File {
         val fixtureRoot = File(testProjectDir.root, "android-project")
         copyFixtureFiles(rootProject, fixtureRoot)
@@ -202,6 +355,56 @@ class BuildVariantTest : BaseGrazelPluginTest() {
                 )
         )
         return fixtureRoot
+    }
+
+    private fun enableKspInFixture(fixtureRoot: File, moshiVersion: String) {
+        val fixtureBuildGradle = File(fixtureRoot, "build.gradle")
+        fixtureBuildGradle.writeText(
+            fixtureBuildGradle.readText()
+                .replace(
+                    """
+    repositories {
+        google()
+        jcenter()
+    }
+                    """.trimIndent(),
+                    """
+    repositories {
+        google()
+        jcenter()
+        mavenCentral()
+    }
+                    """.trimIndent()
+                )
+                .replace(
+                    """        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:${'$'}kotlinVersion"""",
+                    """
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:${'$'}kotlinVersion"
+        classpath "com.google.devtools.ksp:com.google.devtools.ksp.gradle.plugin:1.9.25-1.0.20"
+                    """.trimIndent()
+                )
+        )
+
+        val fixtureAppBuildGradle = File(fixtureRoot, "app/build.gradle")
+        fixtureAppBuildGradle.writeText(
+            fixtureAppBuildGradle.readText()
+                .replace(
+                    "apply plugin: 'kotlin-parcelize'",
+                    """
+apply plugin: 'kotlin-parcelize'
+apply plugin: 'com.google.devtools.ksp'
+                    """.trimIndent()
+                )
+                .replace(
+                    """    implementation 'androidx.core:core-ktx:1.3.1'""",
+                    """
+    implementation 'com.squareup.moshi:moshi:$moshiVersion'
+    ksp 'com.squareup.moshi:moshi-kotlin-codegen:$moshiVersion'
+
+    implementation 'androidx.core:core-ktx:1.3.1'
+                    """.trimIndent()
+                )
+        )
     }
 
     private fun copyFixtureFiles(source: File, target: File) {

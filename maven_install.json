@@ -118,19 +118,16 @@
     "com.google.ar.sceneform:rendering": 1869564560,
     "com.google.ar.sceneform:sceneform-base": -417010888,
     "com.google.ar:core": 1761415433,
-    "com.google.auto.service:auto-service": -1729498094,
-    "com.google.auto.service:auto-service-annotations": -843120535,
-    "com.google.auto:auto-common": 974751688,
     "com.google.code.findbugs:jsr305": 495355163,
     "com.google.dagger:dagger": -1770328742,
     "com.google.dagger:dagger-compiler": -846042881,
     "com.google.dagger:dagger-producers": -1558621587,
     "com.google.dagger:dagger-spi": 1252417474,
-    "com.google.errorprone:error_prone_annotations": -1095216317,
+    "com.google.errorprone:error_prone_annotations": 1431367875,
     "com.google.guava:failureaccess": 1582410452,
-    "com.google.guava:guava": 1943808618,
+    "com.google.guava:guava": -220965576,
     "com.google.guava:listenablefuture": -66810587,
-    "com.google.j2objc:j2objc-annotations": 2003271689,
+    "com.google.j2objc:j2objc-annotations": -47406525,
     "com.jakewharton.timber:timber": -277145259,
     "com.squareup.moshi:moshi": -56793254,
     "com.squareup.okio:okio": 795722926,
@@ -138,7 +135,6 @@
     "javax.inject:javax.inject": -297932879,
     "junit:junit": 1936859812,
     "org.checkerframework:checker-compat-qual": 1011320103,
-    "org.checkerframework:checker-qual": 1690997205,
     "org.hamcrest:hamcrest-core": -1351165872,
     "org.hamcrest:hamcrest-integration": 684425049,
     "org.hamcrest:hamcrest-library": -1383845358,
@@ -280,49 +276,46 @@
     "com.android.support:support-core-utils:aar": 879172092,
     "com.android.support:support-fragment:aar": -1252443864,
     "com.android.tools.analytics-library:protos": 396082418,
-    "com.android.tools.analytics-library:shared": 1238645264,
+    "com.android.tools.analytics-library:shared": -951889264,
     "com.android.tools.build:aapt2-proto": 1551601574,
     "com.android.tools.build:builder-model": -53330676,
-    "com.android.tools.build:manifest-merger": -41852765,
-    "com.android.tools.ddms:ddmlib": -371004779,
+    "com.android.tools.build:manifest-merger": 1181387577,
+    "com.android.tools.ddms:ddmlib": -2132906424,
     "com.android.tools.external.com-intellij:intellij-core": 906851768,
     "com.android.tools.external.com-intellij:kotlin-compiler": -1989675885,
     "com.android.tools.external.org-jetbrains:uast": 2060500718,
-    "com.android.tools.layoutlib:layoutlib-api": -538316631,
-    "com.android.tools.lint:lint-api": 319100263,
-    "com.android.tools.lint:lint-checks": 900525984,
-    "com.android.tools.lint:lint-model": 2092441441,
+    "com.android.tools.layoutlib:layoutlib-api": 1204299868,
+    "com.android.tools.lint:lint-api": -1211650468,
+    "com.android.tools.lint:lint-checks": -1319403205,
+    "com.android.tools.lint:lint-model": 147333595,
     "com.android.tools:annotations": 1215316819,
-    "com.android.tools:common": -485709806,
-    "com.android.tools:dvlib": 563734245,
+    "com.android.tools:common": 91428645,
+    "com.android.tools:dvlib": 682925528,
     "com.android.tools:play-sdk-proto": -693613490,
-    "com.android.tools:repository": -1614395800,
-    "com.android.tools:sdk-common": -1169056095,
-    "com.android.tools:sdklib": -1076011940,
+    "com.android.tools:repository": 1272339523,
+    "com.android.tools:sdk-common": 650318030,
+    "com.android.tools:sdklib": 1739877262,
     "com.google.ar.sceneform.ux:sceneform-ux:aar": 1577781119,
     "com.google.ar.sceneform:core:aar": -1286029131,
     "com.google.ar.sceneform:filament-android:aar": -1169874927,
     "com.google.ar.sceneform:rendering:aar": -129036429,
     "com.google.ar.sceneform:sceneform-base:aar": -353453602,
     "com.google.ar:core:aar": -1445415602,
-    "com.google.auto.service:auto-service": -1485746893,
-    "com.google.auto.service:auto-service-annotations": -860143863,
-    "com.google.auto:auto-common": 1203060233,
     "com.google.code.findbugs:jsr305": 467791732,
     "com.google.code.gson:gson": -2096443181,
     "com.google.dagger:dagger": -1649738759,
-    "com.google.dagger:dagger-compiler": -621276127,
-    "com.google.dagger:dagger-producers": -212442667,
-    "com.google.dagger:dagger-spi": -148669020,
+    "com.google.dagger:dagger-compiler": -779456708,
+    "com.google.dagger:dagger-producers": -609467294,
+    "com.google.dagger:dagger-spi": 1753054322,
     "com.google.devtools.ksp:symbol-processing-api": 1833193672,
-    "com.google.errorprone:error_prone_annotations": -226022948,
+    "com.google.errorprone:error_prone_annotations": 2146737766,
     "com.google.errorprone:javac-shaded": 1258757438,
-    "com.google.googlejavaformat:google-java-format": -1811539269,
+    "com.google.googlejavaformat:google-java-format": 1132763272,
     "com.google.guava:failureaccess": 1495901004,
-    "com.google.guava:guava": -431543856,
+    "com.google.guava:guava": 1068206295,
     "com.google.guava:listenablefuture": 707484502,
-    "com.google.j2objc:j2objc-annotations": -1333838003,
-    "com.google.jimfs:jimfs": -1483668897,
+    "com.google.j2objc:j2objc-annotations": -566236296,
+    "com.google.jimfs:jimfs": 1460633644,
     "com.google.protobuf:protobuf-java": 157489791,
     "com.jakewharton.timber:timber:aar": 1388409593,
     "com.squareup.moshi:moshi": 1173705304,
@@ -352,7 +345,6 @@
     "org.bouncycastle:bcprov-jdk18on": -992007550,
     "org.bouncycastle:bcutil-jdk18on": 172361896,
     "org.checkerframework:checker-compat-qual": -1120452412,
-    "org.checkerframework:checker-qual": -1289231818,
     "org.glassfish.jaxb:jaxb-runtime": -1620317731,
     "org.glassfish.jaxb:txw2": 1947483661,
     "org.hamcrest:hamcrest-core": -1455441748,
@@ -1263,24 +1255,6 @@
       },
       "version": "1.15.0"
     },
-    "com.google.auto.service:auto-service": {
-      "shasums": {
-        "jar": "1f48f451503e623daba7d9ed368cca0f81e1e3815653a4560113e12c0129ebd5"
-      },
-      "version": "1.1.1"
-    },
-    "com.google.auto.service:auto-service-annotations": {
-      "shasums": {
-        "jar": "16a76dd00a2650568447f5d6e3a9e2c809d9a42367d56b45215cfb89731f4d24"
-      },
-      "version": "1.1.1"
-    },
-    "com.google.auto:auto-common": {
-      "shasums": {
-        "jar": "f43f29fe2a6ebaf04b2598cdeec32a4e346d49a9404e990f5fc19c19f3a28d0e"
-      },
-      "version": "1.2.1"
-    },
     "com.google.code.findbugs:jsr305": {
       "shasums": {
         "jar": "766ad2a0783f2687962c8ad74ceecc38a28b9f72a2d085ee438b7813e928d0c7"
@@ -1325,9 +1299,9 @@
     },
     "com.google.errorprone:error_prone_annotations": {
       "shasums": {
-        "jar": "9e6814cb71816988a4fd1b07a993a8f21bb7058d522c162b1de849e19bea54ae"
+        "jar": "baf7d6ea97ce606c53e11b6854ba5f2ce7ef5c24dddf0afa18d1260bd25b002c"
       },
-      "version": "2.18.0"
+      "version": "2.3.4"
     },
     "com.google.errorprone:javac-shaded": {
       "shasums": {
@@ -1349,9 +1323,9 @@
     },
     "com.google.guava:guava": {
       "shasums": {
-        "jar": "bd7fa227591fb8509677d0d1122cf95158f3b8a9f45653f58281d879f6dc48c5"
+        "jar": "ea0b5a62b707482eee5cf305c8f35ef91cf4ceaff504f011a5c49c41355f5781"
       },
-      "version": "32.0.1-jre"
+      "version": "30.1-android"
     },
     "com.google.guava:listenablefuture": {
       "shasums": {
@@ -1361,9 +1335,9 @@
     },
     "com.google.j2objc:j2objc-annotations": {
       "shasums": {
-        "jar": "f02a95fa1a5e95edb3ed859fd0fb7df709d121a35290eff8b74dce2ab7f4d6ed"
+        "jar": "21af30c92267bd6122c0e0b4d20cccb6641a37eaf956c6540ec471d584e64a7b"
       },
-      "version": "2.8"
+      "version": "1.3"
     },
     "com.google.jimfs:jimfs": {
       "shasums": {
@@ -1544,12 +1518,6 @@
         "jar": "11d134b245e9cacc474514d2d66b5b8618f8039a1465cdc55bbc0b34e0008b7a"
       },
       "version": "2.5.5"
-    },
-    "org.checkerframework:checker-qual": {
-      "shasums": {
-        "jar": "e316255bbfcd9fe50d165314b85abb2b33cb2a66a93c491db648e498a82c2de1"
-      },
-      "version": "3.33.0"
     },
     "org.glassfish.jaxb:jaxb-runtime": {
       "shasums": {
@@ -2624,14 +2592,6 @@
     "com.google.ar.sceneform:rendering:aar": [
       "com.google.ar:core:aar"
     ],
-    "com.google.auto.service:auto-service": [
-      "com.google.auto.service:auto-service-annotations",
-      "com.google.auto:auto-common",
-      "com.google.guava:guava"
-    ],
-    "com.google.auto:auto-common": [
-      "com.google.guava:guava"
-    ],
     "com.google.dagger:dagger": [
       "javax.inject:javax.inject"
     ],
@@ -2681,7 +2641,7 @@
       "com.google.guava:failureaccess",
       "com.google.guava:listenablefuture",
       "com.google.j2objc:j2objc-annotations",
-      "org.checkerframework:checker-qual"
+      "org.checkerframework:checker-compat-qual"
     ],
     "com.google.jimfs:jimfs": [
       "com.google.guava:guava"
@@ -4470,15 +4430,6 @@
       "com.android.sdklib.tool.sdkmanager",
       "com.android.sdklib.util"
     ],
-    "com.google.auto.service:auto-service": [
-      "com.google.auto.service.processor"
-    ],
-    "com.google.auto.service:auto-service-annotations": [
-      "com.google.auto.service"
-    ],
-    "com.google.auto:auto-common": [
-      "com.google.auto.common"
-    ],
     "com.google.code.findbugs:jsr305": [
       "javax.annotation",
       "javax.annotation.concurrent",
@@ -5166,38 +5117,6 @@
     ],
     "org.checkerframework:checker-compat-qual": [
       "org.checkerframework.checker.nullness.compatqual"
-    ],
-    "org.checkerframework:checker-qual": [
-      "org.checkerframework.checker.builder.qual",
-      "org.checkerframework.checker.calledmethods.qual",
-      "org.checkerframework.checker.compilermsgs.qual",
-      "org.checkerframework.checker.fenum.qual",
-      "org.checkerframework.checker.formatter.qual",
-      "org.checkerframework.checker.guieffect.qual",
-      "org.checkerframework.checker.i18n.qual",
-      "org.checkerframework.checker.i18nformatter.qual",
-      "org.checkerframework.checker.index.qual",
-      "org.checkerframework.checker.initialization.qual",
-      "org.checkerframework.checker.interning.qual",
-      "org.checkerframework.checker.lock.qual",
-      "org.checkerframework.checker.mustcall.qual",
-      "org.checkerframework.checker.nullness.qual",
-      "org.checkerframework.checker.optional.qual",
-      "org.checkerframework.checker.propkey.qual",
-      "org.checkerframework.checker.regex.qual",
-      "org.checkerframework.checker.signature.qual",
-      "org.checkerframework.checker.signedness.qual",
-      "org.checkerframework.checker.tainting.qual",
-      "org.checkerframework.checker.units.qual",
-      "org.checkerframework.common.aliasing.qual",
-      "org.checkerframework.common.initializedfields.qual",
-      "org.checkerframework.common.reflection.qual",
-      "org.checkerframework.common.returnsreceiver.qual",
-      "org.checkerframework.common.subtyping.qual",
-      "org.checkerframework.common.util.report.qual",
-      "org.checkerframework.common.value.qual",
-      "org.checkerframework.dataflow.qual",
-      "org.checkerframework.framework.qual"
     ],
     "org.glassfish.jaxb:jaxb-runtime": [
       "com.sun.xml.bind",
@@ -6443,9 +6362,6 @@
       "com.google.ar.sceneform:rendering:aar",
       "com.google.ar.sceneform:sceneform-base:aar",
       "com.google.ar:core:aar",
-      "com.google.auto.service:auto-service",
-      "com.google.auto.service:auto-service-annotations",
-      "com.google.auto:auto-common",
       "com.google.code.findbugs:jsr305",
       "com.google.code.gson:gson",
       "com.google.dagger:dagger",
@@ -6490,7 +6406,6 @@
       "org.bouncycastle:bcprov-jdk18on",
       "org.bouncycastle:bcutil-jdk18on",
       "org.checkerframework:checker-compat-qual",
-      "org.checkerframework:checker-qual",
       "org.glassfish.jaxb:jaxb-runtime",
       "org.glassfish.jaxb:txw2",
       "org.hamcrest:hamcrest-core",
@@ -6669,9 +6584,6 @@
       "com.google.ar.sceneform:rendering:aar",
       "com.google.ar.sceneform:sceneform-base:aar",
       "com.google.ar:core:aar",
-      "com.google.auto.service:auto-service",
-      "com.google.auto.service:auto-service-annotations",
-      "com.google.auto:auto-common",
       "com.google.code.findbugs:jsr305",
       "com.google.code.gson:gson",
       "com.google.dagger:dagger",
@@ -6716,7 +6628,6 @@
       "org.bouncycastle:bcprov-jdk18on",
       "org.bouncycastle:bcutil-jdk18on",
       "org.checkerframework:checker-compat-qual",
-      "org.checkerframework:checker-qual",
       "org.glassfish.jaxb:jaxb-runtime",
       "org.glassfish.jaxb:txw2",
       "org.hamcrest:hamcrest-core",
@@ -6895,9 +6806,6 @@
       "com.google.ar.sceneform:rendering:aar",
       "com.google.ar.sceneform:sceneform-base:aar",
       "com.google.ar:core:aar",
-      "com.google.auto.service:auto-service",
-      "com.google.auto.service:auto-service-annotations",
-      "com.google.auto:auto-common",
       "com.google.code.findbugs:jsr305",
       "com.google.code.gson:gson",
       "com.google.dagger:dagger",
@@ -6942,7 +6850,6 @@
       "org.bouncycastle:bcprov-jdk18on",
       "org.bouncycastle:bcutil-jdk18on",
       "org.checkerframework:checker-compat-qual",
-      "org.checkerframework:checker-qual",
       "org.glassfish.jaxb:jaxb-runtime",
       "org.glassfish.jaxb:txw2",
       "org.hamcrest:hamcrest-core",
@@ -7121,9 +7028,6 @@
       "com.google.ar.sceneform:rendering:aar",
       "com.google.ar.sceneform:sceneform-base:aar",
       "com.google.ar:core:aar",
-      "com.google.auto.service:auto-service",
-      "com.google.auto.service:auto-service-annotations",
-      "com.google.auto:auto-common",
       "com.google.code.findbugs:jsr305",
       "com.google.code.gson:gson",
       "com.google.dagger:dagger",
@@ -7168,7 +7072,6 @@
       "org.bouncycastle:bcprov-jdk18on",
       "org.bouncycastle:bcutil-jdk18on",
       "org.checkerframework:checker-compat-qual",
-      "org.checkerframework:checker-qual",
       "org.glassfish.jaxb:jaxb-runtime",
       "org.glassfish.jaxb:txw2",
       "org.hamcrest:hamcrest-core",
@@ -7347,9 +7250,6 @@
       "com.google.ar.sceneform:rendering:aar",
       "com.google.ar.sceneform:sceneform-base:aar",
       "com.google.ar:core:aar",
-      "com.google.auto.service:auto-service",
-      "com.google.auto.service:auto-service-annotations",
-      "com.google.auto:auto-common",
       "com.google.code.findbugs:jsr305",
       "com.google.code.gson:gson",
       "com.google.dagger:dagger",
@@ -7394,7 +7294,6 @@
       "org.bouncycastle:bcprov-jdk18on",
       "org.bouncycastle:bcutil-jdk18on",
       "org.checkerframework:checker-compat-qual",
-      "org.checkerframework:checker-qual",
       "org.glassfish.jaxb:jaxb-runtime",
       "org.glassfish.jaxb:txw2",
       "org.hamcrest:hamcrest-core",
@@ -7544,11 +7443,6 @@
       ],
       "org/jline/terminal/provider/jni": [
         "class=org.jline.terminal.impl.jni.JniTerminalProvider"
-      ]
-    },
-    "com.google.auto.service:auto-service": {
-      "javax.annotation.processing.Processor": [
-        "com.google.auto.service.processor.AutoServiceProcessor"
       ]
     },
     "com.google.dagger:dagger-compiler": {

@@ -1,4 +1,12 @@
-# Dependencies Refactor Goal Log
+# ARCHIVE: Dependencies Refactor Compatibility Goal Log
+
+This file is historical context for the completed compatibility-hardening goal.
+It is intentionally long. New goal sessions should read
+`reports/dependencies-refactor-merge-readiness-goal.md` first and should not
+read this full archive unless debugging historical intent.
+
+Compatibility goal closed on 2026-06-18. Next active plan moved to
+`reports/dependencies-refactor-merge-readiness-goal.md`.
 
 ## Current Status / Next Action
 

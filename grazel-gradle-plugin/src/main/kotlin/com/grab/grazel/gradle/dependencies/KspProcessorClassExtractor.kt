@@ -39,16 +39,19 @@ internal object KspProcessorClassExtractor {
      * Extracts processor classes from KSP artifact JARs.
      *
      * @param artifactJars Collection of JAR files to scan
-     * @param artifactMapping Map of "group:artifact" shortId to JAR filename
+     * @param artifactMapping Map of "group:artifact" shortId to JAR file path. Filenames are
+     * supported for backwards-compatible call sites, but paths avoid collisions between processors
+     * from different groups that publish jars with the same basename.
      * @return Map of shortId to processor class name
      */
     fun extractProcessorClasses(
         artifactJars: Set<File>,
         artifactMapping: Map<String, String>
     ): Map<String, String> {
+        val jarsByPath = artifactJars.associateBy { it.absolutePath }
         val jarsByName = artifactJars.associateBy { it.name }
-        return artifactMapping.mapNotNull { (shortId, fileName) ->
-            val jarFile = jarsByName[fileName] ?: return@mapNotNull null
+        return artifactMapping.mapNotNull { (shortId, filePath) ->
+            val jarFile = jarsByPath[filePath] ?: jarsByName[filePath] ?: return@mapNotNull null
             readProcessorClasses(jarFile).firstOrNull()?.let { shortId to it }
         }.toMap()
     }

@@ -13,8 +13,6 @@ import com.grab.grazel.gradle.dependencies.model.merge
 import com.grab.grazel.gradle.dependencies.model.versionInfo
 import com.grab.grazel.gradle.variant.DEFAULT_VARIANT
 import com.grab.grazel.util.KSP_MAVEN
-import com.grab.grazel.util.fromJson
-import org.gradle.api.file.RegularFile
 import java.util.stream.Collector
 import java.util.stream.Collectors
 
@@ -23,11 +21,9 @@ internal class ComputeWorkspaceDependencies {
     /**
      * Compute [WorkspaceDependencies] from already-resolved [ResolveDependenciesResult] instances.
      *
-     * Used when [com.grab.grazel.extension.ExperimentsExtension.aggregatedDependencyResolution]
-     * is enabled. The results produced by [AggregatedDependencyResolver] are fed here directly,
-     * bypassing JSON deserialization. The downstream grouping, version arbitration, transitive
-     * flattening, override-target computation, and KSP aggregation are byte-identical to the JSON
-     * path because both paths delegate to [computeInternal].
+     * The results produced by [AggregatedDependencyResolver] are fed here directly. This performs
+     * grouping, version arbitration, transitive flattening, override-target computation, and KSP
+     * aggregation for generated workspace dependencies.
      *
      * @param results One [ResolveDependenciesResult] per variant from [AggregatedDependencyResolver].
      */
@@ -35,29 +31,14 @@ internal class ComputeWorkspaceDependencies {
         computeInternal(results)
 
     /**
-     * Parse JSON files produced by [com.grab.grazel.tasks.internal.ResolveVariantDependenciesTask]
-     * and compute [WorkspaceDependencies]. This is the existing (flag-OFF) path, unchanged.
-     */
-    fun compute(compileDependenciesJsons: List<RegularFile>): WorkspaceDependencies {
-        val results = compileDependenciesJsons
-            .parallelStream()
-            .map<ResolveDependenciesResult>(::fromJson)
-            .collect(Collectors.toList())
-        return computeInternal(results)
-    }
-
-    /**
-     * Core pipeline shared by both the JSON path (flag OFF) and the aggregated path (flag ON).
-     *
-     * Accepts a materialized [List] of [ResolveDependenciesResult] — one per (project × variant)
-     * in the JSON path, or one per variant in the aggregated path — and runs the 5-stage
-     * pipeline: group → reduce → flatten → override-target → transitive-map, plus KSP aggregation.
+     * Accepts a materialized [List] of [ResolveDependenciesResult] — one per synthetic bucket —
+     * and runs the 5-stage pipeline: group -> reduce -> flatten -> override-target ->
+     * transitive-map, plus KSP aggregation.
      */
     private fun computeInternal(allResults: List<ResolveDependenciesResult>): WorkspaceDependencies {
         // Parse all jsons parallely and compute the classPaths among all variants.
-        // Maximum compatible version is picked using [maxVersionReducer] since jsons produced by
-        // [ResolveVariantDependenciesTask] is module specific and we can have two version of the
-        // same dependency.
+        // Maximum compatible version is picked using [maxVersionReducer] since different buckets
+        // can carry different resolved versions of the same dependency.
         val classPaths = allResults
             .parallelStream()
             .collect(
@@ -78,10 +59,9 @@ internal class ComputeWorkspaceDependencies {
                 )
             )
 
-        // Even though [ResolveVariantDependenciesTask] does classpath reduction per module, the
-        // final classpath here will not be accurate. For example, a dependency may appear twice in
-        // both `release` and `default`. In order to correct this, we remove duplicates in non default
-        // classPaths by comparing entries against occurrence in default classPath.
+        // A dependency may appear twice in both a specific bucket and `default`. In order to
+        // correct this, we remove duplicates in non-default classPaths by comparing entries
+        // against occurrences in the default classPath.
         val defaultClasspath = classPaths.getValue(DEFAULT_VARIANT)
         // Reduce non default classpath entries to contain only artifacts unique to them
         val reducedClasspath = classPaths

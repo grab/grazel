@@ -246,6 +246,27 @@ class AggregatedDependencyResolverTest {
     }
 
     @Test
+    fun `root exclude metadata is keyed in stable short id order`() {
+        val project = ProjectBuilder.builder().build()
+        val implementation = project.configurations.create("implementation")
+        val laterDependency = project.dependencies.add(
+            "implementation",
+            "com.zed:later:1.0"
+        ) as ExternalModuleDependency
+        laterDependency.exclude(mapOf("group" to "com.example", "module" to "later-blocked"))
+        val earlierDependency = project.dependencies.add(
+            "implementation",
+            "com.alpha:earlier:1.0"
+        ) as ExternalModuleDependency
+        earlierDependency.exclude(mapOf("group" to "com.example", "module" to "earlier-blocked"))
+
+        assertEquals(
+            listOf("com.alpha:earlier", "com.zed:later"),
+            implementation.extractExcludeRulesByShortId().keys.toList()
+        )
+    }
+
+    @Test
     fun `uses owner project excludes without applying root or sibling excludes`() {
         val shortId = "com.example:library"
         val rootRule = ExcludeRule("com.example", "root-blocked")

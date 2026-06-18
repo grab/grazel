@@ -10,6 +10,7 @@ import com.grab.grazel.gradle.dependencies.model.OverrideTarget
 import com.grab.grazel.gradle.dependencies.model.ResolvedDependency
 import com.grab.grazel.gradle.dependencies.model.WorkspaceDependencies
 import com.grab.grazel.gradle.variant.DEFAULT_VARIANT
+import com.grab.grazel.gradle.variant.LINT_VARIANT
 import com.grab.grazel.gradle.variant.setupAndroidVariantProject
 import com.grab.grazel.gradle.variant.setupJvmVariantProject
 import com.grab.grazel.util.addGrazelExtension
@@ -342,6 +343,40 @@ class MavenInstallArtifactsCalculatorTest {
         assertFalse(
             "child Gradle closure dependency should not be excluded from child root",
             "org.jetbrains.kotlin:kotlin-stdlib" in exclusionIds
+        )
+    }
+
+    @Test
+    fun `lint maven install roots selected transitive artifacts`() {
+        setup()
+
+        val repository = "MavenRepo"
+        val lintChecksDependency = ResolvedDependency.fromId(
+            "com.example:lint-checks:1.0.0",
+            repository
+        )
+        val selectedTransitiveDependency = ResolvedDependency.fromId(
+            "com.example:annotations:1.1.0",
+            repository
+        ).copy(direct = false)
+        val workspaceDependencies = WorkspaceDependencies(
+            variantDeps = mapOf(
+                DEFAULT_VARIANT to emptyList(),
+                LINT_VARIANT to listOf(lintChecksDependency, selectedTransitiveDependency)
+            )
+        )
+
+        val result = mavenInstallArtifactsCalculator.get(
+            layout = rootProject.layout,
+            workspaceDependencies = workspaceDependencies,
+            externalArtifacts = emptySet(),
+            externalRepositories = emptySet()
+        )
+
+        val lintRepo = result.single { it.name == "lint_maven" }
+        assertEquals(
+            setOf("com.example:annotations:1.1.0", "com.example:lint-checks:1.0.0"),
+            lintRepo.artifacts.map { it.id }.toSet()
         )
     }
 }

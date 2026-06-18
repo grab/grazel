@@ -28,6 +28,7 @@ import com.grab.grazel.gradle.dependencies.model.ExcludeRule
 import com.grab.grazel.gradle.dependencies.model.ResolvedDependency
 import com.grab.grazel.gradle.dependencies.model.WorkspaceDependencies
 import com.grab.grazel.gradle.variant.DEFAULT_VARIANT
+import com.grab.grazel.gradle.variant.LINT_VARIANT
 import org.gradle.api.artifacts.repositories.PasswordCredentials
 import org.gradle.api.file.ProjectLayout
 import org.gradle.api.internal.artifacts.repositories.DefaultMavenArtifactRepository
@@ -267,6 +268,9 @@ internal fun List<ResolvedDependency>.mavenInstallRootArtifacts(
 ): List<ResolvedDependency> {
     if (variantName == DEFAULT_VARIANT) {
         return filter { it.overrideTarget == null }
+    }
+    if (variantName == LINT_VARIANT) {
+        return this
     }
 
     val overrideCarriersRequiredByDirectRoots = asSequence()

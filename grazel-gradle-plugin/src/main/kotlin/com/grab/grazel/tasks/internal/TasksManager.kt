@@ -54,8 +54,6 @@ constructor(
             dependencyResolutionService = grazelComponent.dependencyResolutionService(),
             dependencyGraphsService = grazelComponent.dependencyGraphsService(),
             variantBuilderProvider = grazelComponent.variantBuilder(),
-            limitDependencyResolutionParallelism = grazelComponent.extension().experiments.limitDependencyResolutionParallelism,
-            aggregatedDependencyResolution = grazelComponent.extension().experiments.aggregatedDependencyResolution,
             migrationChecker = grazelComponent.migrationChecker(),
             dependenciesDataSource = grazelComponent.dependenciesDataSource(),
             configurationDataSource = grazelComponent.configurationDataSource(),

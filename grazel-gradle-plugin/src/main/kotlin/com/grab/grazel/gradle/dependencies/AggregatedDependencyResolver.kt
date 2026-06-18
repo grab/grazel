@@ -16,7 +16,6 @@
 
 package com.grab.grazel.gradle.dependencies
 
-import com.grab.grazel.gradle.MigrationChecker
 import com.grab.grazel.bazel.starlark.BazelDependency.MavenDependency
 import com.grab.grazel.gradle.dependencies.model.ExcludeRule
 import com.grab.grazel.gradle.dependencies.model.OverrideTarget
@@ -30,50 +29,34 @@ import com.grab.grazel.gradle.dependencies.model.versionInfo
 import com.grab.grazel.gradle.variant.ANDROID_TEST_VARIANT
 import com.grab.grazel.gradle.variant.DEFAULT_VARIANT
 import com.grab.grazel.gradle.variant.TEST_VARIANT
-import com.grab.grazel.gradle.variant.Variant
 import com.grab.grazel.gradle.variant.VariantType
-import com.grab.grazel.gradle.hasKsp
 import com.grab.grazel.gradle.variant.VariantType.AndroidBuild
 import com.grab.grazel.gradle.variant.VariantType.AndroidTest
 import com.grab.grazel.gradle.variant.VariantType.Test
-import com.grab.grazel.gradle.variant.VariantBuilder
-import com.grab.grazel.gradle.variant.extendsOnlyFromDefaultVariants
-import com.grab.grazel.gradle.variant.isBase
 import com.grab.grazel.migrate.dependencies.toMavenRepoName
 import org.gradle.api.Project
-import org.gradle.api.artifacts.Configuration
-import org.gradle.api.artifacts.ExternalDependency
-import org.gradle.api.artifacts.component.ModuleComponentIdentifier
 import java.util.TreeSet
 
 /**
- * Resolves all external dependencies for the migratable project set by resolving app module leaf
- * variant `RuntimeClasspath` configurations directly, then bucketing via set-intersection logic.
+ * Resolves all external dependencies for the migratable project set from task-wired aggregated
+ * classpath roots, then buckets them via set-intersection logic.
  *
- * When [aggregatedDependencyResolution][com.grab.grazel.extension.ExperimentsExtension.aggregatedDependencyResolution]
- * is enabled, this class:
- * 1. Finds all migratable binary modules — `com.android.application` and standalone
- *    `com.android.test` modules (the latter declare their own deps and are treated as app roots).
- * 2. Collects all leaf variants (those with a non-null backingVariant of type [BaseVariant] and
- *    not isBase/extendsOnlyFromDefaultVariants).
- * 3. Resolves `<leafName>RuntimeClasspath` for each leaf, plus `UnitTest` and `AndroidTest`
- *    classpaths.
- * 4. Buckets via set-intersection logic: default (intersection of all), per-build-type, per-flavor,
- *    per-leaf-residual, test, androidTest, lint.
+ * The root inputs are prepared by [com.grab.grazel.tasks.internal.ComputeWorkspaceDependenciesTask]
+ * from app and standalone `com.android.test` binary roots, plus task-produced declared metadata and
+ * KSP metadata. Bucket output uses set-intersection logic: default, per-build-type, per-flavor,
+ * per-leaf residual, test, androidTest, lint, and global KSP.
  *
- * The downstream [ComputeWorkspaceDependencies] pipeline is unchanged — both paths feed into
- * [ComputeWorkspaceDependencies.computeFromResults].
+ * The downstream [ComputeWorkspaceDependencies] pipeline consumes the synthetic bucket results.
  *
  * @param rootProject The Gradle root project.
- * @param migrationChecker Identifies which sub-projects are migratable.
- * @param variantBuilder Enumerates the variant set per sub-project.
+ * @param declaredDependencyMetadata Serialized declaration and variant topology metadata produced
+ *   before this task action. This keeps variant enumeration out of the workspace computation task.
  */
 internal class AggregatedDependencyResolver(
     private val rootProject: Project,
-    private val migrationChecker: MigrationChecker,
-    private val variantBuilder: VariantBuilder,
-    private val declaredDependencyMetadataCollector: DeclaredDependencyMetadataCollector =
-        DeclaredDependencyMetadataCollector()
+    private val declaredDependencyMetadata: DeclaredDependencyMetadata = DeclaredDependencyMetadata.EMPTY,
+    private val precomputedKspDependencies: Set<ResolvedDependency> = emptySet(),
+    private val aggregatedDependencyRoots: List<AggregatedDependencyRootSnapshot> = emptyList()
 ) {
 
     private val logger = rootProject.logger
@@ -87,33 +70,13 @@ internal class AggregatedDependencyResolver(
      *   KSP scopes.
      */
     fun resolve(): List<ResolveDependenciesResult> {
-        val migratableProjects = rootProject.subprojects.filter { migrationChecker.canMigrate(it) }
+        val projectMetadataByPath = declaredDependencyMetadata.projects
+        val migratableProjectPaths = projectMetadataByPath.keys.sorted()
 
-        if (migratableProjects.isEmpty()) return emptyList()
+        if (migratableProjectPaths.isEmpty()) return emptyList()
 
-        val variantsByProject = migratableProjects.associateWith { project ->
-            try {
-                variantBuilder.build(project)
-            } catch (e: Exception) {
-                logger.warn("Grazel: Failed to enumerate variants for ${project.path}: ${e.message}")
-                emptyList()
-            }
-        }
-
-        // Application modules are the root classpaths for main buckets. Standalone
-        // com.android.test modules are also binary roots, but their implementation deps belong to
-        // the androidTest bucket, not to main/default buckets.
-        val appProjects = migratableProjects.filter {
-            it.plugins.hasPlugin("com.android.application")
-        }
-        val standaloneTestProjects = migratableProjects.filter {
-            it.plugins.hasPlugin("com.android.test")
-        }
-
-        if (appProjects.isEmpty() && standaloneTestProjects.isEmpty()) {
-            logger.warn("Grazel: No migratable binary modules found for aggregated dependency resolution")
-            return emptyList()
-        }
+        fun variantsFor(projectPath: String): List<DeclaredVariantDependencyMetadata> =
+            projectMetadataByPath[projectPath]?.variants.orEmpty()
 
         // Per-leaf-variant closure maps: leaf variant name -> Map<shortId, ResolvedDependency>
         val leafClosures = mutableMapOf<String, Map<String, ResolvedDependency>>()
@@ -131,154 +94,6 @@ internal class AggregatedDependencyResolver(
 
         // Lint deps across all migratable projects
         var lintDeps = emptyMap<String, ResolvedDependency>()
-
-        // KSP deps: collected from all migratable projects across all (synthetic) variants
-        // We collect projectVariant pairs keyed by variantName for later KSP resolution
-        val kspProjectVariants = mutableMapOf<String, MutableList<Pair<Project, com.grab.grazel.gradle.variant.Variant<*>>>>()
-
-        for (app in appProjects) {
-            val variants = variantsByProject[app].orEmpty()
-            if (variants.isEmpty()) continue
-
-            variants
-                .filter { v -> v.variantType == AndroidBuild && (v.isBase || v.extendsOnlyFromDefaultVariants) }
-                .forEach { v ->
-                    val closure = resolveVariantToDependencyMap(v, app, variantsByProject)
-                    if (closure.isNotEmpty()) {
-                        hierarchyBucketClosures[v.name] = hierarchyBucketClosures[v.name]
-                            ?.let { existing -> unionDependencyMaps(existing, closure) }
-                            ?: closure
-                    }
-                }
-            variants
-                .filter { v ->
-                    (v.variantType == Test && v.name == TEST_VARIANT) ||
-                        (v.variantType == AndroidTest && v.name == ANDROID_TEST_VARIANT)
-                }
-                .forEach { v ->
-                    val closure = resolveVariantToDependencyMap(v, app, variantsByProject)
-                    if (closure.isNotEmpty()) {
-                        testHierarchyBucketClosures[v.name] = testHierarchyBucketClosures[v.name]
-                            ?.let { existing -> unionDependencyMaps(existing, closure) }
-                            ?: closure
-                    }
-                }
-
-            // Leaf variants: every concrete AGP BaseVariant is a binary/root classpath we can
-            // resolve directly. Build-type-only apps expose debug/release as BaseVariants that
-            // extend only default; they still need to be treated as leaves or the aggregated path
-            // has no root classpath to resolve.
-            val leafVariants = variants.filter { v ->
-                v.variantType == AndroidBuild &&
-                    v.backingVariant is com.android.build.gradle.api.BaseVariant
-            }
-
-            for (v in leafVariants) {
-                val leafName = v.name
-                val runtimeConfig = app.configurations.findByName("${leafName}RuntimeClasspath")
-                    ?: continue
-                val leafHierarchyNames = setOf(leafName) + v.extendsFrom
-                val mainExcludeRulesByProjectPath = declaredDependencyMetadataCollector
-                    .collectExcludeRulesByProjectPath(
-                        variantsByProject = variantsByProject,
-                        variantTypes = setOf(AndroidBuild),
-                        variantNames = leafHierarchyNames
-                    )
-                val runtimeClosure = resolveConfigToDependencyMap(
-                    runtimeConfig,
-                    app,
-                    mainExcludeRulesByProjectPath
-                )
-                if (runtimeClosure.isEmpty()) continue
-
-                // Also resolve CompileClasspath to capture compileOnly + api-of-consumed-libs deps
-                // that are omitted from RuntimeClasspath. Union both; prefer higher version on conflict.
-                val compileConfig = app.configurations.findByName("${leafName}CompileClasspath")
-                val compileClosure = if (compileConfig != null) {
-                    resolveConfigToDependencyMap(compileConfig, app, mainExcludeRulesByProjectPath)
-                } else emptyMap()
-                val closure = unionDependencyMaps(runtimeClosure, compileClosure)
-
-                // Union with any existing entry for this leaf name (multiple app/test modules can
-                // share the same leaf variant name, e.g. sample-android and sample-android-tests
-                // both have "demoFreeDebug"). We prefer higher versions on conflict.
-                leafClosures[leafName] = if (leafClosures.containsKey(leafName)) {
-                    unionDependencyMaps(leafClosures[leafName]!!, closure)
-                } else {
-                    closure
-                }
-
-                // Record build type and flavors for bucketing (set unconditionally using the first
-                // module that provides this leaf; multiple modules share the same variant structure)
-                val bv = v.backingVariant as com.android.build.gradle.api.BaseVariant
-                if (!leafBuildTypes.containsKey(leafName)) {
-                    leafBuildTypes[leafName] = bv.buildType.name
-                    leafFlavors[leafName] = bv.productFlavors.map { it.name }
-                }
-
-                // Unit test: union runtime + compile classpaths
-                val unitTestRuntime = app.configurations.findByName("${leafName}UnitTestRuntimeClasspath")
-                val unitTestCompile = app.configurations.findByName("${leafName}UnitTestCompileClasspath")
-                if (unitTestRuntime != null || unitTestCompile != null) {
-                    val unitTestVariantNames = variantNamesForLeafTest(
-                        variants = variants,
-                        leafHierarchyNames = leafHierarchyNames,
-                        testType = Test
-                    )
-                    val unitTestExcludeRulesByProjectPath = declaredDependencyMetadataCollector
-                        .collectExcludeRulesByProjectPath(
-                            variantsByProject = variantsByProject,
-                            variantTypes = setOf(Test),
-                            variantNames = unitTestVariantNames
-                        )
-                    val rtMap = unitTestRuntime
-                        ?.let { resolveConfigToDependencyMap(it, app, unitTestExcludeRulesByProjectPath) }
-                        ?: emptyMap()
-                    val cpMap = unitTestCompile
-                        ?.let { resolveConfigToDependencyMap(it, app, unitTestExcludeRulesByProjectPath) }
-                        ?: emptyMap()
-                    val testClosure = unionDependencyMaps(rtMap, cpMap)
-                    if (testClosure.isNotEmpty()) {
-                        leafUnitTestClosures[leafName] = if (leafUnitTestClosures.containsKey(leafName)) {
-                            unionDependencyMaps(leafUnitTestClosures[leafName]!!, testClosure)
-                        } else {
-                            testClosure
-                        }
-                    }
-                }
-
-                // Android test: union runtime + compile classpaths
-                val androidTestRuntime = app.configurations.findByName("${leafName}AndroidTestRuntimeClasspath")
-                val androidTestCompile = app.configurations.findByName("${leafName}AndroidTestCompileClasspath")
-                if (androidTestRuntime != null || androidTestCompile != null) {
-                    val androidTestVariantNames = variantNamesForLeafTest(
-                        variants = variants,
-                        leafHierarchyNames = leafHierarchyNames,
-                        testType = AndroidTest
-                    )
-                    val androidTestExcludeRulesByProjectPath = declaredDependencyMetadataCollector
-                        .collectExcludeRulesByProjectPath(
-                            variantsByProject = variantsByProject,
-                            variantTypes = setOf(AndroidTest),
-                            variantNames = androidTestVariantNames
-                        )
-                    val rtMap = androidTestRuntime
-                        ?.let { resolveConfigToDependencyMap(it, app, androidTestExcludeRulesByProjectPath) }
-                        ?: emptyMap()
-                    val cpMap = androidTestCompile
-                        ?.let { resolveConfigToDependencyMap(it, app, androidTestExcludeRulesByProjectPath) }
-                        ?: emptyMap()
-                    val androidTestClosure = unionDependencyMaps(rtMap, cpMap)
-                    if (androidTestClosure.isNotEmpty()) {
-                        leafAndroidTestClosures[leafName] = if (leafAndroidTestClosures.containsKey(leafName)) {
-                            unionDependencyMaps(leafAndroidTestClosures[leafName]!!, androidTestClosure)
-                        } else {
-                            androidTestClosure
-                        }
-                    }
-                }
-            }
-        }
 
         fun addToHierarchyBucket(
             bucketName: String,
@@ -300,74 +115,157 @@ internal class AggregatedDependencyResolver(
                 ?: closure
         }
 
-        for (testApp in standaloneTestProjects) {
-            val variants = variantsByProject[testApp].orEmpty()
-            if (variants.isEmpty()) continue
+        fun MutableMap<String, Map<String, ResolvedDependency>>.addToLeafBucket(
+            leafName: String,
+            closure: Map<String, ResolvedDependency>
+        ) {
+            if (closure.isEmpty()) return
+            this[leafName] = this[leafName]
+                ?.let { existing -> unionDependencyMaps(existing, closure) }
+                ?: closure
+        }
 
-            variants
-                .filter { v -> v.variantType == AndroidBuild && (v.isBase || v.extendsOnlyFromDefaultVariants) }
-                .forEach { v ->
-                    val closure = resolveVariantToDependencyMap(v, testApp, variantsByProject)
-                    if (closure.isNotEmpty()) {
-                        addToHierarchyBucket(DEFAULT_VARIANT, closure)
-                        addToTestHierarchyBucket(ANDROID_TEST_VARIANT, closure)
+        fun AggregatedDependencyRootMetadata.variantHierarchyNames(): Set<String> {
+            return variantNames.ifEmpty {
+                listOfNotNull(leafName, bucketName).toSet()
+            }
+        }
+
+        fun AggregatedDependencyRootMetadata.targetBucketNames(): Set<String> {
+            return targetBuckets.ifEmpty {
+                listOfNotNull(bucketName).toSet()
+            }
+        }
+
+        fun excludeRulesFor(
+            metadata: AggregatedDependencyRootMetadata,
+            variantType: VariantType
+        ): Map<String, ProjectExcludeRules> {
+            return declaredDependencyMetadata.collectExcludeRulesByProjectPath(
+                variantTypes = setOf(variantType),
+                variantNames = metadata.variantHierarchyNames()
+            )
+        }
+
+        var sawBinaryRoot = false
+
+        aggregatedDependencyRoots.forEach { aggregatedRoot ->
+            val metadata = aggregatedRoot.metadata
+            val closure = when (metadata.kind) {
+                AggregatedDependencyRootKind.LINT -> resolveRootToDependencyMap(aggregatedRoot)
+                AggregatedDependencyRootKind.MAIN_HIERARCHY,
+                AggregatedDependencyRootKind.MAIN_LEAF -> resolveRootToDependencyMap(
+                    aggregatedRoot = aggregatedRoot,
+                    excludeRulesByProjectPath = excludeRulesFor(metadata, AndroidBuild)
+                )
+                AggregatedDependencyRootKind.TEST_HIERARCHY -> resolveRootToDependencyMap(
+                    aggregatedRoot = aggregatedRoot,
+                    excludeRulesByProjectPath = excludeRulesFor(
+                        metadata = metadata,
+                        variantType = metadata.variantType ?: when (metadata.bucketName) {
+                            ANDROID_TEST_VARIANT -> AndroidTest
+                            else -> Test
+                        }
+                    )
+                )
+                AggregatedDependencyRootKind.UNIT_TEST -> {
+                    val leafHierarchyNames = metadata.variantHierarchyNames()
+                    resolveRootToDependencyMap(
+                        aggregatedRoot = aggregatedRoot,
+                        excludeRulesByProjectPath = declaredDependencyMetadata
+                            .collectExcludeRulesByProjectPath(
+                                variantTypes = setOf(Test),
+                                variantNames = variantNamesForLeafTest(
+                                    variants = variantsFor(metadata.projectPath),
+                                    leafHierarchyNames = leafHierarchyNames,
+                                    testType = Test
+                                )
+                            )
+                    )
+                }
+                AggregatedDependencyRootKind.ANDROID_TEST -> {
+                    val leafHierarchyNames = metadata.variantHierarchyNames()
+                    resolveRootToDependencyMap(
+                        aggregatedRoot = aggregatedRoot,
+                        excludeRulesByProjectPath = declaredDependencyMetadata
+                            .collectExcludeRulesByProjectPath(
+                                variantTypes = setOf(AndroidTest),
+                                variantNames = variantNamesForLeafTest(
+                                    variants = variantsFor(metadata.projectPath),
+                                    leafHierarchyNames = leafHierarchyNames,
+                                    testType = AndroidTest
+                                )
+                            )
+                    )
+                }
+            }
+
+            when (metadata.kind) {
+                AggregatedDependencyRootKind.MAIN_HIERARCHY -> {
+                    sawBinaryRoot = true
+                    metadata.targetBucketNames().forEach { bucketName ->
+                        when (bucketName) {
+                            TEST_VARIANT, ANDROID_TEST_VARIANT ->
+                                addToTestHierarchyBucket(bucketName, closure)
+                            else -> addToHierarchyBucket(bucketName, closure)
+                        }
                     }
                 }
-
-            val leafVariants = variants.filter { v ->
-                v.variantType == AndroidBuild &&
-                    v.backingVariant is com.android.build.gradle.api.BaseVariant
-            }
-
-            for (v in leafVariants) {
-                val leafName = v.name
-                val runtimeConfig = testApp.configurations.findByName("${leafName}RuntimeClasspath")
-                    ?: continue
-                val leafHierarchyNames = setOf(leafName) + v.extendsFrom
-                val excludeRulesByProjectPath = declaredDependencyMetadataCollector
-                    .collectExcludeRulesByProjectPath(
-                        variantsByProject = variantsByProject,
-                        variantTypes = setOf(AndroidBuild),
-                        variantNames = leafHierarchyNames
-                    )
-                val runtimeClosure = resolveConfigToDependencyMap(
-                    runtimeConfig,
-                    testApp,
-                    excludeRulesByProjectPath
-                )
-                if (runtimeClosure.isEmpty()) continue
-
-                val compileConfig = testApp.configurations.findByName("${leafName}CompileClasspath")
-                val compileClosure = if (compileConfig != null) {
-                    resolveConfigToDependencyMap(compileConfig, testApp, excludeRulesByProjectPath)
-                } else emptyMap()
-                val closure = unionDependencyMaps(runtimeClosure, compileClosure)
-
-                leafAndroidTestClosures[leafName] = if (leafAndroidTestClosures.containsKey(leafName)) {
-                    unionDependencyMaps(leafAndroidTestClosures[leafName]!!, closure)
-                } else {
-                    closure
+                AggregatedDependencyRootKind.MAIN_LEAF -> {
+                    sawBinaryRoot = true
+                    val leafName = metadata.leafName ?: metadata.bucketName ?: return@forEach
+                    val targetBuckets = metadata.targetBucketNames()
+                    targetBuckets.forEach { bucketName ->
+                        when (bucketName) {
+                            DEFAULT_VARIANT -> addToHierarchyBucket(DEFAULT_VARIANT, closure)
+                            TEST_VARIANT, ANDROID_TEST_VARIANT ->
+                                leafAndroidTestClosures.addToLeafBucket(leafName, closure)
+                            else -> {
+                                leafClosures.addToLeafBucket(bucketName, closure)
+                                if (!leafBuildTypes.containsKey(bucketName)) {
+                                    metadata.buildType?.let { buildType ->
+                                        leafBuildTypes[bucketName] = buildType
+                                    }
+                                    leafFlavors[bucketName] = metadata.productFlavors
+                                }
+                            }
+                        }
+                    }
                 }
-                // Standalone com.android.test modules are binary roots, but their declared deps
-                // were historically labelled from @maven. Keep that broad ownership so generated
-                // BUILD files stay compatible while androidTest can still own only leftovers.
-                addToHierarchyBucket(DEFAULT_VARIANT, closure)
+                AggregatedDependencyRootKind.TEST_HIERARCHY -> {
+                    metadata.targetBucketNames().forEach { bucketName ->
+                        addToTestHierarchyBucket(bucketName, closure)
+                    }
+                }
+                AggregatedDependencyRootKind.UNIT_TEST -> {
+                    val leafName = metadata.leafName ?: metadata.bucketName ?: return@forEach
+                    leafUnitTestClosures.addToLeafBucket(leafName, closure)
+                }
+                AggregatedDependencyRootKind.ANDROID_TEST -> {
+                    val leafName = metadata.leafName ?: metadata.bucketName ?: return@forEach
+                    leafAndroidTestClosures.addToLeafBucket(leafName, closure)
+                }
+                AggregatedDependencyRootKind.LINT -> {
+                    lintDeps = unionDependencyMaps(lintDeps, closure)
+                }
             }
         }
 
-        // For non-app/non-test library modules, also resolve their compileClasspath to capture
-        // compileOnly deps (e.g. lint API deps in com.android.lint modules, annotation processors,
-        // etc.) that are NOT transitively reachable from any app module's classpath.
-        // These are unioned into EVERY leaf closure so they land in the intersection (default bucket)
-        // and thus map to @maven — the same place the non-aggregated path would have put them.
-        val nonAppProjects = migratableProjects.filter { project ->
-            !project.plugins.hasPlugin("com.android.application") &&
-                !project.plugins.hasPlugin("com.android.test")
+        if (!sawBinaryRoot) {
+            logger.warn("Grazel: No migratable binary modules found for aggregated dependency resolution")
+            return emptyList()
         }
-        declaredDependencyMetadataCollector
+
+        // Non-app compileOnly declarations are cheap metadata, not binary-root classpath edges.
+        // Add only those declared buckets here; implementation/api deps still need to be reachable
+        // from an app or standalone com.android.test binary root.
+        declaredDependencyMetadata
             .collectCompileOnlyDependenciesByBucket(
-                variantsByProject = variantsByProject,
-                projects = nonAppProjects
+                projectPaths = projectMetadataByPath
+                    .filterValues { projectMetadata ->
+                        projectMetadata.projectType == DeclaredProjectType.OTHER
+                    }
+                    .keys
             )
             .forEach { (bucketName, dependencies) ->
                 when (bucketName) {
@@ -376,42 +274,13 @@ internal class AggregatedDependencyResolver(
                 }
             }
 
-        for (project in nonAppProjects) {
-            // Try common compileClasspath config names (Kotlin JVM, Android library default variant)
-            val compileOnlyConfigs = listOf("compileClasspath", "debugCompileClasspath", "releaseCompileClasspath")
-            for (configName in compileOnlyConfigs) {
-                val config = project.configurations.findByName(configName) ?: continue
-                val extraDeps = resolveConfigToDependencyMap(config, project)
-                if (extraDeps.isEmpty()) continue
-                // Union into all existing leaf closures so these deps appear in the intersection
-                for (leafName in leafClosures.keys.toList()) {
-                    leafClosures[leafName] = unionDependencyMaps(leafClosures[leafName]!!, extraDeps)
-                }
-                break // One successful resolution per project is enough
-            }
-        }
-
-        // Collect lint deps from all migratable projects
-        for (project in migratableProjects) {
-            project.configurations.findByName("lintChecks")?.let { lintConfig ->
-                lintDeps = unionDependencyMaps(
-                    lintDeps,
-                    resolveConfigToDependencyMap(lintConfig, project)
-                )
-            }
-        }
-
-        // Collect KSP project-variants from all migratable projects (synthetic variants only)
-        for (project in migratableProjects) {
-            val variants = variantsByProject[project].orEmpty()
-            variants
-                .filter { it.isBase || it.extendsOnlyFromDefaultVariants }
-                .forEach { v ->
-                    kspProjectVariants.getOrPut(v.name) { mutableListOf() }.add(project to v)
-                }
-        }
-
-        if (leafClosures.isEmpty()) {
+        if (
+            leafClosures.isEmpty() &&
+            hierarchyBucketClosures.isEmpty() &&
+            leafUnitTestClosures.isEmpty() &&
+            leafAndroidTestClosures.isEmpty() &&
+            testHierarchyBucketClosures.isEmpty()
+        ) {
             logger.warn("Grazel: No leaf variant runtime classpaths resolved")
             return emptyList()
         }
@@ -530,9 +399,7 @@ internal class AggregatedDependencyResolver(
             bucketName: String,
             deps: Map<String, ResolvedDependency>
         ): ResolveDependenciesResult {
-            val kspDeps = if (bucketName == "default") {
-                resolveKspDeps(kspProjectVariants["default"] ?: emptyList(), "default")
-            } else emptySet()
+            val kspDeps = if (bucketName == "default") precomputedKspDependencies else emptySet()
             return ResolveDependenciesResult(
                 variantName = bucketName,
                 dependencies = mapOf(
@@ -555,45 +422,16 @@ internal class AggregatedDependencyResolver(
         return results
     }
 
-    private fun resolveVariantToDependencyMap(
-        variant: Variant<*>,
-        project: Project,
-        variantsByProject: Map<Project, Collection<Variant<*>>>,
-    ): Map<String, ResolvedDependency> {
-        val excludeRulesByProjectPath = declaredDependencyMetadataCollector
-            .collectExcludeRulesByProjectPath(
-                variantsByProject = variantsByProject,
-                variantTypes = setOf(variant.variantType),
-                variantNames = setOf(variant.name) + variant.extendsFrom
-            )
-        val runtimeClosure = resolveConfigurationsToDependencyMap(
-            variant.runtimeConfiguration,
-            project,
-            excludeRulesByProjectPath
-        )
-        val compileClosure = resolveConfigurationsToDependencyMap(
-            variant.compileConfiguration,
-            project,
-            excludeRulesByProjectPath
-        )
-        return unionDependencyMaps(runtimeClosure, compileClosure)
-    }
+    private val DeclaredVariantDependencyMetadata.isBase: Boolean
+        get() = name == DEFAULT_VARIANT
 
-    private fun resolveConfigurationsToDependencyMap(
-        configurations: Set<Configuration>,
-        project: Project,
-        excludeRulesByProjectPath: Map<String, ProjectExcludeRules> = emptyMap()
-    ): Map<String, ResolvedDependency> {
-        return configurations.fold(emptyMap()) { result, configuration ->
-            unionDependencyMaps(
-                result,
-                resolveConfigToDependencyMap(configuration, project, excludeRulesByProjectPath)
-            )
+    private val DeclaredVariantDependencyMetadata.extendsOnlyFromDefaultVariants: Boolean
+        get() = extendsFrom.isEmpty() || extendsFrom.all { parent ->
+            parent == DEFAULT_VARIANT || parent == TEST_VARIANT || parent == ANDROID_TEST_VARIANT
         }
-    }
 
     private fun variantNamesForLeafTest(
-        variants: Collection<Variant<*>>,
+        variants: Collection<DeclaredVariantDependencyMetadata>,
         leafHierarchyNames: Set<String>,
         testType: VariantType
     ): Set<String> {
@@ -635,71 +473,49 @@ internal class AggregatedDependencyResolver(
         return merged
     }
 
-    /**
-     * Resolve a configuration to a map of shortId -> [ResolvedDependency].
-     *
-     * Walks through project nodes so a binary/root classpath can contribute direct external
-     * dependencies declared by any project in that classpath. Only those direct external
-     * dependencies are emitted; their transitive closures stay nested in
-     * [ResolvedDependency.dependencies], matching [com.grab.grazel.tasks.internal.ResolveVariantDependenciesTask].
-     */
-    private fun resolveConfigToDependencyMap(
-        config: Configuration,
-        project: Project,
+    private fun resolveRootToDependencyMap(
+        aggregatedRoot: AggregatedDependencyRootSnapshot,
         excludeRulesByProjectPath: Map<String, ProjectExcludeRules> = emptyMap()
     ): Map<String, ResolvedDependency> {
+        val metadata = aggregatedRoot.metadata
         return try {
-            val excludeRulesByShortId = config.extractExcludeRulesByShortId()
-            val root = config.incoming.resolutionResult.root
             val depMap = mutableMapOf<String, ResolvedDependency>()
-            ResolvedComponentsVisitor().visit(
-                root = root,
-                logger = logger::info,
-                traverseProjectNodes = true
-            ) { visitResult ->
-                val moduleVersion = visitResult.component.moduleVersion ?: return@visit null
-                if (!visitResult.directFromProject) return@visit null
-                val shortId = "${moduleVersion.group}:${moduleVersion.name}"
+            aggregatedRoot.components.forEach { component ->
+                val shortId = component.shortId
                 // Skip BOM/platform (pom-only) components — rules_jvm_external rejects them with
                 // "Unsupported packaging type: pom". BOM components appear in the resolution graph
-                // but have no actual jar/aar artifact. We detect them by checking the resolved
-                // variant attributes for "org.gradle.category" == "platform". As a fallback, we
-                // also skip components whose module name ends with "-bom" (a common BOM convention).
-                // Note: filtering is done here in the visitor transform, before adding to depMap.
-                if (moduleVersion.name.endsWith("-bom", ignoreCase = true) ||
-                    moduleVersion.name.endsWith(".bom", ignoreCase = true)) {
-                    return@visit null
+                // but have no actual jar/aar artifact. The snapshot marks components whose module
+                // name follows the common BOM naming conventions.
+                if (component.bom) {
+                    return@forEach
                 }
-                val excludeRules = excludeRulesByProjectPath.excludeRulesFor(
-                    rootProjectPath = project.path,
-                    rootExcludeRulesByShortId = excludeRulesByShortId,
-                    ownerProjectPath = visitResult.directProjectPath,
-                    ownerProjectVariantDisplayName = visitResult.directProjectVariantDisplayName,
-                    shortId = shortId
-                )
+                if (metadata.traverseProjectNodes && !component.directFromProject) {
+                    return@forEach
+                }
+                val excludeRules = if (metadata.traverseProjectNodes) {
+                    excludeRulesByProjectPath.excludeRulesFor(
+                        rootProjectPath = metadata.projectPath,
+                        rootExcludeRulesByShortId = metadata.rootExcludeRulesByShortId,
+                        ownerProjectPath = component.directProjectPath,
+                        ownerProjectVariantDisplayName = component.directProjectVariantDisplayName,
+                        shortId = shortId
+                    )
+                } else {
+                    metadata.rootExcludeRulesByShortId.getOrDefault(shortId, emptySet())
+                }
                 val dependency = ResolvedDependency(
-                    id = visitResult.component.toString(),
+                    id = component.id,
                     shortId = shortId,
-                    version = moduleVersion.version,
-                    direct = true,
-                    dependencies = visitResult.transitiveDeps
-                        .filterNot { depResult ->
-                            // Also exclude BOM entries from the transitive dependency set so they
-                            // don't leak into the flattened classpath via allDependencies expansion.
-                            val mv = depResult.dependency.moduleVersion
-                            mv != null && (mv.name.endsWith("-bom", ignoreCase = true) ||
-                                mv.name.endsWith(".bom", ignoreCase = true))
-                        }
-                        .mapTo(TreeSet()) { depResult ->
-                            ResolvedDependency.createDependencyNotation(
-                                depResult.dependency,
-                                depResult.requiresJetifier,
-                                depResult.unjetifiedSource
-                            )
-                        },
+                    version = component.version,
+                    direct = if (metadata.traverseProjectNodes) {
+                        true
+                    } else {
+                        shortId in metadata.directDependencyShortIds
+                    },
+                    dependencies = component.transitiveDependencyNotations.toCollection(TreeSet()),
                     excludeRules = excludeRules,
-                    repository = visitResult.repository,
-                    requiresJetifier = visitResult.requiresJetifier
+                    repository = component.repository,
+                    requiresJetifier = component.requiresJetifier
                 )
                 val existingDependency = depMap[shortId]
                 val mergedDependency = if (existingDependency == null) {
@@ -708,104 +524,17 @@ internal class AggregatedDependencyResolver(
                     mergeDependencyMetadataByMaxVersion(existingDependency, dependency)
                 }
                 depMap[shortId] = mergedDependency
-                mergedDependency
             }
             depMap
         } catch (e: Exception) {
             logger.warn(
-                "Grazel: Failed to resolve config ${config.name} for ${project.name}: ${e.message}"
+                "Grazel: Failed to resolve aggregated root ${metadata.configurationName} " +
+                    "for ${metadata.projectPath}: ${e.message}"
             )
             emptyMap()
         }
     }
 
-    /**
-     * Collect KSP processor dependencies across all [projectVariants] for [variantName].
-     *
-     * KSP processor class-name extraction needs per-project JAR download, so this stays per-project
-     * (mirroring [com.grab.grazel.tasks.internal.ResolveVariantDependenciesTask]); KSP deps are
-     * aggregated downstream by [ComputeWorkspaceDependencies].
-     */
-    private fun resolveKspDeps(
-        projectVariants: List<Pair<Project, com.grab.grazel.gradle.variant.Variant<*>>>,
-        variantName: String
-    ): Set<ResolvedDependency> {
-        val kspDeps = TreeSet<ResolvedDependency>()
-
-        for ((project, variant) in projectVariants) {
-            if (!project.hasKsp) continue
-
-            val kspConfigs = try {
-                variant.kspConfiguration.filter { it.isCanBeResolved }
-            } catch (e: Exception) {
-                continue
-            }
-            if (kspConfigs.isEmpty()) continue
-
-            val directDepShortIds: Set<String> = kspConfigs
-                .asSequence()
-                .flatMap { it.allDependencies }
-                .filterIsInstance<ExternalDependency>()
-                .map { "${it.group}:${it.name}" }
-                .toSet()
-
-            if (directDepShortIds.isEmpty()) continue
-
-            val artifactResults: List<Pair<String, java.io.File>> = kspConfigs.flatMap { cfg ->
-                cfg.incoming
-                    .artifactView {
-                        isLenient = true
-                        componentFilter { id -> id is ModuleComponentIdentifier }
-                    }
-                    .artifacts
-                    .mapNotNull { artifact ->
-                        val id = artifact.id.componentIdentifier as? ModuleComponentIdentifier
-                            ?: return@mapNotNull null
-                        val shortId = "${id.group}:${id.module}"
-                        if (shortId in directDepShortIds) shortId to artifact.file else null
-                    }
-            }
-
-            val artifactMapping: Map<String, String> = artifactResults
-                .associate { (shortId, file) -> shortId to file.name }
-            val processorClassMap: Map<String, String> = KspProcessorClassExtractor
-                .extractProcessorClasses(
-                    artifactResults.map { it.second }.toSet(),
-                    artifactMapping
-                )
-
-            kspConfigs.forEach { cfg ->
-                try {
-                    val root = cfg.incoming.resolutionResult.root
-                    ResolvedComponentsVisitor().visit(root) { visitResult ->
-                        val component = visitResult.component
-                        val moduleVersion = component.moduleVersion ?: return@visit null
-                        val shortId = "${moduleVersion.group}:${moduleVersion.name}"
-                        if (shortId in directDepShortIds) {
-                            ResolvedDependency(
-                                id = component.toString(),
-                                shortId = shortId,
-                                direct = true,
-                                version = moduleVersion.version,
-                                dependencies = emptySet(),
-                                excludeRules = emptySet(),
-                                repository = visitResult.repository,
-                                requiresJetifier = visitResult.requiresJetifier,
-                                processorClass = processorClassMap[shortId]
-                            )
-                        } else null
-                    }.let(kspDeps::addAll)
-                } catch (e: Exception) {
-                    project.logger.warn(
-                        "Grazel[AggregatedDependencyResolver]: KSP resolution failed for " +
-                            "${project.path}/$variantName: ${e.message}"
-                    )
-                }
-            }
-        }
-
-        return kspDeps
-    }
 }
 
 internal fun mergeDependencyMetadataByMaxVersion(

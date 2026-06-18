@@ -25,15 +25,10 @@ import org.gradle.kotlin.dsl.property
  */
 data class ExperimentsExtension(private val objects: ObjectFactory) {
 
-    /**
-     * Limits the no of concurrent Gradle dependency resolution requests by establishing inter task dependencies
-     * mirroring project dependency graph such that successors are always resolved first before predecessor
-     * project is resolved. This is useful for large project with large dependency which can be memory intensive
-     * to compute.
-     *
-     * Enabling this does not actually control the no of parallel requests, for that
-     * please use `--max-workers` property from Gradle.
-     */
+    @Deprecated(
+        message = "No-op since dependency resolution is now always aggregated and no longer " +
+            "uses the legacy per-project/per-variant fanout."
+    )
     val limitDependencyResolutionParallelism: Property<Boolean> = objects
         .property<Boolean>()
         .convention(false)
@@ -60,27 +55,4 @@ data class ExperimentsExtension(private val objects: ObjectFactory) {
         .property<Boolean>()
         .convention(false)
 
-    /**
-     * Resolve dependencies through aggregated variant classpaths instead of the per-(project ×
-     * variant) resolution fan-out followed by an in-memory merge.
-     *
-     * The current pipeline resolves every project's variant classpath independently and then
-     * reconstructs the cross-project union (max-version selection, deduplication, transitive
-     * flattening, override targets) in [com.grab.grazel.gradle.dependencies.ComputeWorkspaceDependencies].
-     * This is O(projects × variants) full resolutions and holds all intermediate graphs in memory.
-     *
-     * When enabled, Grazel instead creates one aggregating resolvable configuration per variant on
-     * the root project, extending every migratable project's matching-variant classpath, with the
-     * AGP variant attributes (`BuildTypeAttr` + `ProductFlavorAttr` per dimension) injected so Gradle
-     * can disambiguate the correct variant of each project dependency. Gradle then performs the
-     * cross-project conflict resolution natively in a single pass per variant, removing both the
-     * fan-out and the hand-rolled merge.
-     *
-     * This produces the same [com.grab.grazel.gradle.dependencies.model.WorkspaceDependencies] as the
-     * existing path, so all downstream Bazel generation is unchanged. The flag exists to gate the new
-     * resolution strategy while it is validated against the existing output.
-     */
-    val aggregatedDependencyResolution: Property<Boolean> = objects
-        .property<Boolean>()
-        .convention(true)
 }

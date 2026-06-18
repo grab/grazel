@@ -120,8 +120,7 @@ internal class ResolvedComponentsVisitor {
      *   [AggregatedDependencyResolver] where the graph root is the Gradle root project and the
      *   sub-projects are intermediate project nodes between the root and the real external deps.
      *   When `false` (the default), project nodes are filtered out before recursion — this is the
-     *   original behaviour used by per-module resolution in
-     *   [com.grab.grazel.tasks.internal.ResolveVariantDependenciesTask].
+     *   original behaviour for single-project roots.
      * @param transform The callback used to convert to [T]
      */
     fun <T : Comparable<T>> visit(
