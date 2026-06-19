@@ -39,6 +39,7 @@ internal data class MainDependencyBucketPlan(
             addAll(defaultBucket.asCoveredBy(DEFAULT_VARIANT))
             buildTypeBuckets.forEach { (bucketName, deps) -> addAll(deps.asCoveredBy(bucketName)) }
             flavorBuckets.forEach { (bucketName, deps) -> addAll(deps.asCoveredBy(bucketName)) }
+            leafBuckets.forEach { (bucketName, deps) -> addAll(deps.asCoveredBy(bucketName)) }
         }
     }
 }
@@ -51,7 +52,6 @@ internal class MainDependencyBucketPlanner {
     ): MainDependencyBucketPlan {
         val graph = MainBucketGraph(variants)
         val leafNames = leafClosures.keys.sorted()
-        val leafVariants = leafNames.mapNotNull { leafName -> graph.variant(leafName) }
         val hierarchyDefaultDeps = hierarchyBucketClosures[DEFAULT_VARIANT].orEmpty()
         val nonDefaultHierarchyDeps = hierarchyBucketClosures
             .filterKeys { bucketName -> bucketName != DEFAULT_VARIANT }
@@ -66,54 +66,90 @@ internal class MainDependencyBucketPlanner {
                 nonDefaultHierarchyDependencies = nonDefaultHierarchyDeps
             )
 
-        val buildTypeBuckets = leafVariants
-            .mapNotNull(MainBucketVariant::buildType)
-            .toSortedSet()
-            .mapNotNull { buildType ->
-                val candidateDeps = candidateDepsFor(
-                    bucketName = buildType,
-                    graph = graph,
-                    leafNames = leafNames,
-                    leafClosures = leafClosures,
-                    hierarchyBucketClosures = hierarchyBucketClosures
-                )
-                val deps = candidateDeps.withoutDependenciesCoveredBy(
-                    defaultDeps.asCoveredBy(DEFAULT_VARIANT)
-                )
-                if (deps.isEmpty()) null else buildType to deps
-            }
-            .toMap()
+        val selectedHierarchyBuckets = linkedMapOf<String, Map<String, ResolvedDependency>>()
+        val defaultCoveredDeps = defaultDeps.asCoveredBy(DEFAULT_VARIANT)
 
-        val buildTypeCoveredDeps = buildTypeBuckets.flatMap { (bucketName, deps) ->
-            deps.asCoveredBy(bucketName)
+        fun selectedCoveredDepsFor(bucketName: String): List<CoveredDependency> {
+            return selectedHierarchyBuckets
+                .filterKeys { selectedBucketName ->
+                    graph.hasAncestor(bucketName, selectedBucketName) ||
+                        graph.hasAncestor(selectedBucketName, bucketName) ||
+                        graph.coversDescendantLeaves(
+                            coveringBucketName = selectedBucketName,
+                            coveredBucketName = bucketName,
+                            leafNames = leafNames
+                        )
+                }
+                .flatMap { (selectedBucketName, deps) -> deps.asCoveredBy(selectedBucketName) }
         }
-        val flavorBuckets = leafVariants
-            .flatMap(MainBucketVariant::productFlavors)
-            .toSortedSet()
-            .mapNotNull { flavor ->
-                val candidateDeps = candidateDepsFor(
-                    bucketName = flavor,
-                    graph = graph,
-                    leafNames = leafNames,
-                    leafClosures = leafClosures,
-                    hierarchyBucketClosures = hierarchyBucketClosures
-                )
-                val deps = candidateDeps.withoutDependenciesCoveredBy(
-                    defaultDeps.asCoveredBy(DEFAULT_VARIANT) + buildTypeCoveredDeps
-                )
-                if (deps.isEmpty()) null else flavor to deps
-            }
-            .toMap()
 
-        val parentBucketsByName = buildTypeBuckets + flavorBuckets
-        val leafBuckets = leafNames
-            .mapNotNull { leafName ->
-                val parentCoveredDeps = graph.parentsOf(leafName)
-                    .filter { parentName -> parentName != DEFAULT_VARIANT }
-                    .flatMap { parentName -> parentBucketsByName[parentName].orEmpty().asCoveredBy(parentName) }
-                val deps = leafClosures.getValue(leafName).withoutDependenciesCoveredBy(
-                    defaultDeps.asCoveredBy(DEFAULT_VARIANT) + parentCoveredDeps
+        val explicitBucketNames = hierarchyBucketClosures
+            .keys
+            .filter { bucketName -> bucketName != DEFAULT_VARIANT }
+            .sortedWith(compareByDescending<String> { bucketName -> graph.depthOf(bucketName) }.thenBy { it })
+
+        explicitBucketNames.forEach { bucketName ->
+            val deps = hierarchyBucketClosures
+                .getValue(bucketName)
+                .withoutDependenciesCoveredBy(
+                    defaultCoveredDeps + selectedCoveredDepsFor(bucketName)
                 )
+            if (deps.isNotEmpty()) {
+                selectedHierarchyBuckets[bucketName] = deps
+            }
+        }
+
+        val inferredBucketNames = graph.hierarchyBucketNames
+            .filter { bucketName -> bucketName != DEFAULT_VARIANT && bucketName !in hierarchyBucketClosures }
+            .sortedWith(
+                compareByDescending<String> { bucketName ->
+                    graph.descendantLeafNames(bucketName, leafNames).size
+                }
+                    .thenByDescending { bucketName -> graph.depthOf(bucketName) }
+                    .thenBy { bucketName -> bucketName }
+            )
+
+        inferredBucketNames.forEach { bucketName ->
+            val candidateDeps = candidateDepsFor(
+                bucketName = bucketName,
+                graph = graph,
+                leafNames = leafNames,
+                leafClosures = leafClosures,
+                hierarchyBucketClosures = hierarchyBucketClosures
+            )
+            val deps = candidateDeps.withoutDependenciesCoveredBy(
+                defaultCoveredDeps + selectedCoveredDepsFor(bucketName)
+            )
+            if (deps.isNotEmpty()) {
+                selectedHierarchyBuckets[bucketName] = deps
+            }
+        }
+
+        val buildTypeBuckets = selectedHierarchyBuckets
+            .filterKeys { bucketName -> bucketName in graph.buildTypeNames }
+            .toMap()
+        val flavorBuckets = selectedHierarchyBuckets
+            .filterKeys { bucketName -> bucketName in graph.flavorNames }
+            .toMap()
+        val selectedLeafBuckets = selectedHierarchyBuckets
+            .filterKeys { bucketName -> bucketName in graph.leafVariantNames }
+        val outputLeafNames = (leafNames + selectedLeafBuckets.keys).toSortedSet()
+        val leafBuckets = outputLeafNames
+            .mapNotNull { leafName ->
+                val ancestorCoveredDeps = graph.ancestorsOf(leafName)
+                    .filter { parentName -> parentName != DEFAULT_VARIANT }
+                    .flatMap { parentName ->
+                        selectedHierarchyBuckets[parentName].orEmpty().asCoveredBy(parentName)
+                    }
+                val selectedLeafDeps = selectedLeafBuckets[leafName].orEmpty()
+                val residualDeps = leafClosures[leafName]
+                    .orEmpty()
+                    .withoutDependenciesCoveredBy(
+                        defaultCoveredDeps +
+                            ancestorCoveredDeps +
+                            selectedLeafDeps.asCoveredBy(leafName)
+                    )
+                val deps = residualDeps + selectedLeafDeps
                 if (deps.isEmpty()) null else leafName to deps
             }
             .toMap()
@@ -134,8 +170,7 @@ internal class MainDependencyBucketPlanner {
         hierarchyBucketClosures: Map<String, Map<String, ResolvedDependency>>
     ): Map<String, ResolvedDependency> {
         hierarchyBucketClosures[bucketName]?.let { deps -> return deps }
-        val descendantLeafNames = leafNames
-            .filter { leafName -> graph.hasAncestor(leafName, bucketName) }
+        val descendantLeafNames = graph.descendantLeafNames(bucketName, leafNames)
         if (descendantLeafNames.size < 2) return emptyMap()
         return intersectByBucketOwner(
             descendantLeafNames.mapNotNull { leafName -> leafClosures[leafName] }
@@ -147,24 +182,48 @@ private class MainBucketGraph(
     variants: Collection<MainBucketVariant>
 ) {
     private val variantsByName = variants.associateBy(MainBucketVariant::name)
+    private val leafVariants = variants.filter(MainBucketVariant::leaf)
+    val leafVariantNames = leafVariants.map(MainBucketVariant::name).toSortedSet()
+    val buildTypeNames = leafVariants.mapNotNull(MainBucketVariant::buildType).toSortedSet()
+    val flavorNames = leafVariants.flatMap(MainBucketVariant::productFlavors).toSortedSet()
+    val hierarchyBucketNames = (
+        variants.filterNot(MainBucketVariant::leaf).map(MainBucketVariant::name) +
+            buildTypeNames +
+            flavorNames +
+            DEFAULT_VARIANT
+        )
+        .toSortedSet()
+    private val parentsByName = buildMap<String, Set<String>> {
+        variants.forEach { variant ->
+            put(variant.name, variant.extendsFrom)
+        }
+        variants.flatMap(MainBucketVariant::extendsFrom).forEach { parentName ->
+            putIfAbsent(
+                parentName,
+                if (parentName == DEFAULT_VARIANT) emptySet() else setOf(DEFAULT_VARIANT)
+            )
+        }
+        hierarchyBucketNames.forEach { bucketName ->
+            putIfAbsent(
+                bucketName,
+                if (bucketName == DEFAULT_VARIANT) emptySet() else setOf(DEFAULT_VARIANT)
+            )
+        }
+    }
 
     fun variant(name: String): MainBucketVariant? {
         return variantsByName[name]
-    }
-
-    fun parentsOf(name: String): Set<String> {
-        return variantsByName[name]?.extendsFrom.orEmpty()
     }
 
     fun hasAncestor(name: String, ancestor: String): Boolean {
         return ancestor in ancestorsOf(name)
     }
 
-    private fun ancestorsOf(name: String): Set<String> {
+    fun ancestorsOf(name: String): Set<String> {
         val visited = linkedSetOf<String>()
 
         fun visit(bucketName: String) {
-            val parents = variantsByName[bucketName]?.extendsFrom.orEmpty()
+            val parents = parentsByName[bucketName].orEmpty()
             parents.forEach { parent ->
                 if (visited.add(parent)) {
                     visit(parent)
@@ -174,6 +233,26 @@ private class MainBucketGraph(
 
         visit(name)
         return visited
+    }
+
+    fun depthOf(name: String): Int {
+        return ancestorsOf(name).size
+    }
+
+    fun descendantLeafNames(bucketName: String, leafNames: Collection<String>): List<String> {
+        return leafNames
+            .filter { leafName -> hasAncestor(leafName, bucketName) }
+            .sorted()
+    }
+
+    fun coversDescendantLeaves(
+        coveringBucketName: String,
+        coveredBucketName: String,
+        leafNames: Collection<String>
+    ): Boolean {
+        val coveredLeaves = descendantLeafNames(coveredBucketName, leafNames)
+        if (coveredLeaves.isEmpty()) return false
+        return descendantLeafNames(coveringBucketName, leafNames).containsAll(coveredLeaves)
     }
 }
 
