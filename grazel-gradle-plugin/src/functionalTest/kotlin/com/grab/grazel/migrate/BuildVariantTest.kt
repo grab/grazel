@@ -125,11 +125,23 @@ class BuildVariantTest : BaseGrazelPluginTest() {
             arrayOf("computeWorkspaceDependencies", "--console=plain"),
             fixtureRoot
         )
+        Assert.assertEquals(SUCCESS, firstResult.task(":collectDeclaredDependencyMetadata")?.outcome)
+        Assert.assertEquals(SUCCESS, firstResult.task(":collectKspProcessorDependencies")?.outcome)
         Assert.assertEquals(SUCCESS, firstResult.task(":computeWorkspaceDependencies")?.outcome)
 
         val secondResult = runGradleBuild(
             arrayOf("computeWorkspaceDependencies", "--console=plain"),
             fixtureRoot
+        )
+        Assert.assertEquals(
+            "No-edit declared metadata collection should be up-to-date",
+            UP_TO_DATE,
+            secondResult.task(":collectDeclaredDependencyMetadata")?.outcome
+        )
+        Assert.assertEquals(
+            "No-edit KSP processor collection should be up-to-date",
+            UP_TO_DATE,
+            secondResult.task(":collectKspProcessorDependencies")?.outcome
         )
         Assert.assertEquals(
             "No-edit computeWorkspaceDependencies run should be up-to-date",

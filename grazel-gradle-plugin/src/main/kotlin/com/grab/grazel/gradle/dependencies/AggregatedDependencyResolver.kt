@@ -38,13 +38,13 @@ import org.gradle.api.Project
 import java.util.TreeSet
 
 /**
- * Resolves all external dependencies for the migratable project set from task-wired aggregated
- * classpath roots, then buckets them via set-intersection logic.
+ * Resolves all external dependencies for the migratable project set from task-wired workspace
+ * dependency roots, then buckets them via set-intersection logic.
  *
- * The root inputs are prepared by [com.grab.grazel.tasks.internal.ComputeWorkspaceDependenciesTask]
- * from app and standalone `com.android.test` binary roots, plus task-produced declared metadata and
- * KSP metadata. Bucket output uses set-intersection logic: default, per-build-type, per-flavor,
- * per-leaf residual, test, androidTest, lint, and global KSP.
+ * The root inputs are prepared by the workspace dependency input registrar from app and standalone
+ * `com.android.test` binary roots, plus task-produced declared metadata and KSP metadata. Bucket
+ * output uses set-intersection logic: default, per-build-type, per-flavor, per-leaf residual, test,
+ * androidTest, lint, and global KSP.
  *
  * The downstream [ComputeWorkspaceDependencies] pipeline consumes the synthetic bucket results.
  *
@@ -56,7 +56,7 @@ internal class AggregatedDependencyResolver(
     private val rootProject: Project,
     private val declaredDependencyMetadata: DeclaredDependencyMetadata = DeclaredDependencyMetadata.EMPTY,
     private val precomputedKspDependencies: Set<ResolvedDependency> = emptySet(),
-    private val aggregatedDependencyRoots: List<AggregatedDependencyRootSnapshot> = emptyList()
+    private val workspaceDependencyRoots: List<AggregatedDependencyRoot> = emptyList()
 ) {
 
     private val logger = rootProject.logger
@@ -149,7 +149,7 @@ internal class AggregatedDependencyResolver(
 
         var sawBinaryRoot = false
 
-        aggregatedDependencyRoots.forEach { aggregatedRoot ->
+        workspaceDependencyRoots.forEach { aggregatedRoot ->
             val metadata = aggregatedRoot.metadata
             val closure = when (metadata.kind) {
                 AggregatedDependencyRootKind.LINT -> resolveRootToDependencyMap(aggregatedRoot)
@@ -474,57 +474,90 @@ internal class AggregatedDependencyResolver(
     }
 
     private fun resolveRootToDependencyMap(
-        aggregatedRoot: AggregatedDependencyRootSnapshot,
+        aggregatedRoot: AggregatedDependencyRoot,
         excludeRulesByProjectPath: Map<String, ProjectExcludeRules> = emptyMap()
     ): Map<String, ResolvedDependency> {
         val metadata = aggregatedRoot.metadata
         return try {
             val depMap = mutableMapOf<String, ResolvedDependency>()
-            aggregatedRoot.components.forEach { component ->
-                val shortId = component.shortId
+            val visitResults = mutableListOf<ResolvedComponentsVisitor.VisitResult>()
+            ResolvedComponentsVisitor().visit(
+                root = aggregatedRoot.root,
+                traverseProjectNodes = metadata.traverseProjectNodes
+            ) { visitResult ->
+                val component = visitResult.component
+                val moduleVersion = component.moduleVersion ?: return@visit null
+                val shortId = "${moduleVersion.group}:${moduleVersion.name}"
                 // Skip BOM/platform (pom-only) components — rules_jvm_external rejects them with
-                // "Unsupported packaging type: pom". BOM components appear in the resolution graph
-                // but have no actual jar/aar artifact. The snapshot marks components whose module
-                // name follows the common BOM naming conventions.
-                if (component.bom) {
-                    return@forEach
+                // "Unsupported packaging type: pom". BOM components appear in the resolution graph,
+                // but have no actual jar/aar artifact.
+                if (component.isBomComponent()) {
+                    return@visit null
                 }
-                if (metadata.traverseProjectNodes && !component.directFromProject) {
-                    return@forEach
+                if (metadata.traverseProjectNodes && !visitResult.directFromProject) {
+                    return@visit null
                 }
-                val excludeRules = if (metadata.traverseProjectNodes) {
-                    excludeRulesByProjectPath.excludeRulesFor(
-                        rootProjectPath = metadata.projectPath,
-                        rootExcludeRulesByShortId = metadata.rootExcludeRulesByShortId,
-                        ownerProjectPath = component.directProjectPath,
-                        ownerProjectVariantDisplayName = component.directProjectVariantDisplayName,
-                        shortId = shortId
-                    )
-                } else {
-                    metadata.rootExcludeRulesByShortId.getOrDefault(shortId, emptySet())
-                }
-                val dependency = ResolvedDependency(
-                    id = component.id,
-                    shortId = shortId,
-                    version = component.version,
-                    direct = if (metadata.traverseProjectNodes) {
-                        true
-                    } else {
-                        shortId in metadata.directDependencyShortIds
-                    },
-                    dependencies = component.transitiveDependencyNotations.toCollection(TreeSet()),
-                    excludeRules = excludeRules,
-                    repository = component.repository,
-                    requiresJetifier = component.requiresJetifier
-                )
-                val existingDependency = depMap[shortId]
-                val mergedDependency = if (existingDependency == null) {
-                    dependency
-                } else {
-                    mergeDependencyMetadataByMaxVersion(existingDependency, dependency)
-                }
-                depMap[shortId] = mergedDependency
+                visitResults.add(visitResult)
+                shortId
             }
+            visitResults
+                .sortedWith(
+                    compareBy<ResolvedComponentsVisitor.VisitResult> { visitResult ->
+                        visitResult.component.toString()
+                    }
+                        .thenBy { visitResult -> visitResult.repository }
+                        .thenBy { visitResult -> visitResult.directProjectPath }
+                        .thenBy { visitResult -> visitResult.directProjectVariantDisplayName }
+                        .thenBy { visitResult -> visitResult.directFromProject }
+                        .thenBy { visitResult -> visitResult.requiresJetifier }
+                )
+                .forEach { visitResult ->
+                    val component = visitResult.component
+                    val moduleVersion = component.moduleVersion ?: return@forEach
+                    val shortId = "${moduleVersion.group}:${moduleVersion.name}"
+                    val excludeRules = if (metadata.traverseProjectNodes) {
+                        excludeRulesByProjectPath.excludeRulesFor(
+                            rootProjectPath = metadata.projectPath,
+                            rootExcludeRulesByShortId = metadata.rootExcludeRulesByShortId,
+                            ownerProjectPath = visitResult.directProjectPath,
+                            ownerProjectVariantDisplayName = visitResult.directProjectVariantDisplayName,
+                            shortId = shortId
+                        )
+                    } else {
+                        metadata.rootExcludeRulesByShortId.getOrDefault(shortId, emptySet())
+                    }
+                    val dependency = ResolvedDependency(
+                        id = component.toString(),
+                        shortId = shortId,
+                        version = moduleVersion.version,
+                        direct = if (metadata.traverseProjectNodes) {
+                            true
+                        } else {
+                            shortId in metadata.directDependencyShortIds
+                        },
+                        dependencies = visitResult.transitiveDeps
+                            .filterNot { dependencyResult ->
+                                dependencyResult.dependency.isBomComponent()
+                            }
+                            .mapTo(TreeSet()) { dependencyResult ->
+                                ResolvedDependency.createDependencyNotation(
+                                    dependencyResult.dependency,
+                                    dependencyResult.requiresJetifier,
+                                    dependencyResult.unjetifiedSource
+                                )
+                            },
+                        excludeRules = excludeRules,
+                        repository = visitResult.repository,
+                        requiresJetifier = visitResult.requiresJetifier
+                    )
+                    val existingDependency = depMap[shortId]
+                    val mergedDependency = if (existingDependency == null) {
+                        dependency
+                    } else {
+                        mergeDependencyMetadataByMaxVersion(existingDependency, dependency)
+                    }
+                    depMap[shortId] = mergedDependency
+                }
             depMap
         } catch (e: Exception) {
             logger.warn(

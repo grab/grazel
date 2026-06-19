@@ -16,6 +16,8 @@
 
 package com.grab.grazel.tasks.internal
 
+import org.gradle.api.tasks.Input
+import org.gradle.api.tasks.Internal
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -57,29 +59,43 @@ class ComputeWorkspaceDependenciesTaskTest {
     }
 
     @Test
-    fun `compute workspace dependencies task consumes serialized aggregated root snapshots`() {
+    fun `compute workspace dependencies task consumes workspace dependency root providers and metadata`() {
         val taskGetterNames = ComputeWorkspaceDependenciesTask::class.java.methods
             .mapTo(mutableSetOf()) { method -> method.name }
+        val rootComponentsGetter = ComputeWorkspaceDependenciesTask::class.java
+            .getMethod("getWorkspaceDependencyRootComponents")
 
         assertFalse(
-            "The cacheable task action should not consume live Gradle ResolvedComponentResult " +
-                "handles; provider mapping should serialize them before task execution.",
-            "getAggregatedDependencyRoots" in taskGetterNames
-        )
-        assertFalse(
-            "Separate root metadata inputs should be folded into the serialized snapshot so the " +
-                "cache key and resolver input cannot drift apart.",
+            "Root metadata is now workspace dependency input metadata; old aggregated-root " +
+                "metadata naming should not be exposed by the compute task.",
             "getAggregatedDependencyRootMetadataJsons" in taskGetterNames
         )
         assertFalse(
-            "A separate fingerprint proxy should not be needed once the task consumes the full " +
-                "serialized root snapshot.",
+            "A separate fingerprint proxy should not be needed for the master-like direct " +
+                "root-provider path.",
             "getAggregatedDependencyRootFingerprints" in taskGetterNames
         )
-        assertTrue(
-            "Aggregated classpath resolution should be wired into computeWorkspaceDependencies " +
-                "as serialized snapshots, not looked up from live Configuration objects.",
+        assertFalse(
+            "The compute task should not expose the bespoke serialized root snapshot input.",
             "getAggregatedDependencyRootSnapshots" in taskGetterNames
+        )
+        assertTrue(
+            "Workspace dependency root providers should be wired into computeWorkspaceDependencies " +
+                "master-style.",
+            "getWorkspaceDependencyRootComponents" in taskGetterNames
+        )
+        assertTrue(
+            "Resolved root providers are safe cache inputs, matching the historical cacheable " +
+                "ResolveVariantDependenciesTask shape.",
+            rootComponentsGetter.isAnnotationPresent(Input::class.java)
+        )
+        assertFalse(
+            "Resolved root providers should participate in the compute task cache key.",
+            rootComponentsGetter.isAnnotationPresent(Internal::class.java)
+        )
+        assertTrue(
+            "Stable root metadata should remain an explicit task input alongside root providers.",
+            "getWorkspaceDependencyRootMetadataJsons" in taskGetterNames
         )
     }
 }

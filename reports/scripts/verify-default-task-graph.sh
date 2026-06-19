@@ -12,4 +12,6 @@ if grep -q 'ResolveDependencies SKIPPED' "$output_file"; then
   exit 1
 fi
 
+grep -q ':collectDeclaredDependencyMetadata SKIPPED' "$output_file"
+grep -q ':collectKspProcessorDependencies SKIPPED' "$output_file"
 grep -q ':computeWorkspaceDependencies SKIPPED' "$output_file"

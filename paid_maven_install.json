@@ -53,7 +53,6 @@
     "androidx.databinding:viewbinding": -812572074,
     "androidx.drawerlayout:drawerlayout": 1382828911,
     "androidx.emoji2:emoji2-views-helper": 478693280,
-    "androidx.fragment:fragment": 1292179234,
     "androidx.graphics:graphics-path": 516434934,
     "androidx.interpolator:interpolator": 163606599,
     "androidx.lifecycle:lifecycle-common-jvm": 927593771,
@@ -146,7 +145,6 @@
     "androidx.databinding:viewbinding:aar": -623878391,
     "androidx.drawerlayout:drawerlayout:aar": -592329367,
     "androidx.emoji2:emoji2-views-helper:aar": -56374388,
-    "androidx.fragment:fragment:aar": 1371934817,
     "androidx.graphics:graphics-path:aar": 1604310644,
     "androidx.interpolator:interpolator:aar": 631110265,
     "androidx.lifecycle:lifecycle-common-jvm": 1291267347,
@@ -496,12 +494,6 @@
         "jar": "9a1351295a4f739df0efe8344adaa9afb34856c3af584d4a9afbec105a45b90b"
       },
       "version": "1.3.0"
-    },
-    "androidx.fragment:fragment:aar": {
-      "shasums": {
-        "jar": "12f0831b4f08092d5dda272c1923c11a022ff20ceffed3e801751e21bb8d1c1e"
-      },
-      "version": "1.3.6"
     },
     "androidx.graphics:graphics-path:aar": {
       "shasums": {
@@ -1033,17 +1025,6 @@
       "androidx.collection:collection",
       "androidx.core:core:aar"
     ],
-    "androidx.fragment:fragment:aar": [
-      "androidx.annotation:annotation",
-      "androidx.annotation:annotation-experimental:aar",
-      "androidx.collection:collection",
-      "androidx.core:core:aar",
-      "androidx.lifecycle:lifecycle-livedata-core:aar",
-      "androidx.lifecycle:lifecycle-viewmodel-savedstate:aar",
-      "androidx.loader:loader:aar",
-      "androidx.savedstate:savedstate:aar",
-      "androidx.viewpager:viewpager:aar"
-    ],
     "androidx.graphics:graphics-path:aar": [
       "androidx.core:core:aar",
       "org.jetbrains.kotlin:kotlin-stdlib"
@@ -1359,7 +1340,6 @@
       "androidx.databinding:viewbinding:aar",
       "androidx.drawerlayout:drawerlayout:aar",
       "androidx.emoji2:emoji2-views-helper:aar",
-      "androidx.fragment:fragment:aar",
       "androidx.graphics:graphics-path:aar",
       "androidx.interpolator:interpolator:aar",
       "androidx.lifecycle:lifecycle-common-jvm",
@@ -1450,7 +1430,6 @@
       "androidx.databinding:viewbinding:aar",
       "androidx.drawerlayout:drawerlayout:aar",
       "androidx.emoji2:emoji2-views-helper:aar",
-      "androidx.fragment:fragment:aar",
       "androidx.graphics:graphics-path:aar",
       "androidx.interpolator:interpolator:aar",
       "androidx.lifecycle:lifecycle-common-jvm",

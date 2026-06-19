@@ -17,11 +17,15 @@
 package com.grab.grazel.gradle.dependencies
 
 import com.grab.grazel.gradle.dependencies.model.ExcludeRule
-import com.grab.grazel.gradle.dependencies.model.ResolvedDependency
 import com.grab.grazel.gradle.variant.VariantType
 import kotlinx.serialization.Serializable
 import org.gradle.api.artifacts.result.ResolvedComponentResult
 import java.io.Serializable as JavaSerializable
+
+internal data class AggregatedDependencyRoot(
+    val root: ResolvedComponentResult,
+    val metadata: AggregatedDependencyRootMetadata
+)
 
 @Serializable
 internal data class AggregatedDependencyRootMetadata(
@@ -50,84 +54,7 @@ internal enum class AggregatedDependencyRootKind {
     LINT
 }
 
-@Serializable
-internal data class AggregatedDependencyRootSnapshot(
-    val metadata: AggregatedDependencyRootMetadata,
-    val components: List<AggregatedDependencyComponent> = emptyList()
-) {
-    companion object {
-        fun from(
-            root: ResolvedComponentResult,
-            metadata: AggregatedDependencyRootMetadata
-        ): AggregatedDependencyRootSnapshot {
-            val components = mutableListOf<AggregatedDependencyComponent>()
-            ResolvedComponentsVisitor().visit(
-                root = root,
-                traverseProjectNodes = metadata.traverseProjectNodes
-            ) { visitResult ->
-                val moduleVersion = visitResult.component.moduleVersion ?: return@visit null
-                val component = AggregatedDependencyComponent(
-                    id = visitResult.component.toString(),
-                    shortId = "${moduleVersion.group}:${moduleVersion.name}",
-                    version = moduleVersion.version,
-                    moduleName = moduleVersion.name,
-                    repository = visitResult.repository,
-                    directFromProject = visitResult.directFromProject,
-                    directProjectPath = visitResult.directProjectPath,
-                    directProjectVariantDisplayName = visitResult.directProjectVariantDisplayName,
-                    requiresJetifier = visitResult.requiresJetifier,
-                    transitiveDependencyNotations = visitResult.transitiveDeps
-                        .filterNot { dependencyResult ->
-                            dependencyResult.dependency.isBomComponent()
-                        }
-                        .mapTo(sortedSetOf()) { dependencyResult ->
-                            ResolvedDependency.createDependencyNotation(
-                                dependencyResult.dependency,
-                                dependencyResult.requiresJetifier,
-                                dependencyResult.unjetifiedSource
-                            )
-                        },
-                    bom = visitResult.component.isBomComponent()
-                )
-                components.add(component)
-                component
-            }
-            return AggregatedDependencyRootSnapshot(
-                metadata = metadata,
-                components = components.sorted()
-            )
-        }
-    }
-}
-
-@Serializable
-internal data class AggregatedDependencyComponent(
-    val id: String,
-    val shortId: String,
-    val version: String,
-    val moduleName: String,
-    val repository: String,
-    val directFromProject: Boolean,
-    val directProjectPath: String? = null,
-    val directProjectVariantDisplayName: String? = null,
-    val requiresJetifier: Boolean,
-    val transitiveDependencyNotations: Set<String> = emptySet(),
-    val bom: Boolean = false
-) : Comparable<AggregatedDependencyComponent> {
-    override fun compareTo(other: AggregatedDependencyComponent): Int =
-        compareValuesBy(
-            this,
-            other,
-            AggregatedDependencyComponent::id,
-            AggregatedDependencyComponent::repository,
-            AggregatedDependencyComponent::directProjectPath,
-            AggregatedDependencyComponent::directProjectVariantDisplayName,
-            AggregatedDependencyComponent::directFromProject,
-            AggregatedDependencyComponent::requiresJetifier
-        )
-}
-
-private fun ResolvedComponentResult.isBomComponent(): Boolean {
+internal fun ResolvedComponentResult.isBomComponent(): Boolean {
     val version = moduleVersion ?: return false
     return version.name.endsWith("-bom", ignoreCase = true) ||
         version.name.endsWith(".bom", ignoreCase = true)
