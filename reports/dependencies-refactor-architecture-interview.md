@@ -19,6 +19,8 @@ before considering the branch mergeable.
    - `AggregatedDependencyRootSnapshot` was removed; root providers are direct
      task inputs, matching the earlier cacheable `ResolveVariantDependenciesTask`
      shape from history.
+   - Do not reintroduce bespoke aggregated-root snapshots unless later
+     verification proves a concrete need.
 
 2. Declared metadata as cheap variant fanout
    - Keep declared metadata collection cheap: no resolved configurations,
@@ -48,6 +50,9 @@ before considering the branch mergeable.
      the task-shape commit. It should not replace `ResolvedComponentsVisitor`;
      the visitor extracts resolved graph facts, while the bucket DAG places
      those facts into repos.
+   - First milestone should cover main buckets only: default, build type,
+     flavor, and leaf. Defer test/androidTest precision, bucketed KSP, and
+     library-only roots.
 
 6. Bucket ownership identity
    - Same artifact with different versions must remain identity-aware.

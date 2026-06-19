@@ -117,6 +117,15 @@ task-shape/altitude around workspace dependency inputs.
 - After checking `ResolveVariantDependenciesTask` history, restored the
   historical cacheable shape: `ResolvedComponentResult` root providers are
   task inputs, not `@Internal` side channels.
+- After the root-provider input flip, reran
+  `./gradlew :grazel-gradle-plugin:test --tests
+  "com.grab.grazel.tasks.internal.ComputeWorkspaceDependenciesTaskTest"
+  --console=plain`; it passed.
+- After the root-provider input flip, reran
+  `./gradlew computeWorkspaceDependencies --console=plain --build-cache`
+  twice; the second run had `collectDeclaredDependencyMetadata`,
+  `collectKspProcessorDependencies`, and `computeWorkspaceDependencies`
+  `UP-TO-DATE`.
 
 ## Failures / Findings
 
@@ -140,3 +149,20 @@ task-shape/altitude around workspace dependency inputs.
   script/catalog input set remain a possible sidecar invalidation gap.
 - Full `./gradlew check` still fails on the known preexisting sample Android
   lint `MissingConstraints` issue outside this refactor.
+
+## Next Goal Preparation
+
+- Next architecture goal should focus on explicit bucket graph/DAG modeling for
+  main variants.
+- Keep `ResolvedComponentsVisitor` as the resolved-graph fact extractor; the DAG
+  should own placement only.
+- First milestone should introduce a pure bucket planner for default,
+  build-type, flavor, and leaf buckets. Do not combine this with test/androidTest
+  precision, bucketed KSP, library-only roots, or broad cleanup.
+- Preserve current task shape: `WorkspaceDependencyInputsRegistrar` wires
+  Gradle root providers, cheap declared metadata supplies topology/ownership
+  hints, and `ComputeWorkspaceDependenciesTask` reduces task inputs into
+  workspace dependency JSON.
+- Acceptance should use generated Bazel files as the baseline, but reasonable
+  bucket moves are acceptable once `migrateToBazel`, shell verifiers, and Bazel
+  build pass.
