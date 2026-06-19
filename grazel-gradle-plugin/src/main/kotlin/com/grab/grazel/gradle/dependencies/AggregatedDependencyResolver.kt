@@ -82,10 +82,6 @@ internal class AggregatedDependencyResolver(
         val leafClosures = mutableMapOf<String, Map<String, ResolvedDependency>>()
         val leafUnitTestClosures = mutableMapOf<String, Map<String, ResolvedDependency>>()
         val leafAndroidTestClosures = mutableMapOf<String, Map<String, ResolvedDependency>>()
-        // leaf name -> build type name
-        val leafBuildTypes = mutableMapOf<String, String>()
-        // leaf name -> flavor names
-        val leafFlavors = mutableMapOf<String, List<String>>()
         // Synthetic hierarchy buckets such as default/debug/free, resolved from their own Gradle
         // declaration buckets. These prevent filtered leaves from making debug/flavor deps look
         // like default deps.
@@ -222,12 +218,6 @@ internal class AggregatedDependencyResolver(
                                 leafAndroidTestClosures.addToLeafBucket(leafName, closure)
                             else -> {
                                 leafClosures.addToLeafBucket(bucketName, closure)
-                                if (!leafBuildTypes.containsKey(bucketName)) {
-                                    metadata.buildType?.let { buildType ->
-                                        leafBuildTypes[bucketName] = buildType
-                                    }
-                                    leafFlavors[bucketName] = metadata.productFlavors
-                                }
                             }
                         }
                     }
@@ -285,88 +275,16 @@ internal class AggregatedDependencyResolver(
             return emptyList()
         }
 
-        val allLeafNames = leafClosures.keys.toList()
-
-        // default = intersection of all leaf closures with the same bucket-owner identity
-        val leafIntersectionDeps = intersectByBucketOwner(allLeafNames.map { leafClosures[it]!! })
-        val hierarchyDefaultDeps = hierarchyBucketClosures[DEFAULT_VARIANT].orEmpty()
-        val nonDefaultHierarchyDeps = hierarchyBucketClosures
-            .filterKeys { it != DEFAULT_VARIANT }
-            .values
-            .flatMap { it.values }
-        val defaultDeps = (leafIntersectionDeps + hierarchyDefaultDeps)
-            .withoutDependenciesOwnedByNonDefaultHierarchy(
-                hierarchyDefaultDeps = hierarchyDefaultDeps,
-                nonDefaultHierarchyDependencies = nonDefaultHierarchyDeps
-            )
-
-        fun Map<String, ResolvedDependency>.asCoveredBy(bucketName: String): List<CoveredDependency> {
-            return values.map { CoveredDependency(bucketName, it) }
-        }
-
-        fun coveredByDefault(): List<CoveredDependency> {
-            return defaultDeps.asCoveredBy(DEFAULT_VARIANT)
-        }
-
-        // Build type buckets: intersection of all leaves for a given build type, minus default
-        val buildTypeBuckets = mutableMapOf<String, Map<String, ResolvedDependency>>()
-        val buildTypes = leafBuildTypes.values.toSet()
-        for (bt in buildTypes) {
-            val btLeaves = allLeafNames.filter { leafBuildTypes[it] == bt }
-            if (btLeaves.isEmpty()) continue
-            val hierarchyDeps = hierarchyBucketClosures[bt]
-            val candidateDeps = if (hierarchyDeps != null) {
-                hierarchyDeps
-            } else {
-                intersectByBucketOwner(btLeaves.map { leafClosures[it]!! })
-            }
-            val btDeps = candidateDeps.withoutDependenciesCoveredBy(coveredByDefault())
-            if (btDeps.isNotEmpty()) {
-                buildTypeBuckets[bt] = btDeps
-            }
-        }
-
-        // Flavor buckets: intersection of all leaves sharing a flavor, minus default
-        val flavorBuckets = mutableMapOf<String, Map<String, ResolvedDependency>>()
-        val allFlavors = leafFlavors.values.flatten().toSet()
-        for (flavor in allFlavors) {
-            val flavorLeaves = allLeafNames.filter { leafFlavors[it]?.contains(flavor) == true }
-            if (flavorLeaves.isEmpty()) continue
-            val hierarchyDeps = hierarchyBucketClosures[flavor]
-            val candidateDeps = if (hierarchyDeps != null) {
-                hierarchyDeps
-            } else {
-                intersectByBucketOwner(flavorLeaves.map { leafClosures[it]!! })
-            }
-            val flavorDeps = candidateDeps.withoutDependenciesCoveredBy(
-                coveredByDefault() + buildTypeBuckets.flatMap { (bucketName, deps) ->
-                    deps.asCoveredBy(bucketName)
-                }
-            )
-            if (flavorDeps.isNotEmpty()) {
-                flavorBuckets[flavor] = flavorDeps
-            }
-        }
-
-        // Per-leaf residual buckets: deps not covered by default, build-type, or flavor buckets
-        val perLeafBuckets = mutableMapOf<String, Map<String, ResolvedDependency>>()
-        for (leafName in allLeafNames) {
-            val bt = leafBuildTypes[leafName] ?: ""
-            val flavors = leafFlavors[leafName] ?: emptyList()
-            val coveredDeps = coveredByDefault() +
-                buildTypeBuckets[bt].orEmpty().asCoveredBy(bt) +
-                flavors.flatMap { flavor -> flavorBuckets[flavor].orEmpty().asCoveredBy(flavor) }
-            val leafDeps = leafClosures[leafName]!!.withoutDependenciesCoveredBy(coveredDeps)
-            if (leafDeps.isNotEmpty()) {
-                perLeafBuckets[leafName] = leafDeps
-            }
-        }
-
-        val mainCoveredDeps = buildList {
-            addAll(coveredByDefault())
-            buildTypeBuckets.forEach { (bucketName, deps) -> addAll(deps.asCoveredBy(bucketName)) }
-            flavorBuckets.forEach { (bucketName, deps) -> addAll(deps.asCoveredBy(bucketName)) }
-        }
+        val mainBucketPlan = MainDependencyBucketPlanner().plan(
+            variants = declaredDependencyMetadata.mainBucketVariants(),
+            hierarchyBucketClosures = hierarchyBucketClosures,
+            leafClosures = leafClosures
+        )
+        val defaultDeps = mainBucketPlan.defaultBucket
+        val buildTypeBuckets = mainBucketPlan.buildTypeBuckets
+        val flavorBuckets = mainBucketPlan.flavorBuckets
+        val perLeafBuckets = mainBucketPlan.leafBuckets
+        val mainCoveredDeps = mainBucketPlan.coveredDependencies()
 
         fun intersectClosures(
             closures: Map<String, Map<String, ResolvedDependency>>

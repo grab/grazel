@@ -112,6 +112,31 @@ build verified; after acceptance they become the new baseline.
 Older checkpoints are chronological notes. When they mention the legacy opt-out
 path or now-deleted tests, the latest checkpoint supersedes them.
 
+### 2026-06-19 - MAIN Bucket Planner Checkpoint
+
+Decision/implementation:
+- Added a pure `MainDependencyBucketPlanner` for MAIN default/build-type/flavor
+  and leaf residual placement.
+- Kept resolved graph extraction in `AggregatedDependencyResolver` /
+  `ResolvedComponentsVisitor`; the new planner only owns bucket placement.
+- Explicit Gradle hierarchy buckets win over inferred intersections, preserving
+  nearest-owner/version behavior.
+- Inferred non-default hierarchy buckets require at least two descendant leaves,
+  avoiding promotion from a single filtered leaf unless Gradle provided an
+  explicit hierarchy bucket.
+
+Generated output notes:
+- Root migration currently moves `androidx.fragment:fragment` into
+  `free_maven_install.json` and generated `free_maven` in `WORKSPACE`.
+- Treat this as acceptable bucket movement for the checkpoint if verification
+  stays green.
+
+Next goal preparation:
+- Details are captured in
+  `reports/dependencies-refactor-bucket-planner-goal.md`.
+- Next architecture decision is whether the extracted planner remains enough or
+  whether a fuller bucket DAG abstraction is needed for further precision.
+
 ### 2026-06-18 04:30:37 +08 - Serialized Root Snapshots and Final Verification
 
 Decision/implementation:
