@@ -102,15 +102,15 @@ reject_label "@demo_free_debug_maven//:androidx_compose_ui_ui"
 reject_label "@demo_free_debug_maven//:androidx_emoji2_emoji2"
 
 for target in sample-android-demo-free-debug sample-android-full-free-debug; do
-  require_target_label "$target" "@free_maven//:androidx_constraintlayout_constraintlayout"
+  require_target_label "$target" "@maven//:androidx_constraintlayout_constraintlayout"
+  reject_target_label "$target" "@free_maven//:androidx_constraintlayout_constraintlayout"
   reject_target_label "$target" "@paid_maven//:androidx_constraintlayout_constraintlayout"
-  reject_target_label "$target" "@maven//:androidx_constraintlayout_constraintlayout"
 done
 
 for target in sample-android-demo-paid-debug sample-android-full-paid-debug; do
-  require_target_label "$target" "@paid_maven//:androidx_constraintlayout_constraintlayout"
+  require_target_label "$target" "@maven//:androidx_constraintlayout_constraintlayout"
+  reject_target_label "$target" "@paid_maven//:androidx_constraintlayout_constraintlayout"
   reject_target_label "$target" "@free_maven//:androidx_constraintlayout_constraintlayout"
-  reject_target_label "$target" "@maven//:androidx_constraintlayout_constraintlayout"
 done
 
 require_label "@android_test_maven//:androidx_test_monitor"
@@ -163,7 +163,21 @@ if ! grep -q 'artifact = "constraintlayout"' WORKSPACE ||
   exit 1
 fi
 
-for bucket in demo free full paid; do
+actual_buckets="$(jq -r '.result | keys[]' build/grazel/dependencies.json | sort | paste -sd ',' -)"
+expected_buckets="androidTest,debug,default,lint,test"
+if [[ "$actual_buckets" != "$expected_buckets" ]]; then
+  echo "Unexpected dependency buckets: $actual_buckets" >&2
+  exit 1
+fi
+
+if ! jq -e \
+  '.result.debug[]? | select(.shortId == "androidx.paging:paging-runtime" and .direct == true)' \
+  build/grazel/dependencies.json >/dev/null; then
+  echo "debug bucket must own debug-only paging dependency directly" >&2
+  exit 1
+fi
+
+for bucket in default test lint; do
   if jq -e --arg bucket "$bucket" \
     '.result[$bucket][]? | select(.shortId == "androidx.paging:paging-runtime" and .direct == true)' \
     build/grazel/dependencies.json >/dev/null; then

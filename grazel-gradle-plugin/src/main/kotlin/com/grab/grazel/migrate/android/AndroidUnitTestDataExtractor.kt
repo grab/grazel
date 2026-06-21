@@ -110,7 +110,8 @@ constructor(
             } +
             dependenciesDataSource.collectMavenDeps(
                 project = project,
-                variantKey = variantKey
+                variantKey = variantKey,
+                preferredVariantNames = listOf(matchedVariant.variantName)
             ) +
             project.kotlinParcelizeDeps() +
             BazelDependency.ProjectDependency(

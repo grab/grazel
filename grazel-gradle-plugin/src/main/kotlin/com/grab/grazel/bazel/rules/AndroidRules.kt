@@ -347,6 +347,7 @@ fun StatementsBuilder.androidInstrumentationBinary(
     srcsGlob: List<String> = emptyList(),
     deps: List<BazelDependency>,
     associates: List<BazelDependency> = emptyList(),
+    tags: List<String> = emptyList(),
     customPackage: String,
     targetPackage: String,
     debugKey: String? = null,
@@ -373,6 +374,9 @@ fun StatementsBuilder.androidInstrumentationBinary(
         debugKey?.let { "debug_key" `=` debugKey.quote }
         deps.notEmpty {
             "deps" `=` array(deps.map(BazelDependency::toString).map(String::quote))
+        }
+        tags.notEmpty {
+            "tags" `=` array(tags.map(String::quote))
         }
         "instruments" `=` instruments.toString().quote
         manifestValues.notEmpty {

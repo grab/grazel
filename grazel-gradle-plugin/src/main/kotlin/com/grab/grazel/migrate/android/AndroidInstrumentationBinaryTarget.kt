@@ -49,6 +49,7 @@ internal data class AndroidInstrumentationBinaryTarget(
             srcsGlob = srcs,
             deps = deps,
             associates = associates,
+            tags = tags,
             customPackage = customPackage,
             targetPackage = targetPackage,
             debugKey = debugKey,

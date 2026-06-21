@@ -66,6 +66,10 @@ internal val PARCELIZE_DEPS = listOf(
     MavenDependency(group = "org.jetbrains.kotlin", name = "kotlin-android-extensions-runtime"),
 )
 
+private const val AUTO_SERVICE_GROUP = "com.google.auto.service"
+private const val AUTO_SERVICE_ARTIFACT = "auto-service"
+private const val AUTO_SERVICE_TARGET = "@grab_bazel_common//third_party/auto-service"
+
 /** Simple data holder for a Maven artifact containing its group, name and version. */
 internal data class MavenArtifact(
     val group: String?,
@@ -94,20 +98,6 @@ internal interface DependenciesDataSource {
         project: Project,
         vararg variantTypes: VariantType
     ): Sequence<Pair<Configuration, ProjectDependency>>
-
-    /** @return true if the project has any private dependencies in any configuration */
-    @Deprecated("No longer supported")
-    fun hasDepsFromUnsupportedRepositories(project: Project): Boolean
-
-    /**
-     * Verify if the project has any dependencies that are meant to be ignored. For example, if the
-     * [Project] uses any dependency that was excluded via [GrazelExtension] then this method will
-     * return `true`.
-     *
-     * @param project the project to check against.
-     */
-    @Deprecated("No longer supported")
-    fun hasIgnoredArtifacts(project: Project): Boolean
 
     /**
      * Returns map of [MavenArtifact] and the corresponding artifact file (aar or jar). Guarantees
@@ -153,16 +143,7 @@ internal class DefaultDependenciesDataSource @Inject constructor(
     /** @return `true` when the `MavenArtifact` is present is excluded by user. */
     private val MavenArtifact.isExcluded get() = artifactsConfig.excludedList.contains(id)
 
-    override fun hasDepsFromUnsupportedRepositories(project: Project): Boolean {
-        return false
-    }
-
-    override fun hasIgnoredArtifacts(project: Project): Boolean {
-        return project.firstLevelModuleDependencies()
-            .flatMap { (listOf(it) + it.children).asSequence() }
-            .filter { it.moduleGroup !in IGNORED_ARTIFACT_GROUPS }
-            .any { MavenArtifact(it.moduleGroup, it.moduleName).isIgnored }
-    }
+    private val MavenArtifact.isBom: Boolean get() = name.isBomArtifactName()
 
     override fun projectDependencies(
         project: Project, vararg variantTypes: VariantType
@@ -212,11 +193,17 @@ internal class DefaultDependenciesDataSource @Inject constructor(
     ): List<BazelDependency> {
         val allVariants = variantBuilder.build(project)
         val grazelVariant: Variant<*> = findGrazelVariantByKey(allVariants, variantKey)
+        data class DirectVariantDeclaration(
+            val bucketName: String,
+            val configurationName: String,
+            val dependency: ExternalDependency
+        )
+
         fun ExternalDependency.shouldUseForBazel(): Boolean {
             if (group in IGNORED_ARTIFACT_GROUPS) return false
 
             val artifact = MavenArtifact(group, name)
-            if (artifact.isExcluded || artifact.isIgnored) return false
+            if (artifact.isBom || artifact.isExcluded || artifact.isIgnored) return false
 
             return if (project.hasDatabinding) {
                 group != DATABINDING_GROUP && (group != ANDROIDX_GROUP && name != ANNOTATION_ARTIFACT)
@@ -244,6 +231,77 @@ internal class DefaultDependenciesDataSource @Inject constructor(
             else -> Int.MAX_VALUE
         }
 
+        fun DirectVariantDeclaration.bucketSpecificity(): Int {
+            val ownerBucketName = bucketName
+            if (ownerBucketName == DEFAULT_VARIANT) return 0
+            if (ownerBucketName == grazelVariant.name) return Int.MAX_VALUE
+            return grazelVariant.extendsFrom
+                .filter { parentName -> parentName != DEFAULT_VARIANT }
+                .count { parentName -> ownerBucketName.contains(parentName, ignoreCase = true) }
+                .coerceAtLeast(1)
+        }
+
+        val variantsByName = allVariants
+            .asSequence()
+            .filter { variant -> variant.variantType == grazelVariant.variantType }
+            .associateBy { variant -> variant.name }
+
+        fun lookupHierarchyForDeclaration(bucketName: String): Set<String> {
+            if (bucketName == DEFAULT_VARIANT) {
+                return buildSet {
+                    add(DEFAULT_VARIANT)
+                    addAll(lookupVariantHierarchy)
+                }
+            }
+            if (bucketName == grazelVariant.name) {
+                return lookupVariantHierarchy
+            }
+            val variant = variantsByName[bucketName]
+            return buildSet {
+                add(bucketName)
+                if (variantKey.variantType.prefersDefaultMavenDeps) {
+                    add(DEFAULT_VARIANT)
+                }
+                addAll(variant?.extendsFrom.orEmpty().reversed())
+            }
+        }
+
+        fun Collection<DirectVariantDeclaration>.bestErrorDeclaration(): DirectVariantDeclaration =
+            maxWithOrNull(
+                compareBy<DirectVariantDeclaration> { declaration -> declaration.bucketSpecificity() }
+                    .thenBy { declaration -> declaration.bucketName }
+                    .thenBy { declaration -> declaration.configurationName }
+                    .thenBy { declaration -> declaration.dependency.shortId }
+            )
+                ?: error("No candidate dependency declaration found")
+
+        fun missingMavenDependencyMessage(
+            declaration: DirectVariantDeclaration,
+            lookupVariants: Set<String>
+        ): String {
+            val dependency = declaration.dependency
+            val shortId = dependency.shortId
+            val declaredVersion = dependency.version
+            val declarationLocation = buildString {
+                append(project.path)
+                if (declaration.configurationName.isNotBlank()) {
+                    append(":")
+                    append(declaration.configurationName)
+                }
+            }
+            val versionlessHint = if (declaredVersion.isNullOrBlank()) {
+                " The declaration is versionless, so Grazel can only use it if Gradle resolved " +
+                    "the artifact through an app or com.android.test binary root. Add an explicit " +
+                    "version or make the dependency reachable from a binary root."
+            } else {
+                ""
+            }
+            return "Maven dependency $shortId declared in $declarationLocation for bucket " +
+                "${declaration.bucketName} was not found in workspace dependency buckets " +
+                lookupVariants.joinToString(prefix = "[", postfix = "]") { variant -> variant.toMavenRepoName() } +
+                ".$versionlessHint"
+        }
+
         val directDeclarationVariantNames = buildSet {
             add(grazelVariant.name)
             addAll(grazelVariant.extendsFrom)
@@ -256,14 +314,21 @@ internal class DefaultDependenciesDataSource @Inject constructor(
                 variant.variantConfigurations
                     .asSequence()
                     .filter { configuration -> configuration.isExternalDependencyDeclaration }
+                    .flatMap { configuration ->
+                        configuration.dependencies
+                            .filterIsInstance<ExternalDependency>()
+                            .asSequence()
+                            .map { dependency ->
+                                DirectVariantDeclaration(
+                                    bucketName = configuration.declarationBucketName(),
+                                    configurationName = configuration.name,
+                                    dependency = dependency
+                                )
+                            }
+                    }
             }
-            .flatMap { configuration ->
-                configuration.dependencies
-                    .filterIsInstance<ExternalDependency>()
-                    .asSequence()
-            }
-            .filter { dependency -> dependency.shouldUseForBazel() }
-            .groupBy { dependency -> dependency.shortId }
+            .filter { declaration -> declaration.dependency.shouldUseForBazel() }
+            .groupBy { declaration -> declaration.dependency.shortId }
 
         return grazelVariant.migratableConfigurations
             .asSequence()
@@ -272,28 +337,58 @@ internal class DefaultDependenciesDataSource @Inject constructor(
             .groupBy { dependency -> dependency.shortId }
             .values
             .map { dependencies ->
-                when (dependencies.first().group) {
-                    DAGGER_GROUP -> StringDependency("//:dagger")
+                val firstDependency = dependencies.first()
+                when {
+                    firstDependency.group == AUTO_SERVICE_GROUP &&
+                        firstDependency.name == AUTO_SERVICE_ARTIFACT -> StringDependency(AUTO_SERVICE_TARGET)
+                    firstDependency.group == DAGGER_GROUP -> StringDependency("//:dagger")
                     else -> {
                         val directVariantDeclarations =
-                            directVariantDeclarationsByShortId[dependencies.first().shortId].orEmpty()
+                            directVariantDeclarationsByShortId[firstDependency.shortId].orEmpty()
                         val candidateDeclarations = directVariantDeclarations.ifEmpty {
-                            dependencies.take(1)
+                            dependencies.take(1).map { dependency ->
+                                DirectVariantDeclaration(
+                                    bucketName = grazelVariant.name,
+                                    configurationName = grazelVariant
+                                        .migratableConfigurations
+                                        .firstOrNull { configuration ->
+                                            dependency in configuration.allDependencies
+                                        }
+                                        ?.name
+                                        .orEmpty(),
+                                    dependency = dependency
+                                )
+                            }
                         }
-                        val useExactVersion = directVariantDeclarations.isNotEmpty()
-                        candidateDeclarations
+                        val selectedDependency = candidateDeclarations
                             .asSequence()
-                            .map { dependency ->
+                            .mapNotNull { declaration ->
+                                val dependency = declaration.dependency
                                 dependencyResolutionService.get().getMavenDependency(
-                                    variants = lookupVariantHierarchy,
-                                    group = dependency.group!!,
-                                    name = dependency.name!!,
-                                    version = dependency.version.takeIf { useExactVersion }
-                                ) ?: run {
-                                    error("$dependency cant be found for migrating ${project.name}")
+                                    variants = lookupHierarchyForDeclaration(declaration.bucketName),
+                                    group = dependency.group,
+                                    name = dependency.name,
+                                    version = null
+                                )?.let { mavenDependency -> declaration to mavenDependency }
+                            }.minWithOrNull(
+                                compareByDescending<Pair<DirectVariantDeclaration, BazelDependency>> {
+                                    it.first.bucketSpecificity()
                                 }
-                            }.minWithOrNull(compareBy<BazelDependency> { it.repoRank() })
-                            ?: error("${dependencies.first()} cant be found for migrating ${project.name}")
+                                    .thenBy { (_, bazelDependency) -> bazelDependency.repoRank() }
+                                    .thenBy { (_, bazelDependency) -> bazelDependency.toString() }
+                            )
+                            ?.second
+                        if (selectedDependency != null) {
+                            selectedDependency
+                        } else {
+                            val declaration = candidateDeclarations.bestErrorDeclaration()
+                            throw IllegalStateException(
+                                missingMavenDependencyMessage(
+                                    declaration = declaration,
+                                    lookupVariants = lookupHierarchyForDeclaration(declaration.bucketName)
+                                )
+                            )
+                        }
                     }
                 }
             }.distinct()
@@ -307,6 +402,7 @@ internal class DefaultDependenciesDataSource @Inject constructor(
         .migratableConfigurations
         .asSequence()
         .flatMap { it.allDependencies.filterIsInstance<ExternalDependency>() }
+        .filter { dep -> !MavenArtifact(dep.group, dep.name).isBom }
         .flatMapTo(TreeSet()) { dep ->
             buildList {
                 dependencyResolutionService.get()

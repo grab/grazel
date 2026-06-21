@@ -22,13 +22,16 @@ import com.grab.grazel.bazel.rules.MavenInstallArtifact.DetailedArtifact
 import com.grab.grazel.bazel.rules.MavenInstallArtifact.Exclusion.SimpleExclusion
 import com.grab.grazel.bazel.rules.MavenInstallArtifact.SimpleArtifact
 import com.grab.grazel.bazel.rules.MavenRepository.DefaultMavenRepository
+import com.grab.grazel.bazel.starlark.BazelDependency.MavenDependency
 import com.grab.grazel.gradle.RepositoryDataSource
 import com.grab.grazel.gradle.dependencies.DefaultJetifierExclusions
 import com.grab.grazel.gradle.dependencies.model.ExcludeRule
 import com.grab.grazel.gradle.dependencies.model.ResolvedDependency
 import com.grab.grazel.gradle.dependencies.model.WorkspaceDependencies
+import com.grab.grazel.gradle.variant.ANDROID_TEST_VARIANT
 import com.grab.grazel.gradle.variant.DEFAULT_VARIANT
 import com.grab.grazel.gradle.variant.LINT_VARIANT
+import com.grab.grazel.gradle.variant.TEST_VARIANT
 import org.gradle.api.artifacts.repositories.PasswordCredentials
 import org.gradle.api.file.ProjectLayout
 import org.gradle.api.internal.artifacts.repositories.DefaultMavenArtifactRepository
@@ -53,6 +56,13 @@ constructor(
 
     private val includeCredentials get() = mavenInstallExtension.includeCredentials
 
+    private val alwaysMaterializedVariants = setOf(
+        DEFAULT_VARIANT,
+        TEST_VARIANT,
+        ANDROID_TEST_VARIANT,
+        LINT_VARIANT
+    )
+
     /** Map of user configured overrides for artifact versions. */
     private val overrideVersionsMap: Map< /*shortId*/ String, /*version*/ String> by lazy {
         grazelExtension
@@ -70,21 +80,37 @@ constructor(
         workspaceDependencies: WorkspaceDependencies,
         externalArtifacts: Set<String>,
         externalRepositories: Set<String>,
+        referencedMavenRepos: Set<String> = emptySet(),
     ): Set<MavenInstallData> {
-        val result = workspaceDependencies.variantDeps
-            .mapNotNullTo(TreeSet(compareBy(MavenInstallData::name))) { (variantName, artifacts) ->
-                val mavenInstallName = variantName.toMavenRepoName()
-                val artifactsToResolve = artifacts.mavenInstallRootArtifacts(
-                    variantName = variantName,
-                    transitiveClasspath = workspaceDependencies.variantTransitiveClasspath[variantName]
-                        ?: workspaceDependencies.transitiveClasspath
+        val rootArtifactsByVariant = workspaceDependencies.mavenInstallRootArtifactsByVariant()
+        val variantInputs = workspaceDependencies.variantDeps.map { (variantName, _) ->
+            val mavenInstallName = variantName.toMavenRepoName()
+            val rootArtifacts = rootArtifactsByVariant.getValue(variantName)
+            VariantMavenInstallInput(
+                variantName = variantName,
+                mavenInstallName = mavenInstallName,
+                rootArtifacts = rootArtifacts,
+                overrideTargets = calculateOverrideTargets(
+                    artifacts = rootArtifacts,
+                    owningMavenRepoName = mavenInstallName
                 )
-                val defaultOwnedExclusions = defaultOwnedExclusions(
-                    variantName = variantName,
-                    defaultArtifacts = workspaceDependencies.variantDeps[DEFAULT_VARIANT].orEmpty(),
-                    artifacts = artifacts,
-                )
-                val allArtifacts = artifactsToResolve + grazelExtension
+            )
+        }
+        val materializedMavenRepos = variantInputs.materializedMavenRepos(referencedMavenRepos)
+
+        val result = variantInputs
+            .mapNotNullTo(TreeSet(compareBy(MavenInstallData::name))) { input ->
+                val variantName = input.variantName
+                val mavenInstallName = input.mavenInstallName
+                if (
+                    materializedMavenRepos != null &&
+                    mavenInstallName !in materializedMavenRepos &&
+                    variantName !in alwaysMaterializedVariants
+                ) {
+                    return@mapNotNullTo null
+                }
+                val rootArtifacts = input.rootArtifacts
+                val allArtifacts = rootArtifacts + grazelExtension
                     .dependencies
                     .overrideArtifactVersions
                     .get()
@@ -92,22 +118,17 @@ constructor(
                     .asSequence()
 
                 val mavenInstallArtifacts = allArtifacts
-                    .mapTo(TreeSet(compareBy(MavenInstallArtifact::id))) {
-                        toMavenInstallArtifact(it, defaultOwnedExclusions)
-                    }
+                    .mapTo(TreeSet(compareBy(MavenInstallArtifact::id)), ::toMavenInstallArtifact)
                     .also { if (it.isEmpty()) return@mapNotNullTo null }
 
                 val repositories = calculateSupportedRepositories()
-
-                // Overrides
-                val overrideTargets = calculateOverrideTargets(artifactsToResolve)
 
                 val mavenInstallJson = layout
                     .projectDirectory
                     .file("${mavenInstallName}_install.json").asFile
 
                 val jetifierArtifacts = (
-                    artifactsToResolve
+                    rootArtifacts
                         .asSequence()
                         .mapNotNull { if (it.requiresJetifier) it.shortId else it.jetifierSource }
                         .toList()
@@ -128,11 +149,10 @@ constructor(
                     ),
                     failOnMissingChecksum = false,
                     excludeArtifacts = mavenInstallExtension.excludeArtifacts.get().toSet(),
-                    overrideTargets = overrideTargets,
+                    overrideTargets = input.overrideTargets,
                     resolveTimeout = mavenInstallExtension.resolveTimeout,
                     artifactPinning = mavenInstallExtension.artifactPinning.enabled.get(),
-                    versionConflictPolicy = mavenInstallExtension.versionConflictPolicy
-                        .takeIf { variantName == DEFAULT_VARIANT },
+                    versionConflictPolicy = mavenInstallExtension.versionConflictPolicy,
                     mavenInstallJson = mavenInstallJson.name,
                     isMavenInstallJsonEnabled = mavenInstallExtension.artifactPinning.enabled.get() && mavenInstallJson.exists(),
                     additionalCoursierOptions = mavenInstallExtension.additionalCoursierOptions.get()
@@ -174,8 +194,48 @@ constructor(
         return result
     }
 
+    private data class VariantMavenInstallInput(
+        val variantName: String,
+        val mavenInstallName: String,
+        val rootArtifacts: List<ResolvedDependency>,
+        val overrideTargets: Map<String, String>
+    )
+
+    private fun List<VariantMavenInstallInput>.materializedMavenRepos(
+        referencedMavenRepos: Set<String>
+    ): Set<String>? {
+        if (referencedMavenRepos.isEmpty()) return null
+
+        val availableRepos = mapTo(mutableSetOf(), VariantMavenInstallInput::mavenInstallName)
+        val materializedRepos = (
+            referencedMavenRepos +
+                alwaysMaterializedVariants.map(String::toMavenRepoName)
+            ).toMutableSet()
+
+        var changed: Boolean
+        do {
+            changed = false
+            filter { input -> input.mavenInstallName in materializedRepos }
+                .flatMap { input ->
+                    input.overrideTargets.values
+                        .mapNotNull { label -> label.referencedMavenRepo(availableRepos) }
+                }
+                .forEach { overrideTargetRepo ->
+                    changed = materializedRepos.add(overrideTargetRepo) || changed
+                }
+        } while (changed)
+
+        return materializedRepos
+    }
+
+    private fun String.referencedMavenRepo(availableRepos: Set<String>): String? =
+        removePrefix("@")
+            .substringBefore("//")
+            .takeIf(availableRepos::contains)
+
     private fun calculateOverrideTargets(
-        artifacts: List<ResolvedDependency>
+        artifacts: List<ResolvedDependency>,
+        owningMavenRepoName: String
     ): Map<String, String> {
         val artifactsShortIdMap = artifacts.groupBy { it.shortId }
         val overridesFromExtension = mavenInstallExtension.overrideTargetLabels.get().toList()
@@ -185,36 +245,29 @@ constructor(
             .map { it.artifactShortId to it.label.toString() }
         return (overridesFromArtifacts + overridesFromExtension)
             .filter { (shortId, _) -> shortId in artifactsShortIdMap }
+            .filterNot { (shortId, label) -> label.isExactSelfOverride(shortId, owningMavenRepoName) }
             .sortedBy { it.toString() }
             .toMap()
     }
 
-    private fun defaultOwnedExclusions(
-        variantName: String,
-        defaultArtifacts: List<ResolvedDependency>,
-        artifacts: List<ResolvedDependency>,
-    ): Set<String> {
-        if (variantName == DEFAULT_VARIANT) return emptySet()
-        val artifactShortIds = artifacts.mapTo(mutableSetOf(), ResolvedDependency::shortId)
-        return defaultArtifacts
-            .asSequence()
-            .map(ResolvedDependency::shortId)
-            .filterNot { it in artifactShortIds }
-            .toSortedSet()
+    private fun String.isExactSelfOverride(shortId: String, owningMavenRepoName: String): Boolean {
+        val (group, name) = shortId.split(":")
+        val ownLabel = MavenDependency(
+            repo = owningMavenRepoName,
+            group = group,
+            name = name
+        ).toString()
+        return this == ownLabel
     }
 
     private fun toMavenInstallArtifact(
         dependency: ResolvedDependency,
-        additionalExclusions: Set<String> = emptySet(),
     ): MavenInstallArtifact {
         val (group, name, version) = dependency.id.split(":")
         val shortId = "${group}:${name}"
         val overrideVersion = overrideVersionsMap[shortId] ?: version
         val artifactId = "$group:$name:$overrideVersion"
-        val exclusions = (
-            dependency.excludeRules.mapNotNull(::toExclusion) +
-                additionalExclusions.mapNotNull(::toExclusion)
-            ).distinct()
+        val exclusions = dependency.excludeRules.mapNotNull(::toExclusion)
         return when {
             exclusions.isEmpty() -> SimpleArtifact(artifactId)
             else -> DetailedArtifact(
@@ -225,12 +278,6 @@ constructor(
             )
         }
     }
-
-    private fun toExclusion(id: String): SimpleExclusion? =
-        when (id) {
-            !in excludeArtifactsDenyList -> SimpleExclusion(id)
-            else -> null
-        }
 
     private fun toExclusion(excludeRule: ExcludeRule): SimpleExclusion? {
         return when (val id = "${excludeRule.group}:${excludeRule.artifact}") {
@@ -260,27 +307,4 @@ constructor(
             .supportedRepositories
             .map { it.toMavenRepository() }
             .toSet()
-}
-
-internal fun List<ResolvedDependency>.mavenInstallRootArtifacts(
-    variantName: String,
-    transitiveClasspath: Map<String, Set<String>> = emptyMap()
-): List<ResolvedDependency> {
-    if (variantName == DEFAULT_VARIANT) {
-        return filter { it.overrideTarget == null }
-    }
-    if (variantName == LINT_VARIANT) {
-        return this
-    }
-
-    val overrideCarriersRequiredByDirectRoots = asSequence()
-        .filter(ResolvedDependency::direct)
-        .flatMap { dependency -> transitiveClasspath[dependency.shortId].orEmpty().asSequence() }
-        .toSet()
-
-    return filter { dependency ->
-        dependency.direct ||
-            (dependency.overrideTarget != null &&
-                dependency.shortId in overrideCarriersRequiredByDirectRoots)
-        }
 }

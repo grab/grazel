@@ -36,6 +36,8 @@ import org.gradle.api.artifacts.ExternalDependency
 import org.gradle.api.artifacts.ModuleDependency
 import org.gradle.api.artifacts.ProjectDependency
 
+internal const val DECLARED_DEPENDENCY_REPOSITORY = "Declared"
+
 internal class DeclaredDependencyMetadataCollector {
     fun collect(
         variantsByProject: Map<Project, Collection<Variant<*>>>,
@@ -62,6 +64,8 @@ internal class DeclaredDependencyMetadataCollector {
                                 .thenBy { variant -> variant.variantType.name })
                             .map { variant ->
                                 val backingBaseVariant = variant.backingVariant as? BaseVariant
+                                val declaredDependencyDeclarations =
+                                    variant.extractDeclaredExternalDependencyDeclarations()
                                 DeclaredVariantDependencyMetadata(
                                     name = variant.name,
                                     variantType = variant.variantType,
@@ -80,7 +84,9 @@ internal class DeclaredDependencyMetadataCollector {
                                         ?.productFlavors
                                         ?.map { flavor -> flavor.name }
                                         .orEmpty(),
-                                    declaredDependencies = variant.extractDeclaredExternalDependencyIds(),
+                                    declaredDependencies = declaredDependencyDeclarations
+                                        .mapTo(sortedSetOf(), DeclaredExternalDependency::id),
+                                    declaredDependencyDeclarations = declaredDependencyDeclarations,
                                     declaredProjectDependencies = variant.extractDeclaredProjectDependencyIds(),
                                     excludeRulesByShortId = variant
                                         .variantConfigurations
@@ -115,6 +121,12 @@ internal class DeclaredDependencyMetadataCollector {
             .collectCompileOnlyDependenciesByBucket(projects.map { project -> project.path })
     }
 }
+
+@Serializable
+internal data class ProjectDependencyBucket(
+    val projectPath: String,
+    val bucketName: String
+)
 
 @Serializable
 internal data class DeclaredDependencyMetadata(
@@ -155,32 +167,106 @@ internal data class DeclaredDependencyMetadata(
     fun collectCompileOnlyDependenciesByBucket(
         projectPaths: Collection<String>
     ): Map<String, Map<String, ResolvedDependency>> {
-        val projectPathSet = projectPaths.toSet()
-        return projects
-            .filterKeys { projectPath -> projectPath in projectPathSet }
-            .values
-            .flatMap(ProjectDeclaredDependencyMetadata::variants)
+        return collectCompileOnlyDependenciesByProjectBucket(projectPaths)
             .asSequence()
-            .filter { variant ->
-                variant.variantType == AndroidBuild ||
-                    variant.variantType == AndroidTest ||
-                    variant.variantType == JvmBuild ||
-                    variant.variantType == Test
-            }
-            .flatMap { variant ->
-                variant.compileOnlyDependenciesByShortId.values
-                    .asSequence()
-                    .map { dependency -> variant.compileOnlyBucketName to dependency }
-            }
-            .groupBy({ (bucketName, _) -> bucketName }, { (_, dependency) -> dependency })
+            .map { (bucket, dependencies) -> bucket.bucketName to dependencies.values }
+            .groupBy({ (bucketName, _) -> bucketName }, { (_, dependencies) -> dependencies })
             .mapValues { (_, dependencies) ->
                 dependencies
+                    .flatten()
                     .groupBy(ResolvedDependency::shortId)
                     .mapValues { (_, duplicateDeclarations) ->
                         duplicateDeclarations.reduce(::mergeDependencyMetadataByMaxVersion)
                     }
             }
     }
+
+    fun collectCompileOnlyDependenciesByProjectBucket(
+        projectPaths: Collection<String>
+    ): Map<ProjectDependencyBucket, Map<String, ResolvedDependency>> {
+        val projectPathSet = projectPaths.toSet()
+        return projects
+            .filterKeys { projectPath -> projectPath in projectPathSet }
+            .flatMap { (projectPath, projectMetadata) ->
+                projectMetadata.variants
+                    .asSequence()
+                    .filter { variant ->
+                        variant.variantType == AndroidBuild ||
+                            variant.variantType == AndroidTest ||
+                            variant.variantType == JvmBuild ||
+                            variant.variantType == Test
+                    }
+                    .flatMap { variant ->
+                        variant.compileOnlyDependenciesByShortId.values
+                            .asSequence()
+                            .map { dependency ->
+                                ProjectDependencyBucket(projectPath, variant.compileOnlyBucketName) to dependency
+                            }
+                    }
+                    .toList()
+            }
+            .mergedByProjectBucket()
+    }
+
+    fun collectDeclaredMainDependenciesByProjectBucket(
+        projectPaths: Collection<String>
+    ): Map<ProjectDependencyBucket, Map<String, ResolvedDependency>> =
+        collectDeclaredDependenciesByProjectBucket(
+            projectPaths = projectPaths,
+            variantTypes = setOf(AndroidBuild, JvmBuild)
+        )
+
+    fun collectDeclaredTestDependenciesByProjectBucket(
+        projectPaths: Collection<String>
+    ): Map<ProjectDependencyBucket, Map<String, ResolvedDependency>> =
+        collectDeclaredDependenciesByProjectBucket(
+            projectPaths = projectPaths,
+            variantTypes = setOf(Test, AndroidTest)
+        )
+
+    private fun collectDeclaredDependenciesByProjectBucket(
+        projectPaths: Collection<String>,
+        variantTypes: Set<VariantType>
+    ): Map<ProjectDependencyBucket, Map<String, ResolvedDependency>> {
+        val projectPathSet = projectPaths.toSet()
+        return projects
+            .filterKeys { projectPath -> projectPath in projectPathSet }
+            .flatMap { (projectPath, projectMetadata) ->
+                projectMetadata.variants
+                    .asSequence()
+                    .filter { variant -> variant.variantType in variantTypes }
+                    .flatMap { variant ->
+                        variant.declaredDependencyDeclarations
+                            .asSequence()
+                            .mapNotNull { declaration ->
+                                declaration.id.toDeclaredResolvedDependency(
+                                    excludeRulesByShortId = variant.excludeRulesByShortId
+                                )?.let { dependency -> declaration to dependency }
+                            }
+                            .map { (declaration, dependency) ->
+                                ProjectDependencyBucket(projectPath, declaration.bucketName) to dependency
+                            }
+                    }
+                    .toList()
+            }
+            .mergedByProjectBucket()
+    }
+}
+
+private fun Iterable<Pair<ProjectDependencyBucket, ResolvedDependency>>.mergedByProjectBucket():
+    Map<ProjectDependencyBucket, Map<String, ResolvedDependency>> {
+    return groupBy({ (bucket, _) -> bucket }, { (_, dependency) -> dependency })
+        .mapValues { (_, dependencies) ->
+            dependencies
+                .groupBy(ResolvedDependency::shortId)
+                .mapValues { (_, duplicateDeclarations) ->
+                    duplicateDeclarations.reduce(::mergeDependencyMetadataByMaxVersion)
+                }
+        }
+        .toSortedMap(
+            compareBy<ProjectDependencyBucket> { bucket -> bucket.projectPath }
+                .thenBy { bucket -> bucket.bucketName }
+        )
 }
 
 @Serializable
@@ -190,7 +276,7 @@ internal data class ProjectDeclaredDependencyMetadata(
 ) {
     val hasMetadata: Boolean
         get() = variants.any { variant ->
-            variant.declaredDependencies.isNotEmpty() ||
+            variant.declaredDependencyDeclarations.isNotEmpty() ||
                 variant.declaredProjectDependencies.isNotEmpty() ||
                 variant.excludeRulesByShortId.isNotEmpty() ||
                 variant.compileOnlyDependenciesByShortId.isNotEmpty()
@@ -217,10 +303,18 @@ internal data class DeclaredVariantDependencyMetadata(
     val buildType: String?,
     val productFlavors: List<String>,
     val declaredDependencies: Set<String>,
+    val declaredDependencyDeclarations: Set<DeclaredExternalDependency> = emptySet(),
     val declaredProjectDependencies: Set<String>,
     val excludeRulesByShortId: Map<String, Set<ExcludeRule>>,
     val compileOnlyBucketName: String,
     val compileOnlyDependenciesByShortId: Map<String, ResolvedDependency>
+)
+
+@Serializable
+internal data class DeclaredExternalDependency(
+    val configurationName: String,
+    val bucketName: String,
+    val id: String
 )
 
 private fun Set<Configuration>.configurationNames(): Set<String> {
@@ -369,10 +463,34 @@ internal fun Iterable<Configuration>.extractDeclaredExcludeRulesByShortId(): Map
 private val Configuration.isDeclarationBucket: Boolean
     get() {
         val normalizedName = name.lowercase()
-        return "classpath" !in normalizedName && "dependenciesmetadata" !in normalizedName
+        if (normalizedName.startsWith("_")) return false
+        if (declarationBucketExcludedNameFragments.any { fragment -> fragment in normalizedName }) {
+            return false
+        }
+        return declarationConfigurationSuffixes.any { suffix ->
+            normalizedName.endsWith(suffix.lowercase())
+        }
     }
 
-private fun Variant<*>.extractDeclaredExternalDependencyIds(): Set<String> {
+private val declarationBucketExcludedNameFragments = setOf(
+    "annotationprocessor",
+    "androidapis",
+    "androidjdkimage",
+    "androidsdkimage",
+    "archives",
+    "classpath",
+    "corelibrarydesugaring",
+    "dependenciesmetadata",
+    "jacoco",
+    "kapt",
+    "kotlin-extension",
+    "kotlincompiler",
+    "ksp",
+    "lint",
+    "reversemetadata"
+)
+
+private fun Variant<*>.extractDeclaredExternalDependencyDeclarations(): Set<DeclaredExternalDependency> {
     return variantConfigurations
         .asSequence()
         .filter { configuration -> configuration.isDeclarationBucket }
@@ -380,14 +498,49 @@ private fun Variant<*>.extractDeclaredExternalDependencyIds(): Set<String> {
             configuration.dependencies
                 .filterIsInstance<ExternalDependency>()
                 .asSequence()
+                .map { dependency -> configuration to dependency }
         }
-        .mapNotNull { dependency ->
+        .mapNotNull { (configuration, dependency) ->
             val nullableGroup: String? = dependency.group
             val group = nullableGroup?.takeUnless(String::isBlank) ?: return@mapNotNull null
             val version = dependency.version.orEmpty()
-            "$group:${dependency.name}:$version"
+            DeclaredExternalDependency(
+                configurationName = configuration.name,
+                bucketName = configuration.declarationBucketName(),
+                id = "$group:${dependency.name}:$version"
+            )
         }
-        .toSortedSet()
+        .toSortedSet(compareBy<DeclaredExternalDependency> { declaration -> declaration.bucketName }
+            .thenBy { declaration -> declaration.configurationName }
+            .thenBy { declaration -> declaration.id })
+}
+
+private val declarationConfigurationSuffixes = listOf(
+    "Implementation",
+    "Api",
+    "CompileOnly",
+    "RuntimeOnly"
+)
+
+internal fun Configuration.declarationBucketName(): String {
+    val prefix = declarationConfigurationSuffixes
+        .firstNotNullOfOrNull { suffix ->
+            name.removeSuffixIgnoringCase(suffix)
+                .takeIf { bucketPrefix -> bucketPrefix.length != name.length }
+        }
+        .orEmpty()
+    return prefix
+        .takeUnless(String::isBlank)
+        ?.replaceFirstChar { char -> char.lowercase() }
+        ?: DEFAULT_VARIANT
+}
+
+private fun String.removeSuffixIgnoringCase(suffix: String): String {
+    return if (endsWith(suffix, ignoreCase = true)) {
+        dropLast(suffix.length)
+    } else {
+        this
+    }
 }
 
 private fun Variant<*>.extractDeclaredProjectDependencyIds(): Set<String> {
@@ -430,7 +583,7 @@ private fun Variant<*>.extractCompileOnlyDependenciesByShortId(): Map<String, Re
                 direct = true,
                 dependencies = emptySet(),
                 excludeRules = dependency.extractExcludeRules(),
-                repository = "Declared",
+                repository = DECLARED_DEPENDENCY_REPOSITORY,
                 requiresJetifier = false
             )
         }
@@ -439,6 +592,19 @@ private fun Variant<*>.extractCompileOnlyDependenciesByShortId(): Map<String, Re
             duplicateDeclarations.reduce(::mergeDependencyMetadataByMaxVersion)
         }
         .toSortedMap()
+}
+
+private fun String.toDeclaredResolvedDependency(
+    excludeRulesByShortId: Map<String, Set<ExcludeRule>>
+): ResolvedDependency? {
+    val chunks = split(":")
+    if (chunks.size != 3) return null
+    val (group, name, version) = chunks
+    if (group.isBlank() || name.isBlank() || version.isBlank()) return null
+    val shortId = "$group:$name"
+    return ResolvedDependency
+        .fromId("$group:$name:$version", DECLARED_DEPENDENCY_REPOSITORY)
+        .copy(excludeRules = excludeRulesByShortId[shortId].orEmpty())
 }
 
 private fun Iterable<Map<String, Set<ExcludeRule>>>.mergeExcludeRulesByShortId(): Map<String, Set<ExcludeRule>> {

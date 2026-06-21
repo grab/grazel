@@ -16,8 +16,12 @@
 
 package com.grab.grazel.tasks.internal
 
+import org.gradle.api.tasks.Input
+import org.gradle.api.tasks.Internal
 import org.gradle.testfixtures.ProjectBuilder
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
@@ -26,6 +30,33 @@ class CollectDeclaredDependencyMetadataTaskTest {
 
     @get:Rule
     val temporaryFolder = TemporaryFolder()
+
+    @Test
+    fun `declared dependency metadata task consumes stable metadata json input`() {
+        val taskGetterNames = CollectDeclaredDependencyMetadataTask::class.java.methods
+            .mapTo(mutableSetOf()) { method -> method.name }
+        val metadataJsonGetter = CollectDeclaredDependencyMetadataTask::class.java
+            .getMethod("getDeclaredDependencyMetadataJson")
+
+        assertFalse(
+            "Declared metadata should be computed before the task action and supplied as a stable " +
+                "input, not through a hidden MigrationChecker service property.",
+            "getMigrationCheckerProvider" in taskGetterNames
+        )
+        assertFalse(
+            "Declared metadata should be computed before the task action and supplied as a stable " +
+                "input, not through a hidden VariantBuilder service property.",
+            "getVariantBuilderProvider" in taskGetterNames
+        )
+        assertTrue(
+            "Serialized declared metadata must participate in the task cache key.",
+            metadataJsonGetter.isAnnotationPresent(Input::class.java)
+        )
+        assertFalse(
+            "Serialized declared metadata should not be hidden from Gradle caching.",
+            metadataJsonGetter.isAnnotationPresent(Internal::class.java)
+        )
+    }
 
     @Test
     fun `dependency declaration inputs exclude generated output trees`() {

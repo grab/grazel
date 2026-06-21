@@ -144,7 +144,7 @@ internal abstract class DefaultDependencyResolutionService : DependencyResolutio
                                             group,
                                             name,
                                             dependency.version,
-                                            dependency.overrideTarget?.label
+                                            target = dependency.overrideTarget?.label
                                         )
                                     }
                                 }
@@ -157,7 +157,7 @@ internal abstract class DefaultDependencyResolutionService : DependencyResolutio
                                         group,
                                         name,
                                         dependency.version,
-                                        dependency.overrideTarget?.label
+                                        target = null
                                     )
                                 }
                             }

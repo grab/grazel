@@ -54,7 +54,7 @@
     "androidx.compose.ui:ui-util": 409328548,
     "androidx.compose.ui:ui-util-android": -1281697466,
     "androidx.concurrent:concurrent-futures": -241468558,
-    "androidx.constraintlayout:constraintlayout": 1100334590,
+    "androidx.constraintlayout:constraintlayout": 129964294,
     "androidx.constraintlayout:constraintlayout-core": -817755974,
     "androidx.core:core": -196207747,
     "androidx.core:core-ktx": 438051419,
@@ -118,6 +118,7 @@
     "com.google.ar.sceneform:rendering": 1869564560,
     "com.google.ar.sceneform:sceneform-base": -417010888,
     "com.google.ar:core": 1761415433,
+    "com.google.auto.service:auto-service": -1729498094,
     "com.google.code.findbugs:jsr305": 495355163,
     "com.google.dagger:dagger": -1770328742,
     "com.google.dagger:dagger-compiler": -846042881,
@@ -216,7 +217,7 @@
     "androidx.compose.ui:ui:aar": 10187315,
     "androidx.concurrent:concurrent-futures": -105816058,
     "androidx.constraintlayout:constraintlayout-core": 1657423304,
-    "androidx.constraintlayout:constraintlayout:aar": 45283635,
+    "androidx.constraintlayout:constraintlayout:aar": -1956853300,
     "androidx.core:core-ktx:aar": -672475998,
     "androidx.core:core:aar": -1519322492,
     "androidx.cursoradapter:cursoradapter:aar": -2051600768,
@@ -301,6 +302,9 @@
     "com.google.ar.sceneform:rendering:aar": -129036429,
     "com.google.ar.sceneform:sceneform-base:aar": -353453602,
     "com.google.ar:core:aar": -1445415602,
+    "com.google.auto.service:auto-service": 776736086,
+    "com.google.auto.service:auto-service-annotations": -860143863,
+    "com.google.auto:auto-common": -147604522,
     "com.google.code.findbugs:jsr305": 467791732,
     "com.google.code.gson:gson": -2096443181,
     "com.google.dagger:dagger": -1649738759,
@@ -1255,6 +1259,24 @@
       },
       "version": "1.15.0"
     },
+    "com.google.auto.service:auto-service": {
+      "shasums": {
+        "jar": "1f48f451503e623daba7d9ed368cca0f81e1e3815653a4560113e12c0129ebd5"
+      },
+      "version": "1.1.1"
+    },
+    "com.google.auto.service:auto-service-annotations": {
+      "shasums": {
+        "jar": "16a76dd00a2650568447f5d6e3a9e2c809d9a42367d56b45215cfb89731f4d24"
+      },
+      "version": "1.1.1"
+    },
+    "com.google.auto:auto-common": {
+      "shasums": {
+        "jar": "f43f29fe2a6ebaf04b2598cdeec32a4e346d49a9404e990f5fc19c19f3a28d0e"
+      },
+      "version": "1.2.1"
+    },
     "com.google.code.findbugs:jsr305": {
       "shasums": {
         "jar": "766ad2a0783f2687962c8ad74ceecc38a28b9f72a2d085ee438b7813e928d0c7"
@@ -2121,8 +2143,7 @@
       "com.google.guava:listenablefuture"
     ],
     "androidx.constraintlayout:constraintlayout:aar": [
-      "androidx.constraintlayout:constraintlayout-core",
-      "androidx.core:core:aar"
+      "androidx.constraintlayout:constraintlayout-core"
     ],
     "androidx.core:core-ktx:aar": [
       "androidx.annotation:annotation",
@@ -2591,6 +2612,14 @@
     ],
     "com.google.ar.sceneform:rendering:aar": [
       "com.google.ar:core:aar"
+    ],
+    "com.google.auto.service:auto-service": [
+      "com.google.auto.service:auto-service-annotations",
+      "com.google.auto:auto-common",
+      "com.google.guava:guava"
+    ],
+    "com.google.auto:auto-common": [
+      "com.google.guava:guava"
     ],
     "com.google.dagger:dagger": [
       "javax.inject:javax.inject"
@@ -4429,6 +4458,15 @@
       "com.android.sdklib.tool",
       "com.android.sdklib.tool.sdkmanager",
       "com.android.sdklib.util"
+    ],
+    "com.google.auto.service:auto-service": [
+      "com.google.auto.service.processor"
+    ],
+    "com.google.auto.service:auto-service-annotations": [
+      "com.google.auto.service"
+    ],
+    "com.google.auto:auto-common": [
+      "com.google.auto.common"
     ],
     "com.google.code.findbugs:jsr305": [
       "javax.annotation",
@@ -6362,6 +6400,9 @@
       "com.google.ar.sceneform:rendering:aar",
       "com.google.ar.sceneform:sceneform-base:aar",
       "com.google.ar:core:aar",
+      "com.google.auto.service:auto-service",
+      "com.google.auto.service:auto-service-annotations",
+      "com.google.auto:auto-common",
       "com.google.code.findbugs:jsr305",
       "com.google.code.gson:gson",
       "com.google.dagger:dagger",
@@ -6584,6 +6625,9 @@
       "com.google.ar.sceneform:rendering:aar",
       "com.google.ar.sceneform:sceneform-base:aar",
       "com.google.ar:core:aar",
+      "com.google.auto.service:auto-service",
+      "com.google.auto.service:auto-service-annotations",
+      "com.google.auto:auto-common",
       "com.google.code.findbugs:jsr305",
       "com.google.code.gson:gson",
       "com.google.dagger:dagger",
@@ -6806,6 +6850,9 @@
       "com.google.ar.sceneform:rendering:aar",
       "com.google.ar.sceneform:sceneform-base:aar",
       "com.google.ar:core:aar",
+      "com.google.auto.service:auto-service",
+      "com.google.auto.service:auto-service-annotations",
+      "com.google.auto:auto-common",
       "com.google.code.findbugs:jsr305",
       "com.google.code.gson:gson",
       "com.google.dagger:dagger",
@@ -7028,6 +7075,9 @@
       "com.google.ar.sceneform:rendering:aar",
       "com.google.ar.sceneform:sceneform-base:aar",
       "com.google.ar:core:aar",
+      "com.google.auto.service:auto-service",
+      "com.google.auto.service:auto-service-annotations",
+      "com.google.auto:auto-common",
       "com.google.code.findbugs:jsr305",
       "com.google.code.gson:gson",
       "com.google.dagger:dagger",
@@ -7250,6 +7300,9 @@
       "com.google.ar.sceneform:rendering:aar",
       "com.google.ar.sceneform:sceneform-base:aar",
       "com.google.ar:core:aar",
+      "com.google.auto.service:auto-service",
+      "com.google.auto.service:auto-service-annotations",
+      "com.google.auto:auto-common",
       "com.google.code.findbugs:jsr305",
       "com.google.code.gson:gson",
       "com.google.dagger:dagger",
@@ -7443,6 +7496,11 @@
       ],
       "org/jline/terminal/provider/jni": [
         "class=org.jline.terminal.impl.jni.JniTerminalProvider"
+      ]
+    },
+    "com.google.auto.service:auto-service": {
+      "javax.annotation.processing.Processor": [
+        "com.google.auto.service.processor.AutoServiceProcessor"
       ]
     },
     "com.google.dagger:dagger-compiler": {

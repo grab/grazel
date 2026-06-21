@@ -122,6 +122,9 @@ constructor(
         gradleServices: GradleServices,
         parentProgress: ProgressLogger,
         logger: Logger,
+        pinnableRepos: Map<String, List<ResolvedDependency>> = workspaceDependencies.pinnableMavenInstallRepos(
+            workspaceFile.materializedMavenInstallRepos()
+        ),
         logOutput: Boolean = false
     ): Boolean {
         val progressLoggerFactory = gradleServices.progressLoggerFactory
@@ -168,7 +171,7 @@ constructor(
             }
 
             return (
-                workspaceDependencies.pinnableMavenInstallRepos().any { (mavenRepo, rootArtifacts) ->
+                pinnableRepos.any { (mavenRepo, rootArtifacts) ->
                     checkRepoOutOfDate(mavenRepo, rootArtifacts)
                 }
             ).also {
@@ -189,6 +192,18 @@ constructor(
         }
     }
 
+    internal fun cleanupStaleMavenInstallJsons(layout: ProjectLayout, activeMavenRepos: Set<String>) {
+        val activeInstallJsons = activeMavenRepos.mapTo(mutableSetOf()) { "${it}_install.json" }
+        layout.projectDirectory.asFile
+            .listFiles { file ->
+                file.isFile &&
+                    (file.name == "maven_install.json" || file.name.endsWith("_maven_install.json")) &&
+                    file.name !in activeInstallJsons
+            }
+            .orEmpty()
+            .forEach(File::delete)
+    }
+
     override fun pinArtifacts(
         workspaceFile: File,
         workspaceDependencies: WorkspaceDependencies,
@@ -198,19 +213,23 @@ constructor(
         val progressLoggerFactory = gradleServices.progressLoggerFactory
 
         val progressLogger = progressLoggerFactory.startOperation("Pin maven artifacts")
+        val allRepos = workspaceDependencies.pinnableMavenInstallRepos(
+            workspaceFile.materializedMavenInstallRepos()
+        )
+        cleanupStaleMavenInstallJsons(gradleServices.layout, allRepos.keys)
 
         val shouldRun = shouldRunPinning(
             workspaceFile,
             workspaceDependencies,
             gradleServices,
             progressLogger,
-            logger
+            logger,
+            pinnableRepos = allRepos
         )
         val layout = gradleServices.layout
 
         if (shouldRun) {
             logger.quiet("Repinning all artifacts".ansiCyan)
-            val allRepos = workspaceDependencies.pinnableMavenInstallRepos()
             val pinScripts = allRepos.mapValues { (mavenRepoName, _) ->
                 val scriptPath = layout
                     .buildDirectory
@@ -294,19 +313,31 @@ constructor(
     }
 }
 
-internal fun WorkspaceDependencies.pinnableMavenInstallRepos(): Map<String, List<ResolvedDependency>> =
+internal fun File.materializedMavenInstallRepos(): Set<String> =
+    Regex("""maven_install\(\s*name = "([^"]+)"""")
+        .findAll(readText())
+        .map { matchResult -> matchResult.groupValues[1] }
+        .toSortedSet()
+
+internal fun WorkspaceDependencies.pinnableMavenInstallRepos(
+    materializedMavenRepos: Set<String> = emptySet()
+): Map<String, List<ResolvedDependency>> =
     buildMap {
-        variantDeps.forEach { (variantName, deps) ->
-            val rootArtifacts = deps.mavenInstallRootArtifacts(
-                variantName = variantName,
-                transitiveClasspath = variantTransitiveClasspath[variantName]
-                    ?: transitiveClasspath
-            )
+        val rootArtifactsByVariant = mavenInstallRootArtifactsByVariant()
+        variantDeps.forEach { (variantName, _) ->
+            val mavenRepoName = variantName.toMavenRepoName()
+            if (materializedMavenRepos.isNotEmpty() && mavenRepoName !in materializedMavenRepos) {
+                return@forEach
+            }
+            val rootArtifacts = rootArtifactsByVariant.getValue(variantName)
             if (rootArtifacts.isNotEmpty()) {
-                put(variantName.toMavenRepoName(), rootArtifacts)
+                put(mavenRepoName, rootArtifacts)
             }
         }
         aggregatedRepos.forEach { (repoName, deps) ->
+            if (materializedMavenRepos.isNotEmpty() && repoName !in materializedMavenRepos) {
+                return@forEach
+            }
             if (deps.isNotEmpty()) {
                 put(repoName, deps)
             }

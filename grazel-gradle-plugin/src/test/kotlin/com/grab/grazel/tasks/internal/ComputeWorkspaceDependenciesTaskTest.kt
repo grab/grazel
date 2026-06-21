@@ -16,13 +16,57 @@
 
 package com.grab.grazel.tasks.internal
 
+import com.grab.grazel.gradle.dependencies.AggregatedDependencyResolver
 import org.gradle.api.tasks.Input
+import org.gradle.api.tasks.InputFile
 import org.gradle.api.tasks.Internal
+import org.gradle.api.tasks.PathSensitive
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ComputeWorkspaceDependenciesTaskTest {
+
+    @Test
+    fun `compute workspace dependencies registration does not own orchestration services`() {
+        val registerSignatures = ComputeWorkspaceDependenciesTask.Companion::class.java.methods
+            .filter { method -> method.name == "register" }
+            .joinToString(separator = "\n") { method ->
+                method.genericParameterTypes.joinToString()
+            }
+
+        assertFalse(
+            "Variant enumeration belongs in TasksManager and WorkspaceDependencyInputsRegistrar, " +
+                "not in ComputeWorkspaceDependenciesTask.register.",
+            "VariantBuilder" in registerSignatures
+        )
+        assertFalse(
+            "Migration filtering belongs in TasksManager and WorkspaceDependencyInputsRegistrar, " +
+                "not in ComputeWorkspaceDependenciesTask.register.",
+            "MigrationChecker" in registerSignatures
+        )
+        assertFalse(
+            "Dependency graph service setup belongs in TasksManager, not in " +
+                "ComputeWorkspaceDependenciesTask.register.",
+            "DefaultDependencyGraphsService" in registerSignatures
+        )
+    }
+
+    @Test
+    fun `aggregated dependency resolver does not receive Gradle project model`() {
+        val receivesProject = AggregatedDependencyResolver::class.java.declaredConstructors
+            .any { constructor ->
+                constructor.parameterTypes.any { parameterType ->
+                    parameterType.name == "org.gradle.api.Project"
+                }
+            }
+
+        assertFalse(
+            "Workspace dependency computation should receive explicit task inputs; " +
+                "AggregatedDependencyResolver should not receive a Project handle.",
+            receivesProject
+        )
+    }
 
     @Test
     fun `compute workspace dependencies task does not own variant enumeration services`() {
@@ -59,11 +103,11 @@ class ComputeWorkspaceDependenciesTaskTest {
     }
 
     @Test
-    fun `compute workspace dependencies task consumes workspace dependency root providers and metadata`() {
+    fun `compute workspace dependencies task consumes serialized resolver output`() {
         val taskGetterNames = ComputeWorkspaceDependenciesTask::class.java.methods
             .mapTo(mutableSetOf()) { method -> method.name }
-        val rootComponentsGetter = ComputeWorkspaceDependenciesTask::class.java
-            .getMethod("getWorkspaceDependencyRootComponents")
+        val workspaceDependencyResultsGetter = ComputeWorkspaceDependenciesTask::class.java
+            .getMethod("getWorkspaceDependencyResults")
 
         assertFalse(
             "Root metadata is now workspace dependency input metadata; old aggregated-root " +
@@ -79,22 +123,19 @@ class ComputeWorkspaceDependenciesTaskTest {
             "The compute task should not expose the bespoke serialized root snapshot input.",
             "getAggregatedDependencyRootSnapshots" in taskGetterNames
         )
-        assertTrue(
-            "Workspace dependency root providers should be wired into computeWorkspaceDependencies " +
-                "master-style.",
+        assertFalse(
+            "Live Gradle root providers belong to the resolver task, not cacheable " +
+                "computeWorkspaceDependencies.",
             "getWorkspaceDependencyRootComponents" in taskGetterNames
         )
         assertTrue(
-            "Resolved root providers are safe cache inputs, matching the historical cacheable " +
-                "ResolveVariantDependenciesTask shape.",
-            rootComponentsGetter.isAnnotationPresent(Input::class.java)
+            "Stable resolver output should be the cacheable compute task input.",
+            "getWorkspaceDependencyResults" in taskGetterNames
         )
+        assertTrue(workspaceDependencyResultsGetter.isAnnotationPresent(InputFile::class.java))
+        assertTrue(workspaceDependencyResultsGetter.isAnnotationPresent(PathSensitive::class.java))
         assertFalse(
-            "Resolved root providers should participate in the compute task cache key.",
-            rootComponentsGetter.isAnnotationPresent(Internal::class.java)
-        )
-        assertTrue(
-            "Stable root metadata should remain an explicit task input alongside root providers.",
+            "Live root metadata should be consumed by the resolver task, not compute.",
             "getWorkspaceDependencyRootMetadataJsons" in taskGetterNames
         )
     }

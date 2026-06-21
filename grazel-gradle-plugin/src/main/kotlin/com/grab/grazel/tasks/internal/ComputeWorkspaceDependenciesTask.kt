@@ -16,39 +16,22 @@
 
 package com.grab.grazel.tasks.internal
 
-import com.grab.grazel.gradle.ConfigurationDataSource
-import com.grab.grazel.gradle.MigrationChecker
-import com.grab.grazel.gradle.dependencies.AggregatedDependencyResolver
-import com.grab.grazel.gradle.dependencies.AggregatedDependencyRoot
-import com.grab.grazel.gradle.dependencies.AggregatedDependencyRootMetadata
 import com.grab.grazel.gradle.dependencies.ComputeWorkspaceDependencies
-import com.grab.grazel.gradle.dependencies.DefaultDependencyGraphsService
 import com.grab.grazel.gradle.dependencies.DefaultDependencyResolutionService
-import com.grab.grazel.gradle.dependencies.DeclaredDependencyMetadata
-import com.grab.grazel.gradle.dependencies.DependenciesDataSource
 import com.grab.grazel.gradle.dependencies.model.ResolveDependenciesResult
-import com.grab.grazel.gradle.dependencies.model.ResolveDependenciesResult.Companion.Scope.KSP
-import com.grab.grazel.gradle.variant.AndroidVariantDataSource
-import com.grab.grazel.gradle.variant.VariantBuilder
 import com.grab.grazel.util.fromJson
 import com.grab.grazel.util.GradleProvider
-import com.grab.grazel.util.Json
 import com.grab.grazel.util.logHeap
 import com.grab.grazel.util.writeJson
-import dagger.Lazy
-import kotlinx.serialization.decodeFromString
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.runBlocking
 import org.gradle.api.DefaultTask
 import org.gradle.api.Project
-import org.gradle.api.artifacts.result.ResolvedComponentResult
 import org.gradle.api.file.RegularFileProperty
-import org.gradle.api.provider.ListProperty
 import org.gradle.api.provider.Property
 import org.gradle.api.tasks.CacheableTask
-import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.InputFile
 import org.gradle.api.tasks.Internal
 import org.gradle.api.tasks.OutputFile
@@ -62,17 +45,7 @@ import org.gradle.kotlin.dsl.register
 internal abstract class ComputeWorkspaceDependenciesTask : DefaultTask() {
     @get:InputFile
     @get:PathSensitive(PathSensitivity.RELATIVE)
-    abstract val declaredDependencyMetadata: RegularFileProperty
-
-    @get:InputFile
-    @get:PathSensitive(PathSensitivity.RELATIVE)
-    abstract val kspDependencies: RegularFileProperty
-
-    @get:Input
-    abstract val workspaceDependencyRootComponents: ListProperty<ResolvedComponentResult>
-
-    @get:Input
-    abstract val workspaceDependencyRootMetadataJsons: ListProperty<String>
+    abstract val workspaceDependencyResults: RegularFileProperty
 
     @get:Internal
     abstract val dependencyResolutionService: Property<DefaultDependencyResolutionService>
@@ -88,27 +61,9 @@ internal abstract class ComputeWorkspaceDependenciesTask : DefaultTask() {
     @TaskAction
     fun action() {
         logger.logHeap("ComputeWorkspaceDeps:start")
-        val rootComponents = workspaceDependencyRootComponents.get()
-        val rootMetadata = workspaceDependencyRootMetadataJsons.get().map { metadataJson ->
-            Json.decodeFromString<AggregatedDependencyRootMetadata>(metadataJson)
-        }
-        check(rootComponents.size == rootMetadata.size) {
-            "Workspace dependency root component count (${rootComponents.size}) does not match " +
-                "metadata count (${rootMetadata.size})"
-        }
-
-        val resolver = AggregatedDependencyResolver(
-            rootProject = project.rootProject,
-            declaredDependencyMetadata = fromJson<DeclaredDependencyMetadata>(
-                declaredDependencyMetadata.get()
-            ),
-            precomputedKspDependencies = fromJson<ResolveDependenciesResult>(
-                kspDependencies.get()
-            ).dependencies.getOrDefault(KSP.name, emptySet()),
-            workspaceDependencyRoots = rootComponents.zip(rootMetadata)
-                .map { (root, metadata) -> AggregatedDependencyRoot(root, metadata) }
+        val result = ComputeWorkspaceDependencies().computeFromResults(
+            fromJson<List<ResolveDependenciesResult>>(workspaceDependencyResults.get())
         )
-        val result = ComputeWorkspaceDependencies().computeFromResults(resolver.resolve())
 
         logger.logHeap("ComputeWorkspaceDeps:computed")
         runBlocking {
@@ -127,37 +82,15 @@ internal abstract class ComputeWorkspaceDependenciesTask : DefaultTask() {
         private const val TASK_NAME = "computeWorkspaceDependencies"
         internal fun register(
             rootProject: Project,
-            variantBuilderProvider: Lazy<VariantBuilder>,
-            migrationChecker: Lazy<MigrationChecker>,
             dependencyResolutionService: GradleProvider<DefaultDependencyResolutionService>,
-            dependencyGraphsService: GradleProvider<DefaultDependencyGraphsService>,
-            dependenciesDataSource: Lazy<DependenciesDataSource>,
-            configurationDataSource: Lazy<ConfigurationDataSource>,
-            androidVariantDataSource: Lazy<AndroidVariantDataSource>,
         ): TaskProvider<ComputeWorkspaceDependenciesTask> {
-            dependencyGraphsService.get().configure(
-                rootProject = rootProject,
-                dependenciesDataSource = dependenciesDataSource.get(),
-                configurationDataSource = configurationDataSource.get(),
-                androidVariantDataSource = androidVariantDataSource.get()
-            )
-
-            val computeTask = rootProject.tasks
+            return rootProject.tasks
                 .register<ComputeWorkspaceDependenciesTask>(TASK_NAME) {
                     workspaceDependencies.set(
                         rootProject.layout.buildDirectory.file("grazel/dependencies.json")
                     )
                     this.dependencyResolutionService.set(dependencyResolutionService)
-                    workspaceDependencyRootComponents.convention(emptyList())
-                    workspaceDependencyRootMetadataJsons.convention(emptyList())
                 }
-            WorkspaceDependencyInputsRegistrar.register(
-                rootProject = rootProject,
-                variantBuilderProvider = variantBuilderProvider,
-                migrationChecker = migrationChecker,
-                computeTask = computeTask
-            )
-            return computeTask
         }
     }
 }

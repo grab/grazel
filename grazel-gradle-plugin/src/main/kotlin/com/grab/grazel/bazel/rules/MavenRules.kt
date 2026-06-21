@@ -217,7 +217,9 @@ sealed class MavenInstallArtifact : StarlarkType {
                 "group" `=` group.quote
                 "artifact" `=` artifact.quote
                 "version" `=` version.quote
-                "exclusions" `=` exclusions.map { it.asString() }
+                exclusions.notEmpty {
+                    "exclusions" `=` exclusions.map { it.asString() }
+                }
             }
         }
     }

@@ -179,6 +179,26 @@ class DefaultArtifactPinnerTest {
     }
 
     @Test
+    fun `stale maven install jsons are deleted when repo is no longer generated`() {
+        val activeDefault = rootProject.file("maven_install.json").apply { writeText("{}") }
+        val activeDebug = rootProject.file("debug_maven_install.json").apply { writeText("{}") }
+        val staleRelease = rootProject.file("release_maven_install.json").apply { writeText("{}") }
+        val staleLeaf = rootProject.file("gps_pax_staging_maven_install.json").apply { writeText("{}") }
+        val unrelated = rootProject.file("not_a_grazel_lock.json").apply { writeText("{}") }
+
+        artifactPinner.cleanupStaleMavenInstallJsons(
+            layout = rootProject.layout,
+            activeMavenRepos = setOf("maven", "debug_maven")
+        )
+
+        assertTrue(activeDefault.exists())
+        assertTrue(activeDebug.exists())
+        assertTrue(unrelated.exists())
+        assertTrue(!staleRelease.exists())
+        assertTrue(!staleLeaf.exists())
+    }
+
+    @Test
     fun `pinnable repos only include generated maven install repos`() {
         val debugDirect = ResolvedDependency.fromId("com.example:debug-only:1.0.0", "MavenRepo")
         val fullPaidDirect = ResolvedDependency.fromId("com.example:full-paid-only:1.0.0", "MavenRepo")
@@ -211,9 +231,39 @@ class DefaultArtifactPinnerTest {
 
         assertEquals(setOf("maven", "debug_maven", "full_paid_debug_maven", "ksp_maven"), repos.keys)
         assertEquals(listOf(transitiveOnly), repos.getValue("maven"))
-        assertEquals(listOf(debugDirect), repos.getValue("debug_maven"))
-        assertEquals(listOf(fullPaidDirect, overrideCarrier), repos.getValue("full_paid_debug_maven"))
+        assertEquals(listOf(debugDirect, transitiveOnly), repos.getValue("debug_maven"))
+        assertEquals(listOf(overrideCarrier, fullPaidDirect, transitiveOnly), repos.getValue("full_paid_debug_maven"))
         assertEquals(listOf(kspProcessor), repos.getValue("ksp_maven"))
+    }
+
+    @Test
+    fun `pinnable repos are filtered to materialized workspace repos`() {
+        val workspace = rootProject.file(WORKSPACE).apply {
+            writeText(
+                """
+                maven_install(
+                    name = "maven",
+                )
+
+                maven_install(
+                    name = "debug_maven",
+                )
+                """.trimIndent()
+            )
+        }
+        val defaultDirect = ResolvedDependency.fromId("com.example:default-only:1.0.0", "MavenRepo")
+        val debugDirect = ResolvedDependency.fromId("com.example:debug-only:1.0.0", "MavenRepo")
+        val unmaterializedFlavorDirect = ResolvedDependency.fromId("com.example:flavor-only:1.0.0", "MavenRepo")
+
+        val repos = WorkspaceDependencies(
+            variantDeps = mapOf(
+                DEFAULT_VARIANT to listOf(defaultDirect),
+                "debug" to listOf(debugDirect),
+                "moveit" to listOf(unmaterializedFlavorDirect)
+            )
+        ).pinnableMavenInstallRepos(workspace.materializedMavenInstallRepos())
+
+        assertEquals(setOf("maven", "debug_maven"), repos.keys)
     }
 
     @Test
@@ -234,12 +284,18 @@ class DefaultArtifactPinnerTest {
     }
 
     @Test
-    fun `pinning skips non default repos without root artifacts`() {
+    fun `pinning skips non default repos with only override carriers`() {
         val workspace = rootProject.file(WORKSPACE).apply {
             writeText("")
         }
-        val transitiveOnly = ResolvedDependency.fromId("com.example:covered:1.0.0", "MavenRepo")
-            .copy(direct = false)
+        val overrideCarrier = ResolvedDependency.fromId("com.example:covered:1.0.0", "MavenRepo")
+            .copy(
+                direct = false,
+                overrideTarget = OverrideTarget(
+                    artifactShortId = "com.example:covered",
+                    label = MavenDependency(group = "com.example", name = "covered")
+                )
+            )
 
         val gradleServices = GradleServices.from(rootProject).copy(
             workerExecutor = FakeWorkerExecutor()
@@ -249,7 +305,7 @@ class DefaultArtifactPinnerTest {
             artifactPinner.pinArtifacts(
                 workspace,
                 workspaceDependencies = WorkspaceDependencies(
-                    variantDeps = mapOf("fullPaidDebug" to listOf(transitiveOnly))
+                    variantDeps = mapOf("fullPaidDebug" to listOf(overrideCarrier))
                 ),
                 gradleServices = gradleServices,
                 logger = rootProject.logger,

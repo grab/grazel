@@ -26,19 +26,24 @@ import com.grab.grazel.gradle.dependencies.DefaultDependencyResolutionService
 import com.grab.grazel.migrate.internal.RootBazelFileBuilder
 import com.grab.grazel.migrate.internal.WorkspaceBuilder
 import com.grab.grazel.util.BUILD_BAZEL
+import com.grab.grazel.util.BUILD_BAZEL_IGNORE
 import com.grab.grazel.util.WORKSPACE
 import com.grab.grazel.util.ansiGreen
 import com.grab.grazel.util.logHeap
 import dagger.Lazy
 import org.gradle.api.DefaultTask
 import org.gradle.api.Project
+import org.gradle.api.file.ConfigurableFileCollection
 import org.gradle.api.file.ProjectLayout
 import org.gradle.api.file.RegularFileProperty
 import org.gradle.api.model.ObjectFactory
 import org.gradle.api.provider.Property
 import org.gradle.api.tasks.InputFile
+import org.gradle.api.tasks.InputFiles
 import org.gradle.api.tasks.Internal
 import org.gradle.api.tasks.OutputFile
+import org.gradle.api.tasks.PathSensitive
+import org.gradle.api.tasks.PathSensitivity
 import org.gradle.api.tasks.TaskAction
 import org.gradle.api.tasks.UntrackedTask
 import org.gradle.kotlin.dsl.property
@@ -60,6 +65,10 @@ constructor(
     @get:InputFile
     val workspaceDependencies: RegularFileProperty = project.objects.fileProperty()
 
+    @get:InputFiles
+    @get:PathSensitive(PathSensitivity.RELATIVE)
+    val generatedProjectMavenRepoManifests: ConfigurableFileCollection = objectFactory.fileCollection()
+
     @get:OutputFile
     val workspaceFile: RegularFileProperty = objectFactory
         .fileProperty()
@@ -68,7 +77,7 @@ constructor(
     @get:OutputFile
     val buildBazel: RegularFileProperty = objectFactory
         .fileProperty()
-        .convention(layout.projectDirectory.file(BUILD_BAZEL))
+        .convention(layout.buildDirectory.file("grazel/$BUILD_BAZEL_IGNORE"))
 
     @get:Internal
     val dependencyResolutionService: Property<DefaultDependencyResolutionService> = project
@@ -87,11 +96,15 @@ constructor(
 
         val gradleProjectInfo: GradleProjectInfo = gradleProjectInfoFactory.get()
             .create(workspaceDependencies)
+        val referencedMavenRepos = GeneratedBuildMavenRepos.fromFiles(
+            generatedProjectMavenRepoManifests.files
+        )
 
         workspaceBuilderFactory.get().create(
             projectsToMigrate = projectsToMigrate,
             gradleProjectInfo = gradleProjectInfo,
-            workspaceDependencies = workspaceDependencies
+            workspaceDependencies = workspaceDependencies,
+            referencedMavenRepos = referencedMavenRepos,
         ).build().writeToFile(workspaceFile.get().asFile)
         logger.quiet("Generated WORKSPACE".ansiGreen)
         logger.logHeap("GenerateRootBazelScripts:workspace-done")

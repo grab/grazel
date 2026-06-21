@@ -86,7 +86,8 @@ constructor(
                     )
                 } + dependenciesDataSource.collectMavenDeps(
                     project,
-                    variantKey
+                    variantKey,
+                    preferredVariantNames = listOf(matchedVariant.variantName)
                 ) + project.kotlinParcelizeDeps()
                 return project.extract(matchedVariant, extension, deps, variantKey)
             }

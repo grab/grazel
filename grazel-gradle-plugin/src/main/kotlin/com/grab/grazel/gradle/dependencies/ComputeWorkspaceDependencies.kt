@@ -1,7 +1,5 @@
 package com.grab.grazel.gradle.dependencies
 
-import com.grab.grazel.bazel.starlark.BazelDependency
-import com.grab.grazel.gradle.dependencies.model.OverrideTarget
 import com.grab.grazel.gradle.dependencies.model.ResolveDependenciesResult
 import com.grab.grazel.gradle.dependencies.model.ResolveDependenciesResult.Companion.Scope.COMPILE
 import com.grab.grazel.gradle.dependencies.model.ResolveDependenciesResult.Companion.Scope.KSP
@@ -25,7 +23,8 @@ internal class ComputeWorkspaceDependencies {
      * grouping, version arbitration, transitive flattening, override-target computation, and KSP
      * aggregation for generated workspace dependencies.
      *
-     * @param results One [ResolveDependenciesResult] per variant from [AggregatedDependencyResolver].
+     * @param results One [ResolveDependenciesResult] per synthetic bucket from
+     *   [AggregatedDependencyResolver].
      */
     fun computeFromResults(results: List<ResolveDependenciesResult>): WorkspaceDependencies =
         computeInternal(results)
@@ -74,7 +73,7 @@ internal class ComputeWorkspaceDependencies {
                     dependencies.entries
                         .parallelStream()
                         .filter { (shortId, dependency) ->
-                            !defaultClasspath.containsSameEffectiveDependency(shortId, dependency)
+                            !defaultClasspath.containsDefaultOwnerEquivalent(shortId, dependency)
                         }
                         .collect(Collectors.toMap({ it.key }, { it.value }))
                 })
@@ -127,7 +126,7 @@ internal class ComputeWorkspaceDependencies {
                             .parallelStream()
                             .filter { (shortId, dependency) ->
                                 val defaultDependency = defaultFlatClasspath[shortId]
-                                !dependency.isDirectOverrideCarrier() &&
+                                dependency.isDirectOverrideCarrier() ||
                                     !dependency.isDirectDependencyCoveredBy(defaultDependency)
                             }
                             .collect(
@@ -138,14 +137,10 @@ internal class ComputeWorkspaceDependencies {
                                         // then we override it to point to default classpath instead
                                         val defaultDependency = defaultFlatClasspath[shortId]
                                         if (defaultDependency != null && dependency.shouldUseDefaultOwner(defaultDependency)) {
-                                            val (group, name) = shortId.split(":")
                                             defaultDependency.copy(
-                                                overrideTarget = OverrideTarget(
-                                                    artifactShortId = shortId,
-                                                    label = BazelDependency.MavenDependency(
-                                                        group = group,
-                                                        name = name
-                                                    )
+                                                overrideTarget = mavenOverrideTarget(
+                                                    shortId,
+                                                    DEFAULT_VARIANT
                                                 )
                                             )
                                         } else dependency
@@ -160,7 +155,7 @@ internal class ComputeWorkspaceDependencies {
             .mapValues { (_, dependencies) -> dependencies.values.directTransitiveClasspath() }
             .filterValues(Map<String, Set<String>>::isNotEmpty)
 
-        // Preserve the legacy global shortId index for generated target transitive tags.
+        // Preserve the global shortId index used by generated target transitive tags.
         val transitiveClasspath = variantTransitiveClasspath.globalTransitiveClasspath()
 
         // Aggregate KSP deps across ALL variants into single bucket, deduplicated by max version
@@ -227,21 +222,34 @@ internal class ComputeWorkspaceDependencies {
         }
     }
 
-    private fun Map<String, ResolvedDependency>.containsSameEffectiveDependency(
+    private fun Map<String, ResolvedDependency>.containsDefaultOwnerEquivalent(
         shortId: String,
         dependency: ResolvedDependency
     ): Boolean {
         val defaultDependency = this[shortId] ?: return false
-        return defaultDependency.hasSameEffectiveIdentityAs(dependency) &&
+        if (dependency.isDeclaredDependency() && !defaultDependency.isDeclaredDependency()) {
+            return false
+        }
+        return defaultDependency.hasSameDefaultOwnerIdentityAs(dependency) &&
             (!dependency.direct || defaultDependency.direct)
     }
 
     private fun ResolvedDependency.isDirectDependencyCoveredBy(
         defaultDependency: ResolvedDependency?
     ): Boolean {
+        if (isDeclaredDependency()) {
+            return direct &&
+                defaultDependency?.direct == true &&
+                defaultDependency.isDeclaredDependency() &&
+                defaultDependency.hasSameDefaultOwnerIdentityAs(this)
+        }
         return direct &&
             defaultDependency?.direct == true &&
-            defaultDependency.hasSameEffectiveIdentityAs(this)
+            defaultDependency.hasSameDefaultDirectOwnerIdentityAs(this)
+    }
+
+    private fun ResolvedDependency.isDeclaredDependency(): Boolean {
+        return repository == DECLARED_DEPENDENCY_REPOSITORY
     }
 
     private fun ResolvedDependency.isDirectOverrideCarrier(): Boolean {
@@ -252,7 +260,22 @@ internal class ComputeWorkspaceDependencies {
         defaultDependency: ResolvedDependency
     ): Boolean {
         return !direct &&
-            (defaultDependency.hasSameEffectiveIdentityAs(this) ||
+            (defaultDependency.hasSameDefaultOwnerIdentityAs(this) ||
                 defaultDependency.versionInfo > versionInfo)
+    }
+
+    private fun ResolvedDependency.hasSameDefaultOwnerIdentityAs(other: ResolvedDependency): Boolean {
+        return shortId == other.shortId &&
+            version == other.version &&
+            dependencies == other.dependencies &&
+            excludeRules == other.excludeRules &&
+            requiresJetifier == other.requiresJetifier
+    }
+
+    private fun ResolvedDependency.hasSameDefaultDirectOwnerIdentityAs(other: ResolvedDependency): Boolean {
+        return shortId == other.shortId &&
+            version == other.version &&
+            excludeRules == other.excludeRules &&
+            requiresJetifier == other.requiresJetifier
     }
 }

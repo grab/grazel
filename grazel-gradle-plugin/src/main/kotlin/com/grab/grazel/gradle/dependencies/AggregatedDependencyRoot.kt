@@ -56,6 +56,9 @@ internal enum class AggregatedDependencyRootKind {
 
 internal fun ResolvedComponentResult.isBomComponent(): Boolean {
     val version = moduleVersion ?: return false
-    return version.name.endsWith("-bom", ignoreCase = true) ||
-        version.name.endsWith(".bom", ignoreCase = true)
+    return version.name.isBomArtifactName()
 }
+
+internal fun String?.isBomArtifactName(): Boolean =
+    this?.endsWith("-bom", ignoreCase = true) == true ||
+        this?.endsWith(".bom", ignoreCase = true) == true

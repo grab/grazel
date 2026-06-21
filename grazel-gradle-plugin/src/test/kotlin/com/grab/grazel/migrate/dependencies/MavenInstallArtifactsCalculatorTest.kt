@@ -108,7 +108,176 @@ class MavenInstallArtifactsCalculatorTest {
     }
 
     @Test
-    fun `override target artifacts are resolved in child maven install`() {
+    fun `maven install roots selected artifacts with configured conflict policy`() {
+        setup {
+            rules {
+                mavenInstall {
+                    versionConflictPolicy = "pinned"
+                }
+            }
+        }
+
+        val selectedDependency = ResolvedDependency.fromId(
+            "com.example:library:1.0.0",
+            "MavenRepo"
+        )
+        val workspaceDependencies = WorkspaceDependencies(
+            variantDeps = mapOf(DEFAULT_VARIANT to listOf(selectedDependency))
+        )
+
+        val result = mavenInstallArtifactsCalculator.get(
+            layout = rootProject.layout,
+            workspaceDependencies = workspaceDependencies,
+            externalArtifacts = emptySet(),
+            externalRepositories = emptySet()
+        )
+
+        val repo = result.single { it.name == "maven" }
+        val artifact = repo
+            .artifacts
+            .single()
+
+        assertEquals("pinned", repo.versionConflictPolicy)
+        assertEquals(selectedDependency.id, artifact.id)
+        assertFalse("normal selected roots should stay compact simple artifacts", artifact is DetailedArtifact)
+    }
+
+    @Test
+    fun `maven install roots selected transitive artifacts without synthetic ownership exclusions`() {
+        setup()
+
+        val repository = "MavenRepo"
+        val rootDependency = ResolvedDependency.fromId("com.example:root:1.0.0", repository)
+        val promotedDirectDependency = ResolvedDependency.fromId(
+            "com.example:promoted-direct:2.0.0",
+            repository
+        )
+        val sameRepoTransitiveDependency = ResolvedDependency.fromId(
+            "com.example:same-repo-transitive:1.1.0",
+            repository
+        ).copy(direct = false)
+        val childBucketDependency = ResolvedDependency.fromId(
+            "com.example:child-bucket:1.0.0",
+            repository
+        )
+        val workspaceDependencies = WorkspaceDependencies(
+            variantDeps = mapOf(
+                DEFAULT_VARIANT to listOf(
+                    rootDependency,
+                    promotedDirectDependency,
+                    sameRepoTransitiveDependency
+                ),
+                "debug" to listOf(childBucketDependency)
+            ),
+            transitiveClasspath = mapOf(
+                rootDependency.shortId to setOf(
+                    promotedDirectDependency.shortId,
+                    sameRepoTransitiveDependency.shortId,
+                    childBucketDependency.shortId
+                )
+            ),
+            variantTransitiveClasspath = mapOf(
+                DEFAULT_VARIANT to mapOf(
+                    rootDependency.shortId to setOf(
+                        promotedDirectDependency.shortId,
+                        sameRepoTransitiveDependency.shortId,
+                        childBucketDependency.shortId
+                    )
+                )
+            )
+        )
+
+        val result = mavenInstallArtifactsCalculator.get(
+            layout = rootProject.layout,
+            workspaceDependencies = workspaceDependencies,
+            externalArtifacts = emptySet(),
+            externalRepositories = emptySet()
+        )
+
+        val rootArtifact = result.single { it.name == "maven" }
+            .artifacts
+            .single { it.id == rootDependency.id }
+        val artifactIds = result.single { it.name == "maven" }
+            .artifacts
+            .map { it.id }
+            .toSet()
+
+        assertEquals(
+            setOf(
+                rootDependency.id,
+                promotedDirectDependency.id,
+                sameRepoTransitiveDependency.id,
+                childBucketDependency.id
+            ),
+            artifactIds
+        )
+        assertFalse(
+            "bucket ownership should be represented by Maven roots and override_targets, not " +
+                "synthetic per-root exclusions",
+            listOf(
+                childBucketDependency.shortId,
+                promotedDirectDependency.shortId,
+                sameRepoTransitiveDependency.shortId
+            ).any {
+                rootArtifact is com.grab.grazel.bazel.rules.MavenInstallArtifact.DetailedArtifact &&
+                    rootArtifact.exclusions
+                        .filterIsInstance<SimpleExclusion>()
+                        .any { exclusion -> exclusion.coordinates == it }
+            }
+        )
+        assertFalse("normal selected roots should stay compact simple artifacts", rootArtifact is DetailedArtifact)
+    }
+
+    @Test
+    fun `default maven install roots globally selected transitive closure`() {
+        setup()
+
+        val repository = "MavenRepo"
+        val rootDependency = ResolvedDependency.fromId("com.example:root:1.0.0", repository)
+        val siblingBucketTransitiveDependency = ResolvedDependency
+            .fromId("com.example:selected-transitive:2.0.0", repository)
+            .copy(
+                direct = false,
+                overrideTarget = OverrideTarget(
+                    artifactShortId = "com.example:selected-transitive",
+                    label = MavenDependency(
+                        repo = "debug_maven",
+                        group = "com.example",
+                        name = "selected-transitive"
+                    )
+                )
+            )
+        val workspaceDependencies = WorkspaceDependencies(
+            variantDeps = mapOf(
+                DEFAULT_VARIANT to listOf(rootDependency),
+                "debug" to listOf(siblingBucketTransitiveDependency)
+            ),
+            transitiveClasspath = mapOf(
+                rootDependency.shortId to setOf(siblingBucketTransitiveDependency.shortId)
+            )
+        )
+
+        val result = mavenInstallArtifactsCalculator.get(
+            layout = rootProject.layout,
+            workspaceDependencies = workspaceDependencies,
+            externalArtifacts = emptySet(),
+            externalRepositories = emptySet()
+        )
+
+        val repo = result.single { it.name == "maven" }
+
+        assertEquals(
+            setOf(rootDependency.id, siblingBucketTransitiveDependency.id),
+            repo.artifacts.map { artifact -> artifact.id }.toSet()
+        )
+        assertFalse(
+            "default maven roots should not inherit child override targets",
+            siblingBucketTransitiveDependency.shortId in repo.overrideTargets
+        )
+    }
+
+    @Test
+    fun `override target artifacts are mapped and still rooted for coursier`() {
         setup()
 
         val repository = "MavenRepo"
@@ -153,7 +322,7 @@ class MavenInstallArtifactsCalculatorTest {
     }
 
     @Test
-    fun `override target artifacts are only resolved in child maven install when reachable from direct roots`() {
+    fun `override target artifacts are mapped from selected bucket closure and rooted`() {
         setup()
 
         val repository = "MavenRepo"
@@ -202,17 +371,103 @@ class MavenInstallArtifactsCalculatorTest {
 
         val androidTestRepo = result.single { it.name == "android_test_maven" }
         assertEquals(
-            setOf("com.example:reachable:1.0.0", "com.example:test-only:1.0.0"),
+            setOf(
+                "com.example:reachable:1.0.0",
+                "com.example:test-only:1.0.0",
+                "com.example:unrelated:1.0.0"
+            ),
             androidTestRepo.artifacts.map { it.id }.toSet()
         )
         assertEquals(
-            mapOf("com.example:reachable" to "@maven//:com_example_reachable"),
+            mapOf(
+                "com.example:reachable" to "@maven//:com_example_reachable",
+                "com.example:unrelated" to "@maven//:com_example_unrelated"
+            ),
             androidTestRepo.overrideTargets
         )
     }
 
     @Test
-    fun `override target reachability is scoped to each variant maven install`() {
+    fun `maven install drops self override targets but keeps artifact rooted`() {
+        setup()
+
+        val repository = "MavenRepo"
+        val selfOverrideDependency = ResolvedDependency.fromId(
+            "androidx.work:work-runtime:2.10.2",
+            repository
+        ).copy(
+            direct = false,
+            overrideTarget = OverrideTarget(
+                artifactShortId = "androidx.work:work-runtime",
+                label = MavenDependency(
+                    repo = "android_test_maven",
+                    group = "androidx.work",
+                    name = "work-runtime"
+                )
+            )
+        )
+        val workspaceDependencies = WorkspaceDependencies(
+            variantDeps = mapOf(
+                "androidTest" to listOf(selfOverrideDependency)
+            )
+        )
+
+        val result = mavenInstallArtifactsCalculator.get(
+            layout = rootProject.layout,
+            workspaceDependencies = workspaceDependencies,
+            externalArtifacts = emptySet(),
+            externalRepositories = emptySet()
+        )
+
+        val androidTestRepo = result.single { it.name == "android_test_maven" }
+        assertEquals(
+            setOf("androidx.work:work-runtime:2.10.2"),
+            androidTestRepo.artifacts.map { it.id }.toSet()
+        )
+        assertEquals(emptyMap<String, String>(), androidTestRepo.overrideTargets)
+    }
+
+    @Test
+    fun `maven install keeps same repo override targets when label points to different artifact`() {
+        setup()
+
+        val repository = "MavenRepo"
+        val normalizedDependency = ResolvedDependency.fromId(
+            "io.insert-koin:koin-core:3.2.0",
+            repository
+        ).copy(
+            direct = false,
+            overrideTarget = OverrideTarget(
+                artifactShortId = "io.insert-koin:koin-core",
+                label = MavenDependency(
+                    repo = "maven",
+                    group = "io.insert-koin",
+                    name = "koin-core-jvm"
+                )
+            )
+        )
+        val workspaceDependencies = WorkspaceDependencies(
+            variantDeps = mapOf(
+                DEFAULT_VARIANT to listOf(normalizedDependency)
+            )
+        )
+
+        val result = mavenInstallArtifactsCalculator.get(
+            layout = rootProject.layout,
+            workspaceDependencies = workspaceDependencies,
+            externalArtifacts = emptySet(),
+            externalRepositories = emptySet()
+        )
+
+        val mavenRepo = result.single { it.name == "maven" }
+        assertEquals(
+            mapOf("io.insert-koin:koin-core" to "@maven//:io_insert_koin_koin_core_jvm"),
+            mavenRepo.overrideTargets
+        )
+    }
+
+    @Test
+    fun `override target artifacts are mapped independently and rooted in each selected bucket closure`() {
         setup()
 
         val repository = "MavenRepo"
@@ -270,17 +525,578 @@ class MavenInstallArtifactsCalculatorTest {
         val debugRepo = result.single { it.name == "debug_maven" }
         val androidTestRepo = result.single { it.name == "android_test_maven" }
         assertEquals(
-            setOf("com.example:debug-carrier:1.0.0", "com.example:shared-root:1.0.0"),
+            setOf(
+                "com.example:android-test-carrier:1.0.0",
+                "com.example:debug-carrier:1.0.0",
+                "com.example:shared-root:1.0.0"
+            ),
             debugRepo.artifacts.map { it.id }.toSet()
         )
         assertEquals(
-            setOf("com.example:android-test-carrier:1.0.0", "com.example:shared-root:1.0.0"),
+            setOf(
+                "com.example:android-test-carrier:1.0.0",
+                "com.example:debug-carrier:1.0.0",
+                "com.example:shared-root:1.0.0"
+            ),
             androidTestRepo.artifacts.map { it.id }.toSet()
         )
     }
 
     @Test
-    fun `non default maven install resolves direct artifacts only with all supported repositories`() {
+    fun `variant maven install roots parent owned override carriers for coursier`() {
+        setup()
+
+        val repository = "MavenRepo"
+        val directRoot = ResolvedDependency.fromId(
+            "androidx.test.ext:junit:1.1.5",
+            repository
+        )
+        val coreCarrier = ResolvedDependency.fromId(
+            "androidx.test:core:1.5.0",
+            repository
+        ).copy(
+            direct = false,
+            overrideTarget = OverrideTarget(
+                artifactShortId = "androidx.test:core",
+                label = MavenDependency(
+                    group = "androidx.test",
+                    name = "core"
+                )
+            )
+        )
+        val monitorCarrier = ResolvedDependency.fromId(
+            "androidx.test:monitor:1.6.0",
+            repository
+        ).copy(
+            direct = false,
+            overrideTarget = OverrideTarget(
+                artifactShortId = "androidx.test:monitor",
+                label = MavenDependency(
+                    group = "androidx.test",
+                    name = "monitor"
+                )
+            )
+        )
+        val storageCarrier = ResolvedDependency.fromId(
+            "androidx.test.services:storage:1.4.2",
+            repository
+        ).copy(
+            direct = false,
+            overrideTarget = OverrideTarget(
+                artifactShortId = "androidx.test.services:storage",
+                label = MavenDependency(
+                    group = "androidx.test.services",
+                    name = "storage"
+                )
+            )
+        )
+        val workspaceDependencies = WorkspaceDependencies(
+            variantDeps = mapOf(
+                "gpsPaxRelease" to listOf(
+                    directRoot,
+                    coreCarrier,
+                    monitorCarrier,
+                    storageCarrier
+                )
+            ),
+            transitiveClasspath = mapOf(
+                directRoot.shortId to setOf(
+                    coreCarrier.shortId,
+                    monitorCarrier.shortId,
+                    storageCarrier.shortId
+                )
+            ),
+            variantTransitiveClasspath = mapOf(
+                "gpsPaxRelease" to mapOf(
+                    "com.example:unrelated-root" to setOf("com.example:unrelated-carrier")
+                )
+            )
+        )
+
+        val result = mavenInstallArtifactsCalculator.get(
+            layout = rootProject.layout,
+            workspaceDependencies = workspaceDependencies,
+            externalArtifacts = emptySet(),
+            externalRepositories = emptySet()
+        )
+
+        val gpsPaxReleaseRepo = result.single { it.name == "gps_pax_release_maven" }
+        assertEquals(
+            setOf(
+                "androidx.test.ext:junit:1.1.5",
+                "androidx.test.services:storage:1.4.2",
+                "androidx.test:core:1.5.0",
+                "androidx.test:monitor:1.6.0"
+            ),
+            gpsPaxReleaseRepo.artifacts.map { it.id }.toSet()
+        )
+    }
+
+    @Test
+    fun `variant maven install roots default owned selected closure for coursier`() {
+        setup()
+
+        val repository = "MavenRepo"
+        val defaultLifecycleCommon = ResolvedDependency.fromId(
+            "androidx.lifecycle:lifecycle-common:2.8.3",
+            repository
+        )
+        val defaultLifecycleJava8 = ResolvedDependency.fromId(
+            "androidx.lifecycle:lifecycle-common-java8:2.8.3",
+            repository
+        )
+        val unrelatedDefaultDependency = ResolvedDependency.fromId(
+            "androidx.lifecycle:lifecycle-process:2.8.3",
+            repository
+        )
+        val testRoot = ResolvedDependency.fromId(
+            "androidx.compose.ui:ui-test-junit4:1.8.3",
+            repository
+        )
+        val lifecycleJvmCarrier = ResolvedDependency.fromId(
+            "androidx.lifecycle:lifecycle-common-jvm:2.8.3",
+            repository
+        ).copy(
+            direct = false,
+            overrideTarget = OverrideTarget(
+                artifactShortId = "androidx.lifecycle:lifecycle-common-jvm",
+                label = MavenDependency(
+                    group = "androidx.lifecycle",
+                    name = "lifecycle-common-jvm"
+                )
+            )
+        )
+        val workspaceDependencies = WorkspaceDependencies(
+            variantDeps = mapOf(
+                DEFAULT_VARIANT to listOf(
+                    defaultLifecycleCommon,
+                    defaultLifecycleJava8,
+                    unrelatedDefaultDependency
+                ),
+                "debugAndroidTest" to listOf(testRoot, lifecycleJvmCarrier)
+            ),
+            variantTransitiveClasspath = mapOf(
+                "debugAndroidTest" to mapOf(
+                    testRoot.shortId to setOf(
+                        defaultLifecycleCommon.shortId,
+                        defaultLifecycleJava8.shortId,
+                        lifecycleJvmCarrier.shortId
+                    )
+                )
+            )
+        )
+
+        val result = mavenInstallArtifactsCalculator.get(
+            layout = rootProject.layout,
+            workspaceDependencies = workspaceDependencies,
+            externalArtifacts = emptySet(),
+            externalRepositories = emptySet()
+        )
+
+        val debugAndroidTestRepo = result.single { it.name == "debug_android_test_maven" }
+        assertEquals(
+            setOf(
+                "androidx.compose.ui:ui-test-junit4:1.8.3",
+                "androidx.lifecycle:lifecycle-common-java8:2.8.3",
+                "androidx.lifecycle:lifecycle-common-jvm:2.8.3",
+                "androidx.lifecycle:lifecycle-common:2.8.3"
+            ),
+            debugAndroidTestRepo.artifacts.map { it.id }.toSet()
+        )
+        assertEquals(
+            mapOf(
+                "androidx.lifecycle:lifecycle-common" to "@maven//:androidx_lifecycle_lifecycle_common",
+                "androidx.lifecycle:lifecycle-common-java8" to "@maven//:androidx_lifecycle_lifecycle_common_java8",
+                "androidx.lifecycle:lifecycle-common-jvm" to "@maven//:androidx_lifecycle_lifecycle_common_jvm"
+            ),
+            debugAndroidTestRepo.overrideTargets
+        )
+    }
+
+    @Test
+    fun `variant maven install roots default closure for existing bucket artifacts`() {
+        setup()
+
+        val repository = "MavenRepo"
+        val defaultLifecycleCommon = ResolvedDependency.fromId(
+            "androidx.lifecycle:lifecycle-common:2.8.3",
+            repository
+        )
+        val defaultLifecycleJava8 = ResolvedDependency.fromId(
+            "androidx.lifecycle:lifecycle-common-java8:2.8.3",
+            repository
+        )
+        val unrelatedDefaultDependency = ResolvedDependency.fromId(
+            "androidx.fragment:fragment:1.6.2",
+            repository
+        )
+        val testRoot = ResolvedDependency.fromId(
+            "androidx.compose.ui:ui-test-junit4:1.8.3",
+            repository
+        )
+        val lifecycleRuntimeCarrier = ResolvedDependency.fromId(
+            "androidx.lifecycle:lifecycle-runtime:2.8.3",
+            repository
+        ).copy(
+            direct = false,
+            overrideTarget = OverrideTarget(
+                artifactShortId = "androidx.lifecycle:lifecycle-runtime",
+                label = MavenDependency(
+                    group = "androidx.lifecycle",
+                    name = "lifecycle-runtime"
+                )
+            )
+        )
+        val workspaceDependencies = WorkspaceDependencies(
+            variantDeps = mapOf(
+                DEFAULT_VARIANT to listOf(
+                    defaultLifecycleCommon,
+                    defaultLifecycleJava8,
+                    unrelatedDefaultDependency
+                ),
+                "debugAndroidTest" to listOf(testRoot, lifecycleRuntimeCarrier)
+            ),
+            transitiveClasspath = mapOf(
+                lifecycleRuntimeCarrier.shortId to setOf(
+                    defaultLifecycleCommon.shortId,
+                    defaultLifecycleJava8.shortId,
+                    lifecycleRuntimeCarrier.shortId
+                )
+            ),
+            variantTransitiveClasspath = mapOf(
+                "debugAndroidTest" to mapOf(
+                    testRoot.shortId to setOf(
+                        defaultLifecycleCommon.shortId,
+                        defaultLifecycleJava8.shortId,
+                        lifecycleRuntimeCarrier.shortId
+                    )
+                )
+            )
+        )
+
+        val result = mavenInstallArtifactsCalculator.get(
+            layout = rootProject.layout,
+            workspaceDependencies = workspaceDependencies,
+            externalArtifacts = emptySet(),
+            externalRepositories = emptySet()
+        )
+
+        val debugAndroidTestRepo = result.single { it.name == "debug_android_test_maven" }
+        assertEquals(
+            setOf(
+                "androidx.compose.ui:ui-test-junit4:1.8.3",
+                "androidx.lifecycle:lifecycle-common-java8:2.8.3",
+                "androidx.lifecycle:lifecycle-common:2.8.3",
+                "androidx.lifecycle:lifecycle-runtime:2.8.3"
+            ),
+            debugAndroidTestRepo.artifacts.map { it.id }.toSet()
+        )
+        assertEquals(
+            mapOf(
+                "androidx.lifecycle:lifecycle-common" to "@maven//:androidx_lifecycle_lifecycle_common",
+                "androidx.lifecycle:lifecycle-common-java8" to "@maven//:androidx_lifecycle_lifecycle_common_java8",
+                "androidx.lifecycle:lifecycle-runtime" to "@maven//:androidx_lifecycle_lifecycle_runtime"
+            ),
+            debugAndroidTestRepo.overrideTargets
+        )
+    }
+
+    @Test
+    fun `variant maven install does not inherit default roots from global transitive classpath`() {
+        setup()
+
+        val repository = "MavenRepo"
+        val defaultRoot = ResolvedDependency.fromId(
+            "com.google.firebase:firebase-analytics:22.1.0",
+            repository
+        ).copy(
+            dependencies = setOf(
+                "com.google.android.gms:play-services-measurement-api:22.0.2:maven:false:null"
+            )
+        )
+        val defaultTransitive = ResolvedDependency.fromId(
+            "com.google.android.gms:play-services-measurement-api:22.0.2",
+            repository
+        ).copy(direct = false)
+        val flavorRoot = ResolvedDependency.fromId(
+            "com.example:gps-only:1.0.0",
+            repository
+        )
+        val workspaceDependencies = WorkspaceDependencies(
+            variantDeps = mapOf(
+                DEFAULT_VARIANT to listOf(defaultRoot, defaultTransitive),
+                "gps" to listOf(flavorRoot)
+            ),
+            transitiveClasspath = mapOf(
+                defaultRoot.shortId to setOf(defaultTransitive.shortId)
+            )
+        )
+
+        val result = mavenInstallArtifactsCalculator.get(
+            layout = rootProject.layout,
+            workspaceDependencies = workspaceDependencies,
+            externalArtifacts = emptySet(),
+            externalRepositories = emptySet()
+        )
+
+        val gpsRepo = result.single { it.name == "gps_maven" }
+        assertEquals(
+            setOf("com.example:gps-only:1.0.0"),
+            gpsRepo.artifacts.map { it.id }.toSet()
+        )
+        assertEquals(emptyMap<String, String>(), gpsRepo.overrideTargets)
+    }
+
+    @Test
+    fun `variant maven install uses scoped closure instead of global sibling carriers`() {
+        setup()
+
+        val repository = "MavenRepo"
+        val sharedDirectRoot = ResolvedDependency.fromId("com.example:shared-root:1.0.0", repository)
+        val debugCarrier = ResolvedDependency.fromId(
+            "com.example:debug-carrier:1.0.0",
+            repository
+        ).copy(
+            direct = false,
+            overrideTarget = OverrideTarget(
+                artifactShortId = "com.example:debug-carrier",
+                label = MavenDependency(
+                    group = "com.example",
+                    name = "debug-carrier"
+                )
+            )
+        )
+        val androidTestCarrier = ResolvedDependency.fromId(
+            "com.example:android-test-carrier:1.0.0",
+            repository
+        ).copy(
+            direct = false,
+            overrideTarget = OverrideTarget(
+                artifactShortId = "com.example:android-test-carrier",
+                label = MavenDependency(
+                    group = "com.example",
+                    name = "android-test-carrier"
+                )
+            )
+        )
+        val workspaceDependencies = WorkspaceDependencies(
+            variantDeps = mapOf(
+                DEFAULT_VARIANT to listOf(debugCarrier, androidTestCarrier),
+                "debug" to listOf(sharedDirectRoot, debugCarrier),
+                "androidTest" to listOf(sharedDirectRoot, androidTestCarrier)
+            ),
+            transitiveClasspath = mapOf(
+                sharedDirectRoot.shortId to setOf(
+                    debugCarrier.shortId,
+                    androidTestCarrier.shortId
+                )
+            ),
+            variantTransitiveClasspath = mapOf(
+                "debug" to mapOf(sharedDirectRoot.shortId to setOf(debugCarrier.shortId)),
+                "androidTest" to mapOf(sharedDirectRoot.shortId to setOf(androidTestCarrier.shortId))
+            )
+        )
+
+        val result = mavenInstallArtifactsCalculator.get(
+            layout = rootProject.layout,
+            workspaceDependencies = workspaceDependencies,
+            externalArtifacts = emptySet(),
+            externalRepositories = emptySet()
+        )
+
+        assertEquals(
+            setOf(
+                "com.example:debug-carrier:1.0.0",
+                "com.example:shared-root:1.0.0"
+            ),
+            result.single { it.name == "debug_maven" }.artifacts.map { it.id }.toSet()
+        )
+        assertEquals(
+            setOf(
+                "com.example:android-test-carrier:1.0.0",
+                "com.example:shared-root:1.0.0"
+            ),
+            result.single { it.name == "android_test_maven" }.artifacts.map { it.id }.toSet()
+        )
+    }
+
+    @Test
+    fun `default maven install uses scoped closure instead of global sibling carriers`() {
+        setup()
+
+        val repository = "MavenRepo"
+        val defaultRoot = ResolvedDependency.fromId(
+            "com.example:shared-root:1.0.0",
+            repository
+        )
+        val defaultCarrier = ResolvedDependency.fromId(
+            "com.example:default-carrier:1.0.0",
+            repository
+        ).copy(direct = false)
+        val debugCarrier = ResolvedDependency.fromId(
+            "com.example:debug-carrier:1.0.0",
+            repository
+        ).copy(direct = false)
+        val workspaceDependencies = WorkspaceDependencies(
+            variantDeps = mapOf(
+                DEFAULT_VARIANT to listOf(defaultRoot, defaultCarrier),
+                "debug" to listOf(debugCarrier)
+            ),
+            transitiveClasspath = mapOf(
+                defaultRoot.shortId to setOf(defaultCarrier.shortId, debugCarrier.shortId)
+            ),
+            variantTransitiveClasspath = mapOf(
+                DEFAULT_VARIANT to mapOf(defaultRoot.shortId to setOf(defaultCarrier.shortId)),
+                "debug" to mapOf(defaultRoot.shortId to setOf(debugCarrier.shortId))
+            )
+        )
+
+        val result = mavenInstallArtifactsCalculator.get(
+            layout = rootProject.layout,
+            workspaceDependencies = workspaceDependencies,
+            externalArtifacts = emptySet(),
+            externalRepositories = emptySet()
+        )
+
+        assertEquals(
+            setOf(
+                "com.example:default-carrier:1.0.0",
+                "com.example:shared-root:1.0.0"
+            ),
+            result.single { it.name == "maven" }.artifacts.map { it.id }.toSet()
+        )
+    }
+
+    @Test
+    fun `variant maven install roots non default owned reachable artifacts`() {
+        setup()
+
+        val repository = "MavenRepo"
+        val debugCarrier = ResolvedDependency.fromId(
+            "com.example:debug-carrier:1.0.0",
+            repository
+        )
+        val freeRoot = ResolvedDependency.fromId(
+            "com.example:free-root:1.0.0",
+            repository
+        )
+        val workspaceDependencies = WorkspaceDependencies(
+            variantDeps = mapOf(
+                DEFAULT_VARIANT to emptyList(),
+                "debug" to listOf(debugCarrier),
+                "free" to listOf(freeRoot)
+            ),
+            variantTransitiveClasspath = mapOf(
+                "free" to mapOf(freeRoot.shortId to setOf(debugCarrier.shortId))
+            )
+        )
+
+        val result = mavenInstallArtifactsCalculator.get(
+            layout = rootProject.layout,
+            workspaceDependencies = workspaceDependencies,
+            externalArtifacts = emptySet(),
+            externalRepositories = emptySet()
+        )
+
+        val freeRepo = result.single { it.name == "free_maven" }
+        assertEquals(
+            setOf("com.example:debug-carrier:1.0.0", "com.example:free-root:1.0.0"),
+            freeRepo.artifacts.map { it.id }.toSet()
+        )
+        assertEquals(
+            mapOf("com.example:debug-carrier" to "@debug_maven//:com_example_debug_carrier"),
+            freeRepo.overrideTargets
+        )
+    }
+
+    @Test
+    fun `unreferenced candidate variant maven installs are not materialized`() {
+        setup()
+
+        val repository = "MavenRepo"
+        val defaultDependency = ResolvedDependency.fromId(
+            "com.example:default:1.0.0",
+            repository
+        )
+        val debugDependency = ResolvedDependency.fromId(
+            "com.example:debug:1.0.0",
+            repository
+        )
+        val unreferencedFlavorDependency = ResolvedDependency.fromId(
+            "com.example:flavor:1.0.0",
+            repository
+        )
+        val workspaceDependencies = WorkspaceDependencies(
+            variantDeps = mapOf(
+                DEFAULT_VARIANT to listOf(defaultDependency),
+                "debug" to listOf(debugDependency),
+                "moveit" to listOf(unreferencedFlavorDependency)
+            )
+        )
+
+        val result = mavenInstallArtifactsCalculator.get(
+            layout = rootProject.layout,
+            workspaceDependencies = workspaceDependencies,
+            externalArtifacts = emptySet(),
+            externalRepositories = emptySet(),
+            referencedMavenRepos = setOf("debug_maven")
+        )
+
+        assertEquals(
+            setOf("debug_maven", "maven"),
+            result.map(MavenInstallData::name).toSet()
+        )
+    }
+
+    @Test
+    fun `referenced maven install keeps repos required by override targets`() {
+        setup()
+
+        val repository = "MavenRepo"
+        val debugCarrier = ResolvedDependency.fromId(
+            "com.example:debug-carrier:1.0.0",
+            repository
+        )
+        val freeRoot = ResolvedDependency.fromId(
+            "com.example:free-root:1.0.0",
+            repository
+        )
+        val unreferencedFlavorDependency = ResolvedDependency.fromId(
+            "com.example:paid-root:1.0.0",
+            repository
+        )
+        val workspaceDependencies = WorkspaceDependencies(
+            variantDeps = mapOf(
+                DEFAULT_VARIANT to emptyList(),
+                "debug" to listOf(debugCarrier),
+                "free" to listOf(freeRoot),
+                "paid" to listOf(unreferencedFlavorDependency)
+            ),
+            variantTransitiveClasspath = mapOf(
+                "free" to mapOf(freeRoot.shortId to setOf(debugCarrier.shortId))
+            )
+        )
+
+        val result = mavenInstallArtifactsCalculator.get(
+            layout = rootProject.layout,
+            workspaceDependencies = workspaceDependencies,
+            externalArtifacts = emptySet(),
+            externalRepositories = emptySet(),
+            referencedMavenRepos = setOf("free_maven")
+        )
+
+        assertEquals(
+            setOf("debug_maven", "free_maven"),
+            result.map(MavenInstallData::name).toSet()
+        )
+        assertEquals(
+            mapOf("com.example:debug-carrier" to "@debug_maven//:com_example_debug_carrier"),
+            result.single { it.name == "free_maven" }.overrideTargets
+        )
+    }
+
+    @Test
+    fun `non default maven install resolves direct artifacts with configured conflict policy`() {
         setup {
             rules {
                 mavenInstall {
@@ -318,9 +1134,9 @@ class MavenInstallArtifactsCalculatorTest {
         val defaultRepo = result.single { it.name == "maven" }
         val debugRepo = result.single { it.name == "debug_maven" }
         assertEquals("pinned", defaultRepo.versionConflictPolicy)
-        assertEquals(null, debugRepo.versionConflictPolicy)
+        assertEquals("pinned", debugRepo.versionConflictPolicy)
         assertEquals(
-            setOf("androidx.example:direct:1.0.0"),
+            setOf("androidx.example:direct:1.0.0", "org.jetbrains.kotlin:kotlin-stdlib:1.9.25"),
             debugRepo.artifacts.map { it.id }.toSet()
         )
         assertEquals(
@@ -331,19 +1147,7 @@ class MavenInstallArtifactsCalculatorTest {
             debugRepo.repositories.filterIsInstance<DefaultMavenRepository>().map { it.url }.toSet()
         )
         val debugArtifact = debugRepo.artifacts.single { it.id == "androidx.example:direct:1.0.0" }
-            as DetailedArtifact
-        val exclusionIds = debugArtifact.exclusions
-            .filterIsInstance<SimpleExclusion>()
-            .map { it.coordinates }
-            .toSet()
-        assertTrue(
-            "default-only dependency should be excluded from child root",
-            "com.example:default-only" in exclusionIds
-        )
-        assertFalse(
-            "child Gradle closure dependency should not be excluded from child root",
-            "org.jetbrains.kotlin:kotlin-stdlib" in exclusionIds
-        )
+        assertFalse("normal direct roots should stay compact simple artifacts", debugArtifact is DetailedArtifact)
     }
 
     @Test

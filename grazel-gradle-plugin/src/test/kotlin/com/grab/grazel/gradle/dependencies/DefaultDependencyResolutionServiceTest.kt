@@ -28,6 +28,7 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.encodeToString
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
@@ -157,6 +158,33 @@ class DefaultDependencyResolutionServiceTest {
     }
 
     @Test
+    fun `test getMavenDependency falls back to indexed resolved version when exact declared version lost conflict`() {
+        // Given
+        val resolvedDependency = ResolvedDependency.fromId(
+            "androidx.appcompat:appcompat:1.2.0",
+            "default"
+        )
+        val workspaceDependencies = WorkspaceDependencies(
+            variantDeps = mapOf("default" to listOf(resolvedDependency))
+        )
+        writeWorkspaceDependenciesToFile(workspaceDependencies)
+        dependencyResolutionService.init(workspaceDependenciesFile)
+
+        // When
+        val mavenDep = dependencyResolutionService.getMavenDependency(
+            setOf("default"),
+            "androidx.appcompat",
+            "appcompat",
+            version = "1.1.0"
+        )
+
+        // Then
+        assertEquals("maven", mavenDep?.repo)
+        assertEquals("androidx.appcompat", mavenDep?.group)
+        assertEquals("appcompat", mavenDep?.name)
+    }
+
+    @Test
     fun `test getMavenDependency returns override target instead of leaf repo for duplicate`() {
         // Given
         val commonDependency = ResolvedDependency.fromId(
@@ -195,6 +223,52 @@ class DefaultDependencyResolutionServiceTest {
         assertEquals("maven", mavenDep?.repo)
         assertEquals("androidx.activity", mavenDep?.group)
         assertEquals("activity", mavenDep?.name)
+    }
+
+    @Test
+    fun `test getMavenDependency prefers nearest exact topology bucket over default duplicate`() {
+        // Given
+        val defaultDependency = ResolvedDependency.fromId(
+            "androidx.constraintlayout:constraintlayout:2.0.1",
+            "default"
+        )
+        val requestedTopologyDependency = ResolvedDependency.fromId(
+            "androidx.constraintlayout:constraintlayout:2.0.1",
+            "flavor2Debug"
+        )
+        val requestedTopologyOnlyDependency = ResolvedDependency.fromId(
+            "javax.annotation:javax.annotation-api:1.3.2",
+            "flavor2Debug"
+        )
+        val workspaceDependencies = WorkspaceDependencies(
+            variantDeps = mapOf(
+                "default" to listOf(defaultDependency),
+                "flavor2Debug" to listOf(
+                    requestedTopologyDependency,
+                    requestedTopologyOnlyDependency
+                )
+            )
+        )
+        writeWorkspaceDependenciesToFile(workspaceDependencies)
+        dependencyResolutionService.init(workspaceDependenciesFile)
+
+        // When
+        val inheritedDep = dependencyResolutionService.getMavenDependency(
+            setOf("flavor2Debug", "paidDebug", "debug", "default", "paid"),
+            "androidx.constraintlayout",
+            "constraintlayout",
+            version = "2.0.1"
+        )
+        val topologyOnlyDep = dependencyResolutionService.getMavenDependency(
+            setOf("flavor2Debug", "paidDebug", "debug", "default", "paid"),
+            "javax.annotation",
+            "javax.annotation-api",
+            version = "1.3.2"
+        )
+
+        // Then
+        assertEquals("flavor2debug_maven", inheritedDep?.repo)
+        assertEquals("flavor2debug_maven", topologyOnlyDep?.repo)
     }
 
     @Test
@@ -245,11 +319,8 @@ class DefaultDependencyResolutionServiceTest {
             "library"
         )
 
-        // Then - Should return a default MavenDependency with "maven" repo
-        assertNotNull(mavenDep)
-        assertEquals("maven", mavenDep?.repo)
-        assertEquals("com.nonexistent", mavenDep?.group)
-        assertEquals("library", mavenDep?.name)
+        // Then - Missing deps must not invent @maven labels that may not exist after pinning.
+        assertNull(mavenDep)
     }
 
     @Test
@@ -268,7 +339,7 @@ class DefaultDependencyResolutionServiceTest {
     }
 
     @Test
-    fun `test empty variants set falls back to default maven repo`() {
+    fun `test empty variants set returns null when default bucket does not contain dependency`() {
         // Given
         val workspaceDependencies = createSampleWorkspaceDependencies()
         writeWorkspaceDependenciesToFile(workspaceDependencies)
@@ -281,8 +352,31 @@ class DefaultDependencyResolutionServiceTest {
             "library1"
         )
 
-        // Then - Should fall back to default maven repo
-        assertNotNull(mavenDep)
+        // Then
+        assertNull(mavenDep)
+    }
+
+    @Test
+    fun `test empty variants set falls back to indexed default bucket`() {
+        // Given
+        val workspaceDependencies = WorkspaceDependencies(
+            variantDeps = mapOf(
+                "default" to listOf(
+                    ResolvedDependency.fromId("com.example:library1:1.0", "default")
+                )
+            )
+        )
+        writeWorkspaceDependenciesToFile(workspaceDependencies)
+        dependencyResolutionService.init(workspaceDependenciesFile)
+
+        // When
+        val mavenDep = dependencyResolutionService.getMavenDependency(
+            emptySet(),
+            "com.example",
+            "library1"
+        )
+
+        // Then
         assertEquals("maven", mavenDep?.repo)
         assertEquals("com.example", mavenDep?.group)
         assertEquals("library1", mavenDep?.name)

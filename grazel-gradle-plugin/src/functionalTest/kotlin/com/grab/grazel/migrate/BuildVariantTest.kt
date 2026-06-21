@@ -499,18 +499,21 @@ apply plugin: 'com.google.devtools.ksp'
         )
         Assert.assertTrue(
             "Matched fallback target should keep its declared Maven dependency",
-            Regex(""""@[^"]+//:androidx_constraintlayout_constraintlayout"""")
-                .containsMatchIn(androidMismatchBuildBazelContent)
+            androidMismatchBuildBazelContent.contains(
+                """"@paid_maven//:androidx_constraintlayout_constraintlayout""""
+            )
         )
         Assert.assertTrue(
             "Matched paid fallback target should keep its paid-only Maven dependency",
-            Regex(""""@[^"]+//:com_jakewharton_timber_timber"""")
-                .containsMatchIn(androidMismatchBuildBazelContent)
+            androidMismatchBuildBazelContent.contains(
+                """"@paid_maven//:com_jakewharton_timber_timber""""
+            )
         )
         Assert.assertTrue(
             "Matched fallback target should keep selected build-type parent Maven dependency",
-            Regex(""""@[^"]+//:javax_annotation_javax_annotation_api"""")
-                .containsMatchIn(androidMismatchBuildBazelContent)
+            androidMismatchBuildBazelContent.contains(
+                """"@debug_maven//:javax_annotation_javax_annotation_api""""
+            )
         )
         Assert.assertFalse(
             "Unselected free fallback Maven dependency should not be emitted on matched paid target",
@@ -540,23 +543,21 @@ apply plugin: 'com.google.devtools.ksp'
             dependenciesContent.contains(""""artifact":"unselected-release-only-exclude"""")
         )
 
-        val artifactRegex = Regex(
-            """maven\.artifact\(\s*artifact = "constraintlayout",\s*exclusions = \[(?<exclusions>.*?)\],\s*group = "androidx\.constraintlayout",\s*version = "2\.0\.1",""",
-            setOf(RegexOption.DOT_MATCHES_ALL)
+        val selectedFallbackArtifactBlock = mavenArtifactBlock(
+            workspaceContent = workspaceContent,
+            repoName = "paid_maven",
+            group = "androidx.constraintlayout",
+            artifact = "constraintlayout",
+            version = "2.0.1"
         )
-        val exclusions = artifactRegex
-            .find(workspaceContent)
-            ?.groups
-            ?.get("exclusions")
-            ?.value
 
         Assert.assertTrue(
             "Selected fallback variant exclude should be emitted for androidx.constraintlayout:constraintlayout",
-            exclusions?.contains(""""androidx.appcompat:appcompat"""") == true
+            selectedFallbackArtifactBlock?.contains(""""androidx.appcompat:appcompat"""") == true
         )
         Assert.assertFalse(
             "Unselected sibling fallback exclude should not bleed into androidx.constraintlayout:constraintlayout",
-            exclusions?.contains(""""androidx.core:core"""") == true
+            selectedFallbackArtifactBlock?.contains(""""androidx.core:core"""") == true
         )
     }
 

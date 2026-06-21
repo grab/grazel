@@ -16,6 +16,7 @@
 
 package com.grab.grazel.gradle.variant
 
+import com.grab.grazel.bazel.starlark.BazelDependency.MavenDependency
 import com.grab.grazel.di.qualifiers.RootProject
 import org.gradle.api.Project
 import org.gradle.api.logging.Logger
@@ -60,6 +61,14 @@ internal interface VariantCompressionService : BuildService<VariantCompressionSe
      */
     fun isRegistered(projectPath: String): Boolean
 
+    /**
+     * Repositories referenced by compressed Android library targets.
+     *
+     * This is used after compression analysis to avoid materializing candidate Maven buckets that
+     * no generated Android library target can reference.
+     */
+    fun referencedMavenRepos(): Set<String>
+
     companion object {
         internal const val SERVICE_NAME = "VariantCompressionService"
     }
@@ -85,6 +94,16 @@ internal abstract class DefaultVariantCompressionService : VariantCompressionSer
 
     override fun isRegistered(projectPath: String): Boolean {
         return projectPath in results
+    }
+
+    override fun referencedMavenRepos(): Set<String> {
+        return results.values
+            .asSequence()
+            .flatMap { result -> result.targets.asSequence() }
+            .flatMap { target -> target.deps.asSequence() }
+            .filterIsInstance<MavenDependency>()
+            .map(MavenDependency::repo)
+            .toSortedSet()
     }
 
     override fun close() {

@@ -17,7 +17,6 @@
 package com.grab.grazel.gradle
 
 import com.grab.grazel.gradle.dependencies.DefaultDependencyGraphsService
-import com.grab.grazel.gradle.dependencies.DependenciesDataSource
 import com.grab.grazel.util.GradleProvider
 import dagger.Module
 import dagger.Provides
@@ -83,21 +82,5 @@ internal class MigrationChecker @Inject constructor(
 internal class PluginsMigrationCriteria @Inject constructor() : MigrationCriteria {
     override fun canMigrate(project: Project): Boolean {
         return project.isAndroid || project.isJava || project.isKotlin
-    }
-}
-
-/**
- * Calculates if a project is migrateable based on dependencies configuration.
- * For example, if all dependencies of the project are downloaded from supported repository types.
- */
-@Singleton
-internal class DependenciesMigrationCriteria @Inject constructor(
-    private val dependenciesDataSource: DependenciesDataSource
-) : MigrationCriteria {
-    override fun canMigrate(project: Project): Boolean {
-        val hasPrivateDependencies =
-            dependenciesDataSource.hasDepsFromUnsupportedRepositories(project)
-        val hasIgnoredArtifacts = false // TODO(arun) Refactor
-        return !hasPrivateDependencies && !hasIgnoredArtifacts
     }
 }

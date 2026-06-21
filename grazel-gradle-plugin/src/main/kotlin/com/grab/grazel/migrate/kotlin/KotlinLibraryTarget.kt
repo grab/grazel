@@ -22,6 +22,7 @@ import com.grab.grazel.bazel.starlark.BazelDependency
 import com.grab.grazel.migrate.android.LintConfigData
 import com.grab.grazel.bazel.starlark.StatementsBuilder
 import com.grab.grazel.migrate.BazelBuildTarget
+import com.grab.grazel.migrate.BazelPluginTarget
 import com.grab.grazel.migrate.android.ResValuesData
 
 internal data class KotlinLibraryTarget(
@@ -36,11 +37,11 @@ internal data class KotlinLibraryTarget(
     val res: List<String>,
     val resValuesData: ResValuesData = ResValuesData(),
     val manifest: String? = null,
-    val plugins: List<BazelDependency> = emptyList(),
+    override val plugins: List<BazelDependency> = emptyList(),
     val assetsGlob: List<String> = emptyList(),
     val assetsDir: String? = null,
     val lintConfigData: LintConfigData? = null
-) : BazelBuildTarget {
+) : BazelBuildTarget, BazelPluginTarget {
 
     override fun statements(builder: StatementsBuilder) = builder {
         ktLibrary(

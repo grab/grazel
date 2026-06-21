@@ -67,7 +67,7 @@ class DefaultMavenInstallStore : MavenInstallStore {
         group: String,
         name: String,
         version: String?
-    ): MavenDependency {
+    ): MavenDependency? {
         fun get(variant: String, requestedVersion: String?): MavenDependency? =
             cache[ArtifactKey(variant, group, name, requestedVersion)]
 
@@ -82,11 +82,6 @@ class DefaultMavenInstallStore : MavenInstallStore {
 
         return variants.asSequence().mapNotNull { variant -> get(variant, null) }.firstOrNull()
             ?: get(DEFAULT_VARIANT, null)
-            ?: run {
-                // When no dependency is found in the index, assume @maven. This could be incorrect
-                // but makes for easier testing
-                MavenDependency(group = group, name = name)
-            }
     }
 
     override fun set(variantRepoName: String, group: String, name: String) {

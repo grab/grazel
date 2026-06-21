@@ -37,9 +37,9 @@ android_library(
     deps = [
         "//:parcelize",
         "//flavors/sample-library-demo",
-        "@free_maven//:androidx_constraintlayout_constraintlayout",
         "@maven//:androidx_appcompat_appcompat",
         "@maven//:androidx_compose_ui_ui",
+        "@maven//:androidx_constraintlayout_constraintlayout",
         "@maven//:androidx_constraintlayout_constraintlayout_core",
         "@maven//:androidx_core_core",
     ],
@@ -81,9 +81,9 @@ android_library(
         "//flavors/sample-library-demo",
         "@maven//:androidx_appcompat_appcompat",
         "@maven//:androidx_compose_ui_ui",
+        "@maven//:androidx_constraintlayout_constraintlayout",
         "@maven//:androidx_constraintlayout_constraintlayout_core",
         "@maven//:androidx_core_core",
-        "@paid_maven//:androidx_constraintlayout_constraintlayout",
     ],
 )
 
@@ -124,9 +124,9 @@ android_library(
     deps = [
         "//:parcelize",
         "//flavors/sample-library-full",
-        "@free_maven//:androidx_constraintlayout_constraintlayout",
         "@maven//:androidx_appcompat_appcompat",
         "@maven//:androidx_compose_ui_ui",
+        "@maven//:androidx_constraintlayout_constraintlayout",
         "@maven//:androidx_constraintlayout_constraintlayout_core",
         "@maven//:androidx_core_core",
     ],
@@ -168,8 +168,8 @@ android_library(
         "//flavors/sample-library-full",
         "@maven//:androidx_appcompat_appcompat",
         "@maven//:androidx_compose_ui_ui",
+        "@maven//:androidx_constraintlayout_constraintlayout",
         "@maven//:androidx_constraintlayout_constraintlayout_core",
         "@maven//:androidx_core_core",
-        "@paid_maven//:androidx_constraintlayout_constraintlayout",
     ],
 )

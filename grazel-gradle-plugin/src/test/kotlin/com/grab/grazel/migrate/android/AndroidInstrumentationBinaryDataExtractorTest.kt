@@ -18,17 +18,23 @@ package com.grab.grazel.migrate.android
 
 import com.android.build.gradle.AppExtension
 import com.google.common.truth.Truth
+import com.grab.grazel.GrazelExtension
 import com.grab.grazel.GrazelPluginTest
 import com.grab.grazel.buildProject
 import com.grab.grazel.gradle.ANDROID_APPLICATION_PLUGIN
 import com.grab.grazel.gradle.KOTLIN_ANDROID_PLUGIN
+import com.grab.grazel.gradle.dependencies.DefaultDependencyResolutionService
+import com.grab.grazel.gradle.dependencies.model.ResolvedDependency
+import com.grab.grazel.gradle.dependencies.model.WorkspaceDependencies
 import com.grab.grazel.gradle.variant.MatchedVariant
 import com.grab.grazel.util.addGrazelExtension
 import com.grab.grazel.util.createGrazelComponent
 import com.grab.grazel.util.initDependencyGraphsForTest
 import com.grab.grazel.util.doEvaluate
 import org.gradle.api.Project
+import org.gradle.api.provider.Provider
 import org.gradle.kotlin.dsl.configure
+import org.gradle.kotlin.dsl.dependencies
 import org.gradle.kotlin.dsl.the
 import org.junit.Before
 import org.junit.Rule
@@ -44,6 +50,7 @@ class AndroidInstrumentationBinaryDataExtractorTest : GrazelPluginTest() {
     private lateinit var androidBinaryDir: File
 
     private lateinit var androidInstrumentationBinaryDataExtractor: AndroidInstrumentationBinaryDataExtractor
+    private lateinit var dependencyResolutionService: Provider<DefaultDependencyResolutionService>
 
     @get:Rule
     val temporaryFolder = TemporaryFolder()
@@ -56,6 +63,7 @@ class AndroidInstrumentationBinaryDataExtractorTest : GrazelPluginTest() {
         androidInstrumentationBinaryDataExtractor = grazelComponent
             .androidInstrumentationBinaryDataExtractor()
             .get()
+        dependencyResolutionService = grazelComponent.dependencyResolutionService()
     }
 
     @Test
@@ -97,6 +105,54 @@ class AndroidInstrumentationBinaryDataExtractorTest : GrazelPluginTest() {
             "com.example.androidlibrary",
             androidInstrumentationBinaryData.customPackage,
             "Package name does not have test suffix"
+        )
+    }
+
+    @Test
+    fun `extract includes transitive reduction tags for android instrumentation binary`() {
+        androidBinary.rootProject.the<GrazelExtension>()
+            .rules.kotlin.enabledTransitiveReduction = true
+        androidBinary.dependencies {
+            add("androidTestImplementation", "com.example:runner:1.0")
+        }
+        dependencyResolutionService.get().apply {
+            populateMavenStore(
+                WorkspaceDependencies(
+                    variantDeps = mapOf(
+                        "androidTest" to listOf(
+                            ResolvedDependency.fromId(
+                                "com.example:runner:1.0",
+                                "androidTest"
+                            )
+                        )
+                    )
+                )
+            )
+            populateTransitiveDependenciesStore(
+                WorkspaceDependencies(
+                    variantDeps = emptyMap(),
+                    transitiveClasspath = mapOf(
+                        "com.example:runner" to setOf(
+                            "com.example:runner-child",
+                            "com.example:runner-grandchild"
+                        )
+                    )
+                )
+            )
+        }
+        androidBinary.doEvaluate()
+
+        val androidInstrumentationBinaryData = androidInstrumentationBinaryDataExtractor.extract(
+            project = androidBinary,
+            matchedVariant = debugAndroidTestVariant(androidBinary),
+            sourceSetType = SourceSetType.JAVA_KOTLIN,
+        )
+
+        Truth.assertThat(androidInstrumentationBinaryData.tags).containsAtLeast(
+            "@maven//:com_example_runner",
+            "@maven//:com_example_runner_child",
+            "@maven//:com_example_runner_grandchild",
+            "@self//${androidInstrumentationBinaryData.name}"
         )
     }
 

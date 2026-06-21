@@ -19,9 +19,10 @@ package com.grab.grazel.tasks.internal
 import com.grab.grazel.gradle.MigrationChecker
 import com.grab.grazel.gradle.dependencies.DeclaredDependencyMetadataCollector
 import com.grab.grazel.gradle.variant.VariantBuilder
+import com.grab.grazel.util.Json
 import com.grab.grazel.util.logHeap
-import com.grab.grazel.util.writeJson
 import dagger.Lazy
+import kotlinx.serialization.encodeToString
 import org.gradle.api.DefaultTask
 import org.gradle.api.Project
 import org.gradle.api.file.ConfigurableFileCollection
@@ -29,8 +30,8 @@ import org.gradle.api.file.ConfigurableFileTree
 import org.gradle.api.file.RegularFileProperty
 import org.gradle.api.provider.Property
 import org.gradle.api.tasks.CacheableTask
+import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.InputFiles
-import org.gradle.api.tasks.Internal
 import org.gradle.api.tasks.OutputFile
 import org.gradle.api.tasks.PathSensitive
 import org.gradle.api.tasks.PathSensitivity
@@ -44,11 +45,8 @@ internal abstract class CollectDeclaredDependencyMetadataTask : DefaultTask() {
     @get:PathSensitive(PathSensitivity.RELATIVE)
     abstract val dependencyDeclarationFiles: ConfigurableFileCollection
 
-    @get:Internal
-    abstract val migrationCheckerProvider: Property<MigrationChecker>
-
-    @get:Internal
-    abstract val variantBuilderProvider: Property<VariantBuilder>
+    @get:Input
+    abstract val declaredDependencyMetadataJson: Property<String>
 
     @get:OutputFile
     abstract val declaredDependencyMetadata: RegularFileProperty
@@ -61,23 +59,10 @@ internal abstract class CollectDeclaredDependencyMetadataTask : DefaultTask() {
     @TaskAction
     fun action() {
         logger.logHeap("CollectDeclaredDependencyMetadata:start")
-        val migrationChecker = migrationCheckerProvider.get()
-        val variantBuilder = variantBuilderProvider.get()
-        val migratableProjects = project.rootProject.subprojects
-            .filter { subproject -> migrationChecker.canMigrate(subproject) }
-        val variantsByProject = migratableProjects.associateWith { subproject ->
-            try {
-                variantBuilder.build(subproject)
-            } catch (e: Exception) {
-                logger.warn("Grazel: Failed to enumerate variants for ${subproject.path}: ${e.message}")
-                emptyList()
-            }
+        declaredDependencyMetadata.get().asFile.apply {
+            parentFile.mkdirs()
+            writeText(declaredDependencyMetadataJson.get())
         }
-        val metadata = DeclaredDependencyMetadataCollector().collect(
-            variantsByProject = variantsByProject,
-            projects = migratableProjects
-        )
-        writeJson(metadata, declaredDependencyMetadata.get())
         logger.logHeap("CollectDeclaredDependencyMetadata:done")
     }
 
@@ -89,14 +74,41 @@ internal abstract class CollectDeclaredDependencyMetadataTask : DefaultTask() {
             variantBuilderProvider: Lazy<VariantBuilder>,
             migrationChecker: Lazy<MigrationChecker>
         ): TaskProvider<CollectDeclaredDependencyMetadataTask> {
-            return rootProject.tasks.register<CollectDeclaredDependencyMetadataTask>(TASK_NAME) {
+            val taskProvider = rootProject.tasks.register<CollectDeclaredDependencyMetadataTask>(TASK_NAME) {
                 declaredDependencyMetadata.set(
                     rootProject.layout.buildDirectory.file("grazel/declared-dependency-metadata.json")
                 )
                 dependencyDeclarationFiles.from(dependencyDeclarationFileTree(rootProject))
-                this.migrationCheckerProvider.set(migrationChecker.get())
-                this.variantBuilderProvider.set(variantBuilderProvider.get())
             }
+
+            rootProject.gradle.projectsEvaluated {
+                taskProvider.configure {
+                    val migrationCheckerInstance = migrationChecker.get()
+                    val variantBuilder = variantBuilderProvider.get()
+                    val migratableProjects = rootProject.subprojects
+                        .filter { subproject -> migrationCheckerInstance.canMigrate(subproject) }
+                    val variantsByProject = migratableProjects.associateWith { subproject ->
+                        try {
+                            variantBuilder.build(subproject)
+                        } catch (e: Exception) {
+                            rootProject.logger.warn(
+                                "Grazel: Failed to enumerate variants for ${subproject.path}: ${e.message}"
+                            )
+                            emptyList()
+                        }
+                    }
+                    declaredDependencyMetadataJson.set(
+                        Json.encodeToString(
+                            DeclaredDependencyMetadataCollector().collect(
+                                variantsByProject = variantsByProject,
+                                projects = migratableProjects
+                            )
+                        )
+                    )
+                }
+            }
+
+            return taskProvider
         }
 
         internal fun dependencyDeclarationFileTree(rootProject: Project): ConfigurableFileTree =

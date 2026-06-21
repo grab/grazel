@@ -17,6 +17,7 @@
 package com.grab.grazel.tasks.internal
 
 import com.android.build.gradle.api.BaseVariant
+import com.android.builder.model.BuildType
 import com.grab.grazel.gradle.MigrationChecker
 import com.grab.grazel.gradle.dependencies.AggregatedDependencyRootKind
 import com.grab.grazel.gradle.dependencies.AggregatedDependencyRootMetadata
@@ -27,7 +28,6 @@ import com.grab.grazel.gradle.variant.TEST_VARIANT
 import com.grab.grazel.gradle.variant.Variant
 import com.grab.grazel.gradle.variant.VariantBuilder
 import com.grab.grazel.gradle.variant.VariantType
-import com.grab.grazel.gradle.variant.extendsOnlyFromDefaultVariants
 import com.grab.grazel.gradle.variant.isBase
 import com.grab.grazel.util.Json
 import dagger.Lazy
@@ -53,8 +53,9 @@ internal object WorkspaceDependencyInputsRegistrar {
             rootProject = rootProject,
             migrationChecker = migrationChecker
         )
+        val resolveWorkspaceDependenciesTask = ResolveWorkspaceDependenciesTask.register(rootProject)
 
-        computeTask.configure {
+        resolveWorkspaceDependenciesTask.configure {
             declaredDependencyMetadata.set(
                 declaredDependencyMetadataTask.flatMap { it.declaredDependencyMetadata }
             )
@@ -64,9 +65,15 @@ internal object WorkspaceDependencyInputsRegistrar {
             dependsOn(declaredDependencyMetadataTask)
             dependsOn(kspProcessorDependenciesTask)
         }
+        computeTask.configure {
+            workspaceDependencyResults.set(
+                resolveWorkspaceDependenciesTask.flatMap { it.workspaceDependencyResults }
+            )
+            dependsOn(resolveWorkspaceDependenciesTask)
+        }
 
-        rootProject.afterEvaluate {
-            computeTask.configure {
+        rootProject.gradle.projectsEvaluated {
+            resolveWorkspaceDependenciesTask.configure {
                 wireRootComponents(
                     rootProject = rootProject,
                     variantBuilder = variantBuilderProvider.get(),
@@ -76,7 +83,7 @@ internal object WorkspaceDependencyInputsRegistrar {
         }
     }
 
-    private fun ComputeWorkspaceDependenciesTask.wireRootComponents(
+    private fun ResolveWorkspaceDependenciesTask.wireRootComponents(
         rootProject: Project,
         variantBuilder: VariantBuilder,
         migrationChecker: MigrationChecker
@@ -105,7 +112,7 @@ internal object WorkspaceDependencyInputsRegistrar {
             variants
                 .filter { variant ->
                     variant.variantType == VariantType.AndroidBuild &&
-                        (variant.isBase || variant.extendsOnlyFromDefaultVariants)
+                        variant.shouldResolveMainHierarchyRoot
                 }
                 .forEach { variant ->
                     val targetBuckets = if (standaloneTestProject) {
@@ -195,7 +202,10 @@ internal object WorkspaceDependencyInputsRegistrar {
     private val Variant<*>.isAndroidLeaf: Boolean
         get() = backingVariant is BaseVariant
 
-    private fun ComputeWorkspaceDependenciesTask.addVariantRoots(
+    private val Variant<*>.shouldResolveMainHierarchyRoot: Boolean
+        get() = isBase || backingVariant is BuildType
+
+    private fun ResolveWorkspaceDependenciesTask.addVariantRoots(
         project: Project,
         variant: Variant<*>,
         kind: AggregatedDependencyRootKind,
@@ -214,7 +224,7 @@ internal object WorkspaceDependencyInputsRegistrar {
         )
     }
 
-    private fun ComputeWorkspaceDependenciesTask.addNamedRoots(
+    private fun ResolveWorkspaceDependenciesTask.addNamedRoots(
         project: Project,
         kind: AggregatedDependencyRootKind,
         bucketName: String?,
@@ -237,7 +247,7 @@ internal object WorkspaceDependencyInputsRegistrar {
         )
     }
 
-    private fun ComputeWorkspaceDependenciesTask.addRoots(
+    private fun ResolveWorkspaceDependenciesTask.addRoots(
         project: Project,
         kind: AggregatedDependencyRootKind,
         bucketName: String?,
@@ -268,7 +278,7 @@ internal object WorkspaceDependencyInputsRegistrar {
         )
     }
 
-    private fun ComputeWorkspaceDependenciesTask.addRoot(
+    private fun ResolveWorkspaceDependenciesTask.addRoot(
         project: Project,
         kind: AggregatedDependencyRootKind,
         bucketName: String?,

@@ -31,6 +31,7 @@ import com.grab.grazel.gradle.variant.AndroidVariantDataSource
 import com.grab.grazel.gradle.variant.MatchedVariant
 import com.grab.grazel.gradle.variant.getMigratableBuildVariants
 import com.grab.grazel.gradle.variant.nameSuffix
+import com.grab.grazel.migrate.dependencies.calculateDirectDependencyTags
 import com.grab.grazel.util.GradleProvider
 import org.gradle.api.Project
 import org.gradle.kotlin.dsl.getByType
@@ -76,7 +77,8 @@ internal class DefaultAndroidInstrumentationBinaryDataExtractor
             } +
             dependenciesDataSource.collectMavenDeps(
                 project,
-                variantKey
+                variantKey,
+                preferredVariantNames = listOf(matchedVariant.variantName)
             ) +
             BazelDependency.ProjectDependency(
                 prefix = "lib_",
@@ -135,6 +137,16 @@ internal class DefaultAndroidInstrumentationBinaryDataExtractor
 
         // TODO: this is a workaround and should be removed after bazel 8 compatibility
         val minSdkVersion = if (grazelExtension.experiments.minSdkVersionWorkaround.get()) 0 else null
+        val tags = if (grazelExtension.rules.kotlin.enabledTransitiveReduction) {
+            val transitiveMavenDeps = dependenciesDataSource.collectTransitiveMavenDeps(
+                project = project,
+                variantKey = VariantGraphKey.from(project, matchedVariant, VariantType.AndroidTest)
+            )
+            calculateDirectDependencyTags(
+                self = "${name}${matchedVariant.nameSuffix}-android-test",
+                deps = deps + transitiveMavenDeps
+            )
+        } else emptyList()
 
         return AndroidInstrumentationBinaryData(
             name = "${name}${matchedVariant.nameSuffix}-android-test",
@@ -152,6 +164,7 @@ internal class DefaultAndroidInstrumentationBinaryDataExtractor
             srcs = srcs,
             testInstrumentationRunner = testInstrumentationRunner,
             manifestValues = manifestValues,
+            tags = tags.sorted(),
             compose = hasCompose,
             minSdkVersion = minSdkVersion,
         )

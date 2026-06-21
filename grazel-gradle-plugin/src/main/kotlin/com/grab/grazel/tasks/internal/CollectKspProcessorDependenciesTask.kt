@@ -32,14 +32,15 @@ import org.gradle.api.Project
 import org.gradle.api.artifacts.Configuration
 import org.gradle.api.artifacts.ExternalDependency
 import org.gradle.api.artifacts.component.ModuleComponentIdentifier
+import org.gradle.api.artifacts.result.ResolvedComponentResult
 import org.gradle.api.file.ConfigurableFileCollection
 import org.gradle.api.file.RegularFileProperty
 import org.gradle.api.provider.ListProperty
 import org.gradle.api.provider.MapProperty
+import org.gradle.api.provider.SetProperty
 import org.gradle.api.tasks.CacheableTask
 import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.InputFiles
-import org.gradle.api.tasks.Internal
 import org.gradle.api.tasks.OutputFile
 import org.gradle.api.tasks.PathSensitive
 import org.gradle.api.tasks.PathSensitivity
@@ -52,14 +53,17 @@ import java.util.TreeSet
 @CacheableTask
 internal abstract class CollectKspProcessorDependenciesTask : DefaultTask() {
 
-    @get:Internal
-    abstract val kspConfigurations: ListProperty<Configuration>
+    @get:Input
+    abstract val kspRootComponents: ListProperty<ResolvedComponentResult>
 
     @get:Input
-    abstract val kspDirectDependencies: MapProperty</*shortId*/ String, /*declaration*/ String>
+    abstract val kspDirectDependencies: SetProperty</*shortId*/ String>
+
+    @get:Input
+    abstract val kspArtifactMapping: MapProperty</*shortId*/ String, /*file path*/ String>
 
     @get:InputFiles
-    @get:PathSensitive(PathSensitivity.NAME_ONLY)
+    @get:PathSensitive(PathSensitivity.ABSOLUTE)
     abstract val kspClasspathFiles: ConfigurableFileCollection
 
     @get:OutputFile
@@ -73,33 +77,13 @@ internal abstract class CollectKspProcessorDependenciesTask : DefaultTask() {
     @TaskAction
     fun action() {
         val directDependencies = kspDirectDependencies.get()
-        val configurations = kspConfigurations.get()
-        val artifactMapping = configurations
-            .flatMap { configuration ->
-                configuration.incoming
-                    .artifactView {
-                        isLenient = true
-                        componentFilter { id -> id is ModuleComponentIdentifier }
-                    }
-                    .artifacts
-                    .mapNotNull { artifact ->
-                        val id = artifact.id.componentIdentifier as? ModuleComponentIdentifier
-                            ?: return@mapNotNull null
-                        val shortId = "${id.group}:${id.module}"
-                        if (shortId in directDependencies) {
-                            shortId to artifact.file.absolutePath
-                        } else null
-                    }
-            }
-            .associateTo(TreeMap()) { (shortId, fileName) -> shortId to fileName }
         val processorClassMap = KspProcessorClassExtractor.extractProcessorClasses(
             kspClasspathFiles.files,
-            artifactMapping
+            kspArtifactMapping.get()
         )
-        val resolvedKspDependencies = configurations
+        val resolvedKspDependencies = kspRootComponents.get()
             .asSequence()
-            .flatMap { configuration ->
-                val root = configuration.incoming.resolutionResult.rootComponent.get()
+            .flatMap { root ->
                 ResolvedComponentsVisitor().visit(
                     root = root,
                     logger = logger::info
@@ -140,7 +124,6 @@ internal abstract class CollectKspProcessorDependenciesTask : DefaultTask() {
             ),
             kspDependencies.get()
         )
-        kspConfigurations.empty()
     }
 
     companion object {
@@ -152,8 +135,9 @@ internal abstract class CollectKspProcessorDependenciesTask : DefaultTask() {
         ): TaskProvider<CollectKspProcessorDependenciesTask> {
             val taskProvider = rootProject.tasks
                 .register<CollectKspProcessorDependenciesTask>(TASK_NAME) {
-                    kspConfigurations.convention(emptyList())
-                    kspDirectDependencies.convention(emptyMap())
+                    kspRootComponents.convention(emptyList())
+                    kspDirectDependencies.convention(emptySet())
+                    kspArtifactMapping.convention(emptyMap())
                     kspDependencies.set(rootProject.layout.buildDirectory.file("grazel/ksp-dependencies.json"))
                 }
 
@@ -182,8 +166,7 @@ internal abstract class CollectKspProcessorDependenciesTask : DefaultTask() {
                 .flatMap { configuration -> configuration.allDependencies }
                 .filterIsInstance<ExternalDependency>()
                 .filter { dependency -> !dependency.group.isNullOrBlank() }
-                .map { dependency -> "${dependency.group}:${dependency.name}" }
-                .toSet()
+                .mapTo(TreeSet()) { dependency -> "${dependency.group}:${dependency.name}" }
             if (directDepShortIds.isEmpty()) return
 
             val kspProcessorClasspath = project.configurations.maybeCreate("grazelKspProcessorClasspath")
@@ -196,21 +179,33 @@ internal abstract class CollectKspProcessorDependenciesTask : DefaultTask() {
                 }
             }
 
-            kspDirectDependencies.putAll(
+            kspDirectDependencies.addAll(
                 project.provider {
-                    kspDeclarationConfigs
-                        .asSequence()
-                        .flatMap { configuration -> configuration.allDependencies }
-                        .filterIsInstance<ExternalDependency>()
-                        .filter { dependency -> !dependency.group.isNullOrBlank() }
-                        .associateTo(TreeMap()) { dependency ->
-                            val shortId = "${dependency.group}:${dependency.name}"
-                            shortId to "$shortId:${dependency.version.orEmpty()}"
-                        }
+                    directDepShortIds
                 }
             )
 
-            kspConfigurations.add(kspProcessorClasspath)
+            kspArtifactMapping.putAll(
+                project.provider {
+                    kspProcessorClasspath.incoming
+                        .artifactView {
+                            isLenient = true
+                            componentFilter { id -> id is ModuleComponentIdentifier }
+                        }
+                        .artifacts
+                        .mapNotNull { artifact ->
+                            val id = artifact.id.componentIdentifier as? ModuleComponentIdentifier
+                                ?: return@mapNotNull null
+                            val shortId = "${id.group}:${id.module}"
+                            if (shortId in directDepShortIds) {
+                                shortId to artifact.file.absolutePath
+                            } else null
+                        }
+                        .associateTo(TreeMap()) { (shortId, filePath) -> shortId to filePath }
+                }
+            )
+
+            kspRootComponents.add(kspProcessorClasspath.incoming.resolutionResult.rootComponent)
             kspClasspathFiles.from(kspProcessorClasspath)
         }
 

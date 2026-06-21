@@ -49,15 +49,23 @@ constructor(
      * See [Task Graph](https://grab.github.io/Grazel/gradle_tasks/#task-graph)
      */
     fun configTasks() {
+        grazelComponent.dependencyGraphsService().get().configure(
+            rootProject = rootProject,
+            dependenciesDataSource = grazelComponent.dependenciesDataSource().get(),
+            configurationDataSource = grazelComponent.configurationDataSource().get(),
+            androidVariantDataSource = grazelComponent.androidVariantDataSource().get()
+        )
+
         val computeWorkspaceDependenciesTask = ComputeWorkspaceDependenciesTask.register(
             rootProject = rootProject,
-            dependencyResolutionService = grazelComponent.dependencyResolutionService(),
-            dependencyGraphsService = grazelComponent.dependencyGraphsService(),
+            dependencyResolutionService = grazelComponent.dependencyResolutionService()
+        )
+
+        WorkspaceDependencyInputsRegistrar.register(
+            rootProject = rootProject,
             variantBuilderProvider = grazelComponent.variantBuilder(),
             migrationChecker = grazelComponent.migrationChecker(),
-            dependenciesDataSource = grazelComponent.dependenciesDataSource(),
-            configurationDataSource = grazelComponent.configurationDataSource(),
-            androidVariantDataSource = grazelComponent.androidVariantDataSource()
+            computeTask = computeWorkspaceDependenciesTask
         )
 
         // Analyze variant compression opportunities in topological order
@@ -68,21 +76,52 @@ constructor(
             workspaceDependencies.set(computeWorkspaceDependenciesTask.flatMap { it.workspaceDependencies })
         }
 
-        // Root bazel file generation task that should run at the start of migration
+        val dataBindingMetaDataTask = AndroidDatabindingMetaDataTask.register(
+            rootProject,
+            grazelComponent
+        ) {
+            dependsOn(computeWorkspaceDependenciesTask)
+        }
+
+        val generateDownloaderConfigTask = GenerateDownloaderConfigTask.register(
+            rootProject,
+            grazelComponent
+        )
+
+        // Post script generate task must run after scripts are generated
+        val postScriptGenerateTask = PostScriptGenerateTask.register(rootProject, grazelComponent)
+
+        val projectGenerateBazelScriptsTasks = rootProject.subprojects.map { project ->
+            val generateBazelScriptsTask = GenerateBazelScriptsTask.register(
+                project,
+                grazelComponent
+            ) {
+                dependencyResolutionService.set(grazelComponent.dependencyResolutionService())
+                workspaceDependencies.set(computeWorkspaceDependenciesTask.flatMap { it.workspaceDependencies })
+                variantCompressionResults.set(analyzeVariantCompressionTask.flatMap { it.compressionResultsFile })
+            }
+
+            // Post script generate task must run after project level tasks are generated
+            postScriptGenerateTask.dependsOn(generateBazelScriptsTask)
+
+            project to generateBazelScriptsTask
+        }
+
+        // Root bazel file generation uses project repo manifests to materialize exactly
+        // the Maven repos referenced by generated targets.
         val rootGenerateBazelScriptsTasks = GenerateRootBazelScriptsTask.register(
             rootProject,
             grazelComponent
         ) {
             workspaceDependencies.set(computeWorkspaceDependenciesTask.flatMap { it.workspaceDependencies })
             dependencyResolutionService.set(grazelComponent.dependencyResolutionService())
+            generatedProjectMavenRepoManifests.from(
+                projectGenerateBazelScriptsTasks.map { (_, generateTask) ->
+                    generateTask.flatMap { it.referencedMavenRepos }
+                }
+            )
             dependsOn(analyzeVariantCompressionTask)
-        }
-
-        val dataBindingMetaDataTask = AndroidDatabindingMetaDataTask.register(
-            rootProject,
-            grazelComponent
-        ) {
-            dependsOn(computeWorkspaceDependenciesTask)
+            dependsOn(projectGenerateBazelScriptsTasks.map { (_, generateTask) -> generateTask })
         }
 
         val generateBuildifierScriptTask = GenerateBuildifierScriptTask.register(
@@ -112,35 +151,14 @@ constructor(
             workspaceDependencies.set(computeWorkspaceDependenciesTask.flatMap { it.workspaceDependencies })
         }
 
-        val generateDownloaderConfigTask = GenerateDownloaderConfigTask.register(
-            rootProject,
-            grazelComponent
-        )
-
-        // Post script generate task must run after scripts are generated
-        val postScriptGenerateTask = PostScriptGenerateTask.register(rootProject, grazelComponent)
-
         // Project level Bazel file formatting tasks
-        val projectBazelFormattingTasks = rootProject.subprojects.map { project ->
-            // Project level Bazel generation tasks
-            val generateBazelScriptsTasks = GenerateBazelScriptsTask.register(
-                project,
-                grazelComponent
-            ) {
-                dependencyResolutionService.set(grazelComponent.dependencyResolutionService())
-                workspaceDependencies.set(computeWorkspaceDependenciesTask.flatMap { it.workspaceDependencies })
-                variantCompressionResults.set(analyzeVariantCompressionTask.flatMap { it.compressionResultsFile })
-            }
-
-            // Post script generate task must run after project level tasks are generated
-            postScriptGenerateTask.dependsOn(generateBazelScriptsTasks)
-
+        val projectBazelFormattingTasks = projectGenerateBazelScriptsTasks.map { (project, generateBazelScriptsTask) ->
             // Project level Bazel formatting depends on generation tasks
             FormatBazelFileTask.register(
                 project = project,
                 buildifierScriptProvider = buildifierScriptProvider,
             ) {
-                inputFile.set(generateBazelScriptsTasks.flatMap { it.buildBazel })
+                inputFile.set(generateBazelScriptsTask.flatMap { it.buildBazel })
             }
         }
 

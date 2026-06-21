@@ -25,9 +25,15 @@ import org.gradle.kotlin.dsl.property
  */
 data class ExperimentsExtension(private val objects: ObjectFactory) {
 
+    /**
+     * Kept for DSL compatibility with the previous per-variant resolver.
+     *
+     * The workspace resolver now uses a single root classpath pipeline, so this flag no longer
+     * changes task dependencies or resolution parallelism.
+     */
     @Deprecated(
-        message = "No-op since dependency resolution is now always aggregated and no longer " +
-            "uses the legacy per-project/per-variant fanout."
+        message = "No longer used by the workspace dependency resolver.",
+        level = DeprecationLevel.WARNING
     )
     val limitDependencyResolutionParallelism: Property<Boolean> = objects
         .property<Boolean>()

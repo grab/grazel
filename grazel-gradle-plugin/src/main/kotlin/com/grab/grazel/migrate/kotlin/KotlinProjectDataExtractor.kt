@@ -98,7 +98,7 @@ internal class DefaultKotlinProjectDataExtractor
             name = name,
             srcs = srcs,
             res = resources,
-            deps = deps.replaceAutoService(),
+            deps = deps,
             tags = tags,
             lintConfigData = lintConfigs(project),
             plugins = plugins
@@ -125,16 +125,6 @@ internal class DefaultKotlinProjectDataExtractor
             .filter { !it.name.lowercase().contains("test") } // TODO Consider enabling later.
             .flatMap(sourceSetChoosers)
         return filterSourceSetPaths(dirs, sourceSetType.patterns)
-    }
-}
-
-private fun List<BazelDependency>.replaceAutoService(): List<BazelDependency> {
-    return map {
-        if (it is BazelDependency.MavenDependency && it.toString() == "@maven//:com_google_auto_service_auto_service") {
-            BazelDependency.StringDependency("@grab_bazel_common//third_party/auto-service")
-        } else {
-            it
-        }
     }
 }
 

@@ -23,6 +23,7 @@ import com.grab.grazel.bazel.rules.androidLibrary
 import com.grab.grazel.bazel.starlark.BazelDependency
 import com.grab.grazel.bazel.starlark.StatementsBuilder
 import com.grab.grazel.migrate.BazelBuildTarget
+import com.grab.grazel.migrate.BazelPluginTarget
 
 internal interface AndroidTarget : BazelBuildTarget {
     val enableDataBinding: Boolean
@@ -56,8 +57,8 @@ internal data class AndroidLibraryTarget(
     override val assetsDir: String? = null,
     override val sortKey: String = "0$name",
     override val lintConfigData: LintConfigData? = null,
-    val plugins: List<BazelDependency> = emptyList(),
-) : AndroidTarget {
+    override val plugins: List<BazelDependency> = emptyList(),
+) : AndroidTarget, BazelPluginTarget {
     override fun statements(builder: StatementsBuilder) = builder {
         androidLibrary(
             name = name,
@@ -108,8 +109,8 @@ internal data class AndroidBinaryTarget(
     val customPackage: String,
     val incrementalDexing: Boolean = false,
     val minSdkVersion: Int? = null,
-    val plugins: List<BazelDependency> = emptyList(),
-) : AndroidTarget {
+    override val plugins: List<BazelDependency> = emptyList(),
+) : AndroidTarget, BazelPluginTarget {
     override fun statements(builder: StatementsBuilder) = builder {
         androidBinary(
             name = name,

@@ -83,6 +83,7 @@ internal class AndroidInstrumentationBinaryTargetBuilder
         resourceStripPrefix = resourceStripPrefix,
         resourceFiles = resourceFiles,
         srcs = srcs,
+        tags = tags,
         testInstrumentationRunner = testInstrumentationRunner,
         compose = compose,
         minSdkVersion = minSdkVersion,

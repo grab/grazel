@@ -39,6 +39,9 @@ interface BazelBuildTarget : BazelTarget {
     val tags: List<String>
 }
 
+interface BazelPluginTarget {
+    val plugins: List<BazelDependency>
+}
 
 interface TargetBuilder {
     fun build(project: Project): List<BazelTarget>

@@ -17,6 +17,7 @@
 package com.grab.grazel.gradle.dependencies
 
 import com.grab.grazel.bazel.starlark.BazelDependency.MavenDependency
+import com.grab.grazel.gradle.dependencies.model.ExcludeRule
 import com.grab.grazel.gradle.dependencies.model.OverrideTarget
 import com.grab.grazel.gradle.dependencies.model.ResolveDependenciesResult
 import com.grab.grazel.gradle.dependencies.model.ResolveDependenciesResult.Companion.Scope.COMPILE
@@ -47,7 +48,7 @@ class ComputeWorkspaceDependenciesTest {
     }
 
     @Test
-    fun `keeps child bucket dependency when same artifact has different repository than default`() {
+    fun `removes child bucket dependency when only repository differs from default`() {
         val defaultDependency = dependency("com.example:library:1.0", "maven")
         val debugDependency = dependency("com.example:library:1.0", "debug_maven")
 
@@ -59,10 +60,47 @@ class ComputeWorkspaceDependenciesTest {
         )
 
         val defaultDeps = workspaceDependencies.variantDeps.getValue("default")
-        val debugDeps = workspaceDependencies.variantDeps.getValue("debug")
 
         assertEquals(listOf("maven"), defaultDeps.map { it.repository })
-        assertEquals(listOf("debug_maven"), debugDeps.map { it.repository })
+        assertEquals(emptyList<ResolvedDependency>(), workspaceDependencies.variantDeps["debug"].orEmpty())
+    }
+
+    @Test
+    fun `keeps child declared direct dependency when default resolved classpath also contains it`() {
+        val defaultDependency = dependency("com.example:library:1.0", "maven")
+        val debugDependency = dependency("com.example:library:1.0", "Declared")
+
+        val workspaceDependencies = ComputeWorkspaceDependencies().computeFromResults(
+            listOf(
+                result("default", defaultDependency),
+                result("debug", debugDependency)
+            )
+        )
+
+        val defaultDeps = workspaceDependencies.variantDeps.getValue("default")
+        val debugDeps = workspaceDependencies.variantDeps.getValue("debug")
+
+        assertEquals(listOf("com.example:library:1.0"), defaultDeps.map { it.id })
+        assertEquals(listOf("com.example:library:1.0"), debugDeps.map { it.id })
+        assertEquals(listOf("Declared"), debugDeps.map { it.repository })
+    }
+
+    @Test
+    fun `removes child declared direct dependency when default declared bucket already owns it`() {
+        val defaultDependency = dependency("com.example:library:1.0", "Declared")
+        val debugDependency = dependency("com.example:library:1.0", "Declared")
+
+        val workspaceDependencies = ComputeWorkspaceDependencies().computeFromResults(
+            listOf(
+                result("default", defaultDependency),
+                result("debug", debugDependency)
+            )
+        )
+
+        val defaultDeps = workspaceDependencies.variantDeps.getValue("default")
+
+        assertEquals(listOf("com.example:library:1.0"), defaultDeps.map { it.id })
+        assertEquals(emptyList<ResolvedDependency>(), workspaceDependencies.variantDeps["debug"].orEmpty())
     }
 
     @Test
@@ -130,7 +168,98 @@ class ComputeWorkspaceDependenciesTest {
     }
 
     @Test
-    fun `removes override carrier after preserving child transitive closure`() {
+    fun `removes child direct dependency covered by default even when jetifier source differs`() {
+        val defaultDependency = dependency("androidx.test.espresso:espresso-core:3.5.1", "Google")
+            .copy(jetifierSource = "com.android.support.test.espresso:espresso-core")
+        val androidTestDependency = dependency("androidx.test.espresso:espresso-core:3.5.1", "Google")
+
+        val workspaceDependencies = ComputeWorkspaceDependencies().computeFromResults(
+            listOf(
+                result("default", defaultDependency),
+                result("androidTest", androidTestDependency)
+            )
+        )
+
+        assertEquals(
+            listOf("androidx.test.espresso:espresso-core:3.5.1"),
+            workspaceDependencies.variantDeps.getValue("default").map { it.id }
+        )
+        assertEquals(
+            emptyList<ResolvedDependency>(),
+            workspaceDependencies.variantDeps["androidTest"].orEmpty()
+        )
+    }
+
+    @Test
+    fun `keeps child direct dependency with different excludes after preserving child transitive closure`() {
+        val defaultDependency = dependency("com.example:root:1.0", "maven")
+        val debugDependency = dependency(
+            id = "com.example:root:1.0",
+            repository = "debug_maven",
+            dependencies = setOf("com.example:debug-transitive:1.0:maven:false:null")
+        ).copy(
+            excludeRules = setOf(ExcludeRule("com.example", "excluded-from-debug"))
+        )
+
+        val workspaceDependencies = ComputeWorkspaceDependencies().computeFromResults(
+            listOf(
+                result("default", defaultDependency),
+                result("debug", debugDependency)
+            )
+        )
+
+        val debugDeps = workspaceDependencies.variantDeps.getValue("debug")
+
+        assertEquals(
+            listOf("com.example:root:1.0"),
+            workspaceDependencies.variantDeps.getValue("default").map { it.id }
+        )
+        assertEquals(
+            listOf("com.example:debug-transitive:1.0", "com.example:root:1.0"),
+            debugDeps.map { it.id }
+        )
+        assertEquals(
+            setOf(ExcludeRule("com.example", "excluded-from-debug")),
+            debugDeps.single { it.shortId == "com.example:root" }.excludeRules
+        )
+        assertEquals(
+            setOf("com.example:debug-transitive"),
+            workspaceDependencies.transitiveClasspath.getValue("com.example:root")
+        )
+    }
+
+    @Test
+    fun `removes child direct dependency that already resolves through default override target`() {
+        val defaultDependency = dependency("androidx.test:runner:1.5.2", "Google")
+            .copy(jetifierSource = "com.android.support.test:runner")
+        val androidTestDependency = dependency("androidx.test:runner:1.5.2", "Google")
+            .copy(
+                jetifierSource = "com.android.support.test:runner",
+                overrideTarget = OverrideTarget(
+                    artifactShortId = "androidx.test:runner",
+                    label = MavenDependency(group = "androidx.test", name = "runner")
+                )
+            )
+
+        val workspaceDependencies = ComputeWorkspaceDependencies().computeFromResults(
+            listOf(
+                result("default", defaultDependency),
+                result("androidTest", androidTestDependency)
+            )
+        )
+
+        assertEquals(
+            listOf("androidx.test:runner:1.5.2"),
+            workspaceDependencies.variantDeps.getValue("default").map { it.id }
+        )
+        assertEquals(
+            emptyList<ResolvedDependency>(),
+            workspaceDependencies.variantDeps["androidTest"].orEmpty()
+        )
+    }
+
+    @Test
+    fun `keeps override carrier while preserving child transitive closure`() {
         val defaultDependency = dependency("com.example:root:1.0", "maven")
         val debugDependency = dependency("com.example:library:1.0", "debug_maven")
         val flavorDependency = dependency(
@@ -158,7 +287,21 @@ class ComputeWorkspaceDependenciesTest {
 
         val freeDeps = workspaceDependencies.variantDeps.getValue("free")
 
-        assertEquals(listOf("com.example:transitive:1.0"), freeDeps.map { it.id })
+        assertEquals(
+            listOf("com.example:library:1.0", "com.example:transitive:1.0"),
+            freeDeps.map { it.id }
+        )
+        assertEquals(
+            OverrideTarget(
+                artifactShortId = "com.example:library",
+                label = MavenDependency(
+                    repo = "debug_maven",
+                    group = "com.example",
+                    name = "library"
+                )
+            ),
+            freeDeps.single { it.shortId == "com.example:library" }.overrideTarget
+        )
         assertEquals(
             setOf("com.example:transitive"),
             workspaceDependencies.transitiveClasspath.getValue("com.example:library")

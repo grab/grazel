@@ -245,7 +245,8 @@ constructor(
             .filterNot { it is BazelDependency.MavenDependency }
         val combinedDeps = (libraryDeps + dependenciesDataSource.collectMavenDeps(
             this,
-            variantKey
+            variantKey,
+            preferredVariantNames = listOf(matchedVariant.variantName)
         )).filterNot { dep ->
             dep is BazelDependency.ProjectDependency &&
                 dep.dependencyProject.path == targetResolution.targetProject.path

@@ -32,6 +32,7 @@ internal data class AndroidInstrumentationBinaryData(
     val resourceStripPrefix: String? = null,
     val srcs: List<String>,
     val testInstrumentationRunner: String? = null,
+    val tags: List<String> = emptyList(),
     val compose: Boolean = false,
     val minSdkVersion: Int? = null,
 )

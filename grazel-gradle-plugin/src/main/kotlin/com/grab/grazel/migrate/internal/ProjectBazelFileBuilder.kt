@@ -38,12 +38,18 @@ class ProjectBazelFileBuilder(
         fun create(project: Project) = ProjectBazelFileBuilder(project, targetBuilders)
     }
 
-    override fun build() = statements {
-        targetBuilders
+    fun targets(): List<BazelTarget> {
+        return targetBuilders
             .asSequence()
             .filter { it.canHandle(project) }
             .flatMap { it.build(project) }
             .sortedBy(BazelTarget::sortKey)
-            .forEach { it.statements(this) }
+            .toList()
+    }
+
+    override fun build() = build(targets())
+
+    fun build(targets: List<BazelTarget>) = statements {
+        targets.forEach { it.statements(this) }
     }
 }
