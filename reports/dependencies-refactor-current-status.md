@@ -39,6 +39,44 @@ the current evidence ledger, not a full transcript.
 - Removed wrong project-dependency Maven tag expansion from production code and tests.
 - `MavenInstallArtifactsCalculator` applies extension `overrideTargetLabels` to artifacts inherited
   from the default owner as well as artifacts rooted in the current bucket.
+- Post-baseline DAG/altitude cleanup after commit
+  `860c56905bd1929fd656a7eb53ca747411792112`:
+  - added a red/green regression that `DependencyBucketPlacementEngine` must not infer hierarchy
+    buckets absent from `extendsFrom` metadata;
+  - removed `buildType`/`productFlavors` candidate-bucket inference from placement;
+  - added a red/green regression that declared hierarchy metadata adopts the Gradle-resolved leaf
+    version by `group:name`;
+  - `AggregatedDependencyResolver` now uses `DependencyBucketPlacementPlan.leafAncestors` instead
+    of rebuilding a second ancestor graph.
+  - graph-performance guardrail: keep closure/ancestor derivation centralized, reuse precomputed
+    maps, dedupe through stable sets/maps, and avoid eager collection pipelines that repeatedly walk
+    leaves or materialize large intermediate lists.
+  - simplify/adversarial review fixes:
+    - explicit hierarchy buckets with no selected descendant leaves are not emitted;
+    - leaf buckets cover themselves, preserving explicit leaf-bucket output;
+    - globally merged leaf buckets are filtered with each project's ancestor names, so divergent
+      project topology does not cross-filter same-named leaves;
+    - final resolver output has coverage for stale declared `1.0` metadata adopting resolved `2.0`
+      while carrying excludes;
+    - selected leaf names are held as a set to avoid repeated selected-node materialization during
+      graph traversal;
+    - `mainBucketVariants()` does not attach a declared owner to a leaf unless that owner is present
+      in `extendsFrom` metadata or all of the owner's parents are present there;
+    - surviving globally merged leaf buckets adopt selected ancestor versions for the same
+      `group:name`, so a same-named leaf bucket cannot shadow an ancestor's higher Gradle-selected
+      version.
+  - checks passed:
+    `./gradlew :grazel-gradle-plugin:test --tests "com.grab.grazel.gradle.dependencies.DependencyBucketPlacementEngineTest" --console=plain`
+    and
+    `./gradlew :grazel-gradle-plugin:test --tests "com.grab.grazel.gradle.dependencies.AggregatedDependencyResolverTest" --console=plain`.
+  - broader local checks also passed:
+    `./gradlew :grazel-gradle-plugin:test --tests "com.grab.grazel.gradle.dependencies.DependencyBucketPlacementEngineTest" --tests "com.grab.grazel.gradle.variant.BucketHierarchyGraphTest" --tests "com.grab.grazel.gradle.dependencies.AggregatedDependencyResolverTest" --tests "com.grab.grazel.gradle.dependencies.ComputeWorkspaceDependenciesTest" --tests "com.grab.grazel.gradle.dependencies.DefaultDependencyResolutionServiceTest" --tests "com.grab.grazel.gradle.dependencies.ResolvedComponentsVisitorTest" --tests "com.grab.grazel.migrate.dependencies.MavenInstallArtifactsCalculatorTest" --tests "com.grab.grazel.gradle.DefaultDependenciesDataSourceTest" --tests "com.grab.grazel.migrate.android.DefaultAndroidLibraryDataExtractorTest" --tests "com.grab.grazel.migrate.android.AndroidTestTargetTest" --console=plain`,
+    `./gradlew :grazel-gradle-plugin:functionalTest --tests "com.grab.grazel.migrate.BuildVariantTest" --console=plain`,
+    `./gradlew migrateToBazel --console=plain`,
+    `reports/scripts/verify-default-task-graph.sh`,
+    `reports/scripts/verify-sample-bucket-labels.sh`, and `git diff --check`.
+- PAX app unit-test note: repeated discovery found no generated `gps-pax-debug` app unit-test target
+  under `//app:*`; the app-specific generated test targets are lint tests only.
 - Regression coverage added:
   - `MavenInstallArtifactsCalculatorTest.extension override target wins for default owner inherited artifacts`.
 - Added databinding/direct-dependency regression:
@@ -65,198 +103,68 @@ the current evidence ledger, not a full transcript.
 
 ## PAX Evidence
 
-- Recent PAX `migrateToBazel` passed:
+- Latest PAX verification after post-baseline graph/review fixes:
   - `./gradlew migrateToBazel --no-daemon --console=plain --stacktrace`
-- Current unresolved gate:
-  - command: `./bazel.sh build //app:app-gps-pax-debug.apk //app:app-gps-pax-debug-android-test.apk`
-  - failure target: `//deliveries/deliveries-menu-items:deliveries-menu-items-gps-pax-debug_kt`
-  - symptom: unresolved `androidx.annotation.VisibleForTesting` in
-    `deliveries/deliveries-menu-items/src/main/java/com/grab/pax/deliveries/menu/base/PopulatedItemsHelper.kt`
-- Current blocker is not yet proven. Earlier notes conflict about whether
-  `:deliveries:deliveries-menu-items` truly owns `androidx.annotation:annotation` for this target.
-  Verify ownership with focused diagnostics before changing Grazel or copying PAX master tags.
-- Focused ownership evidence collected on 2026-06-22:
-  - `deliveries-menu-items` source directly imports/uses `androidx.annotation.VisibleForTesting`.
-  - its `build.gradle` does not declare `Libs.supportAndroidAnnotations`,
-    `androidx.annotation:annotation`, or `annotation-experimental`.
-  - fresh `build/grazel/declared-dependency-metadata.json` shows the module's only direct Maven
-    declaration is `com.grab.logger:logsdk:1.0.0`; no annotation declaration is present.
-  - Gradle `dependencyInsight --configuration debugCompileClasspath --dependency
-    androidx.annotation:annotation` shows annotation on the compile classpath through AGP/databinding
-    and project/transitive paths, with consistent-resolution constraints selecting `1.3.0`.
-  - The module-local stale `deliveries-menu-items/build/grazel/default/dependencies.json` from
-    June 10 contains broad `logsdk` transitive closure, but it is older than the current generated
-    root workspace data and must not be used as current evidence.
-- Current interpretation: the PAX source appears to rely on an implicit transitive/AGP compile
-  classpath entry. Prefer adding an explicit PAX module dependency before broadening Grazel tags or
-  auto-injecting databinding artifacts.
-- 2026-06-22 decision: do not auto-add databinding or annotation libraries in Grazel when a module
-  has databinding/viewbinding enabled. The production filter that drops AGP/databinding internals is
-  intentional; if source imports `androidx.annotation.VisibleForTesting`, the owning module should
-  declare `androidx.annotation:annotation`.
-- Nuance for the next Grazel-side fix/test: excluding AGP/databinding internals is different from
-  dropping a dependency the user explicitly declared. Keep `androidx.databinding:*` out by default,
-  but verify whether a databinding module that explicitly declares `androidx.annotation:annotation`
-  should still emit that direct dep/tag instead of being filtered by `project.hasDatabinding`.
-- Applied PAX ownership fix:
-  `deliveries/deliveries-menu-items/build.gradle` now declares
-  `implementation Libs.supportAndroidAnnotations`.
-- Fresh PAX declared metadata after that edit shows
-  `:deliveries:deliveries-menu-items` default AndroidBuild direct deps include both
-  `androidx.annotation:annotation:1.3.0` and `com.grab.logger:logsdk:1.0.0`.
-- A first PAX `migrateToBazel` rerun after the edit was stopped because the Gradle JVM became
-  unresponsive while disk dropped to `3.7GiB` free. Ran `bazelisk clean --expunge` in PAX, which
-  recovered disk to about `37GiB`. `bazel-cache` was left in place because space was no longer low.
-- Fresh PAX `migrateToBazel` after cleanup passed:
-  - command: `./gradlew migrateToBazel --no-daemon --console=plain --stacktrace`
-  - captured log: `/tmp/pax-migrate-after-annotation.log`
-  - result: `BUILD SUCCESSFUL in 15m 8s`
-- Regenerated `deliveries/deliveries-menu-items/BUILD.bazel` now gives
-  `deliveries-menu-items-gps-pax-debug`:
-  - direct dep `@maven//:androidx_annotation_annotation`;
-  - normalized tag `@maven//:androidx_annotation_annotation`;
-  - no broad project-child Maven tag union.
-- Focused previous-failure target passed:
-  - command:
-    `./bazel.sh build //deliveries/deliveries-menu-items:deliveries-menu-items-gps-pax-debug_kt --verbose_failures`
-  - captured log: `/tmp/pax-focused-deliveries-menu-items.log`
-  - result: target built successfully in `97.815s`; `VisibleForTesting` compile error is resolved.
-- Full PAX app/android-test gate passed:
-  - command:
-    `./bazel.sh build //app:app-gps-pax-debug.apk //app:app-gps-pax-debug-android-test.apk --verbose_failures`
-  - captured log: `/tmp/pax-app-debug-and-android-test.log`
-  - result: `Build completed successfully`, `53635` total actions, elapsed `943.979s`.
-  - disk after this build: about `14GiB` free, so cleanup/resource planning is required before more
-    heavy PAX verification.
-- Fresh PAX `migrateToBazel` after the databinding filter test split passed:
-  - command: `./gradlew migrateToBazel --no-daemon --console=plain --stacktrace`
-  - result: `BUILD SUCCESSFUL in 17m 12s`; `resolveWorkspaceDependencies` and
-    `computeWorkspaceDependencies` both ran.
-- First APK rebuild after that migration failed during Bazel package loading:
-  - command:
-    `./bazel.sh build //app:app-gps-pax-debug.apk //app:app-gps-pax-debug-android-test.apk --verbose_failures`
-  - symptom: `@maven//:androidx_annotation_annotation` duplicated in generated internal
-    databinding app rules such as `lib_app-gps-pax-debug_base` `exports`,
-    `lib_app-gps-pax-debug_kt` `deps`, and `_app-gps-pax-debug_lint_sources` `deps`.
-  - root cause: PAX app generated `android_binary(... enable_data_binding = True ...)` was also
-    passed direct dep `@maven//:androidx_annotation_annotation`, while grab-bazel-common
-    `DATABINDING_DEPS` injects the same label for databinding. PAX did not declare the dep twice.
-  - fix: treat `androidx.annotation:annotation` as databinding-provided only for
-    databinding-enabled targets; keep it for non-databinding direct declarations.
-  - local proof after fix:
-    `./gradlew :grazel-gradle-plugin:test --tests "com.grab.grazel.gradle.DefaultDependenciesDataSourceTest.collectMavenDeps omits databinding provided annotation dependency for databinding modules" --tests "com.grab.grazel.gradle.DefaultDependenciesDataSourceTest.collectMavenDeps keeps explicitly declared annotation dependency for non databinding modules" --console=plain`
-    passed.
-  - broader local proof:
-    `./gradlew :grazel-gradle-plugin:test --tests "com.grab.grazel.gradle.DefaultDependenciesDataSourceTest" --console=plain`
-    passed.
-- Fresh PAX migration after the duplicate-annotation fix passed:
-  - command: `./gradlew migrateToBazel --no-daemon --console=plain --stacktrace`
-  - result: `BUILD SUCCESSFUL in 16m 57s`
-  - `resolveWorkspaceDependencies`, `computeWorkspaceDependencies`, `generateDatabindingMetaData`,
-    root script generation, formatting, and artifact pinning all ran.
-- Focused generated-app inspection after that migration:
-  - `android_binary(name = "app-gps-pax-debug")` still has `enable_data_binding = True`.
-  - a narrow awk scan found no `androidx_annotation_annotation` entry in that target's direct
-    `deps` or `tags`; the previous duplicate direct-dep failure is gone.
-- Fresh PAX debug APK + android-test APK gate passed after the duplicate-annotation fix:
-  - command:
-    `./bazel.sh build //app:app-gps-pax-debug.apk //app:app-gps-pax-debug-android-test.apk --verbose_failures`
-  - result: `Build completed successfully`, elapsed `863.996s`, `29546` total actions.
-  - `//app:lib_app-gps-pax-debug_kt` KSP/KAPT/compile and
-    `//app:app-gps-pax-debug-android-test_lib_kt` KAPT/compile both completed.
-  - rules_jvm_external still printed duplicate-version debug messages for artifacts such as
-    `androidx.annotation:annotation`, databinding artifacts, Dagger, and Kotlin artifacts. They did
-    not fail this build, but keep them in mind for a later Coursier warning/bucket cleanup audit.
-- PAX `git diff --check` passed after the generated output.
-- Bounded PAX generated target/tag audit after the passing build:
-  - `app-gps-pax-debug`: current and `HEAD` both have `deps=1446`, `tags=0`, and no
-    `androidx_annotation_annotation` direct entry; generated target keeps `enable_data_binding =
-    True`.
-  - `app-gps-pax-debug-android-test`: current `tags=1950`, split as `@direct=1334`,
-    `@maven=615`, `@self=1`, with no duplicate tags. `HEAD` had no tags block for this target.
-  - android-test `deps` count stayed at `1504`; variant Maven repo deps reduced from `HEAD`
-    (`@debug_maven 14 -> 1`, `@android_test_maven 34 -> 12`, `@test_maven 2 -> 0`).
-  - audit verdict: no obvious generated BUILD violation of the local tag contract; hard proof of
-    no parent Maven union would require resolver metadata comparison, but the generated shape is
-    target-local (`@direct`, normalized `@maven`, `@self`) and the PAX build passed.
-- Duplicate-version warning audit:
-  - PAX and local Grazel builds print rules_jvm_external duplicate-version debug messages for
-    annotation/databinding/Dagger/Kotlin families.
-  - audit found no duplicate watched artifact rows inside the generated Maven lock JSONs.
-  - evidence points to existing `WORKSPACE` composition (`DAGGER_ARTIFACTS +
-    GRAB_BAZEL_COMMON_ARTIFACTS + [...]`) and unchanged `grab_bazel_common`/Dagger references, not
-    a clear current-refactor regression.
-  - treat as non-blocking for this goal unless the merge bar expands to warning cleanup.
-- Resource cleanup after the successful PAX gate:
-  - disk dropped to about `14GiB` free during APK packaging;
-  - ran `bazelisk clean --expunge` in PAX after the build passed;
-  - disk recovered to about `30GiB` free;
-  - no PAX Bazel/Gradle processes remained afterward.
+    passed with `BUILD SUCCESSFUL in 17m 50s` (`4737` actionable tasks; `4596` executed,
+    `118` from cache, `23` up-to-date).
+  - `./bazel.sh build //app:app-gps-pax-debug.apk //app:app-gps-pax-debug-android-test.apk --verbose_failures`
+    passed with `Build completed successfully`, elapsed `169.669s`, `6009` total actions, and
+    `7153` disk cache hits.
+  - PAX `git diff --check` passed.
+  - `bazelisk query 'kind(".*test rule", //app:*)'` found only app lint tests:
+    `//app:app-gps-pax-debug.lint_test` and sibling flavor lint targets. No generated
+    `gps-pax-debug` app unit-test target exists under `//app:*`.
+- Historical PAX ownership fix:
+  - `deliveries-menu-items` used `androidx.annotation.VisibleForTesting` without declaring
+    `androidx.annotation:annotation`.
+  - PAX-side fix added `implementation Libs.supportAndroidAnnotations`.
+  - Focused target
+    `//deliveries/deliveries-menu-items:deliveries-menu-items-gps-pax-debug_kt` then passed.
+  - This was a PAX direct-dependency fix, not a Grazel tag-broadening or databinding auto-injection
+    fix.
+- Databinding decision:
+  - Do not auto-add databinding or annotation artifacts in Grazel for databinding/viewbinding
+    modules.
+  - Filter databinding-provided artifacts from direct Bazel deps for databinding-enabled targets:
+    `androidx.databinding:*`, `com.android.databinding:*`, and `androidx.annotation:annotation`.
+  - Non-databinding modules can still emit explicit annotation deps.
+- Generated output audit:
+  - `app-gps-pax-debug` retains `enable_data_binding = True`, has no direct
+    `androidx_annotation_annotation` entry, and PAX build passes.
+  - `app-gps-pax-debug-android-test` tags are normalized/local (`@direct`, `@maven`, `@self`) with
+    no observed duplicate tags.
+  - PAX generated deps moved away from broad variant repos in several places; reductions are
+    acceptable under the current bucket-dedupe goal.
+  - Latest bounded target count comparison vs `HEAD:app/BUILD.bazel`:
+    - `app-gps-pax-debug`: `deps=1446` unchanged, `tags=0` unchanged, no direct annotation dep;
+      `@debug_maven` direct deps reduced `35 -> 6`.
+    - `app-gps-pax-debug-android-test`: `deps=1504` unchanged, `tags=1950` added as normalized
+      local filter tags with `duplicate_tags=0`; `@debug_maven` direct deps reduced `14 -> 1` and
+      `@android_test_maven` direct deps reduced `34 -> 12`.
+    - PAX overall generated diff remains intentionally large (`2226` changed paths), dominated by
+      generated BUILD/JSON churn and bucket reductions; the accepted shape is the target-local
+      bounded audit plus passing APK/android-test builds, not raw line count.
+- Known non-blocking PAX items:
+  - rules_jvm_external still prints duplicate-version debug messages for annotation/databinding,
+    Dagger, and Kotlin artifacts. Audit found no duplicate watched artifact rows in generated Maven
+    lock JSONs; evidence points to existing `WORKSPACE` composition, not this refactor.
+  - `//app:app-gps-pax-debug.lint_test` fails on `SerializedNameDefaultValue` in external Maven AARs
+    and was audited as a preexisting baseline lint exposure, not a dependency-refactor missing-class
+    failure.
 
-## Focused Diagnostic Loop
+## Later Performance Follow-Ups
 
-Before another full PAX migration/APK build, gather a small diagnostic output for the failing
-module/variant:
-
-- Gradle configurations that feed `deliveries-menu-items-gps-pax-debug`.
-- Declared Maven deps seen by Grazel for those configurations.
-- Whether `androidx.annotation:annotation` is present, and in which bucket/repo.
-- `collectTransitiveMavenDeps` input roots and closure result for this target.
-- Generated Bazel `deps`/`tags` for the failing target.
-
-Good mechanisms:
-
-- add temporary `logger.quiet` at the exact Gradle task/data boundary;
-- add a small focused diagnostic task/file under `build/grazel/...`;
-- use targeted `jq`/scripts instead of reading large JSON in main context;
-- ask a subagent to inspect a clean slice, with required exact file/line citations.
-
-## Decision Rule For The Blocker
-
-- If the PAX source uses a Maven artifact without declaring it, fix PAX `build.gradle` and rerun
-  migration instead of broadening Grazel tags.
-- If Grazel dropped a valid declared dependency or closure, add a focused Grazel test first and fix
-  the lowest correct layer.
-- If the class should arrive through a project dependency, verify the child target owns correct
-  direct Maven deps/tags rather than copying its Maven closure into the parent.
+- Consider Gradle Worker API only after correctness/merge gates are finished. The safer candidate is
+  CPU-only post-resolution work: project/variant bucket placement and metadata transformation over
+  immutable JSON/serializable inputs, followed by deterministic sorted merge. Do not parallelize
+  Gradle resolution itself unless the inputs are isolated and cache/configuration-cache safe.
+- Keep graph work bounded: precompute ancestor/leaf relationships once per placement graph, dedupe
+  by stable keys, and avoid repeated eager `groupBy`/`flatten`/leaf scans in resolver or module
+  generation code.
 
 ## Remaining Gates
 
-- The detailed goal prompt references
-  `reports/dependencies-refactor-dag-test-bucket-next-goal.md` and
-  `reports/dependencies-refactor-dag-test-bucket-foundation.md`, but those files are not present in
-  the current worktree. Continue from `dependencies-refactor-active-anchor.md`,
-  `dependencies-refactor-current-truth.md`, and this status file unless the missing files reappear.
-- PAX app unit/lint discovery:
-  - `bazelisk query 'kind(".*test rule", //app:*)'` found lint tests only for app variants;
-  - no generated `gps-pax-debug` app unit-test target was found under `//app:*`;
-  - current app-specific gate is `//app:app-gps-pax-debug.lint_test`.
-- PAX lint result:
-  - command:
-    `./bazel.sh test //app:app-gps-pax-debug.lint_test --test_output=errors --verbose_failures`
-  - captured log: `/tmp/pax-app-gps-pax-debug-lint-test.log`
-  - result: failed, but not with missing classes; errors are `SerializedNameDefaultValue` issues in
-    external Maven AARs such as `com_grab_geo_kampung_map_kampungmap_sdk` and
-    `com_grab_karta_poi_kartapoi_sdk_nudge_pax`.
-  - focused read-only audit verdict: preexisting baseline exposure for the binary lint target.
-  - `//app:app-gps-pax-debug.lint_test` is generated from
-    `android_binary(name = "app-gps-pax-debug")`, whose deps already contained
-    `@debug_maven//:com_grab_karta_poi_kartapoi_sdk` and
-    `@maven//:com_grab_geo_kampung_map_kampungmap_sdk` in both current output and
-    `HEAD:app/BUILD.bazel`.
-  - Bazel query found `@maven//:com_grab_karta_poi_kartapoi_sdk_nudge_pax` reachable through
-    `//app:app-gps-pax-debug -> //app:_app-gps-pax-debug_lint_sources ->
-    @debug_maven//:com_grab_karta_poi_kartapoi_sdk ->
-    @maven//:com_grab_karta_poi_kartapoi_sdk_nudge_pax`.
-  - `HEAD:debug_maven_install.json` already contained `kartapoi-sdk` and its transitive
-    `kartapoi-sdk-nudge-pax`; `HEAD:maven_install.json` already contained `kampungmap-sdk`.
-  - Caveat: current generated `android_instrumentation_binary(name =
-    "app-gps-pax-debug-android-test")` has a new tags block including those artifacts, but the
-    failing lint label is the binary lint test and its dependency path already existed at `HEAD`.
-- Optional deeper resolver-metadata proof for android-test tags, if requested:
-  `jq '.projects[":app"].variants[] | select(.name=="gpsPaxDebugAndroidTest") |
-  {declaredDependencies, declaredProjectDependencies}' build/grazel/declared-dependency-metadata.json`
-- Final local Grazel checks, simplify pass, and adversarial review.
+- Run final Grazel `git diff --check`, commit, and push.
 
 ## Resource Notes
 

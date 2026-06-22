@@ -1947,6 +1947,278 @@ class AggregatedDependencyResolverTest {
     }
 
     @Test
+    fun `keeps globally merged leaf bucket dependency when project ancestors differ`() {
+        val sharedDependency = fakeComponentResult(
+            group = "com.example",
+            name = "shared",
+            version = "1.0",
+            isProject = false
+        )
+        val appFreeDebugRoot = fakeComponentResult(projectPath = ":app") {
+            addDependencyTo(sharedDependency)
+        }
+        val appFreeReleaseRoot = fakeComponentResult(projectPath = ":app") {
+            addDependencyTo(sharedDependency)
+        }
+        val libFreeDebugRoot = fakeComponentResult(projectPath = ":lib") {
+            addDependencyTo(sharedDependency)
+        }
+
+        val results = AggregatedDependencyResolver(
+            logger = ProjectBuilder.builder().build().logger,
+            declaredDependencyMetadata = DeclaredDependencyMetadata(
+                projects = mapOf(
+                    ":app" to ProjectDeclaredDependencyMetadata(
+                        projectType = DeclaredProjectType.ANDROID_APPLICATION,
+                        variants = listOf(
+                            declaredVariant(
+                                name = "freeDebug",
+                                variantType = AndroidBuild,
+                                leaf = true,
+                                buildType = "debug",
+                                productFlavors = listOf("free"),
+                                extendsFrom = setOf(DEFAULT_VARIANT, "debug", "free")
+                            ),
+                            declaredVariant(
+                                name = "freeRelease",
+                                variantType = AndroidBuild,
+                                leaf = true,
+                                buildType = "release",
+                                productFlavors = listOf("free"),
+                                extendsFrom = setOf(DEFAULT_VARIANT, "release", "free")
+                            )
+                        )
+                    ),
+                    ":lib" to ProjectDeclaredDependencyMetadata(
+                        projectType = DeclaredProjectType.OTHER,
+                        variants = listOf(
+                            declaredVariant(
+                                name = "freeDebug",
+                                variantType = AndroidBuild,
+                                leaf = true,
+                                buildType = "debug",
+                                productFlavors = listOf("free"),
+                                extendsFrom = setOf(DEFAULT_VARIANT, "debug")
+                            )
+                        )
+                    )
+                )
+            ),
+            workspaceDependencyRoots = listOf(
+                root(
+                    component = appFreeDebugRoot,
+                    projectPath = ":app",
+                    kind = AggregatedDependencyRootKind.MAIN_LEAF,
+                    bucketName = "freeDebug",
+                    leafName = "freeDebug",
+                    variantType = AndroidBuild
+                ),
+                root(
+                    component = appFreeReleaseRoot,
+                    projectPath = ":app",
+                    kind = AggregatedDependencyRootKind.MAIN_LEAF,
+                    bucketName = "freeRelease",
+                    leafName = "freeRelease",
+                    variantType = AndroidBuild
+                ),
+                root(
+                    component = libFreeDebugRoot,
+                    projectPath = ":lib",
+                    kind = AggregatedDependencyRootKind.MAIN_LEAF,
+                    bucketName = "freeDebug",
+                    leafName = "freeDebug",
+                    variantType = AndroidBuild
+                )
+            )
+        ).resolve()
+
+        assertEquals(
+            listOf("com.example:shared:1.0"),
+            results.single { result -> result.variantName == "free" }
+                .dependencies
+                .getValue(COMPILE.name)
+                .map(ResolvedDependency::id)
+        )
+        assertEquals(
+            listOf("com.example:shared:1.0"),
+            results.single { result -> result.variantName == "freeDebug" }
+                .dependencies
+                .getValue(COMPILE.name)
+                .map(ResolvedDependency::id)
+        )
+    }
+
+    @Test
+    fun `globally merged leaf bucket adopts selected ancestor version when project ancestors differ`() {
+        val lowerVersionDependency = fakeComponentResult(
+            group = "com.example",
+            name = "shared",
+            version = "1.0",
+            isProject = false
+        )
+        val higherVersionDependency = fakeComponentResult(
+            group = "com.example",
+            name = "shared",
+            version = "2.0",
+            isProject = false
+        )
+        val appFreeDebugRoot = fakeComponentResult(projectPath = ":app") {
+            addDependencyTo(higherVersionDependency)
+        }
+        val appFreeReleaseRoot = fakeComponentResult(projectPath = ":app") {
+            addDependencyTo(higherVersionDependency)
+        }
+        val libFreeDebugRoot = fakeComponentResult(projectPath = ":lib") {
+            addDependencyTo(lowerVersionDependency)
+        }
+
+        val results = AggregatedDependencyResolver(
+            logger = ProjectBuilder.builder().build().logger,
+            declaredDependencyMetadata = DeclaredDependencyMetadata(
+                projects = mapOf(
+                    ":app" to ProjectDeclaredDependencyMetadata(
+                        projectType = DeclaredProjectType.ANDROID_APPLICATION,
+                        variants = listOf(
+                            declaredVariant(
+                                name = "freeDebug",
+                                variantType = AndroidBuild,
+                                leaf = true,
+                                buildType = "debug",
+                                productFlavors = listOf("free"),
+                                extendsFrom = setOf(DEFAULT_VARIANT, "debug", "free")
+                            ),
+                            declaredVariant(
+                                name = "freeRelease",
+                                variantType = AndroidBuild,
+                                leaf = true,
+                                buildType = "release",
+                                productFlavors = listOf("free"),
+                                extendsFrom = setOf(DEFAULT_VARIANT, "release", "free")
+                            )
+                        )
+                    ),
+                    ":lib" to ProjectDeclaredDependencyMetadata(
+                        projectType = DeclaredProjectType.OTHER,
+                        variants = listOf(
+                            declaredVariant(
+                                name = "freeDebug",
+                                variantType = AndroidBuild,
+                                leaf = true,
+                                buildType = "debug",
+                                productFlavors = listOf("free"),
+                                extendsFrom = setOf(DEFAULT_VARIANT, "debug")
+                            )
+                        )
+                    )
+                )
+            ),
+            workspaceDependencyRoots = listOf(
+                root(
+                    component = appFreeDebugRoot,
+                    projectPath = ":app",
+                    kind = AggregatedDependencyRootKind.MAIN_LEAF,
+                    bucketName = "freeDebug",
+                    leafName = "freeDebug",
+                    variantType = AndroidBuild
+                ),
+                root(
+                    component = appFreeReleaseRoot,
+                    projectPath = ":app",
+                    kind = AggregatedDependencyRootKind.MAIN_LEAF,
+                    bucketName = "freeRelease",
+                    leafName = "freeRelease",
+                    variantType = AndroidBuild
+                ),
+                root(
+                    component = libFreeDebugRoot,
+                    projectPath = ":lib",
+                    kind = AggregatedDependencyRootKind.MAIN_LEAF,
+                    bucketName = "freeDebug",
+                    leafName = "freeDebug",
+                    variantType = AndroidBuild
+                )
+            )
+        ).resolve()
+
+        assertEquals(
+            listOf("com.example:shared:2.0"),
+            results.single { result -> result.variantName == "free" }
+                .dependencies
+                .getValue(COMPILE.name)
+                .map(ResolvedDependency::id)
+        )
+        assertEquals(
+            listOf("com.example:shared:2.0"),
+            results.single { result -> result.variantName == "freeDebug" }
+                .dependencies
+                .getValue(COMPILE.name)
+                .map(ResolvedDependency::id)
+        )
+    }
+
+    @Test
+    fun `resolved leaf version wins over stale declared hierarchy version in final results`() {
+        val resolvedDependency = fakeComponentResult(
+            group = "com.example",
+            name = "library",
+            version = "2.0",
+            isProject = false
+        )
+        val appRoot = fakeComponentResult(projectPath = ":app") {
+            addDependencyTo(resolvedDependency)
+        }
+
+        val results = AggregatedDependencyResolver(
+            logger = ProjectBuilder.builder().build().logger,
+            declaredDependencyMetadata = DeclaredDependencyMetadata(
+                projects = mapOf(
+                    ":app" to ProjectDeclaredDependencyMetadata(
+                        projectType = DeclaredProjectType.ANDROID_APPLICATION,
+                        variants = listOf(
+                            declaredVariant(
+                                name = "debug",
+                                variantType = AndroidBuild,
+                                leaf = false,
+                                declaredDependencies = setOf("com.example:library:1.0"),
+                                excludeRulesByShortId = mapOf(
+                                    "com.example:library" to setOf(ExcludeRule("com.example", "blocked"))
+                                ),
+                                extendsFrom = setOf(DEFAULT_VARIANT)
+                            ),
+                            declaredVariant(
+                                name = "freeDebug",
+                                variantType = AndroidBuild,
+                                leaf = true,
+                                buildType = "debug",
+                                productFlavors = listOf("free"),
+                                extendsFrom = setOf(DEFAULT_VARIANT, "debug", "free")
+                            )
+                        )
+                    )
+                )
+            ),
+            workspaceDependencyRoots = listOf(
+                root(
+                    component = appRoot,
+                    projectPath = ":app",
+                    kind = AggregatedDependencyRootKind.MAIN_LEAF,
+                    bucketName = "freeDebug",
+                    leafName = "freeDebug",
+                    variantType = AndroidBuild,
+                    variantNames = setOf("freeDebug", "debug", "free", DEFAULT_VARIANT)
+                )
+            )
+        ).resolve()
+
+        val debugDependency = results.single { result -> result.variantName == "debug" }
+            .dependencies
+            .getValue(COMPILE.name)
+            .single()
+        assertEquals("com.example:library:2.0", debugDependency.id)
+        assertEquals(setOf(ExcludeRule("com.example", "blocked")), debugDependency.excludeRules)
+    }
+
+    @Test
     fun `project scoped main plans collapse to global bucket by max version`() {
         val lowerVersionDependency = fakeComponentResult(
             group = "com.example",
@@ -2223,6 +2495,7 @@ class AggregatedDependencyResolverTest {
         variantType: com.grab.grazel.gradle.variant.VariantType,
         traverseProjectNodes: Boolean = true,
         directDependencyShortIds: Set<String> = emptySet(),
+        variantNames: Set<String> = setOf(bucketName, DEFAULT_VARIANT),
         targetBuckets: Set<String> = emptySet()
     ): AggregatedDependencyRoot {
         return AggregatedDependencyRoot(
@@ -2233,7 +2506,7 @@ class AggregatedDependencyResolverTest {
                 configurationName = "$bucketName:${kind.name}",
                 bucketName = bucketName,
                 leafName = leafName,
-                variantNames = setOf(bucketName, DEFAULT_VARIANT),
+                variantNames = variantNames,
                 variantType = variantType,
                 traverseProjectNodes = traverseProjectNodes,
                 directDependencyShortIds = directDependencyShortIds,

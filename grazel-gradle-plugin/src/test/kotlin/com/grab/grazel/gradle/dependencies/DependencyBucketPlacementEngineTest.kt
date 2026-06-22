@@ -86,6 +86,51 @@ class DependencyBucketPlacementEngineTest {
     }
 
     @Test
+    fun `declared owner bucket does not attach to leaf when extendsFrom omits owner`() {
+        val dependency = dependency("com.example:free-only:1.0")
+        val metadata = DeclaredDependencyMetadata(
+            projects = mapOf(
+                ":app" to ProjectDeclaredDependencyMetadata(
+                    variants = listOf(
+                        declaredMainLeaf(
+                            name = "freeDebug",
+                            extendsFrom = setOf(DEFAULT_VARIANT, "debug"),
+                            buildType = "debug",
+                            productFlavors = listOf("free"),
+                            declaredDependencyDeclarations = setOf(
+                                DeclaredExternalDependency(
+                                    configurationName = "freeImplementation",
+                                    bucketName = "free",
+                                    id = dependency.id
+                                )
+                            )
+                        )
+                    )
+                )
+            )
+        )
+
+        val variants = metadata.mainBucketVariants(":app")
+        val plan = DependencyBucketPlacementEngine().planByProject(
+            variants = metadata.mainBucketVariantsByProject(),
+            hierarchyBucketClosures = metadata.collectDeclaredMainDependenciesByProjectBucket(listOf(":app")),
+            leafClosures = mapOf(
+                ProjectDependencyBucket(":app", "freeDebug") to mapOf(dependency.shortId to dependency)
+            )
+        ).getValue(":app")
+
+        assertEquals(
+            setOf(DEFAULT_VARIANT, "debug"),
+            variants.single { variant -> variant.name == "freeDebug" }.extendsFrom
+        )
+        assertNull(plan.hierarchyBuckets["free"])
+        assertEquals(
+            mapOf(dependency.shortId to dependency),
+            plan.leafBuckets["freeDebug"]
+        )
+    }
+
+    @Test
     fun `compileOnly bucket metadata preserves project bucket ownership`() {
         val appDependency = dependency("com.example:annotations:1.0")
         val libraryDependency = dependency("com.example:annotations:2.0")
@@ -308,6 +353,64 @@ class DependencyBucketPlacementEngineTest {
     }
 
     @Test
+    fun `does not infer hierarchy buckets that are absent from extendsFrom metadata`() {
+        val sharedDependency = dependency("com.example:shared:1.0")
+
+        val plan = DependencyBucketPlacementEngine().plan(
+            variants = listOf(
+                leafWithParents("freeDebug", setOf(DEFAULT_VARIANT, "debug"), "debug", "free"),
+                leafWithParents("freeRelease", setOf(DEFAULT_VARIANT, "release"), "release", "free"),
+                leafWithParents("paidDebug", setOf(DEFAULT_VARIANT, "debug"), "debug", "paid")
+            ),
+            hierarchyBucketClosures = emptyMap(),
+            leafClosures = mapOf(
+                "freeDebug" to mapOf(sharedDependency.shortId to sharedDependency),
+                "freeRelease" to mapOf(sharedDependency.shortId to sharedDependency),
+                "paidDebug" to emptyMap()
+            )
+        )
+
+        assertNull(plan.hierarchyBuckets["free"])
+        assertEquals(
+            mapOf(sharedDependency.shortId to sharedDependency),
+            plan.leafBuckets["freeDebug"]
+        )
+        assertEquals(
+            mapOf(sharedDependency.shortId to sharedDependency),
+            plan.leafBuckets["freeRelease"]
+        )
+    }
+
+    @Test
+    fun `does not emit explicit hierarchy bucket absent from selected extendsFrom metadata`() {
+        val declaredFlavorDependency = dependency("com.example:flavor-root:1.0").copy(
+            repository = DECLARED_DEPENDENCY_REPOSITORY,
+            dependencies = emptySet()
+        )
+        val selectedDependency = dependency("com.example:selected:1.0")
+
+        val plan = DependencyBucketPlacementEngine().plan(
+            variants = listOf(
+                leafWithParents("freeDebug", setOf(DEFAULT_VARIANT, "debug"), "debug", "free"),
+                leafWithParents("freeRelease", setOf(DEFAULT_VARIANT, "release"), "release", "free")
+            ),
+            hierarchyBucketClosures = mapOf(
+                "free" to mapOf(declaredFlavorDependency.shortId to declaredFlavorDependency)
+            ),
+            leafClosures = mapOf(
+                "freeDebug" to mapOf(selectedDependency.shortId to selectedDependency),
+                "freeRelease" to mapOf(selectedDependency.shortId to selectedDependency)
+            )
+        )
+
+        assertNull(plan.hierarchyBuckets["free"])
+        assertEquals(
+            listOf(CoveredDependency(DEFAULT_VARIANT, selectedDependency)),
+            plan.coveredDependencies()
+        )
+    }
+
+    @Test
     fun `explicit hierarchy bucket keeps inferred common leaf closure`() {
         val declaredFlavorDependency = dependency("com.example:flavor-root:1.0").copy(
             repository = "Declared",
@@ -351,6 +454,39 @@ class DependencyBucketPlacementEngineTest {
             plan.hierarchyBuckets["gps"]
         )
         assertEquals(emptyMap<String, Map<String, ResolvedDependency>>(), plan.leafBuckets)
+    }
+
+    @Test
+    fun `declared hierarchy metadata adopts Gradle resolved leaf version`() {
+        val declaredDebugDependency = dependency("com.example:library:1.0").copy(
+            repository = DECLARED_DEPENDENCY_REPOSITORY,
+            dependencies = emptySet(),
+            excludeRules = setOf(ExcludeRule("com.example", "blocked"))
+        )
+        val resolvedDebugDependency = dependency("com.example:library:2.0").copy(
+            dependencies = setOf("com.example:transitive:2.0:maven:false:null")
+        )
+
+        val plan = DependencyBucketPlacementEngine().plan(
+            variants = listOf(
+                leaf("freeDebug", "debug", "free")
+            ),
+            hierarchyBucketClosures = mapOf(
+                "debug" to mapOf(declaredDebugDependency.shortId to declaredDebugDependency)
+            ),
+            leafClosures = mapOf(
+                "freeDebug" to mapOf(resolvedDebugDependency.shortId to resolvedDebugDependency)
+            )
+        )
+
+        assertEquals(
+            mapOf(
+                resolvedDebugDependency.shortId to resolvedDebugDependency.copy(
+                    excludeRules = declaredDebugDependency.excludeRules
+                )
+            ),
+            plan.hierarchyBuckets["debug"]
+        )
     }
 
     @Test

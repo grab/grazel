@@ -572,49 +572,71 @@ internal class AggregatedDependencyResolver(
 
         val defaultDeps = mergeDependencyMaps(mainBucketPlans.map(DependencyBucketPlacementPlan::defaultBucket))
         val hierarchyBuckets = mergeNamedBuckets(mainBucketPlans.map(DependencyBucketPlacementPlan::hierarchyBuckets))
-        val perLeafBuckets = mergeNamedBuckets(mainBucketPlans.map(DependencyBucketPlacementPlan::leafBuckets))
         val mainCoveredDepsByProject = mainBucketPlansByProject
             .mapValues { (_, plan) -> plan.coveredDependencies() }
-
-        fun leafAncestorNamesByLeafName(): Map<String, Set<String>> {
-            val parentsByName = mutableMapOf<String, MutableSet<String>>()
-            mainBucketVariants.forEach { variant ->
-                parentsByName.getOrPut(variant.name) { sortedSetOf() }.addAll(variant.extendsFrom)
+        val leafAncestorsByName = linkedMapOf<String, MutableSet<String>>()
+        mainBucketPlans.forEach { plan ->
+            plan.leafAncestors.forEach { (leafName, ancestors) ->
+                leafAncestorsByName
+                    .getOrPut(leafName) { sortedSetOf() }
+                    .addAll(ancestors)
             }
-
-            fun ancestorsOf(name: String): Set<String> {
-                val visited = linkedSetOf<String>()
-
-                fun visit(bucketName: String) {
-                    parentsByName[bucketName].orEmpty().forEach { parentName ->
-                        if (visited.add(parentName)) {
-                            visit(parentName)
-                        }
-                    }
-                }
-
-                visit(name)
-                return visited
-            }
-
-            return mainBucketVariants
-                .filter(DependencyBucketVariant::leaf)
-                .groupBy(DependencyBucketVariant::name)
-                .mapValues { (leafName, _) -> ancestorsOf(leafName) }
         }
 
-        val leafAncestorsByName = leafAncestorNamesByLeafName()
-        val filteredPerLeafBuckets = perLeafBuckets
-            .mapValues { (leafName, dependencies) ->
-                dependencies.withoutDependenciesCoveredBy(
-                    leafAncestorsByName[leafName]
-                        .orEmpty()
-                        .flatMap { ancestorName ->
-                            hierarchyBuckets[ancestorName].orEmpty().asCoveredBy(ancestorName)
+        fun withGlobalAncestorResolvedMetadata(
+            leafBuckets: Map<String, Map<String, ResolvedDependency>>,
+            leafAncestorsByName: Map<String, Set<String>>,
+            hierarchyBuckets: Map<String, Map<String, ResolvedDependency>>
+        ): Map<String, Map<String, ResolvedDependency>> {
+            return leafBuckets.mapValues { (leafName, dependencies) ->
+                val ancestorDependenciesByShortId = linkedMapOf<String, ResolvedDependency>()
+                leafAncestorsByName[leafName]
+                    .orEmpty()
+                    .forEach { ancestorName ->
+                        hierarchyBuckets[ancestorName]
+                            .orEmpty()
+                            .values
+                            .forEach { dependency ->
+                                ancestorDependenciesByShortId.merge(
+                                    dependency.shortId,
+                                    dependency,
+                                    ::mergeDependencyMetadataByMaxVersion
+                                )
+                            }
+                    }
+                if (ancestorDependenciesByShortId.isEmpty()) {
+                    dependencies
+                } else {
+                    dependencies.mapValues { (shortId, dependency) ->
+                        ancestorDependenciesByShortId[shortId]
+                            ?.let { ancestorDependency ->
+                                mergeDependencyMetadataByMaxVersion(dependency, ancestorDependency)
+                            }
+                            ?: dependency
+                    }.toSortedMap()
+                }
+            }.toSortedMap()
+        }
+
+        val filteredPerLeafBuckets = withGlobalAncestorResolvedMetadata(
+            leafBuckets = mergeNamedBuckets(
+                mainBucketPlans.map { plan ->
+                    plan.leafBuckets
+                        .mapValues { (leafName, dependencies) ->
+                            dependencies.withoutDependenciesCoveredBy(
+                                plan.leafAncestors[leafName]
+                                    .orEmpty()
+                                    .flatMap { ancestorName ->
+                                        hierarchyBuckets[ancestorName].orEmpty().asCoveredBy(ancestorName)
+                                    }
+                            )
                         }
-                )
-            }
-            .filterValues(Map<String, ResolvedDependency>::isNotEmpty)
+                        .filterValues(Map<String, ResolvedDependency>::isNotEmpty)
+                }
+            ),
+            leafAncestorsByName = leafAncestorsByName,
+            hierarchyBuckets = hierarchyBuckets
+        )
 
         fun testHierarchyBucketClosuresFor(
             variantType: VariantType,
@@ -933,7 +955,7 @@ internal fun mergeDependencyMetadataByMaxVersion(
     )
 }
 
-private fun ResolvedDependency.isDeclaredMetadata(): Boolean =
+internal fun ResolvedDependency.isDeclaredMetadata(): Boolean =
     repository == DECLARED_DEPENDENCY_REPOSITORY
 
 private data class DeclaredProjectDependencyEdge(

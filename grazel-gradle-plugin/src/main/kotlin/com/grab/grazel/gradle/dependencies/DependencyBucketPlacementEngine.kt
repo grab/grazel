@@ -39,7 +39,8 @@ internal data class DependencyBucketPlacementPlan(
     val baseBucketName: String = DEFAULT_VARIANT,
     val defaultBucket: Map<String, ResolvedDependency>,
     val hierarchyBuckets: Map<String, Map<String, ResolvedDependency>>,
-    val leafBuckets: Map<String, Map<String, ResolvedDependency>>
+    val leafBuckets: Map<String, Map<String, ResolvedDependency>>,
+    val leafAncestors: Map<String, Set<String>>
 ) {
     fun coveredDependencies(): List<CoveredDependency> {
         return buildList {
@@ -95,7 +96,7 @@ internal class DependencyBucketPlacementEngine {
         baseBucketName: String = DEFAULT_VARIANT
     ): DependencyBucketPlacementPlan {
         val graph = BucketPlacementGraph(variants, baseBucketName)
-        val leafNames = leafClosures.keys.sorted()
+        val leafNames = leafClosures.keys.toSortedSet()
         val selectedLeafClosures = leafNames.mapNotNull { leafName -> leafClosures[leafName] }
         val hierarchyDefaultDeps = hierarchyBucketClosures[baseBucketName]
             .orEmpty()
@@ -192,10 +193,14 @@ internal class DependencyBucketPlacementEngine {
             .toMap()
         val selectedLeafBuckets = selectedHierarchyBuckets
             .filterKeys { bucketName -> bucketName in graph.leafVariantNames }
+        val leafAncestors = graph.leafVariantNames.associateWith { leafName ->
+            graph.ancestorsOf(leafName)
+        }.toSortedMap()
         val outputLeafNames = (leafNames + selectedLeafBuckets.keys).toSortedSet()
         val leafBuckets = outputLeafNames
             .mapNotNull { leafName ->
-                val ancestorCoveredDeps = graph.ancestorsOf(leafName)
+                val ancestorCoveredDeps = leafAncestors[leafName]
+                    .orEmpty()
                     .filter { parentName -> parentName != baseBucketName }
                     .flatMap { parentName ->
                         selectedHierarchyBuckets[parentName].orEmpty().asCoveredBy(parentName)
@@ -217,18 +222,22 @@ internal class DependencyBucketPlacementEngine {
             baseBucketName = baseBucketName,
             defaultBucket = defaultDeps,
             hierarchyBuckets = hierarchyBuckets,
-            leafBuckets = leafBuckets
+            leafBuckets = leafBuckets,
+            leafAncestors = leafAncestors
         )
     }
 
     private fun candidateDepsFor(
         bucketName: String,
         graph: BucketPlacementGraph,
-        leafNames: Collection<String>,
+        leafNames: Set<String>,
         leafClosures: Map<String, Map<String, ResolvedDependency>>,
         hierarchyBucketClosures: Map<String, Map<String, ResolvedDependency>>
     ): Map<String, ResolvedDependency> {
         val descendantLeafNames = graph.descendantLeafNames(bucketName, leafNames)
+        if (leafNames.isNotEmpty() && descendantLeafNames.isEmpty()) {
+            return emptyMap()
+        }
         val descendantLeafClosures = descendantLeafNames.mapNotNull { leafName -> leafClosures[leafName] }
         val explicitDeps = hierarchyBucketClosures[bucketName]
             .orEmpty()
@@ -249,20 +258,23 @@ internal class DependencyBucketPlacementEngine {
     ): Map<String, ResolvedDependency> {
         if (isEmpty() || leafClosures.isEmpty()) return this
         return mapValues { (shortId, explicitDependency) ->
-            val leafDependencies = leafClosures
-                .asSequence()
+            val leafDependencies = leafClosures.asSequence()
                 .mapNotNull { leafClosure -> leafClosure[shortId] }
-                .toList()
-            val sameVersionLeafDependencies = leafDependencies
-                .filter { leafDependency -> leafDependency.version == explicitDependency.version }
-            val matchingOwnerDependency = sameVersionLeafDependencies
-                .firstOrNull { leafDependency ->
-                    leafDependency.excludeRules == explicitDependency.excludeRules &&
-                        leafDependency.requiresJetifier == explicitDependency.requiresJetifier &&
-                        leafDependency.jetifierSource == explicitDependency.jetifierSource
-                }
-            val resolvedDependency = matchingOwnerDependency ?: sameVersionLeafDependencies
-                .reduceOrNull(::mergeDependencyMetadataByMaxVersion)
+            val resolvedDependency = if (explicitDependency.isDeclaredMetadata()) {
+                leafDependencies.reduceOrNull(::mergeDependencyMetadataByMaxVersion)
+            } else {
+                val sameVersionLeafDependencies = leafDependencies
+                    .filter { leafDependency -> leafDependency.version == explicitDependency.version }
+                    .toList()
+                val matchingOwnerDependency = sameVersionLeafDependencies
+                    .firstOrNull { leafDependency ->
+                        leafDependency.excludeRules == explicitDependency.excludeRules &&
+                            leafDependency.requiresJetifier == explicitDependency.requiresJetifier &&
+                            leafDependency.jetifierSource == explicitDependency.jetifierSource
+                    }
+                matchingOwnerDependency ?: sameVersionLeafDependencies
+                    .reduceOrNull(::mergeDependencyMetadataByMaxVersion)
+            }
             resolvedDependency?.merge(explicitDependency) ?: explicitDependency
         }.toSortedMap()
     }
@@ -303,19 +315,38 @@ private class BucketPlacementGraph(
 ) {
     private val leafVariants = variants.filter(DependencyBucketVariant::leaf)
     val leafVariantNames = leafVariants.map(DependencyBucketVariant::name).toSortedSet()
-    private val buildTypeNames = leafVariants.mapNotNull(DependencyBucketVariant::buildType).toSortedSet()
-    private val flavorNames = leafVariants.flatMap(DependencyBucketVariant::productFlavors).toSortedSet()
+    private val parentNames = variants
+        .flatMap(DependencyBucketVariant::extendsFrom)
+        .toSortedSet()
     private val projectPath = variants.firstOrNull()?.projectPath.orEmpty()
     private val defaultVariantType = variants.firstOrNull()?.variantType ?: AndroidBuild
     val hierarchyBucketNames = (
         variants.filterNot(DependencyBucketVariant::leaf).map(DependencyBucketVariant::name) +
-            buildTypeNames +
-            flavorNames +
+            parentNames +
             baseBucketName
         )
         .toSortedSet()
-    private val nodeByName: Map<String, BucketHierarchyNode>
-    private val graph: BucketHierarchyGraph
+    private lateinit var nodeByName: Map<String, BucketHierarchyNode>
+    private lateinit var graph: BucketHierarchyGraph
+    private val ancestorNamesByName: Map<String, Set<String>> by lazy(LazyThreadSafetyMode.NONE) {
+        nodeByName.keys
+            .associateWith { bucketName ->
+                graph.ancestorsOf(nodeFor(bucketName)).mapTo(sortedSetOf(), BucketHierarchyNode::name)
+            }
+            .toSortedMap()
+    }
+    private val leafDescendantNamesByName: Map<String, Set<String>> by lazy(LazyThreadSafetyMode.NONE) {
+        nodeByName.keys
+            .associateWith { bucketName ->
+                val bucketNode = nodeFor(bucketName)
+                (
+                    graph.leafDescendantsOf(bucketNode).map(BucketHierarchyNode::name) +
+                        listOf(bucketName).filter { leafName -> leafName in leafVariantNames }
+                    )
+                    .toSortedSet()
+            }
+            .toSortedMap()
+    }
 
     init {
         val variantEntries = variants.map { variant ->
@@ -326,10 +357,7 @@ private class BucketPlacementGraph(
             )
         }
         val variantNames = variants.map(DependencyBucketVariant::name).toSet()
-        val syntheticNames = (
-            variants.flatMap(DependencyBucketVariant::extendsFrom) +
-                hierarchyBucketNames
-            )
+        val syntheticNames = hierarchyBucketNames
             .filter { bucketName -> bucketName !in variantNames }
             .toSortedSet()
         val syntheticEntries = syntheticNames.map { bucketName ->
@@ -353,29 +381,28 @@ private class BucketPlacementGraph(
     }
 
     fun hasAncestor(name: String, ancestor: String): Boolean {
-        return graph.hasAncestor(nodeFor(name), nodeFor(ancestor))
+        return ancestor in ancestorsOf(name)
     }
 
     fun ancestorsOf(name: String): Set<String> {
-        return graph.ancestorsOf(nodeFor(name)).mapTo(sortedSetOf(), BucketHierarchyNode::name)
+        return ancestorNamesByName[name].orEmpty()
     }
 
     fun depthOf(name: String): Int {
-        return graph.depthOf(nodeFor(name))
+        return ancestorsOf(name).size
     }
 
-    fun descendantLeafNames(bucketName: String, leafNames: Collection<String>): List<String> {
-        val selectedLeaves = leafNames.map(::nodeFor).toSet()
-        return graph.leafDescendantsOf(nodeFor(bucketName))
-            .filter { leaf -> leaf in selectedLeaves }
-            .map(BucketHierarchyNode::name)
-            .sorted()
+    fun descendantLeafNames(bucketName: String, leafNames: Set<String>): Set<String> {
+        return leafDescendantNamesByName[bucketName]
+            .orEmpty()
+            .filter { leafName -> leafName in leafNames }
+            .toSortedSet()
     }
 
     fun coversDescendantLeaves(
         coveringBucketName: String,
         coveredBucketName: String,
-        leafNames: Collection<String>
+        leafNames: Set<String>
     ): Boolean {
         val coveredLeaves = descendantLeafNames(coveredBucketName, leafNames)
         if (coveredLeaves.isEmpty()) return false
@@ -384,10 +411,10 @@ private class BucketPlacementGraph(
 
     fun coversSelectedLeaves(
         bucketName: String,
-        leafNames: Collection<String>
+        leafNames: Set<String>
     ): Boolean {
         if (leafNames.isEmpty()) return false
-        return descendantLeafNames(bucketName, leafNames).toSet() == leafNames.toSet()
+        return descendantLeafNames(bucketName, leafNames) == leafNames
     }
 
     private fun DependencyBucketVariant.node(): BucketHierarchyNode {
@@ -434,14 +461,12 @@ internal fun DeclaredDependencyMetadata.mainBucketVariants(projectPath: String):
         .map { variant ->
             val declaredOwnersForLeaf = if (variant.androidLeafVariant) {
                 declaredOwnersByName
-                    .keys
-                    .filter { ownerName ->
-                        ownerName != variant.name &&
-                            androidBuildVariants.ownerAppliesToLeaf(
-                                ownerName = ownerName,
-                                leafVariant = variant
-                            )
+                    .values
+                    .filter { owner ->
+                        owner.name != variant.name &&
+                            owner.appliesTo(leafVariant = variant)
                     }
+                    .map(DependencyBucketVariant::name)
                     .toSet()
             } else {
                 emptySet()
@@ -459,6 +484,14 @@ internal fun DeclaredDependencyMetadata.mainBucketVariants(projectPath: String):
         .plus(declaredOwnersByName.values.asSequence())
         .sortedBy(DependencyBucketVariant::name)
         .toList()
+}
+
+private fun DependencyBucketVariant.appliesTo(
+    leafVariant: DeclaredVariantDependencyMetadata
+): Boolean {
+    if (name in leafVariant.extendsFrom) return true
+    val parentNames = extendsFrom - DEFAULT_VARIANT - name
+    return parentNames.isNotEmpty() && parentNames.all { parentName -> parentName in leafVariant.extendsFrom }
 }
 
 private fun Collection<DeclaredVariantDependencyMetadata>.ownerVariantFor(
