@@ -232,7 +232,7 @@ the current evidence ledger, not a full transcript.
   by stable keys, and avoid repeated eager `groupBy`/`flatten`/leaf scans in resolver or module
   generation code.
 
-## Remaining Gates
+## Completed Checkpoint
 
 - Test hygiene decision from 2026-06-23:
   - Do not add architecture tests that inspect task methods/annotations with Java/Kotlin reflection.
@@ -247,7 +247,19 @@ the current evidence ledger, not a full transcript.
     `./gradlew :grazel-gradle-plugin:test --tests "com.grab.grazel.gradle.dependencies.AggregatedDependencyResolverTest" --tests "com.grab.grazel.tasks.internal.CollectDeclaredDependencyMetadataTaskTest" --console=plain`
     and
     `./gradlew :grazel-gradle-plugin:functionalTest --tests "com.grab.grazel.migrate.BuildVariantTest" --console=plain`.
-- Run final Grazel `git diff --check`, commit, and push.
+- Final local checks after the reflection-test cleanup:
+  - `./gradlew :grazel-gradle-plugin:test --console=plain`
+  - `./gradlew :grazel-gradle-plugin:functionalTest --tests "com.grab.grazel.migrate.BuildVariantTest" --console=plain`
+  - `reports/scripts/verify-default-task-graph.sh`
+  - `reports/scripts/verify-sample-bucket-labels.sh`
+  - `./gradlew migrateToBazel --console=plain`
+  - `git diff --check`
+- Code checkpoint pushed:
+  `ac9de092ec3cbfdbe7ef8336498973c9f1dfbe7a` (`Finalize workspace dependency refactor gates`)
+  to `public/arun/dependencies-refactor`.
+- No remaining known merge gates in Grazel after this checkpoint. Future work should start from user
+  review, CI/MR review, or any new PAX issue found outside the verified debug APK/android-test APK
+  baseline.
 
 ## Resource Notes
 
