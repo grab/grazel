@@ -29,6 +29,7 @@ import org.gradle.api.model.ObjectFactory
 import org.gradle.api.provider.Provider
 import org.gradle.api.tasks.CacheableTask
 import org.gradle.api.tasks.InputFile
+import org.gradle.api.tasks.Optional
 import org.gradle.api.tasks.OutputFile
 import org.gradle.api.tasks.PathSensitive
 import org.gradle.api.tasks.PathSensitivity
@@ -50,6 +51,7 @@ constructor(
 ) : DefaultTask() {
 
     @get:InputFile
+    @get:Optional
     @get:PathSensitive(PathSensitivity.RELATIVE)
     val inputFile: RegularFileProperty = objectFactory.fileProperty()
 
@@ -100,6 +102,7 @@ constructor(
         ) {
             group = GRAZEL_TASK_GROUP
             buildifierScript.set(buildifierScriptProvider)
+            onlyIf { inputFile.get().asFile.exists() }
         }
 
         data class RootFormattingTasks(

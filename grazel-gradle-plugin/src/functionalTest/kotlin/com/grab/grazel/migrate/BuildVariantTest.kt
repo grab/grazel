@@ -107,6 +107,10 @@ class BuildVariantTest : BaseGrazelPluginTest() {
             "Dependency resolution should collect KSP processor metadata via a task",
             result.output.contains(":collectKspProcessorDependencies SKIPPED")
         )
+        Assert.assertTrue(
+            "Dependency resolution should resolve root workspace classpaths via a task",
+            result.output.contains(":resolveWorkspaceDependencies SKIPPED")
+        )
         Assert.assertFalse(
             "Dependency resolution must not schedule legacy per-variant ResolveDependencies tasks",
             result.output.lines().any { it.contains("ResolveDependencies SKIPPED") }
@@ -127,6 +131,7 @@ class BuildVariantTest : BaseGrazelPluginTest() {
         )
         Assert.assertEquals(SUCCESS, firstResult.task(":collectDeclaredDependencyMetadata")?.outcome)
         Assert.assertEquals(SUCCESS, firstResult.task(":collectKspProcessorDependencies")?.outcome)
+        Assert.assertEquals(SUCCESS, firstResult.task(":resolveWorkspaceDependencies")?.outcome)
         Assert.assertEquals(SUCCESS, firstResult.task(":computeWorkspaceDependencies")?.outcome)
 
         val secondResult = runGradleBuild(
@@ -142,6 +147,11 @@ class BuildVariantTest : BaseGrazelPluginTest() {
             "No-edit KSP processor collection should be up-to-date",
             UP_TO_DATE,
             secondResult.task(":collectKspProcessorDependencies")?.outcome
+        )
+        Assert.assertEquals(
+            "No-edit workspace dependency resolution should be up-to-date",
+            UP_TO_DATE,
+            secondResult.task(":resolveWorkspaceDependencies")?.outcome
         )
         Assert.assertEquals(
             "No-edit computeWorkspaceDependencies run should be up-to-date",
@@ -186,6 +196,11 @@ class BuildVariantTest : BaseGrazelPluginTest() {
             SUCCESS,
             secondResult.task(":computeWorkspaceDependencies")?.outcome
         )
+        Assert.assertEquals(
+            "Dependency declaration edits should invalidate root workspace dependency resolution",
+            SUCCESS,
+            secondResult.task(":resolveWorkspaceDependencies")?.outcome
+        )
         Assert.assertTrue(
             "Updated selected fallback dependency data should include newly declared paid okio",
             fixtureDependenciesJson.readText().contains(""""shortId":"com.squareup.okio:okio"""")
@@ -224,6 +239,11 @@ class BuildVariantTest : BaseGrazelPluginTest() {
             "Project dependency edge edits should invalidate computeWorkspaceDependencies",
             SUCCESS,
             secondResult.task(":computeWorkspaceDependencies")?.outcome
+        )
+        Assert.assertEquals(
+            "Project dependency edge edits should invalidate root workspace dependency resolution",
+            SUCCESS,
+            secondResult.task(":resolveWorkspaceDependencies")?.outcome
         )
         Assert.assertFalse(
             "Updated dependency data should not include deps reachable only through the removed project edge",
@@ -268,6 +288,11 @@ class BuildVariantTest : BaseGrazelPluginTest() {
             SUCCESS,
             secondResult.task(":computeWorkspaceDependencies")?.outcome
         )
+        Assert.assertEquals(
+            "Project dependency exclude edits should invalidate root workspace dependency resolution",
+            SUCCESS,
+            secondResult.task(":resolveWorkspaceDependencies")?.outcome
+        )
         Assert.assertFalse(
             "Updated dependency data should remove excluded deps reachable through the project edge",
             fixtureDependenciesJson.readText().contains(""""shortId":"com.google.dagger:dagger"""")
@@ -297,6 +322,29 @@ dependencies {
         Assert.assertFalse(
             "Implementation deps from non-app modules unreachable from the selected binary root should not be promoted",
             fixtureDependenciesJson.readText().contains(""""shortId":"com.squareup.okio:okio"""")
+        )
+    }
+
+    @Test
+    fun migrateToBazelIgnoresUnreachableNonAppModules() {
+        val fixtureRoot = copyAndroidProjectFixture()
+        val unreachableBuildBazel = File(fixtureRoot, "kotlin-library-flavor1/BUILD.bazel")
+        val unreachableBuildBazelIgnore = File(fixtureRoot, "kotlin-library-flavor1/BUILD.bazelignore")
+        unreachableBuildBazel.writeText("# stale generated file from a previously reachable variant\n")
+
+        val result = runGradleBuild(
+            arrayOf("migrateToBazel", "--console=plain"),
+            fixtureRoot
+        )
+
+        Assert.assertEquals(SUCCESS, result.task(":migrateToBazel")?.outcome)
+        Assert.assertFalse(
+            "Unreachable non-app modules should not keep an active BUILD.bazel",
+            unreachableBuildBazel.exists()
+        )
+        Assert.assertTrue(
+            "Stale unreachable BUILD.bazel should be renamed to BUILD.bazelignore",
+            unreachableBuildBazelIgnore.exists()
         )
     }
 
@@ -335,6 +383,16 @@ dependencies {
             "KSP dependency declaration edits should invalidate computeWorkspaceDependencies",
             SUCCESS,
             secondResult.task(":computeWorkspaceDependencies")?.outcome
+        )
+        Assert.assertEquals(
+            "KSP dependency declaration edits should invalidate KSP processor collection",
+            SUCCESS,
+            secondResult.task(":collectKspProcessorDependencies")?.outcome
+        )
+        Assert.assertEquals(
+            "KSP dependency declaration edits should invalidate root workspace dependency resolution",
+            SUCCESS,
+            secondResult.task(":resolveWorkspaceDependencies")?.outcome
         )
         val updatedDependencies = fixtureDependenciesJson.readText()
         Assert.assertNotEquals(
