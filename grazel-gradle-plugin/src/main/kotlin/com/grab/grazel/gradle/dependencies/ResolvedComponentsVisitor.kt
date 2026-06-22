@@ -218,6 +218,8 @@ internal class ResolvedComponentsVisitor {
                         allDependencies.addAll(childResult.dependencies)
                         requiresJetifier = requiresJetifier || childResult.requiresJetifier
                     } else {
+                        if (constraint) return@forEach
+
                         // First-level external children can hang directly off the resolved root
                         // (for configuration-level deps) or under a traversed project node.
                         val childDirectProjectPath = if (traverseProjectNodes && !constraint) {

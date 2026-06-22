@@ -89,6 +89,54 @@ class DefaultDependencyResolutionServiceTest {
     }
 
     @Test
+    fun `variant transitive lookup prefers scoped closure over global union`() {
+        val workspaceDependencies = WorkspaceDependencies(
+            variantDeps = emptyMap(),
+            transitiveClasspath = mapOf(
+                "com.example:shared-root" to setOf(
+                    "com.example:debug-carrier",
+                    "com.example:release-carrier"
+                )
+            ),
+            variantTransitiveClasspath = mapOf(
+                "debug" to mapOf(
+                    "com.example:shared-root" to setOf("com.example:debug-carrier")
+                ),
+                "release" to mapOf(
+                    "com.example:shared-root" to setOf("com.example:release-carrier")
+                )
+            )
+        )
+        writeWorkspaceDependenciesToFile(workspaceDependencies)
+        dependencyResolutionService.init(workspaceDependenciesFile)
+
+        assertEquals(
+            setOf("com.example:debug-carrier"),
+            dependencyResolutionService.getVariantTransitiveDependencies(
+                setOf("debug", "default"),
+                "com.example:shared-root"
+            )
+        )
+        assertEquals(
+            setOf("com.example:release-carrier"),
+            dependencyResolutionService.getVariantTransitiveDependencies(
+                setOf("release", "default"),
+                "com.example:shared-root"
+            )
+        )
+        assertEquals(
+            setOf("com.example:debug-carrier", "com.example:release-carrier"),
+            dependencyResolutionService.getTransitiveDependencies("com.example:shared-root")
+        )
+        assertNull(
+            dependencyResolutionService.getVariantTransitiveDependencies(
+                setOf("default"),
+                "com.example:shared-root"
+            )
+        )
+    }
+
+    @Test
     fun `test getMavenDependency returns dependency from correct variant`() {
         // Given
         val workspaceDependencies = createSampleWorkspaceDependencies()
@@ -226,6 +274,58 @@ class DefaultDependencyResolutionServiceTest {
     }
 
     @Test
+    fun `test getMavenDependenciesInRepo returns stored override target labels`() {
+        val commonDependency = ResolvedDependency.fromId(
+            "androidx.activity:activity:1.0",
+            "default"
+        )
+        val leafDuplicate = commonDependency.copy(
+            repository = "debug",
+            overrideTarget = OverrideTarget(
+                artifactShortId = "androidx.activity:activity",
+                label = MavenDependency(
+                    repo = "maven",
+                    group = "androidx.activity",
+                    name = "activity"
+                )
+            )
+        )
+        val workspaceDependencies = WorkspaceDependencies(
+            variantDeps = mapOf(
+                "default" to listOf(commonDependency),
+                "debug" to listOf(leafDuplicate)
+            )
+        )
+        writeWorkspaceDependenciesToFile(workspaceDependencies)
+        dependencyResolutionService.init(workspaceDependenciesFile)
+
+        assertEquals(
+            setOf(MavenDependency(repo = "maven", group = "androidx.activity", name = "activity")),
+            dependencyResolutionService.getMavenDependenciesInRepo("debug_maven")
+        )
+    }
+
+    @Test
+    fun `test getMavenDependenciesInRepo keeps materialized aggregated repo names`() {
+        val kspProcessor = ResolvedDependency.fromId(
+            "com.example:processor:1.0",
+            "ksp"
+        )
+        val workspaceDependencies = WorkspaceDependencies(
+            variantDeps = emptyMap(),
+            aggregatedRepos = mapOf("ksp_maven" to listOf(kspProcessor))
+        )
+        writeWorkspaceDependenciesToFile(workspaceDependencies)
+        dependencyResolutionService.init(workspaceDependenciesFile)
+
+        assertEquals(
+            setOf(MavenDependency(repo = "ksp_maven", group = "com.example", name = "processor")),
+            dependencyResolutionService.getMavenDependenciesInRepo("ksp_maven")
+        )
+        assertEquals(emptySet<MavenDependency>(), dependencyResolutionService.getMavenDependenciesInRepo("ksp_maven_maven"))
+    }
+
+    @Test
     fun `test getMavenDependency prefers nearest exact topology bucket over default duplicate`() {
         // Given
         val defaultDependency = ResolvedDependency.fromId(
@@ -303,6 +403,33 @@ class DefaultDependencyResolutionServiceTest {
         assertEquals("maven", mavenDep?.repo)
         assertEquals("androidx.core", mavenDep?.group)
         assertEquals("core", mavenDep?.name)
+    }
+
+    @Test
+    fun `test getMavenDependency returns transitive dependency when no direct owner exists`() {
+        // Given
+        val transitiveDependency = ResolvedDependency.fromId(
+            "com.android.tools.lint:lint-api:31.5.0-alpha02",
+            "default"
+        ).copy(direct = false)
+        val workspaceDependencies = WorkspaceDependencies(
+            variantDeps = mapOf("default" to listOf(transitiveDependency))
+        )
+        writeWorkspaceDependenciesToFile(workspaceDependencies)
+        dependencyResolutionService.init(workspaceDependenciesFile)
+
+        // When
+        val mavenDep = dependencyResolutionService.getMavenDependency(
+            setOf("default"),
+            "com.android.tools.lint",
+            "lint-api"
+        )
+
+        // Then
+        assertNotNull(mavenDep)
+        assertEquals("maven", mavenDep?.repo)
+        assertEquals("com.android.tools.lint", mavenDep?.group)
+        assertEquals("lint-api", mavenDep?.name)
     }
 
     @Test

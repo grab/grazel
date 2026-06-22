@@ -190,7 +190,7 @@ class DefaultVariantBuilderTest {
     @Test
     fun `assert jvm variants are built`() {
         val variants = variantBuilder.build(jvmProject)
-        assertEquals(2, variants.size)
+        assertEquals(3, variants.size)
         assertTrue("No Android variants are built for Jvm project") {
             variants.none { it is AndroidFlavor || it is AndroidBuildType || it is AndroidVariant }
         }
@@ -204,6 +204,11 @@ class DefaultVariantBuilderTest {
             1,
             variants.filter { it.variantType == VariantType.Test }.size,
             "Jvm test variants are built",
+        )
+        assertEquals(
+            1,
+            variants.filter { it.variantType == VariantType.Lint }.size,
+            "Jvm lint variants are built when lint plugin is applied",
         )
     }
 }

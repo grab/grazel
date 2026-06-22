@@ -61,7 +61,7 @@ constructor(
     private val grazelExtension: GrazelExtension,
     private val dependenciesDataSource: DependenciesDataSource,
     private val dependencyGraphsService: GradleProvider<DefaultDependencyGraphsService>,
-    private val gradleDependencyToBazelDependency: GradleDependencyToBazelDependency
+    private val gradleDependencyToBazelDependency: GradleDependencyToBazelDependency,
 ) : AndroidLibraryDataExtractor {
 
     private val projectDependencyGraphs: DependencyGraphs get() = dependencyGraphsService.get().get()

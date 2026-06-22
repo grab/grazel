@@ -11,8 +11,10 @@
     "androidx.appcompat:appcompat-resources": 143709333,
     "androidx.arch.core:core-common": 212670599,
     "androidx.arch.core:core-runtime": -1423369184,
+    "androidx.autofill:autofill": -1530643612,
     "androidx.collection:collection": 1851885060,
     "androidx.collection:collection-jvm": -1022283048,
+    "androidx.collection:collection-ktx": 506634854,
     "androidx.compose.animation:animation": -1462276423,
     "androidx.compose.animation:animation-android": 926617559,
     "androidx.compose.animation:animation-core": 1582345983,
@@ -35,30 +37,30 @@
     "androidx.compose.ui:ui-geometry-android": -1893733706,
     "androidx.compose.ui:ui-graphics": -555218643,
     "androidx.compose.ui:ui-graphics-android": 943680975,
+    "androidx.compose.ui:ui-test": -1102082836,
+    "androidx.compose.ui:ui-test-junit4": 1737816095,
+    "androidx.compose.ui:ui-test-manifest": -455530488,
     "androidx.compose.ui:ui-text": 446959311,
     "androidx.compose.ui:ui-text-android": 561295729,
-    "androidx.compose.ui:ui-tooling": 1335226128,
-    "androidx.compose.ui:ui-tooling-android": 1541849266,
-    "androidx.compose.ui:ui-tooling-data": 729351151,
-    "androidx.compose.ui:ui-tooling-data-android": 621971089,
-    "androidx.compose.ui:ui-tooling-preview": 271579147,
-    "androidx.compose.ui:ui-tooling-preview-android": 1695653549,
     "androidx.compose.ui:ui-unit": 2138044710,
     "androidx.compose.ui:ui-unit-android": 2079872200,
     "androidx.compose.ui:ui-util": 409328548,
     "androidx.compose.ui:ui-util-android": -1281697466,
     "androidx.concurrent:concurrent-futures": -241468558,
+    "androidx.constraintlayout:constraintlayout": 1100334590,
+    "androidx.constraintlayout:constraintlayout-core": -817755974,
     "androidx.core:core": 899679034,
     "androidx.core:core-ktx": 438051419,
     "androidx.cursoradapter:cursoradapter": -991572122,
     "androidx.customview:customview": -1476652308,
+    "androidx.customview:customview-poolingcontainer": 1451517746,
     "androidx.databinding:databinding-common": -2127711236,
-    "androidx.databinding:databinding-ktx": -219480430,
-    "androidx.databinding:databinding-runtime": -1047641207,
     "androidx.databinding:viewbinding": 568623407,
     "androidx.drawerlayout:drawerlayout": -1166260426,
     "androidx.emoji2:emoji2": 428570715,
+    "androidx.emoji2:emoji2-views-helper": 296590887,
     "androidx.fragment:fragment": 344005609,
+    "androidx.graphics:graphics-path": -728455107,
     "androidx.interpolator:interpolator": 546936334,
     "androidx.lifecycle:lifecycle-common": 1615454616,
     "androidx.lifecycle:lifecycle-common-jvm": -985910716,
@@ -82,7 +84,9 @@
     "androidx.paging:paging-common": 1577946662,
     "androidx.paging:paging-common-ktx": -909774968,
     "androidx.paging:paging-runtime": -329802713,
+    "androidx.profileinstaller:profileinstaller": 1088129730,
     "androidx.recyclerview:recyclerview": 747924426,
+    "androidx.resourceinspection:resourceinspection-annotation": -1452809241,
     "androidx.savedstate:savedstate": -1545293289,
     "androidx.savedstate:savedstate-ktx": 877332601,
     "androidx.startup:startup-runtime": -1105025667,
@@ -94,6 +98,7 @@
     "androidx.test:annotation": 585610434,
     "androidx.test:core": 987691062,
     "androidx.test:monitor": 1532776253,
+    "androidx.test:rules": 1473121816,
     "androidx.test:runner": -1165995575,
     "androidx.tracing:tracing": 1862641990,
     "androidx.vectordrawable:vectordrawable": 1933203971,
@@ -107,10 +112,15 @@
     "com.google.ar.sceneform:sceneform-base": -417010888,
     "com.google.ar:core": 1761415433,
     "com.google.code.findbugs:jsr305": 495355163,
+    "com.google.errorprone:error_prone_annotations": 1431367875,
+    "com.google.guava:failureaccess": 1582410452,
+    "com.google.guava:guava": -220965576,
     "com.google.guava:listenablefuture": -66810587,
+    "com.google.j2objc:j2objc-annotations": -47406525,
     "com.squareup:javawriter": 983088744,
     "javax.inject:javax.inject": -297932879,
     "junit:junit": -744267592,
+    "org.checkerframework:checker-compat-qual": 1011320103,
     "org.hamcrest:hamcrest-core": -1351165872,
     "org.hamcrest:hamcrest-integration": 684425049,
     "org.hamcrest:hamcrest-library": -1383845358,
@@ -121,6 +131,8 @@
     "org.jetbrains.kotlinx:kotlinx-coroutines-android": -1709166003,
     "org.jetbrains.kotlinx:kotlinx-coroutines-core": -1648913921,
     "org.jetbrains.kotlinx:kotlinx-coroutines-core-jvm": -1487700397,
+    "org.jetbrains.kotlinx:kotlinx-coroutines-test": -140566414,
+    "org.jetbrains.kotlinx:kotlinx-coroutines-test-jvm": -137315514,
     "org.jetbrains:annotations": -628031479,
     "repositories": 2040469386
   },
@@ -131,66 +143,63 @@
     "android.arch.lifecycle:livedata-core:aar": 889841199,
     "android.arch.lifecycle:runtime:aar": -2027289102,
     "android.arch.lifecycle:viewmodel:aar": 467040141,
-    "androidx.activity:activity-compose:aar": -1247860762,
+    "androidx.activity:activity-compose:aar": 1395562288,
     "androidx.activity:activity-ktx:aar": 1228281865,
     "androidx.activity:activity:aar": 1523999045,
     "androidx.annotation:annotation": -1226764185,
     "androidx.annotation:annotation-experimental:aar": -1243359689,
     "androidx.annotation:annotation-jvm": 1586665210,
     "androidx.appcompat:appcompat-resources:aar": -399574509,
-    "androidx.appcompat:appcompat:aar": 649771376,
+    "androidx.appcompat:appcompat:aar": 1993316177,
     "androidx.arch.core:core-common": 639956789,
     "androidx.arch.core:core-runtime:aar": -1799110727,
     "androidx.autofill:autofill:aar": -306109248,
     "androidx.collection:collection": 1414517065,
     "androidx.collection:collection-jvm": -335692051,
-    "androidx.collection:collection-ktx": 668284248,
-    "androidx.compose.animation:animation-android:aar": -1030988861,
-    "androidx.compose.animation:animation-core-android:aar": 1252717064,
-    "androidx.compose.animation:animation-core:aar": -331808467,
-    "androidx.compose.animation:animation:aar": 1018124878,
-    "androidx.compose.foundation:foundation-android:aar": 762610238,
-    "androidx.compose.foundation:foundation-layout-android:aar": 1208246994,
-    "androidx.compose.foundation:foundation-layout:aar": -1024842371,
-    "androidx.compose.foundation:foundation:aar": 164213016,
-    "androidx.compose.material:material-android:aar": 1903061332,
-    "androidx.compose.material:material-ripple-android:aar": 1646190736,
-    "androidx.compose.material:material-ripple:aar": -1774428126,
-    "androidx.compose.material:material:aar": 1051238504,
+    "androidx.collection:collection-ktx": 991888073,
+    "androidx.compose.animation:animation-android:aar": 1419135179,
+    "androidx.compose.animation:animation-core-android:aar": 499031788,
+    "androidx.compose.animation:animation-core:aar": 2105744273,
+    "androidx.compose.animation:animation:aar": 145696368,
+    "androidx.compose.foundation:foundation-android:aar": 1091836694,
+    "androidx.compose.foundation:foundation-layout-android:aar": 2044126960,
+    "androidx.compose.foundation:foundation-layout:aar": -1471394540,
+    "androidx.compose.foundation:foundation:aar": 1017243464,
+    "androidx.compose.material:material-android:aar": -259717178,
+    "androidx.compose.material:material-ripple-android:aar": -2033328932,
+    "androidx.compose.material:material-ripple:aar": -103430901,
+    "androidx.compose.material:material:aar": -1617027672,
     "androidx.compose.runtime:runtime-android:aar": 1379384673,
     "androidx.compose.runtime:runtime-saveable-android:aar": -834109451,
     "androidx.compose.runtime:runtime-saveable:aar": -1197521790,
     "androidx.compose.runtime:runtime:aar": -1219613959,
-    "androidx.compose.ui:ui-android:aar": 1551180273,
+    "androidx.compose.ui:ui-android:aar": -880409059,
     "androidx.compose.ui:ui-geometry-android:aar": 60944767,
     "androidx.compose.ui:ui-geometry:aar": 1074664222,
-    "androidx.compose.ui:ui-graphics-android:aar": -349264700,
-    "androidx.compose.ui:ui-graphics:aar": 511829175,
-    "androidx.compose.ui:ui-text-android:aar": 586932120,
-    "androidx.compose.ui:ui-text:aar": 544214958,
-    "androidx.compose.ui:ui-tooling-android:aar": 1746309010,
-    "androidx.compose.ui:ui-tooling-data-android:aar": -819229129,
-    "androidx.compose.ui:ui-tooling-data:aar": 2062090878,
-    "androidx.compose.ui:ui-tooling-preview-android:aar": 1863347554,
-    "androidx.compose.ui:ui-tooling-preview:aar": -103509713,
-    "androidx.compose.ui:ui-tooling:aar": -1157889162,
-    "androidx.compose.ui:ui-unit-android:aar": -883885244,
-    "androidx.compose.ui:ui-unit:aar": 588986009,
+    "androidx.compose.ui:ui-graphics-android:aar": -761479005,
+    "androidx.compose.ui:ui-graphics:aar": 60029002,
+    "androidx.compose.ui:ui-test-junit4:aar": -667412154,
+    "androidx.compose.ui:ui-test-manifest:aar": -1841745017,
+    "androidx.compose.ui:ui-test:aar": 691667177,
+    "androidx.compose.ui:ui-text-android:aar": -1680972773,
+    "androidx.compose.ui:ui-text:aar": -1563857588,
+    "androidx.compose.ui:ui-unit-android:aar": 1261724735,
+    "androidx.compose.ui:ui-unit:aar": 213153586,
     "androidx.compose.ui:ui-util-android:aar": -1294223084,
     "androidx.compose.ui:ui-util:aar": 1973373345,
-    "androidx.compose.ui:ui:aar": -2042148423,
+    "androidx.compose.ui:ui:aar": -1029214324,
     "androidx.concurrent:concurrent-futures": 1547594612,
+    "androidx.constraintlayout:constraintlayout-core": -953904438,
+    "androidx.constraintlayout:constraintlayout:aar": 140429693,
     "androidx.core:core-ktx:aar": -1326368793,
     "androidx.core:core:aar": -515274812,
     "androidx.cursoradapter:cursoradapter:aar": -481903031,
     "androidx.customview:customview-poolingcontainer:aar": -893659362,
     "androidx.customview:customview:aar": -2046351129,
     "androidx.databinding:databinding-common": -1173871688,
-    "androidx.databinding:databinding-ktx:aar": -462851987,
-    "androidx.databinding:databinding-runtime:aar": 1311373086,
     "androidx.databinding:viewbinding:aar": -623878391,
     "androidx.drawerlayout:drawerlayout:aar": 925364255,
-    "androidx.emoji2:emoji2-views-helper:aar": -837369774,
+    "androidx.emoji2:emoji2-views-helper:aar": 596474382,
     "androidx.emoji2:emoji2:aar": 29803951,
     "androidx.fragment:fragment:aar": 1489550008,
     "androidx.graphics:graphics-path:aar": 1868493209,
@@ -230,6 +239,7 @@
     "androidx.test:annotation:aar": 976060568,
     "androidx.test:core:aar": -1095372737,
     "androidx.test:monitor:aar": -1169298379,
+    "androidx.test:rules:aar": -595081426,
     "androidx.test:runner:aar": 835249570,
     "androidx.tracing:tracing:aar": 297483845,
     "androidx.vectordrawable:vectordrawable-animated:aar": 70022285,
@@ -248,10 +258,15 @@
     "com.google.ar.sceneform:sceneform-base:aar": -1400563084,
     "com.google.ar:core:aar": -998148860,
     "com.google.code.findbugs:jsr305": -1038659426,
+    "com.google.errorprone:error_prone_annotations": 1413788396,
+    "com.google.guava:failureaccess": -268223546,
+    "com.google.guava:guava": -1411452413,
     "com.google.guava:listenablefuture": 1588902908,
+    "com.google.j2objc:j2objc-annotations": -919409894,
     "com.squareup:javawriter": 1268822113,
     "javax.inject:javax.inject": -1284481446,
     "junit:junit": 712711302,
+    "org.checkerframework:checker-compat-qual": -991207090,
     "org.hamcrest:hamcrest-core": 866476646,
     "org.hamcrest:hamcrest-integration": 581990708,
     "org.hamcrest:hamcrest-library": 1713137694,
@@ -264,6 +279,8 @@
     "org.jetbrains.kotlinx:kotlinx-coroutines-android": -2002302393,
     "org.jetbrains.kotlinx:kotlinx-coroutines-core": 1970592222,
     "org.jetbrains.kotlinx:kotlinx-coroutines-core-jvm": 724511876,
+    "org.jetbrains.kotlinx:kotlinx-coroutines-test": -1365846213,
+    "org.jetbrains.kotlinx:kotlinx-coroutines-test-jvm": -480979419,
     "org.jetbrains:annotations": 1311519737
   },
   "artifacts": {
@@ -383,9 +400,9 @@
     },
     "androidx.collection:collection-ktx": {
       "shasums": {
-        "jar": "9aa3a47251dd28404c8e850a4bf74309cf7d5d6d3ece0880f8dd273649187bf0"
+        "jar": "c6deada2fac53b8ea6523dbda77597b128006674616f140f04df23264c6d1aa3"
       },
-      "version": "1.2.0"
+      "version": "1.4.4"
     },
     "androidx.compose.animation:animation-android:aar": {
       "shasums": {
@@ -513,6 +530,24 @@
       },
       "version": "1.7.8"
     },
+    "androidx.compose.ui:ui-test-junit4:aar": {
+      "shasums": {
+        "jar": "5a6a6c8e213613e29e0529336483974f6aea9cd0f09fea7212e58a273ec42ce0"
+      },
+      "version": "1.4.3"
+    },
+    "androidx.compose.ui:ui-test-manifest:aar": {
+      "shasums": {
+        "jar": "f8f33961de762aab99f325961e249b646f231c014edb2564204b36ca9dfc698a"
+      },
+      "version": "1.4.3"
+    },
+    "androidx.compose.ui:ui-test:aar": {
+      "shasums": {
+        "jar": "178ecaeb147a0451ac6ad589eec7b7b1594e5ad16754b49216c4702c73303304"
+      },
+      "version": "1.4.3"
+    },
     "androidx.compose.ui:ui-text-android:aar": {
       "shasums": {
         "jar": "5f7757ad176bf0807a3f98d4e1cd9004ee059cbf05a232062d93e4a050d7dfba"
@@ -522,42 +557,6 @@
     "androidx.compose.ui:ui-text:aar": {
       "shasums": {
         "jar": "a31a9aec4308f4544c23bb90a2c0995e75c5c1355785b6c4c06f6b8854be7e05"
-      },
-      "version": "1.7.8"
-    },
-    "androidx.compose.ui:ui-tooling-android:aar": {
-      "shasums": {
-        "jar": "99691d3730a815f19850f4403348d042541c04a90bd2b07f0225e72f2036a5e0"
-      },
-      "version": "1.7.8"
-    },
-    "androidx.compose.ui:ui-tooling-data-android:aar": {
-      "shasums": {
-        "jar": "b98dbf26c51394ea4044f746b87268ec8e6165a206c3d5b74752eac1d95df3f4"
-      },
-      "version": "1.7.8"
-    },
-    "androidx.compose.ui:ui-tooling-data:aar": {
-      "shasums": {
-        "jar": "164a7447d5dd7577bff755a516e81941444f1e2f2e71c8e0594316df4984baf9"
-      },
-      "version": "1.7.8"
-    },
-    "androidx.compose.ui:ui-tooling-preview-android:aar": {
-      "shasums": {
-        "jar": "e17661a807e11fed2ebc6f92fb5911b3824ee6a15790a381167208d5b7d7fe66"
-      },
-      "version": "1.7.8"
-    },
-    "androidx.compose.ui:ui-tooling-preview:aar": {
-      "shasums": {
-        "jar": "c7f56071d988ee6bec05d826964d3738e910dbe3e27afd1474fbfd35aab976d8"
-      },
-      "version": "1.7.8"
-    },
-    "androidx.compose.ui:ui-tooling:aar": {
-      "shasums": {
-        "jar": "e8d072ac4ebca38d0e628bea56d522c74989c62137acf2b7dc770563db36070c"
       },
       "version": "1.7.8"
     },
@@ -597,6 +596,18 @@
       },
       "version": "1.1.0"
     },
+    "androidx.constraintlayout:constraintlayout-core": {
+      "shasums": {
+        "jar": "3e477f4de231e58b25f5a992f3be45e97d332c34a39a9e3e7d4b78ae0ac2256f"
+      },
+      "version": "1.0.4"
+    },
+    "androidx.constraintlayout:constraintlayout:aar": {
+      "shasums": {
+        "jar": "0df714c0b51e54710ebf746eb469d333176bbb3cb29f80775dc3ca4eb3162512"
+      },
+      "version": "2.1.4"
+    },
     "androidx.core:core-ktx:aar": {
       "shasums": {
         "jar": "19ba50d094c7368ede1b4ccf1195ceb83e35970736593f823e5af716f8d05d70"
@@ -633,18 +644,6 @@
       },
       "version": "8.6.1"
     },
-    "androidx.databinding:databinding-ktx:aar": {
-      "shasums": {
-        "jar": "7903bdf9e8e4cafedc1e79ddf9c9429cf6ade0fc3e6250e31b1ceda492aa1218"
-      },
-      "version": "8.6.1"
-    },
-    "androidx.databinding:databinding-runtime:aar": {
-      "shasums": {
-        "jar": "03ac03e8373a30087bc50a242b9eabf7ff1960c91995677e768ac47afdce3916"
-      },
-      "version": "8.6.1"
-    },
     "androidx.databinding:viewbinding:aar": {
       "shasums": {
         "jar": "5cf9086d41357dea5732ec9e6bc2c0767d2b67a13f526375f5ec5252ca9678c6"
@@ -659,9 +658,9 @@
     },
     "androidx.emoji2:emoji2-views-helper:aar": {
       "shasums": {
-        "jar": "7ffa4d464d9db259fca0cdb50fbd4ab63d6872bcda59468b9f7555504c7d5ac4"
+        "jar": "9a1351295a4f739df0efe8344adaa9afb34856c3af584d4a9afbec105a45b90b"
       },
-      "version": "1.2.0"
+      "version": "1.3.0"
     },
     "androidx.emoji2:emoji2:aar": {
       "shasums": {
@@ -897,6 +896,12 @@
       },
       "version": "1.6.1"
     },
+    "androidx.test:rules:aar": {
+      "shasums": {
+        "jar": "dd645929c63e24f41be8e6f57bb06f305d3b02ed1b2a7d961647027ae1d9e17f"
+      },
+      "version": "1.5.0"
+    },
     "androidx.test:runner:aar": {
       "shasums": {
         "jar": "36cd6bc876daa1f183ccd11f9898e094c71f06960fde85a373422959613a44d6"
@@ -1005,11 +1010,35 @@
       },
       "version": "3.0.2"
     },
+    "com.google.errorprone:error_prone_annotations": {
+      "shasums": {
+        "jar": "baf7d6ea97ce606c53e11b6854ba5f2ce7ef5c24dddf0afa18d1260bd25b002c"
+      },
+      "version": "2.3.4"
+    },
+    "com.google.guava:failureaccess": {
+      "shasums": {
+        "jar": "a171ee4c734dd2da837e4b16be9df4661afab72a41adaf31eb84dfdaf936ca26"
+      },
+      "version": "1.0.1"
+    },
+    "com.google.guava:guava": {
+      "shasums": {
+        "jar": "ea0b5a62b707482eee5cf305c8f35ef91cf4ceaff504f011a5c49c41355f5781"
+      },
+      "version": "30.1-android"
+    },
     "com.google.guava:listenablefuture": {
       "shasums": {
         "jar": "b372a037d4230aa57fbeffdef30fd6123f9c0c2db85d0aced00c91b974f33f99"
       },
       "version": "9999.0-empty-to-avoid-conflict-with-guava"
+    },
+    "com.google.j2objc:j2objc-annotations": {
+      "shasums": {
+        "jar": "21af30c92267bd6122c0e0b4d20cccb6641a37eaf956c6540ec471d584e64a7b"
+      },
+      "version": "1.3"
     },
     "com.squareup:javawriter": {
       "shasums": {
@@ -1028,6 +1057,12 @@
         "jar": "8e495b634469d64fb8acfa3495a065cbacc8a0fff55ce1e31007be4c16dc57d3"
       },
       "version": "4.13.2"
+    },
+    "org.checkerframework:checker-compat-qual": {
+      "shasums": {
+        "jar": "11d134b245e9cacc474514d2d66b5b8618f8039a1465cdc55bbc0b34e0008b7a"
+      },
+      "version": "2.5.5"
     },
     "org.hamcrest:hamcrest-core": {
       "shasums": {
@@ -1100,6 +1135,18 @@
         "jar": "1ab3acc38f3e7355c4f9d1ec62107a46fa73c899f3070d055e5d4373dfe67e12"
       },
       "version": "1.7.3"
+    },
+    "org.jetbrains.kotlinx:kotlinx-coroutines-test": {
+      "shasums": {
+        "jar": "993eef7de86d59e99096fbc51b7df33f0cc8a3a655e195590765b7e51e4c0aaa"
+      },
+      "version": "1.6.4"
+    },
+    "org.jetbrains.kotlinx:kotlinx-coroutines-test-jvm": {
+      "shasums": {
+        "jar": "69d65e5fea41cbc0bb905d3ef6623a2348b931fd01b9f2c4a1751a372f2e476d"
+      },
+      "version": "1.6.4"
     },
     "org.jetbrains:annotations": {
       "shasums": {
@@ -1204,8 +1251,7 @@
       "org.jetbrains.kotlin:kotlin-stdlib"
     ],
     "androidx.collection:collection-ktx": [
-      "androidx.collection:collection",
-      "org.jetbrains.kotlin:kotlin-stdlib"
+      "androidx.collection:collection-jvm"
     ],
     "androidx.compose.animation:animation-android:aar": [
       "androidx.annotation:annotation",
@@ -1389,6 +1435,44 @@
       "androidx.compose.ui:ui-graphics-android:aar",
       "androidx.compose.ui:ui-unit:aar"
     ],
+    "androidx.compose.ui:ui-test-junit4:aar": [
+      "androidx.activity:activity-compose:aar",
+      "androidx.activity:activity:aar",
+      "androidx.annotation:annotation",
+      "androidx.compose.runtime:runtime-saveable:aar",
+      "androidx.compose.ui:ui-test:aar",
+      "androidx.lifecycle:lifecycle-common",
+      "androidx.lifecycle:lifecycle-runtime:aar",
+      "androidx.test.espresso:espresso-core:aar",
+      "androidx.test.espresso:espresso-idling-resource:aar",
+      "androidx.test.ext:junit:aar",
+      "androidx.test:core:aar",
+      "androidx.test:monitor:aar",
+      "junit:junit",
+      "org.jetbrains.kotlin:kotlin-stdlib",
+      "org.jetbrains.kotlin:kotlin-stdlib-common",
+      "org.jetbrains.kotlinx:kotlinx-coroutines-core",
+      "org.jetbrains.kotlinx:kotlinx-coroutines-test"
+    ],
+    "androidx.compose.ui:ui-test-manifest:aar": [
+      "androidx.activity:activity:aar"
+    ],
+    "androidx.compose.ui:ui-test:aar": [
+      "androidx.annotation:annotation",
+      "androidx.compose.runtime:runtime:aar",
+      "androidx.compose.ui:ui-graphics:aar",
+      "androidx.compose.ui:ui-text:aar",
+      "androidx.compose.ui:ui-unit:aar",
+      "androidx.compose.ui:ui-util:aar",
+      "androidx.compose.ui:ui:aar",
+      "androidx.core:core-ktx:aar",
+      "androidx.test.espresso:espresso-core:aar",
+      "androidx.test:monitor:aar",
+      "org.jetbrains.kotlin:kotlin-stdlib",
+      "org.jetbrains.kotlin:kotlin-stdlib-common",
+      "org.jetbrains.kotlinx:kotlinx-coroutines-core",
+      "org.jetbrains.kotlinx:kotlinx-coroutines-test"
+    ],
     "androidx.compose.ui:ui-text-android:aar": [
       "androidx.annotation:annotation",
       "androidx.annotation:annotation-experimental:aar",
@@ -1407,47 +1491,6 @@
       "androidx.compose.ui:ui-graphics:aar",
       "androidx.compose.ui:ui-text-android:aar",
       "androidx.compose.ui:ui-unit:aar"
-    ],
-    "androidx.compose.ui:ui-tooling-android:aar": [
-      "androidx.activity:activity-compose:aar",
-      "androidx.annotation:annotation-jvm",
-      "androidx.compose.animation:animation-android:aar",
-      "androidx.compose.material:material:aar",
-      "androidx.compose.runtime:runtime-android:aar",
-      "androidx.compose.ui:ui-tooling-data:aar",
-      "androidx.compose.ui:ui-tooling-preview:aar",
-      "androidx.compose.ui:ui:aar",
-      "androidx.lifecycle:lifecycle-common",
-      "androidx.savedstate:savedstate-ktx:aar",
-      "org.jetbrains.kotlin:kotlin-stdlib"
-    ],
-    "androidx.compose.ui:ui-tooling-data-android:aar": [
-      "androidx.annotation:annotation",
-      "androidx.annotation:annotation-experimental:aar",
-      "androidx.compose.runtime:runtime-android:aar",
-      "androidx.compose.ui:ui:aar",
-      "org.jetbrains.kotlin:kotlin-stdlib"
-    ],
-    "androidx.compose.ui:ui-tooling-data:aar": [
-      "androidx.compose.runtime:runtime:aar",
-      "androidx.compose.ui:ui-tooling-data-android:aar",
-      "androidx.compose.ui:ui:aar"
-    ],
-    "androidx.compose.ui:ui-tooling-preview-android:aar": [
-      "androidx.annotation:annotation",
-      "androidx.compose.runtime:runtime-android:aar",
-      "org.jetbrains.kotlin:kotlin-stdlib-common"
-    ],
-    "androidx.compose.ui:ui-tooling-preview:aar": [
-      "androidx.compose.runtime:runtime:aar",
-      "androidx.compose.ui:ui-tooling-preview-android:aar"
-    ],
-    "androidx.compose.ui:ui-tooling:aar": [
-      "androidx.compose.runtime:runtime:aar",
-      "androidx.compose.ui:ui-tooling-android:aar",
-      "androidx.compose.ui:ui-tooling-data:aar",
-      "androidx.compose.ui:ui-tooling-preview:aar",
-      "androidx.compose.ui:ui:aar"
     ],
     "androidx.compose.ui:ui-unit-android:aar": [
       "androidx.annotation:annotation",
@@ -1485,6 +1528,10 @@
       "androidx.annotation:annotation",
       "com.google.guava:listenablefuture"
     ],
+    "androidx.constraintlayout:constraintlayout:aar": [
+      "androidx.constraintlayout:constraintlayout-core",
+      "androidx.core:core:aar"
+    ],
     "androidx.core:core-ktx:aar": [
       "androidx.annotation:annotation",
       "androidx.core:core:aar",
@@ -1509,22 +1556,6 @@
     "androidx.customview:customview:aar": [
       "androidx.annotation:annotation",
       "androidx.core:core:aar"
-    ],
-    "androidx.databinding:databinding-ktx:aar": [
-      "androidx.databinding:databinding-runtime:aar",
-      "androidx.lifecycle:lifecycle-livedata:aar",
-      "androidx.lifecycle:lifecycle-process:aar",
-      "androidx.lifecycle:lifecycle-runtime-ktx:aar",
-      "androidx.lifecycle:lifecycle-service:aar",
-      "androidx.lifecycle:lifecycle-viewmodel:aar",
-      "org.jetbrains.kotlin:kotlin-stdlib-jdk8",
-      "org.jetbrains.kotlinx:kotlinx-coroutines-android"
-    ],
-    "androidx.databinding:databinding-runtime:aar": [
-      "androidx.collection:collection",
-      "androidx.databinding:databinding-common",
-      "androidx.databinding:viewbinding:aar",
-      "androidx.lifecycle:lifecycle-runtime:aar"
     ],
     "androidx.databinding:viewbinding:aar": [
       "androidx.annotation:annotation"
@@ -1777,6 +1808,10 @@
       "androidx.test:annotation:aar",
       "androidx.tracing:tracing:aar"
     ],
+    "androidx.test:rules:aar": [
+      "androidx.test:annotation:aar",
+      "androidx.test:runner:aar"
+    ],
     "androidx.test:runner:aar": [
       "androidx.annotation:annotation",
       "androidx.test.services:storage:aar",
@@ -1840,6 +1875,14 @@
     "com.google.ar.sceneform:rendering:aar": [
       "com.google.ar:core:aar"
     ],
+    "com.google.guava:guava": [
+      "com.google.code.findbugs:jsr305",
+      "com.google.errorprone:error_prone_annotations",
+      "com.google.guava:failureaccess",
+      "com.google.guava:listenablefuture",
+      "com.google.j2objc:j2objc-annotations",
+      "org.checkerframework:checker-compat-qual"
+    ],
     "junit:junit": [
       "org.hamcrest:hamcrest-core"
     ],
@@ -1877,6 +1920,14 @@
       "org.jetbrains.kotlin:kotlin-stdlib-common",
       "org.jetbrains.kotlin:kotlin-stdlib-jdk8",
       "org.jetbrains:annotations"
+    ],
+    "org.jetbrains.kotlinx:kotlinx-coroutines-test": [
+      "org.jetbrains.kotlinx:kotlinx-coroutines-test-jvm"
+    ],
+    "org.jetbrains.kotlinx:kotlinx-coroutines-test-jvm": [
+      "org.jetbrains.kotlin:kotlin-stdlib-common",
+      "org.jetbrains.kotlin:kotlin-stdlib-jdk8",
+      "org.jetbrains.kotlinx:kotlinx-coroutines-core-jvm"
     ]
   },
   "packages": {
@@ -1897,11 +1948,20 @@
       "androidx.collection",
       "androidx.collection.internal"
     ],
-    "androidx.collection:collection-ktx": [
-      "androidx.collection"
-    ],
     "androidx.concurrent:concurrent-futures": [
       "androidx.concurrent.futures"
+    ],
+    "androidx.constraintlayout:constraintlayout-core": [
+      "androidx.constraintlayout.core",
+      "androidx.constraintlayout.core.motion",
+      "androidx.constraintlayout.core.motion.key",
+      "androidx.constraintlayout.core.motion.parse",
+      "androidx.constraintlayout.core.motion.utils",
+      "androidx.constraintlayout.core.parser",
+      "androidx.constraintlayout.core.state",
+      "androidx.constraintlayout.core.state.helpers",
+      "androidx.constraintlayout.core.widgets",
+      "androidx.constraintlayout.core.widgets.analyzer"
     ],
     "androidx.databinding:databinding-common": [
       "androidx.databinding"
@@ -1923,6 +1983,36 @@
       "javax.annotation",
       "javax.annotation.concurrent",
       "javax.annotation.meta"
+    ],
+    "com.google.errorprone:error_prone_annotations": [
+      "com.google.errorprone.annotations",
+      "com.google.errorprone.annotations.concurrent"
+    ],
+    "com.google.guava:failureaccess": [
+      "com.google.common.util.concurrent.internal"
+    ],
+    "com.google.guava:guava": [
+      "com.google.common.annotations",
+      "com.google.common.base",
+      "com.google.common.base.internal",
+      "com.google.common.cache",
+      "com.google.common.collect",
+      "com.google.common.escape",
+      "com.google.common.eventbus",
+      "com.google.common.graph",
+      "com.google.common.hash",
+      "com.google.common.html",
+      "com.google.common.io",
+      "com.google.common.math",
+      "com.google.common.net",
+      "com.google.common.primitives",
+      "com.google.common.reflect",
+      "com.google.common.util.concurrent",
+      "com.google.common.xml",
+      "com.google.thirdparty.publicsuffix"
+    ],
+    "com.google.j2objc:j2objc-annotations": [
+      "com.google.j2objc.annotations"
     ],
     "com.squareup:javawriter": [
       "com.squareup.javawriter"
@@ -1963,6 +2053,9 @@
       "org.junit.runners.model",
       "org.junit.runners.parameterized",
       "org.junit.validator"
+    ],
+    "org.checkerframework:checker-compat-qual": [
+      "org.checkerframework.checker.nullness.compatqual"
     ],
     "org.hamcrest:hamcrest-core": [
       "org.hamcrest",
@@ -2051,6 +2144,10 @@
       "kotlinx.coroutines.sync",
       "kotlinx.coroutines.time"
     ],
+    "org.jetbrains.kotlinx:kotlinx-coroutines-test-jvm": [
+      "kotlinx.coroutines.test",
+      "kotlinx.coroutines.test.internal"
+    ],
     "org.jetbrains:annotations": [
       "org.intellij.lang.annotations",
       "org.jetbrains.annotations"
@@ -2099,28 +2196,25 @@
       "androidx.compose.ui:ui-geometry:aar",
       "androidx.compose.ui:ui-graphics-android:aar",
       "androidx.compose.ui:ui-graphics:aar",
+      "androidx.compose.ui:ui-test-junit4:aar",
+      "androidx.compose.ui:ui-test-manifest:aar",
+      "androidx.compose.ui:ui-test:aar",
       "androidx.compose.ui:ui-text-android:aar",
       "androidx.compose.ui:ui-text:aar",
-      "androidx.compose.ui:ui-tooling-android:aar",
-      "androidx.compose.ui:ui-tooling-data-android:aar",
-      "androidx.compose.ui:ui-tooling-data:aar",
-      "androidx.compose.ui:ui-tooling-preview-android:aar",
-      "androidx.compose.ui:ui-tooling-preview:aar",
-      "androidx.compose.ui:ui-tooling:aar",
       "androidx.compose.ui:ui-unit-android:aar",
       "androidx.compose.ui:ui-unit:aar",
       "androidx.compose.ui:ui-util-android:aar",
       "androidx.compose.ui:ui-util:aar",
       "androidx.compose.ui:ui:aar",
       "androidx.concurrent:concurrent-futures",
+      "androidx.constraintlayout:constraintlayout-core",
+      "androidx.constraintlayout:constraintlayout:aar",
       "androidx.core:core-ktx:aar",
       "androidx.core:core:aar",
       "androidx.cursoradapter:cursoradapter:aar",
       "androidx.customview:customview-poolingcontainer:aar",
       "androidx.customview:customview:aar",
       "androidx.databinding:databinding-common",
-      "androidx.databinding:databinding-ktx:aar",
-      "androidx.databinding:databinding-runtime:aar",
       "androidx.databinding:viewbinding:aar",
       "androidx.drawerlayout:drawerlayout:aar",
       "androidx.emoji2:emoji2-views-helper:aar",
@@ -2163,6 +2257,7 @@
       "androidx.test:annotation:aar",
       "androidx.test:core:aar",
       "androidx.test:monitor:aar",
+      "androidx.test:rules:aar",
       "androidx.test:runner:aar",
       "androidx.tracing:tracing:aar",
       "androidx.vectordrawable:vectordrawable-animated:aar",
@@ -2181,10 +2276,15 @@
       "com.google.ar.sceneform:sceneform-base:aar",
       "com.google.ar:core:aar",
       "com.google.code.findbugs:jsr305",
+      "com.google.errorprone:error_prone_annotations",
+      "com.google.guava:failureaccess",
+      "com.google.guava:guava",
       "com.google.guava:listenablefuture",
+      "com.google.j2objc:j2objc-annotations",
       "com.squareup:javawriter",
       "javax.inject:javax.inject",
       "junit:junit",
+      "org.checkerframework:checker-compat-qual",
       "org.hamcrest:hamcrest-core",
       "org.hamcrest:hamcrest-integration",
       "org.hamcrest:hamcrest-library",
@@ -2197,6 +2297,8 @@
       "org.jetbrains.kotlinx:kotlinx-coroutines-android",
       "org.jetbrains.kotlinx:kotlinx-coroutines-core",
       "org.jetbrains.kotlinx:kotlinx-coroutines-core-jvm",
+      "org.jetbrains.kotlinx:kotlinx-coroutines-test",
+      "org.jetbrains.kotlinx:kotlinx-coroutines-test-jvm",
       "org.jetbrains:annotations"
     ],
     "https://repo.maven.apache.org/maven2/": [
@@ -2241,28 +2343,25 @@
       "androidx.compose.ui:ui-geometry:aar",
       "androidx.compose.ui:ui-graphics-android:aar",
       "androidx.compose.ui:ui-graphics:aar",
+      "androidx.compose.ui:ui-test-junit4:aar",
+      "androidx.compose.ui:ui-test-manifest:aar",
+      "androidx.compose.ui:ui-test:aar",
       "androidx.compose.ui:ui-text-android:aar",
       "androidx.compose.ui:ui-text:aar",
-      "androidx.compose.ui:ui-tooling-android:aar",
-      "androidx.compose.ui:ui-tooling-data-android:aar",
-      "androidx.compose.ui:ui-tooling-data:aar",
-      "androidx.compose.ui:ui-tooling-preview-android:aar",
-      "androidx.compose.ui:ui-tooling-preview:aar",
-      "androidx.compose.ui:ui-tooling:aar",
       "androidx.compose.ui:ui-unit-android:aar",
       "androidx.compose.ui:ui-unit:aar",
       "androidx.compose.ui:ui-util-android:aar",
       "androidx.compose.ui:ui-util:aar",
       "androidx.compose.ui:ui:aar",
       "androidx.concurrent:concurrent-futures",
+      "androidx.constraintlayout:constraintlayout-core",
+      "androidx.constraintlayout:constraintlayout:aar",
       "androidx.core:core-ktx:aar",
       "androidx.core:core:aar",
       "androidx.cursoradapter:cursoradapter:aar",
       "androidx.customview:customview-poolingcontainer:aar",
       "androidx.customview:customview:aar",
       "androidx.databinding:databinding-common",
-      "androidx.databinding:databinding-ktx:aar",
-      "androidx.databinding:databinding-runtime:aar",
       "androidx.databinding:viewbinding:aar",
       "androidx.drawerlayout:drawerlayout:aar",
       "androidx.emoji2:emoji2-views-helper:aar",
@@ -2305,6 +2404,7 @@
       "androidx.test:annotation:aar",
       "androidx.test:core:aar",
       "androidx.test:monitor:aar",
+      "androidx.test:rules:aar",
       "androidx.test:runner:aar",
       "androidx.tracing:tracing:aar",
       "androidx.vectordrawable:vectordrawable-animated:aar",
@@ -2323,10 +2423,15 @@
       "com.google.ar.sceneform:sceneform-base:aar",
       "com.google.ar:core:aar",
       "com.google.code.findbugs:jsr305",
+      "com.google.errorprone:error_prone_annotations",
+      "com.google.guava:failureaccess",
+      "com.google.guava:guava",
       "com.google.guava:listenablefuture",
+      "com.google.j2objc:j2objc-annotations",
       "com.squareup:javawriter",
       "javax.inject:javax.inject",
       "junit:junit",
+      "org.checkerframework:checker-compat-qual",
       "org.hamcrest:hamcrest-core",
       "org.hamcrest:hamcrest-integration",
       "org.hamcrest:hamcrest-library",
@@ -2339,6 +2444,8 @@
       "org.jetbrains.kotlinx:kotlinx-coroutines-android",
       "org.jetbrains.kotlinx:kotlinx-coroutines-core",
       "org.jetbrains.kotlinx:kotlinx-coroutines-core-jvm",
+      "org.jetbrains.kotlinx:kotlinx-coroutines-test",
+      "org.jetbrains.kotlinx:kotlinx-coroutines-test-jvm",
       "org.jetbrains:annotations"
     ]
   },
@@ -2349,6 +2456,11 @@
       ],
       "kotlinx.coroutines.internal.MainDispatcherFactory": [
         "kotlinx.coroutines.android.AndroidDispatcherFactory"
+      ]
+    },
+    "org.jetbrains.kotlinx:kotlinx-coroutines-test-jvm": {
+      "kotlinx.coroutines.internal.MainDispatcherFactory": [
+        "kotlinx.coroutines.test.internal.TestMainDispatcherFactory"
       ]
     }
   },

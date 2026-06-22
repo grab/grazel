@@ -77,18 +77,30 @@ internal class AggregatedDependencyResolver(
         fun variantsFor(projectPath: String): List<DeclaredVariantDependencyMetadata> =
             projectMetadataByPath[projectPath]?.variants.orEmpty()
 
-        fun String.targetProjectPathFromDeclaredEdge(): String? {
+        fun String.toDeclaredProjectDependencyEdge(): DeclaredProjectDependencyEdge? {
             val edgeTarget = substringAfter("->", missingDelimiterValue = "")
             if (edgeTarget.isBlank()) return null
-            return projectPathsByDescendingLength
+            val targetProjectPath = projectPathsByDescendingLength
                 .firstOrNull { projectPath -> edgeTarget.startsWith("$projectPath:") }
+                ?: return null
+            val excludedShortIds = substringAfterLast(":[", missingDelimiterValue = "")
+                .removeSuffix("]")
+                .split(",")
+                .mapNotNull { shortId ->
+                    shortId.trim().takeUnless(String::isBlank)
+                }
+                .toSortedSet()
+            return DeclaredProjectDependencyEdge(
+                targetProjectPath = targetProjectPath,
+                excludedShortIds = excludedShortIds
+            )
         }
 
-        fun declaredProjectDependencyPaths(
+        fun declaredProjectDependencyEdges(
             projectPath: String,
             variantNames: Set<String>,
             selectedOnly: Boolean
-        ): Set<String> {
+        ): List<DeclaredProjectDependencyEdge> {
             return variantsFor(projectPath)
                 .asSequence()
                 .filter { variant ->
@@ -100,8 +112,8 @@ internal class AggregatedDependencyResolver(
                         variant.extendsFrom.any { parent -> parent in variantNames }
                 }
                 .flatMap { variant -> variant.declaredProjectDependencies.asSequence() }
-                .mapNotNull { edge -> edge.targetProjectPathFromDeclaredEdge() }
-                .toSet()
+                .mapNotNull { edge -> edge.toDeclaredProjectDependencyEdge() }
+                .toList()
         }
 
         val mainBuildTypeNamesByProject = migratableProjectPaths.associateWith { projectPath ->
@@ -125,6 +137,8 @@ internal class AggregatedDependencyResolver(
         val hierarchyBucketClosures = mutableMapOf<ProjectDependencyBucket, Map<String, ResolvedDependency>>()
         val testHierarchyBucketClosures = mutableMapOf<ProjectDependencyBucket, Map<String, ResolvedDependency>>()
         val reachableMainProjectPaths = sortedSetOf<String>()
+        val reachableMainBucketNamesByProject = sortedMapOf<String, MutableSet<String>>()
+        val mainProjectEdgeScopes = mutableListOf<MainProjectEdgeScope>()
 
         // Lint deps across all migratable projects
         var lintDeps = emptyMap<String, ResolvedDependency>()
@@ -190,6 +204,74 @@ internal class AggregatedDependencyResolver(
             )
         }
 
+        fun addReachableMainBuckets(projectPath: String, bucketNames: Iterable<String>) {
+            val reachableBucketNames = reachableMainBucketNamesByProject
+                .getOrPut(projectPath) { sortedSetOf() }
+            reachableBucketNames.addAll(bucketNames.filter(String::isNotBlank))
+        }
+
+        fun selectedMainVariantHierarchyNames(
+            projectPath: String,
+            selectedVariantDisplayName: String?
+        ): Set<String> {
+            val variantHierarchyNamesByName = variantsFor(projectPath)
+                .asSequence()
+                .filter { variant ->
+                    variant.variantType == AndroidBuild || variant.variantType == JvmBuild
+                }
+                .associate { variant -> variant.name to (setOf(variant.name) + variant.extendsFrom) }
+            return selectedVariantHierarchyNames(
+                displayName = selectedVariantDisplayName,
+                variantHierarchyNamesByName = variantHierarchyNamesByName
+            ).ifEmpty {
+                setOf(DEFAULT_VARIANT).filter { bucketName -> bucketName in variantHierarchyNamesByName }.toSet()
+            }
+        }
+
+        fun knownMainBucketNames(projectPath: String, bucketNames: Set<String>): Set<String> {
+            val knownBucketNames = variantsFor(projectPath)
+                .asSequence()
+                .filter { variant ->
+                    variant.variantType == AndroidBuild || variant.variantType == JvmBuild
+                }
+                .map(DeclaredVariantDependencyMetadata::name)
+                .toSet()
+            return bucketNames
+                .filter { bucketName -> bucketName in knownBucketNames }
+                .toSet()
+                .ifEmpty {
+                    setOf(DEFAULT_VARIANT)
+                        .filter { bucketName -> bucketName in knownBucketNames }
+                        .toSet()
+                }
+        }
+
+        fun ProjectDependencyBucket.isReachableMainBucket(): Boolean {
+            return bucketName in reachableMainBucketNamesByProject[projectPath].orEmpty()
+        }
+
+        fun Map<ProjectDependencyBucket, Map<String, ResolvedDependency>>.withoutDependenciesExcludedByEveryReachableRoot():
+            Map<ProjectDependencyBucket, Map<String, ResolvedDependency>> {
+            if (mainProjectEdgeScopes.isEmpty()) return this
+            val reachableScopesByProjectPath = mainProjectEdgeScopes
+                .flatMap { scope ->
+                    scope.reachableProjectPaths.map { projectPath -> projectPath to scope }
+                }
+                .groupBy(
+                    keySelector = { (projectPath, _) -> projectPath },
+                    valueTransform = { (_, scope) -> scope }
+                )
+            return mapValues { (bucket, dependencies) ->
+                val reachableScopes = reachableScopesByProjectPath[bucket.projectPath].orEmpty()
+                dependencies.filterKeys { shortId ->
+                    reachableScopes.isEmpty() ||
+                        reachableScopes.any { scope ->
+                            shortId !in scope.excludedShortIdsByTargetProject[bucket.projectPath].orEmpty()
+                        }
+                }
+            }
+        }
+
         fun AggregatedDependencyRootMetadata.shouldResolveMainHierarchyRoot(): Boolean {
             if (kind != AggregatedDependencyRootKind.MAIN_HIERARCHY || variantType != AndroidBuild) {
                 return true
@@ -207,23 +289,62 @@ internal class AggregatedDependencyResolver(
 
         var sawBinaryRoot = false
 
-        fun addReachableMainProjectEdges(
+        fun collectMainProjectEdgeScope(
             projectPath: String,
             variantNames: Set<String>,
             selectedOnly: Boolean
-        ) {
-            if (!reachableMainProjectPaths.add(projectPath)) return
-            declaredProjectDependencyPaths(
-                projectPath = projectPath,
-                variantNames = variantNames,
-                selectedOnly = selectedOnly
-            ).forEach { dependencyProjectPath ->
-                addReachableMainProjectEdges(
-                    projectPath = dependencyProjectPath,
-                    variantNames = variantNames,
-                    selectedOnly = false
-                )
+        ): MainProjectEdgeScope {
+            val scopeReachableProjectPaths = sortedSetOf<String>()
+            val scopeReachableBucketNamesByProject = sortedMapOf<String, MutableSet<String>>()
+            val scopeExcludedShortIdsByTargetProject = sortedMapOf<String, MutableSet<String>>()
+
+            fun addScopedReachableBuckets(
+                currentProjectPath: String,
+                bucketNames: Set<String>
+            ) {
+                val knownBucketNames = knownMainBucketNames(currentProjectPath, bucketNames)
+                if (knownBucketNames.isEmpty()) return
+                scopeReachableBucketNamesByProject
+                    .getOrPut(currentProjectPath) { sortedSetOf() }
+                    .addAll(knownBucketNames)
             }
+
+            fun visit(
+                currentProjectPath: String,
+                selectedOnlyForProject: Boolean
+            ) {
+                val dependencyEdges = declaredProjectDependencyEdges(
+                    projectPath = currentProjectPath,
+                    variantNames = variantNames,
+                    selectedOnly = selectedOnlyForProject
+                )
+                dependencyEdges.forEach { edge ->
+                    if (edge.excludedShortIds.isNotEmpty()) {
+                        scopeExcludedShortIdsByTargetProject
+                            .getOrPut(edge.targetProjectPath) { sortedSetOf() }
+                            .addAll(edge.excludedShortIds)
+                    }
+                }
+                if (!scopeReachableProjectPaths.add(currentProjectPath)) return
+                dependencyEdges.forEach { edge ->
+                    addScopedReachableBuckets(edge.targetProjectPath, variantNames)
+                    visit(
+                        currentProjectPath = edge.targetProjectPath,
+                        selectedOnlyForProject = false
+                    )
+                }
+            }
+
+            visit(projectPath, selectedOnly)
+            return MainProjectEdgeScope(
+                reachableProjectPaths = scopeReachableProjectPaths,
+                reachableBucketNamesByProject = scopeReachableBucketNamesByProject
+                    .mapValues { (_, bucketNames) -> bucketNames.toSortedSet() }
+                    .toSortedMap(),
+                excludedShortIdsByTargetProject = scopeExcludedShortIdsByTargetProject
+                    .mapValues { (_, shortIds) -> shortIds.toSortedSet() }
+                    .toSortedMap()
+            )
         }
 
         workspaceDependencyRoots.forEach { aggregatedRoot ->
@@ -231,6 +352,7 @@ internal class AggregatedDependencyResolver(
             if (!metadata.shouldResolveMainHierarchyRoot()) {
                 return@forEach
             }
+            var mainProjectEdgeScope: MainProjectEdgeScope? = null
             val reachableProjectPaths = when (metadata.kind) {
                 AggregatedDependencyRootKind.MAIN_HIERARCHY,
                 AggregatedDependencyRootKind.MAIN_LEAF -> reachableMainProjectPaths
@@ -238,10 +360,26 @@ internal class AggregatedDependencyResolver(
             }
             when (metadata.kind) {
                 AggregatedDependencyRootKind.MAIN_HIERARCHY,
-                AggregatedDependencyRootKind.MAIN_LEAF -> addReachableMainProjectEdges(
+                AggregatedDependencyRootKind.MAIN_LEAF -> {
+                    val scope = collectMainProjectEdgeScope(
+                        projectPath = metadata.projectPath,
+                        variantNames = metadata.variantHierarchyNames(),
+                        selectedOnly = true
+                    )
+                    mainProjectEdgeScopes.add(scope)
+                    reachableMainProjectPaths.addAll(scope.reachableProjectPaths)
+                    scope.reachableBucketNamesByProject.forEach { (projectPath, bucketNames) ->
+                        addReachableMainBuckets(projectPath, bucketNames)
+                    }
+                    mainProjectEdgeScope = scope
+                }
+                else -> Unit
+            }
+            when (metadata.kind) {
+                AggregatedDependencyRootKind.MAIN_HIERARCHY,
+                AggregatedDependencyRootKind.MAIN_LEAF -> addReachableMainBuckets(
                     projectPath = metadata.projectPath,
-                    variantNames = metadata.variantHierarchyNames(),
-                    selectedOnly = true
+                    bucketNames = metadata.variantHierarchyNames()
                 )
                 else -> Unit
             }
@@ -251,7 +389,11 @@ internal class AggregatedDependencyResolver(
                 AggregatedDependencyRootKind.MAIN_LEAF -> resolveRootToDependencyMap(
                     aggregatedRoot = aggregatedRoot,
                     excludeRulesByProjectPath = excludeRulesFor(metadata, AndroidBuild),
-                    reachableProjectPaths = reachableProjectPaths
+                    reachableProjectPaths = reachableProjectPaths,
+                    reachableBucketNamesByProject = reachableMainBucketNamesByProject,
+                    projectEdgeExcludedShortIdsByTargetProject = mainProjectEdgeScope
+                        ?.excludedShortIdsByTargetProject.orEmpty(),
+                    reachableBucketNamesForProject = ::selectedMainVariantHierarchyNames
                 )
                 AggregatedDependencyRootKind.TEST_HIERARCHY -> resolveRootToDependencyMap(
                     aggregatedRoot = aggregatedRoot,
@@ -369,6 +511,8 @@ internal class AggregatedDependencyResolver(
                 projectPaths = projectMetadataByPath.keys
             )
             .filter { (bucket, _) -> bucket.shouldAddDeclaredHierarchyDependency() }
+            .filter { (bucket, _) -> bucket.isReachableMainBucket() }
+            .withoutDependenciesExcludedByEveryReachableRoot()
             .filterValues(Map<String, ResolvedDependency>::isNotEmpty)
             .forEach { (bucket, dependencies) ->
                 addToHierarchyBucket(bucket.projectPath, bucket.bucketName, dependencies)
@@ -397,7 +541,7 @@ internal class AggregatedDependencyResolver(
         }
 
         val mainBucketVariants = declaredDependencyMetadata.mainBucketVariantsByProject()
-        val mainBucketPlansByProject = MainDependencyBucketPlanner().planByProject(
+        val mainBucketPlansByProject = DependencyBucketPlacementEngine().planByProject(
             variants = mainBucketVariants,
             hierarchyBucketClosures = hierarchyBucketClosures,
             leafClosures = leafClosures
@@ -426,9 +570,9 @@ internal class AggregatedDependencyResolver(
             return mergedBuckets.toSortedMap()
         }
 
-        val defaultDeps = mergeDependencyMaps(mainBucketPlans.map(MainDependencyBucketPlan::defaultBucket))
-        val hierarchyBuckets = mergeNamedBuckets(mainBucketPlans.map(MainDependencyBucketPlan::hierarchyBuckets))
-        val perLeafBuckets = mergeNamedBuckets(mainBucketPlans.map(MainDependencyBucketPlan::leafBuckets))
+        val defaultDeps = mergeDependencyMaps(mainBucketPlans.map(DependencyBucketPlacementPlan::defaultBucket))
+        val hierarchyBuckets = mergeNamedBuckets(mainBucketPlans.map(DependencyBucketPlacementPlan::hierarchyBuckets))
+        val perLeafBuckets = mergeNamedBuckets(mainBucketPlans.map(DependencyBucketPlacementPlan::leafBuckets))
         val mainCoveredDepsByProject = mainBucketPlansByProject
             .mapValues { (_, plan) -> plan.coveredDependencies() }
 
@@ -454,8 +598,8 @@ internal class AggregatedDependencyResolver(
             }
 
             return mainBucketVariants
-                .filter(MainBucketVariant::leaf)
-                .groupBy(MainBucketVariant::name)
+                .filter(DependencyBucketVariant::leaf)
+                .groupBy(DependencyBucketVariant::name)
                 .mapValues { (leafName, _) -> ancestorsOf(leafName) }
         }
 
@@ -527,8 +671,8 @@ internal class AggregatedDependencyResolver(
             variantType: VariantType,
             baseBucketName: String,
             leafClosures: Map<ProjectDependencyBucket, Map<String, ResolvedDependency>>
-        ): Map<String, MainDependencyBucketPlan> {
-            return MainDependencyBucketPlanner().planByProject(
+        ): Map<String, DependencyBucketPlacementPlan> {
+            return DependencyBucketPlacementEngine().planByProject(
                 variants = declaredDependencyMetadata.testBucketVariantsByProject(
                     variantType = variantType,
                     baseBucketName = baseBucketName
@@ -546,7 +690,7 @@ internal class AggregatedDependencyResolver(
             )
         }
 
-        fun Map<String, MainDependencyBucketPlan>.allTestDeps(): Map<String, ResolvedDependency> {
+        fun Map<String, DependencyBucketPlacementPlan>.allTestDeps(): Map<String, ResolvedDependency> {
             return mergeDependencyMaps(
                 map { (projectPath, plan) ->
                     mergeDependencyMaps(
@@ -574,6 +718,8 @@ internal class AggregatedDependencyResolver(
 
         // Build the ResolveDependenciesResult list
         val results = mutableListOf<ResolveDependenciesResult>()
+        val reachableMainBucketsSnapshot = reachableMainBucketNamesByProject
+            .mapValues { (_, bucketNames) -> bucketNames.toSortedSet() }
 
         fun buildResult(
             bucketName: String,
@@ -585,7 +731,8 @@ internal class AggregatedDependencyResolver(
                 dependencies = mapOf(
                     COMPILE.name to deps.values.toSortedSet(),
                     KSP.name to kspDeps
-                )
+                ),
+                reachableMainBucketsByProject = reachableMainBucketsSnapshot
             )
         }
 
@@ -644,7 +791,10 @@ internal class AggregatedDependencyResolver(
     private fun resolveRootToDependencyMap(
         aggregatedRoot: AggregatedDependencyRoot,
         excludeRulesByProjectPath: Map<String, ProjectExcludeRules> = emptyMap(),
-        reachableProjectPaths: MutableSet<String>? = null
+        reachableProjectPaths: MutableSet<String>? = null,
+        reachableBucketNamesByProject: MutableMap<String, MutableSet<String>>? = null,
+        projectEdgeExcludedShortIdsByTargetProject: Map<String, Set<String>> = emptyMap(),
+        reachableBucketNamesForProject: ((String, String?) -> Set<String>)? = null
     ): Map<String, ResolvedDependency> {
         val metadata = aggregatedRoot.metadata
         return try {
@@ -683,10 +833,24 @@ internal class AggregatedDependencyResolver(
                 .forEach { visitResult ->
                     visitResult.directProjectPath?.let { projectPath ->
                         reachableProjectPaths?.add(projectPath)
+                        val reachableBucketNames = reachableBucketNamesForProject
+                            ?.invoke(projectPath, visitResult.directProjectVariantDisplayName)
+                            .orEmpty()
+                        reachableBucketNamesByProject
+                            ?.getOrPut(projectPath) { sortedSetOf() }
+                            ?.addAll(reachableBucketNames)
                     }
                     val component = visitResult.component
                     val moduleVersion = component.moduleVersion ?: return@forEach
                     val shortId = "${moduleVersion.group}:${moduleVersion.name}"
+                    val excludedByProjectEdge = visitResult.directProjectPath
+                        ?.let { projectPath ->
+                            shortId in projectEdgeExcludedShortIdsByTargetProject[projectPath].orEmpty()
+                        }
+                        ?: false
+                    if (excludedByProjectEdge) {
+                        return@forEach
+                    }
                     val excludeRules = if (metadata.traverseProjectNodes) {
                         excludeRulesByProjectPath.excludeRulesFor(
                             rootProjectPath = metadata.projectPath,
@@ -747,10 +911,10 @@ internal fun mergeDependencyMetadataByMaxVersion(
     candidate: ResolvedDependency
 ): ResolvedDependency {
     val winner = when {
-        existing.versionInfo > candidate.versionInfo -> existing
-        candidate.versionInfo > existing.versionInfo -> candidate
         existing.isDeclaredMetadata() && !candidate.isDeclaredMetadata() -> candidate
         candidate.isDeclaredMetadata() && !existing.isDeclaredMetadata() -> existing
+        existing.versionInfo > candidate.versionInfo -> existing
+        candidate.versionInfo > existing.versionInfo -> candidate
         else -> candidate
     }
     val other = if (winner === existing) candidate else existing
@@ -771,6 +935,17 @@ internal fun mergeDependencyMetadataByMaxVersion(
 
 private fun ResolvedDependency.isDeclaredMetadata(): Boolean =
     repository == DECLARED_DEPENDENCY_REPOSITORY
+
+private data class DeclaredProjectDependencyEdge(
+    val targetProjectPath: String,
+    val excludedShortIds: Set<String>
+)
+
+private data class MainProjectEdgeScope(
+    val reachableProjectPaths: Set<String>,
+    val reachableBucketNamesByProject: Map<String, Set<String>>,
+    val excludedShortIdsByTargetProject: Map<String, Set<String>>
+)
 
 internal data class CoveredDependency(
     val bucketName: String,

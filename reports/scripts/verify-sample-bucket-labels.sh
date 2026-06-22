@@ -122,12 +122,12 @@ for target in \
   sample-android-tests-demo-paid-debug \
   sample-android-tests-full-free-debug \
   sample-android-tests-full-paid-debug; do
-  require_target_label_in_file "$sample_test_build_file" "$target" "@maven//:androidx_test_runner"
-  require_target_label_in_file "$sample_test_build_file" "$target" "@maven//:androidx_test_rules"
-  require_target_label_in_file "$sample_test_build_file" "$target" "@maven//:androidx_compose_ui_ui_test_junit4"
-  reject_target_label_in_file "$sample_test_build_file" "$target" "@android_test_maven//:androidx_test_runner"
-  reject_target_label_in_file "$sample_test_build_file" "$target" "@android_test_maven//:androidx_test_rules"
-  reject_target_label_in_file "$sample_test_build_file" "$target" "@android_test_maven//:androidx_compose_ui_ui_test_junit4"
+  require_target_label_in_file "$sample_test_build_file" "$target" "@android_test_maven//:androidx_test_runner"
+  require_target_label_in_file "$sample_test_build_file" "$target" "@android_test_maven//:androidx_test_rules"
+  require_target_label_in_file "$sample_test_build_file" "$target" "@android_test_maven//:androidx_compose_ui_ui_test_junit4"
+  reject_target_label_in_file "$sample_test_build_file" "$target" "@maven//:androidx_test_runner"
+  reject_target_label_in_file "$sample_test_build_file" "$target" "@maven//:androidx_test_rules"
+  reject_target_label_in_file "$sample_test_build_file" "$target" "@maven//:androidx_compose_ui_ui_test_junit4"
 done
 
 lint_maven_block="$(awk '/name = "lint_maven"/,/^)/' WORKSPACE)"

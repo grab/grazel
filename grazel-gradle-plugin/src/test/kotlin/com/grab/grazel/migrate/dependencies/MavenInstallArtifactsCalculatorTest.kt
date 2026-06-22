@@ -6,6 +6,7 @@ import com.grab.grazel.bazel.rules.MavenInstallArtifact.Exclusion.SimpleExclusio
 import com.grab.grazel.bazel.rules.MavenRepository.DefaultMavenRepository
 import com.grab.grazel.bazel.starlark.BazelDependency.MavenDependency
 import com.grab.grazel.buildProject
+import com.grab.grazel.gradle.dependencies.DECLARED_DEPENDENCY_REPOSITORY
 import com.grab.grazel.gradle.dependencies.model.OverrideTarget
 import com.grab.grazel.gradle.dependencies.model.ResolvedDependency
 import com.grab.grazel.gradle.dependencies.model.WorkspaceDependencies
@@ -467,6 +468,52 @@ class MavenInstallArtifactsCalculatorTest {
     }
 
     @Test
+    fun `extension override target wins for default owner inherited artifacts`() {
+        setup {
+            rules {
+                mavenInstall {
+                    overrideTargetLabels.putAll(
+                        mapOf(
+                            "androidx.annotation:annotation" to
+                                "@maven//:androidx_annotation_annotation_jvm"
+                        )
+                    )
+                }
+            }
+        }
+
+        val workspaceDependencies = WorkspaceDependencies(
+            variantDeps = mapOf(
+                DEFAULT_VARIANT to listOf(
+                    ResolvedDependency.fromId(
+                        "androidx.annotation:annotation:1.9.1",
+                        DEFAULT_VARIANT
+                    )
+                ),
+                LINT_VARIANT to listOf(
+                    ResolvedDependency.fromId(
+                        "com.android.tools.lint:lint-api:31.5.0-alpha02",
+                        LINT_VARIANT
+                    )
+                )
+            )
+        )
+
+        val result = mavenInstallArtifactsCalculator.get(
+            layout = rootProject.layout,
+            workspaceDependencies = workspaceDependencies,
+            externalArtifacts = emptySet(),
+            externalRepositories = emptySet()
+        )
+
+        val lintRepo = result.single { it.name == "lint_maven" }
+        assertEquals(
+            mapOf("androidx.annotation:annotation" to "@maven//:androidx_annotation_annotation_jvm"),
+            lintRepo.overrideTargets.filterKeys { it == "androidx.annotation:annotation" }
+        )
+    }
+
+    @Test
     fun `override target artifacts are mapped independently and rooted in each selected bucket closure`() {
         setup()
 
@@ -707,7 +754,8 @@ class MavenInstallArtifactsCalculatorTest {
             mapOf(
                 "androidx.lifecycle:lifecycle-common" to "@maven//:androidx_lifecycle_lifecycle_common",
                 "androidx.lifecycle:lifecycle-common-java8" to "@maven//:androidx_lifecycle_lifecycle_common_java8",
-                "androidx.lifecycle:lifecycle-common-jvm" to "@maven//:androidx_lifecycle_lifecycle_common_jvm"
+                "androidx.lifecycle:lifecycle-common-jvm" to "@maven//:androidx_lifecycle_lifecycle_common_jvm",
+                "androidx.lifecycle:lifecycle-process" to "@maven//:androidx_lifecycle_lifecycle_process"
             ),
             debugAndroidTestRepo.overrideTargets
         )
@@ -793,6 +841,7 @@ class MavenInstallArtifactsCalculatorTest {
         )
         assertEquals(
             mapOf(
+                "androidx.fragment:fragment" to "@maven//:androidx_fragment_fragment",
                 "androidx.lifecycle:lifecycle-common" to "@maven//:androidx_lifecycle_lifecycle_common",
                 "androidx.lifecycle:lifecycle-common-java8" to "@maven//:androidx_lifecycle_lifecycle_common_java8",
                 "androidx.lifecycle:lifecycle-runtime" to "@maven//:androidx_lifecycle_lifecycle_runtime"
@@ -844,7 +893,15 @@ class MavenInstallArtifactsCalculatorTest {
             setOf("com.example:gps-only:1.0.0"),
             gpsRepo.artifacts.map { it.id }.toSet()
         )
-        assertEquals(emptyMap<String, String>(), gpsRepo.overrideTargets)
+        assertEquals(
+            mapOf(
+                "com.google.android.gms:play-services-measurement-api" to
+                    "@maven//:com_google_android_gms_play_services_measurement_api",
+                "com.google.firebase:firebase-analytics" to
+                    "@maven//:com_google_firebase_firebase_analytics"
+            ),
+            gpsRepo.overrideTargets
+        )
     }
 
     @Test
@@ -917,6 +974,62 @@ class MavenInstallArtifactsCalculatorTest {
                 "com.example:shared-root:1.0.0"
             ),
             result.single { it.name == "android_test_maven" }.artifacts.map { it.id }.toSet()
+        )
+    }
+
+    @Test
+    fun `variant maven install falls back to global closure for roots missing scoped closure`() {
+        setup()
+
+        val repository = "MavenRepo"
+        val scopedRoot = ResolvedDependency.fromId("com.example:scoped-root:1.0.0", repository)
+        val scopedCarrier = ResolvedDependency.fromId(
+            "com.example:scoped-carrier:1.0.0",
+            repository
+        ).copy(direct = false)
+        val declaredRoot = ResolvedDependency.fromId(
+            "androidx.test.ext:junit:1.1.5",
+            DECLARED_DEPENDENCY_REPOSITORY
+        )
+        val globallyResolvedCarrier = ResolvedDependency.fromId(
+            "androidx.test:monitor:1.6.0",
+            repository
+        ).copy(direct = false)
+        val unrelatedSiblingCarrier = ResolvedDependency.fromId(
+            "com.example:android-test-carrier:1.0.0",
+            repository
+        ).copy(direct = false)
+        val workspaceDependencies = WorkspaceDependencies(
+            variantDeps = mapOf(
+                DEFAULT_VARIANT to listOf(globallyResolvedCarrier),
+                "debug" to listOf(scopedRoot, scopedCarrier, declaredRoot),
+                "androidTest" to listOf(declaredRoot, globallyResolvedCarrier, unrelatedSiblingCarrier)
+            ),
+            transitiveClasspath = mapOf(
+                scopedRoot.shortId to setOf(scopedCarrier.shortId, unrelatedSiblingCarrier.shortId),
+                declaredRoot.shortId to setOf(globallyResolvedCarrier.shortId)
+            ),
+            variantTransitiveClasspath = mapOf(
+                "debug" to mapOf(scopedRoot.shortId to setOf(scopedCarrier.shortId)),
+                "androidTest" to mapOf(declaredRoot.shortId to setOf(globallyResolvedCarrier.shortId))
+            )
+        )
+
+        val result = mavenInstallArtifactsCalculator.get(
+            layout = rootProject.layout,
+            workspaceDependencies = workspaceDependencies,
+            externalArtifacts = emptySet(),
+            externalRepositories = emptySet()
+        )
+
+        assertEquals(
+            setOf(
+                "androidx.test.ext:junit:1.1.5",
+                "androidx.test:monitor:1.6.0",
+                "com.example:scoped-carrier:1.0.0",
+                "com.example:scoped-root:1.0.0"
+            ),
+            result.single { it.name == "debug_maven" }.artifacts.map { it.id }.toSet()
         )
     }
 
@@ -1006,6 +1119,39 @@ class MavenInstallArtifactsCalculatorTest {
         assertEquals(
             mapOf("com.example:debug-carrier" to "@debug_maven//:com_example_debug_carrier"),
             freeRepo.overrideTargets
+        )
+    }
+
+    @Test
+    fun `non default maven install redirects default owned transitive artifacts`() {
+        setup()
+
+        val repository = "MavenRepo"
+        val defaultOwnedTransitive = ResolvedDependency.fromId(
+            "com.example:shared-transitive:1.0.0",
+            repository
+        )
+        val debugRoot = ResolvedDependency.fromId(
+            "com.example:debug-root:1.0.0",
+            repository
+        )
+        val workspaceDependencies = WorkspaceDependencies(
+            variantDeps = mapOf(
+                DEFAULT_VARIANT to listOf(defaultOwnedTransitive),
+                "debug" to listOf(debugRoot)
+            )
+        )
+
+        val result = mavenInstallArtifactsCalculator.get(
+            layout = rootProject.layout,
+            workspaceDependencies = workspaceDependencies,
+            externalArtifacts = emptySet(),
+            externalRepositories = emptySet()
+        )
+
+        assertEquals(
+            mapOf("com.example:shared-transitive" to "@maven//:com_example_shared_transitive"),
+            result.single { it.name == "debug_maven" }.overrideTargets
         )
     }
 

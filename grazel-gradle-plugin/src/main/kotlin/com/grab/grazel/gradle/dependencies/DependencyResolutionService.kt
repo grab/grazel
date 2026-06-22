@@ -66,11 +66,26 @@ internal interface DependencyResolutionService : BuildService<DependencyResoluti
     fun getTransitiveDependencies(shortId: String): Set<String>
 
     /**
+     * Get variant-scoped transitive dependencies for a direct dependency shortId.
+     *
+     * Returns `null` when no variant-scoped transitive data exists for the supplied hierarchy,
+     * allowing callers to fall back to the legacy global closure. Returns an empty set when scoped
+     * data exists and the dependency has no transitive closure in that hierarchy.
+     */
+    fun getVariantTransitiveDependencies(variants: Set<String>, shortId: String): Set<String>?
+
+    fun getMavenDependenciesInRepo(repo: String): Set<MavenDependency>
+
+    /**
      * Returns shortIds of KSP processors that have a valid [kt_ksp_plugin] target generated
      * (i.e. whose processorClass was successfully extracted from the processor JAR).
      * Processors absent from this set should not generate Bazel target references.
      */
     fun getValidKspProcessorShortIds(): Set<String>
+
+    fun hasMainBucketReachability(): Boolean
+
+    fun isReachableMainBucket(projectPath: String, bucketName: String): Boolean
 
     fun init(workspaceDependenciesJson: File): WorkspaceDependencies
 
@@ -98,6 +113,16 @@ internal abstract class DefaultDependencyResolutionService : DependencyResolutio
             ?.toSet()
             ?: emptySet()
 
+    override fun hasMainBucketReachability(): Boolean =
+        !workspaceDependencies?.reachableMainBucketsByProject.isNullOrEmpty()
+
+    override fun isReachableMainBucket(projectPath: String, bucketName: String): Boolean =
+        workspaceDependencies
+            ?.reachableMainBucketsByProject
+            ?.get(projectPath)
+            ?.contains(bucketName)
+            ?: false
+
     override fun getMavenDependency(
         variants: Set<String>,
         group: String,
@@ -107,6 +132,14 @@ internal abstract class DefaultDependencyResolutionService : DependencyResolutio
 
     override fun getTransitiveDependencies(shortId: String): Set<String> =
         transitiveDependenciesStore?.get(shortId) ?: emptySet()
+
+    override fun getVariantTransitiveDependencies(
+        variants: Set<String>,
+        shortId: String
+    ): Set<String>? = transitiveDependenciesStore?.get(variants, shortId)
+
+    override fun getMavenDependenciesInRepo(repo: String): Set<MavenDependency> =
+        mavenInstallStore?.getAllInRepo(repo) ?: emptySet()
 
     override fun init(workspaceDependenciesJson: File): WorkspaceDependencies {
         if (workspaceDependencies == null) {
@@ -125,6 +158,7 @@ internal abstract class DefaultDependencyResolutionService : DependencyResolutio
     }
 
     internal fun populateCache(workspaceDependencies: WorkspaceDependencies) {
+        this.workspaceDependencies = workspaceDependencies
         populateMavenStore(workspaceDependencies)
         populateTransitiveDependenciesStore(workspaceDependencies)
     }
@@ -137,27 +171,27 @@ internal abstract class DefaultDependencyResolutionService : DependencyResolutio
                         mavenInstallStore = DefaultMavenInstallStore().apply {
                             workspaceDependencies.variantDeps.forEach { (variantName, dependencies) ->
                                 dependencies.forEach { dependency ->
-                                    if (dependency.direct || dependency.overrideTarget != null) {
-                                        val (group, name, _) = dependency.id.split(":")
-                                        set(
-                                            variantName,
-                                            group,
-                                            name,
-                                            dependency.version,
-                                            target = dependency.overrideTarget?.label
-                                        )
-                                    }
+                                    val (group, name, _) = dependency.id.split(":")
+                                    set(
+                                        variantName,
+                                        group,
+                                        name,
+                                        dependency.version,
+                                        target = dependency.overrideTarget?.label,
+                                        direct = dependency.direct || dependency.overrideTarget != null
+                                    )
                                 }
                             }
                             workspaceDependencies.aggregatedRepos.forEach { (repoName, dependencies) ->
                                 dependencies.forEach { dependency ->
                                     val (group, name, _) = dependency.id.split(":")
                                     set(
-                                        repoName,
-                                        group,
-                                        name,
-                                        dependency.version,
-                                        target = null
+                                        variantRepoName = repoName,
+                                        group = group,
+                                        name = name,
+                                        version = dependency.version,
+                                        target = null,
+                                        direct = true
                                     )
                                 }
                             }
@@ -176,6 +210,11 @@ internal abstract class DefaultDependencyResolutionService : DependencyResolutio
                         transitiveDependenciesStore = DefaultTransitiveDependenciesStore().apply {
                             workspaceDependencies.transitiveClasspath.forEach { (shortId, dependencies) ->
                                 set(shortId, dependencies.toSet())
+                            }
+                            workspaceDependencies.variantTransitiveClasspath.forEach { (variantName, classpath) ->
+                                classpath.forEach { (shortId, dependencies) ->
+                                    set(variantName, shortId, dependencies.toSet())
+                                }
                             }
                         }
                     }

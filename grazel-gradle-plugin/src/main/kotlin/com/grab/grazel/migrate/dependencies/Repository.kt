@@ -23,3 +23,8 @@ fun String.toMavenRepoName() = when (this) {
     else -> replace("([a-z])([A-Z]+)".toRegex(), "\$1_\$2")
         .toLowerCase() + "_maven"
 }
+
+fun String.toMaterializedMavenRepoName() = when {
+    this == "maven" || endsWith("_maven") -> this
+    else -> toMavenRepoName()
+}

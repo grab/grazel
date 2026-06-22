@@ -152,11 +152,12 @@ internal class ComputeWorkspaceDependencies {
 
 
         val variantTransitiveClasspath = reducedClasspath
-            .mapValues { (_, dependencies) -> dependencies.values.directTransitiveClasspath() }
+            .mapValues { (_, dependencies) -> dependencies.values.transitiveClasspathByArtifactRoot() }
             .filterValues(Map<String, Set<String>>::isNotEmpty)
 
         // Preserve the global shortId index used by generated target transitive tags.
         val transitiveClasspath = variantTransitiveClasspath.globalTransitiveClasspath()
+        val reachableMainBucketsByProject = allResults.reachableMainBucketsByProject()
 
         // Aggregate KSP deps across ALL variants into single bucket, deduplicated by max version
         val kspDeps: List<ResolvedDependency> = allResults
@@ -179,13 +180,23 @@ internal class ComputeWorkspaceDependencies {
             variantDeps = reducedFinalClasspath,
             aggregatedRepos = if (kspDeps.isNotEmpty()) mapOf(KSP_MAVEN to kspDeps) else emptyMap(),
             transitiveClasspath = transitiveClasspath,
-            variantTransitiveClasspath = variantTransitiveClasspath
+            variantTransitiveClasspath = variantTransitiveClasspath,
+            reachableMainBucketsByProject = reachableMainBucketsByProject
         )
     }
 
-    private fun Collection<ResolvedDependency>.directTransitiveClasspath(): Map<String, Set<String>> =
+    private fun List<ResolveDependenciesResult>.reachableMainBucketsByProject(): Map<String, Set<String>> =
+        buildMap<String, MutableSet<String>> {
+            this@reachableMainBucketsByProject.forEach { result ->
+                result.reachableMainBucketsByProject.forEach { (projectPath, bucketNames) ->
+                    getOrPut(projectPath) { sortedSetOf() }.addAll(bucketNames)
+                }
+            }
+        }
+
+    private fun Collection<ResolvedDependency>.transitiveClasspathByArtifactRoot(): Map<String, Set<String>> =
         asSequence()
-            .filter(ResolvedDependency::direct)
+            .filter { dependency -> dependency.dependencies.isNotEmpty() }
             .groupBy(ResolvedDependency::shortId)
             .mapValues { (_, dependencies) ->
                 dependencies

@@ -8,8 +8,9 @@ import com.grab.grazel.gradle.ANDROID_LIBRARY_PLUGIN
 import com.grab.grazel.gradle.KOTLIN_ANDROID_PLUGIN
 import com.grab.grazel.gradle.KOTLIN_KAPT
 import com.grab.grazel.gradle.dependencies.DefaultDependencyResolutionService
-import com.grab.grazel.gradle.dependencies.model.ResolvedDependency.Companion.from
+import com.grab.grazel.gradle.dependencies.model.ResolvedDependency.Companion.fromId
 import com.grab.grazel.gradle.dependencies.model.WorkspaceDependencies
+import com.grab.grazel.gradle.variant.DEFAULT_VARIANT
 import com.grab.grazel.gradle.variant.MatchedVariant
 import com.grab.grazel.util.addGrazelExtension
 import com.grab.grazel.util.createGrazelComponent
@@ -86,13 +87,15 @@ class DefaultAndroidLibraryDataExtractorTest {
         dependencyResolutionService = grazelComponent.dependencyResolutionService()
         androidLibraryDataExtractor = grazelComponent.androidLibraryDataExtractor().get()
 
-        dependencyResolutionService.get().populateMavenStore(
+        dependencyResolutionService.get().populateCache(
             workspaceDependencies = WorkspaceDependencies(
                 variantDeps = buildMap {
                     put(
-                        "maven", listOf(
-                            from("com.android.databinding:viewbinding:1.0.0:maven:false:null"),
-                            from("com.android.databinding:baseLibrary:1.0.0:maven:false:null")
+                        DEFAULT_VARIANT, listOf(
+                            fromId("com.android.databinding:viewbinding:1.0.0", "maven"),
+                            fromId("com.android.databinding:baseLibrary:1.0.0", "maven"),
+                            fromId("com.android.databinding:library:1.0.0", "maven"),
+                            fromId("com.android.databinding:adapters:1.0.0", "maven")
                         )
                     )
                 }

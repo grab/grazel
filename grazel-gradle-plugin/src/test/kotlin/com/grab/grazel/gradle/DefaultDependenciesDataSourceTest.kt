@@ -26,6 +26,7 @@ import com.grab.grazel.gradle.dependencies.DependencyResolutionService
 import com.grab.grazel.gradle.dependencies.IGNORED_ARTIFACT_GROUPS
 import com.grab.grazel.gradle.dependencies.MavenArtifact
 import com.grab.grazel.gradle.dependencies.ArtifactsConfig
+import com.grab.grazel.gradle.ANDROID_TEST_PLUGIN
 import com.grab.grazel.gradle.variant.DEFAULT_VARIANT
 import com.grab.grazel.gradle.variant.Variant
 import com.grab.grazel.gradle.variant.VariantBuilder
@@ -33,6 +34,7 @@ import com.grab.grazel.gradle.variant.VariantGraphKey
 import com.grab.grazel.gradle.dependencies.model.ResolvedDependency
 import com.grab.grazel.gradle.dependencies.model.WorkspaceDependencies
 import com.grab.grazel.gradle.variant.VariantType
+import com.grab.grazel.migrate.dependencies.calculateDirectDependencyTags
 import com.grab.grazel.util.addGrazelExtension
 import com.grab.grazel.util.createGrazelComponent
 import com.grab.grazel.util.doEvaluate
@@ -308,6 +310,107 @@ class DefaultDependenciesDataSourceTest {
     }
 
     @Test
+    fun `collectMavenDeps keeps explicitly declared annotation dependency for non databinding modules`() {
+        configure(
+            configureProject = {
+                dependencies {
+                    add("implementation", "androidx.annotation:annotation:1.3.0")
+                }
+            }
+        )
+        (dependencyResolutionService as DefaultDependencyResolutionService).apply {
+            close()
+            populateMavenStore(
+                WorkspaceDependencies(
+                    variantDeps = mapOf(
+                        DEFAULT_VARIANT to listOf(
+                            ResolvedDependency.fromId(
+                                "androidx.annotation:annotation:1.3.0",
+                                DEFAULT_VARIANT
+                            )
+                        ),
+                        "debug" to listOf(
+                            ResolvedDependency.fromId(
+                                "com.android.support:appcompat-v7:28.0.0",
+                                "debug"
+                            ),
+                            ResolvedDependency.fromId(
+                                "com.android.support:animated-vector-drawable:28.0.0",
+                                "debug"
+                            )
+                        )
+                    )
+                )
+            )
+        }
+        val debugVariant = androidProject.the<AppExtension>()
+            .applicationVariants
+            .first { it.name == "debug" }!!
+        val variantKey = VariantGraphKey.from(
+            androidProject,
+            debugVariant.name,
+            VariantType.AndroidBuild
+        )
+
+        val deps = dependenciesDataSource.collectMavenDeps(androidProject, variantKey)
+
+        assertTrue(deps.any { it.toString() == "@maven//:androidx_annotation_annotation" })
+        assertTrue(deps.none { "databinding" in it.toString() })
+    }
+
+    @Test
+    fun `collectMavenDeps omits databinding provided annotation dependency for databinding modules`() {
+        configure(
+            configureProject = {
+                configure<AppExtension> {
+                    dataBinding.isEnabled = true
+                }
+                dependencies {
+                    add("implementation", "androidx.annotation:annotation:1.3.0")
+                }
+            }
+        )
+        (dependencyResolutionService as DefaultDependencyResolutionService).apply {
+            close()
+            populateMavenStore(
+                WorkspaceDependencies(
+                    variantDeps = mapOf(
+                        DEFAULT_VARIANT to listOf(
+                            ResolvedDependency.fromId(
+                                "androidx.annotation:annotation:1.3.0",
+                                DEFAULT_VARIANT
+                            )
+                        ),
+                        "debug" to listOf(
+                            ResolvedDependency.fromId(
+                                "com.android.support:appcompat-v7:28.0.0",
+                                "debug"
+                            ),
+                            ResolvedDependency.fromId(
+                                "com.android.support:animated-vector-drawable:28.0.0",
+                                "debug"
+                            )
+                        )
+                    )
+                )
+            )
+        }
+        val debugVariant = androidProject.the<AppExtension>()
+            .applicationVariants
+            .first { it.name == "debug" }!!
+        val variantKey = VariantGraphKey.from(
+            androidProject,
+            debugVariant.name,
+            VariantType.AndroidBuild
+        )
+
+        val deps = dependenciesDataSource.collectMavenDeps(androidProject, variantKey)
+
+        assertTrue(deps.none { it.toString() == "@maven//:androidx_annotation_annotation" })
+        assertTrue(deps.none { "databinding" in it.toString() })
+    }
+
+    @Test
     fun `collectMavenDeps prefers Gradle-selected child version over stale declared ancestor version`() {
         configure(
             configureProject = {
@@ -448,6 +551,468 @@ class DefaultDependenciesDataSourceTest {
         assertTrue("@maven//:com_example_root" in transitiveDeps)
         assertTrue("@maven//:com_example_child" in transitiveDeps)
         assertTrue("@maven//:com_example_grandchild" in transitiveDeps)
+    }
+
+    @Test
+    fun `collectTransitiveMavenDeps includes global root resolved closure in tags`() {
+        val root = ProjectBuilder.builder().withName("root").build()
+        val project = ProjectBuilder.builder()
+            .withName("android")
+            .withParent(root)
+            .build()
+        val debugImplementation = project.configurations.create("debugImplementation")
+        val releaseImplementation = project.configurations.create("releaseImplementation")
+        val debugCompileClasspath = project.configurations
+            .create("debugCompileClasspath")
+            .apply { extendsFrom(debugImplementation) }
+        val releaseCompileClasspath = project.configurations
+            .create("releaseCompileClasspath")
+            .apply { extendsFrom(releaseImplementation) }
+        project.dependencies.add("debugImplementation", "com.example:shared-root:1.0")
+        project.dependencies.add("releaseImplementation", "com.example:shared-root:1.0")
+
+        val service = object : DefaultDependencyResolutionService() {
+            override fun getParameters(): DependencyResolutionService.Params =
+                object : DependencyResolutionService.Params {}
+        }
+        service.populateCache(
+            WorkspaceDependencies(
+                variantDeps = mapOf(
+                    "debug" to listOf(
+                        ResolvedDependency.fromId("com.example:shared-root:1.0", "debug"),
+                        ResolvedDependency.fromId("com.example:debug-carrier:1.0", "debug")
+                    ),
+                    "release" to listOf(
+                        ResolvedDependency.fromId("com.example:shared-root:1.0", "release"),
+                        ResolvedDependency.fromId("com.example:release-carrier:1.0", "release")
+                    )
+                ),
+                transitiveClasspath = mapOf(
+                    "com.example:shared-root" to setOf(
+                        "com.example:debug-carrier",
+                        "com.example:release-carrier"
+                    )
+                ),
+                variantTransitiveClasspath = mapOf(
+                    "debug" to mapOf(
+                        "com.example:shared-root" to setOf("com.example:debug-carrier")
+                    ),
+                    "release" to mapOf(
+                        "com.example:shared-root" to setOf("com.example:release-carrier")
+                    )
+                )
+            )
+        )
+        val variants = setOf(
+            fakeVariant(
+                project = project,
+                name = "debug",
+                variantConfigurations = setOf(debugImplementation),
+                compileConfigurations = setOf(debugCompileClasspath)
+            ),
+            fakeVariant(
+                project = project,
+                name = "release",
+                variantConfigurations = setOf(releaseImplementation),
+                compileConfigurations = setOf(releaseCompileClasspath)
+            )
+        )
+        val dependenciesDataSource = DefaultDependenciesDataSource(
+            configurationDataSource = object : ConfigurationDataSource {
+                override fun resolvedConfigurations(
+                    project: Project,
+                    vararg variantTypes: VariantType
+                ): Sequence<Configuration> = emptySequence()
+
+                override fun configurations(
+                    project: Project,
+                    vararg variantTypes: VariantType
+                ): Sequence<Configuration> = emptySequence()
+
+                override fun isThisConfigurationBelongsToThisVariants(
+                    project: Project,
+                    vararg variants: com.android.build.gradle.api.BaseVariant?,
+                    configuration: Configuration
+                ): Boolean = false
+            },
+            artifactsConfig = ArtifactsConfig(),
+            dependencyResolutionService = project.provider { service },
+            variantBuilder = object : VariantBuilder {
+                override fun build(project: Project): Set<Variant<*>> = variants
+
+                override fun onVariants(project: Project, action: (Variant<*>) -> Unit) {
+                    variants.forEach(action)
+                }
+            }
+        )
+        val variantKey = VariantGraphKey.from(project, "debug", VariantType.AndroidBuild)
+
+        val transitiveDeps = dependenciesDataSource.collectTransitiveMavenDeps(project, variantKey)
+        val tags = calculateDirectDependencyTags("android", transitiveDeps.toList()).toSet()
+
+        assertTrue("@maven//:com_example_shared_root" in tags)
+        assertTrue("@maven//:com_example_debug_carrier" in tags)
+        assertTrue("@maven//:com_example_release_carrier" in tags)
+    }
+
+    @Test
+    fun `collectTransitiveMavenDeps does not expand whole repo for known empty scoped closure`() {
+        val root = ProjectBuilder.builder().withName("root").build()
+        val project = ProjectBuilder.builder()
+            .withName("android")
+            .withParent(root)
+            .build()
+        val debugImplementation = project.configurations.create("debugImplementation")
+        val debugCompileClasspath = project.configurations
+            .create("debugCompileClasspath")
+            .apply { extendsFrom(debugImplementation) }
+        project.dependencies.add("debugImplementation", "com.example:shared-root:1.0")
+
+        val service = object : DefaultDependencyResolutionService() {
+            override fun getParameters(): DependencyResolutionService.Params =
+                object : DependencyResolutionService.Params {}
+        }
+        service.populateCache(
+            WorkspaceDependencies(
+                variantDeps = mapOf(
+                    "debug" to listOf(
+                        ResolvedDependency.fromId("com.example:shared-root:1.0", "debug"),
+                        ResolvedDependency.fromId("com.example:unrelated-in-debug-repo:1.0", "debug")
+                    )
+                ),
+                transitiveClasspath = mapOf(
+                    "com.example:shared-root" to setOf("com.example:unrelated-in-debug-repo")
+                ),
+                variantTransitiveClasspath = mapOf(
+                    "debug" to mapOf(
+                        "com.example:other-root" to setOf("com.example:unrelated-in-debug-repo")
+                    )
+                )
+            )
+        )
+        val variants = setOf(
+            fakeVariant(
+                project = project,
+                name = "debug",
+                variantConfigurations = setOf(debugImplementation),
+                compileConfigurations = setOf(debugCompileClasspath)
+            )
+        )
+        val dependenciesDataSource = DefaultDependenciesDataSource(
+            configurationDataSource = object : ConfigurationDataSource {
+                override fun resolvedConfigurations(
+                    project: Project,
+                    vararg variantTypes: VariantType
+                ): Sequence<Configuration> = emptySequence()
+
+                override fun configurations(
+                    project: Project,
+                    vararg variantTypes: VariantType
+                ): Sequence<Configuration> = emptySequence()
+
+                override fun isThisConfigurationBelongsToThisVariants(
+                    project: Project,
+                    vararg variants: com.android.build.gradle.api.BaseVariant?,
+                    configuration: Configuration
+                ): Boolean = false
+            },
+            artifactsConfig = ArtifactsConfig(),
+            dependencyResolutionService = project.provider { service },
+            variantBuilder = object : VariantBuilder {
+                override fun build(project: Project): Set<Variant<*>> = variants
+
+                override fun onVariants(project: Project, action: (Variant<*>) -> Unit) {
+                    variants.forEach(action)
+                }
+            }
+        )
+        val variantKey = VariantGraphKey.from(project, "debug", VariantType.AndroidBuild)
+
+        val tags = calculateDirectDependencyTags(
+            "android",
+            dependenciesDataSource.collectTransitiveMavenDeps(project, variantKey).toList()
+        ).toSet()
+
+        assertTrue("@maven//:com_example_shared_root" in tags)
+        assertTrue("@maven//:com_example_unrelated_in_debug_repo" !in tags)
+    }
+
+    @Test
+    fun `collectTransitiveMavenDeps falls back to global closure for default repo root absent from scoped maps`() {
+        val root = ProjectBuilder.builder().withName("root").build()
+        val project = ProjectBuilder.builder()
+            .withName("android")
+            .withParent(root)
+            .build()
+        val implementation = project.configurations.create("implementation")
+        val debugCompileClasspath = project.configurations
+            .create("debugCompileClasspath")
+            .apply { extendsFrom(implementation) }
+        project.dependencies.add("implementation", "com.example:shared-root:1.0")
+
+        val service = object : DefaultDependencyResolutionService() {
+            override fun getParameters(): DependencyResolutionService.Params =
+                object : DependencyResolutionService.Params {}
+        }
+        service.populateCache(
+            WorkspaceDependencies(
+                variantDeps = mapOf(
+                    DEFAULT_VARIANT to listOf(
+                        ResolvedDependency.fromId("com.example:shared-root:1.0", "maven"),
+                        ResolvedDependency.fromId("com.example:default-child:1.0", "maven")
+                    ),
+                    "debug" to listOf(
+                        ResolvedDependency.fromId("com.example:debug-only:1.0", "debug")
+                    )
+                ),
+                transitiveClasspath = mapOf(
+                    "com.example:shared-root" to setOf("com.example:default-child")
+                ),
+                variantTransitiveClasspath = mapOf(
+                    "debug" to mapOf(
+                        "com.example:debug-only" to emptySet()
+                    ),
+                    DEFAULT_VARIANT to mapOf(
+                        "com.example:other-root" to emptySet()
+                    )
+                )
+            )
+        )
+        val variants = setOf(
+            fakeVariant(
+                project = project,
+                name = "debug",
+                variantConfigurations = setOf(implementation),
+                compileConfigurations = setOf(debugCompileClasspath)
+            )
+        )
+        val dependenciesDataSource = DefaultDependenciesDataSource(
+            configurationDataSource = object : ConfigurationDataSource {
+                override fun resolvedConfigurations(
+                    project: Project,
+                    vararg variantTypes: VariantType
+                ): Sequence<Configuration> = emptySequence()
+
+                override fun configurations(
+                    project: Project,
+                    vararg variantTypes: VariantType
+                ): Sequence<Configuration> = emptySequence()
+
+                override fun isThisConfigurationBelongsToThisVariants(
+                    project: Project,
+                    vararg variants: com.android.build.gradle.api.BaseVariant?,
+                    configuration: Configuration
+                ): Boolean = false
+            },
+            artifactsConfig = ArtifactsConfig(),
+            dependencyResolutionService = project.provider { service },
+            variantBuilder = object : VariantBuilder {
+                override fun build(project: Project): Set<Variant<*>> = variants
+
+                override fun onVariants(project: Project, action: (Variant<*>) -> Unit) {
+                    variants.forEach(action)
+                }
+            }
+        )
+        val variantKey = VariantGraphKey.from(project, "debug", VariantType.AndroidBuild)
+
+        val tags = calculateDirectDependencyTags(
+            "android",
+            dependenciesDataSource.collectTransitiveMavenDeps(project, variantKey).toList()
+        ).toSet()
+
+        assertTrue("@maven//:com_example_shared_root" in tags)
+        assertTrue("@maven//:com_example_default_child" in tags)
+    }
+
+    @Test
+    fun `collectTransitiveMavenDeps uses default closure for standalone test module default repo labels`() {
+        val root = ProjectBuilder.builder().withName("root").build()
+        val project = ProjectBuilder.builder()
+            .withName("android-tests")
+            .withParent(root)
+            .build()
+        project.plugins.apply(ANDROID_TEST_PLUGIN)
+        val implementation = project.configurations.getByName("implementation")
+        val debugCompileClasspath = project.configurations
+            .maybeCreate("debugCompileClasspath")
+            .apply { extendsFrom(implementation) }
+        project.dependencies.add("implementation", "com.example:shared-root:1.0")
+
+        val service = object : DefaultDependencyResolutionService() {
+            override fun getParameters(): DependencyResolutionService.Params =
+                object : DependencyResolutionService.Params {}
+        }
+        service.populateCache(
+            WorkspaceDependencies(
+                variantDeps = mapOf(
+                    DEFAULT_VARIANT to listOf(
+                        ResolvedDependency.fromId("com.example:shared-root:1.0", "maven"),
+                        ResolvedDependency.fromId("com.example:default-child:1.0", "maven")
+                    ),
+                    "androidTest" to listOf(
+                        ResolvedDependency.fromId("com.example:android-test-child:1.0", "androidTest")
+                    )
+                ),
+                transitiveClasspath = mapOf(
+                    "com.example:shared-root" to setOf(
+                        "com.example:android-test-child",
+                        "com.example:default-child"
+                    )
+                ),
+                variantTransitiveClasspath = mapOf(
+                    "androidTest" to mapOf(
+                        "com.example:shared-root" to setOf("com.example:android-test-child")
+                    ),
+                    DEFAULT_VARIANT to mapOf(
+                        "com.example:shared-root" to setOf("com.example:default-child")
+                    )
+                )
+            )
+        )
+        val variants = setOf(
+            fakeVariant(
+                project = project,
+                name = "debug",
+                variantConfigurations = setOf(implementation),
+                compileConfigurations = setOf(debugCompileClasspath)
+            )
+        )
+        val dependenciesDataSource = DefaultDependenciesDataSource(
+            configurationDataSource = object : ConfigurationDataSource {
+                override fun resolvedConfigurations(
+                    project: Project,
+                    vararg variantTypes: VariantType
+                ): Sequence<Configuration> = emptySequence()
+
+                override fun configurations(
+                    project: Project,
+                    vararg variantTypes: VariantType
+                ): Sequence<Configuration> = emptySequence()
+
+                override fun isThisConfigurationBelongsToThisVariants(
+                    project: Project,
+                    vararg variants: com.android.build.gradle.api.BaseVariant?,
+                    configuration: Configuration
+                ): Boolean = false
+            },
+            artifactsConfig = ArtifactsConfig(),
+            dependencyResolutionService = project.provider { service },
+            variantBuilder = object : VariantBuilder {
+                override fun build(project: Project): Set<Variant<*>> = variants
+
+                override fun onVariants(project: Project, action: (Variant<*>) -> Unit) {
+                    variants.forEach(action)
+                }
+            }
+        )
+        val variantKey = VariantGraphKey.from(project, "debug", VariantType.AndroidBuild)
+
+        val tags = calculateDirectDependencyTags(
+            "android-tests",
+            dependenciesDataSource.collectTransitiveMavenDeps(project, variantKey).toList()
+        ).toSet()
+
+        assertTrue("@maven//:com_example_shared_root" in tags)
+        assertTrue("@maven//:com_example_default_child" in tags)
+        assertTrue("@maven//:com_example_android_test_child" in tags)
+    }
+
+    @Test
+    fun `collectTransitiveMavenDeps includes global closure for test variant tags`() {
+        val root = ProjectBuilder.builder().withName("root").build()
+        val project = ProjectBuilder.builder()
+            .withName("android")
+            .withParent(root)
+            .build()
+        val implementation = project.configurations.create("implementation")
+        val androidTestImplementation = project.configurations
+            .create("androidTestImplementation")
+            .apply { extendsFrom(implementation) }
+        val androidTestCompileClasspath = project.configurations
+            .create("debugAndroidTestCompileClasspath")
+            .apply { extendsFrom(androidTestImplementation) }
+        project.dependencies.add("androidTestImplementation", "com.example:shared-root:1.0")
+
+        val service = object : DefaultDependencyResolutionService() {
+            override fun getParameters(): DependencyResolutionService.Params =
+                object : DependencyResolutionService.Params {}
+        }
+        service.populateCache(
+            WorkspaceDependencies(
+                variantDeps = mapOf(
+                    "default" to listOf(
+                        ResolvedDependency.fromId("com.example:shared-root:1.0", "maven"),
+                        ResolvedDependency.fromId("com.example:default-child:1.0", "maven")
+                    ),
+                    "androidTest" to listOf(
+                        ResolvedDependency.fromId("com.example:shared-root:1.0", "androidTest"),
+                        ResolvedDependency.fromId("com.example:android-test-child:1.0", "androidTest")
+                    )
+                ),
+                transitiveClasspath = mapOf(
+                    "com.example:shared-root" to setOf(
+                        "com.example:default-child",
+                        "com.example:android-test-child"
+                    )
+                ),
+                variantTransitiveClasspath = mapOf(
+                    "default" to mapOf(
+                        "com.example:shared-root" to setOf("com.example:default-child")
+                    ),
+                    "androidTest" to mapOf(
+                        "com.example:shared-root" to setOf("com.example:android-test-child")
+                    )
+                )
+            )
+        )
+        val variants = setOf(
+            fakeVariant(
+                project = project,
+                name = "androidTest",
+                variantConfigurations = setOf(androidTestImplementation),
+                compileConfigurations = setOf(androidTestCompileClasspath),
+                variantType = VariantType.AndroidTest
+            )
+        )
+        val dependenciesDataSource = DefaultDependenciesDataSource(
+            configurationDataSource = object : ConfigurationDataSource {
+                override fun resolvedConfigurations(
+                    project: Project,
+                    vararg variantTypes: VariantType
+                ): Sequence<Configuration> = emptySequence()
+
+                override fun configurations(
+                    project: Project,
+                    vararg variantTypes: VariantType
+                ): Sequence<Configuration> = emptySequence()
+
+                override fun isThisConfigurationBelongsToThisVariants(
+                    project: Project,
+                    vararg variants: com.android.build.gradle.api.BaseVariant?,
+                    configuration: Configuration
+                ): Boolean = false
+            },
+            artifactsConfig = ArtifactsConfig(),
+            dependencyResolutionService = project.provider { service },
+            variantBuilder = object : VariantBuilder {
+                override fun build(project: Project): Set<Variant<*>> = variants
+
+                override fun onVariants(project: Project, action: (Variant<*>) -> Unit) {
+                    variants.forEach(action)
+                }
+            }
+        )
+        val variantKey = VariantGraphKey.from(project, "androidTest", VariantType.AndroidTest)
+
+        val tags = calculateDirectDependencyTags(
+            "android",
+            dependenciesDataSource.collectTransitiveMavenDeps(project, variantKey).toList()
+        ).toSet()
+
+        assertTrue("@maven//:com_example_shared_root" in tags)
+        assertTrue("@maven//:com_example_android_test_child" in tags)
+        assertTrue("@maven//:com_example_default_child" in tags)
     }
 
     @Test
@@ -680,9 +1245,178 @@ class DefaultDependenciesDataSourceTest {
         assertTrue(exception.message.orEmpty().contains(":android:implementation"))
     }
 
+    @Test
+    fun `collectMavenDeps skips missing declarations for projects outside selected root reachability`() {
+        val root = ProjectBuilder.builder().withName("root").build()
+        val project = ProjectBuilder.builder()
+            .withName("inactive-lib")
+            .withParent(root)
+            .build()
+        val implementation = project.configurations.create("implementation")
+        val debugCompileClasspath = project.configurations
+            .create("debugCompileClasspath")
+            .apply {
+                extendsFrom(implementation)
+            }
+        project.dependencies.add("implementation", "com.example:inactive:1.0")
+
+        val service = object : DefaultDependencyResolutionService() {
+            override fun getParameters(): DependencyResolutionService.Params =
+                object : DependencyResolutionService.Params {}
+        }
+        service.populateCache(
+            WorkspaceDependencies(
+                variantDeps = emptyMap(),
+                reachableMainBucketsByProject = mapOf(":app" to setOf(DEFAULT_VARIANT, "debug"))
+            )
+        )
+        val variants = setOf(
+            fakeVariant(
+                project = project,
+                name = "debug",
+                variantConfigurations = setOf(implementation),
+                compileConfigurations = setOf(debugCompileClasspath)
+            )
+        )
+        val dependenciesDataSource = DefaultDependenciesDataSource(
+            configurationDataSource = object : ConfigurationDataSource {
+                override fun resolvedConfigurations(
+                    project: Project,
+                    vararg variantTypes: VariantType
+                ): Sequence<Configuration> = emptySequence()
+
+                override fun configurations(
+                    project: Project,
+                    vararg variantTypes: VariantType
+                ): Sequence<Configuration> = emptySequence()
+
+                override fun isThisConfigurationBelongsToThisVariants(
+                    project: Project,
+                    vararg variants: com.android.build.gradle.api.BaseVariant?,
+                    configuration: Configuration
+                ): Boolean = false
+            },
+            artifactsConfig = ArtifactsConfig(),
+            dependencyResolutionService = project.provider { service },
+            variantBuilder = object : VariantBuilder {
+                override fun build(project: Project): Set<Variant<*>> = variants
+
+                override fun onVariants(project: Project, action: (Variant<*>) -> Unit) {
+                    variants.forEach(action)
+                }
+            }
+        )
+        val variantKey = VariantGraphKey.from(project, "debug", VariantType.AndroidBuild)
+
+        val deps = dependenciesDataSource.collectMavenDeps(project, variantKey)
+
+        assertEquals(emptyList(), deps)
+    }
+
+    @Test
+    fun `collectMavenDeps can use lint bucket for jvm lint module declarations`() {
+        val root = ProjectBuilder.builder().withName("root").build()
+        val project = ProjectBuilder.builder()
+            .withName("custom-lint-rules")
+            .withParent(root)
+            .build()
+        val implementation = project.configurations.create("implementation")
+        val compileClasspath = project.configurations
+            .create("compileClasspath")
+            .apply {
+                extendsFrom(implementation)
+            }
+        project.dependencies.add(
+            "implementation",
+            "com.android.tools.lint:lint-api:31.5.0-alpha02"
+        )
+
+        val service = object : DefaultDependencyResolutionService() {
+            override fun getParameters(): DependencyResolutionService.Params =
+                object : DependencyResolutionService.Params {}
+        }
+        service.populateCache(
+            WorkspaceDependencies(
+                variantDeps = mapOf(
+                    "lint" to listOf(
+                        ResolvedDependency
+                            .fromId("com.android.tools.lint:lint-api:31.5.0-alpha02", "lint")
+                            .copy(direct = false),
+                        ResolvedDependency
+                            .fromId(
+                                "com.android.tools.external.org-jetbrains:uast:31.5.0-alpha02",
+                                "lint"
+                            )
+                            .copy(direct = false)
+                    )
+                ),
+                transitiveClasspath = mapOf(
+                    "com.android.tools.lint:lint-api" to setOf(
+                        "com.android.tools.external.org-jetbrains:uast"
+                    )
+                )
+            )
+        )
+        val variants = setOf(
+            fakeVariant(
+                project = project,
+                name = DEFAULT_VARIANT,
+                variantType = VariantType.JvmBuild,
+                extendsFrom = emptySet(),
+                variantConfigurations = setOf(implementation),
+                compileConfigurations = setOf(compileClasspath)
+            ),
+            fakeVariant(
+                project = project,
+                name = "lint",
+                variantType = VariantType.Lint,
+                extendsFrom = emptySet(),
+                variantConfigurations = emptySet()
+            )
+        )
+        val dependenciesDataSource = DefaultDependenciesDataSource(
+            configurationDataSource = object : ConfigurationDataSource {
+                override fun resolvedConfigurations(
+                    project: Project,
+                    vararg variantTypes: VariantType
+                ): Sequence<Configuration> = emptySequence()
+
+                override fun configurations(
+                    project: Project,
+                    vararg variantTypes: VariantType
+                ): Sequence<Configuration> = emptySequence()
+
+                override fun isThisConfigurationBelongsToThisVariants(
+                    project: Project,
+                    vararg variants: com.android.build.gradle.api.BaseVariant?,
+                    configuration: Configuration
+                ): Boolean = false
+            },
+            artifactsConfig = ArtifactsConfig(),
+            dependencyResolutionService = project.provider { service },
+            variantBuilder = object : VariantBuilder {
+                override fun build(project: Project): Set<Variant<*>> = variants
+
+                override fun onVariants(project: Project, action: (Variant<*>) -> Unit) {
+                    variants.forEach(action)
+                }
+            }
+        )
+        val variantKey = VariantGraphKey.from(project, DEFAULT_VARIANT, VariantType.JvmBuild)
+
+        val deps = dependenciesDataSource.collectMavenDeps(project, variantKey)
+        val transitiveDeps = dependenciesDataSource.collectTransitiveMavenDeps(project, variantKey)
+            .mapTo(sortedSetOf(), BazelDependency::toString)
+
+        assertEquals(listOf("@lint_maven//:com_android_tools_lint_lint_api"), deps.map(BazelDependency::toString))
+        assertTrue("@lint_maven//:com_android_tools_lint_lint_api" in transitiveDeps)
+        assertTrue("@lint_maven//:com_android_tools_external_org_jetbrains_uast" in transitiveDeps)
+    }
+
     private fun fakeVariant(
         project: Project,
         name: String,
+        variantType: VariantType = VariantType.AndroidBuild,
         extendsFrom: Set<String> = setOf(DEFAULT_VARIANT),
         variantConfigurations: Set<Configuration>,
         compileConfigurations: Set<Configuration> = emptySet()
@@ -691,7 +1425,7 @@ class DefaultDependenciesDataSourceTest {
             override val name: String = name
             override val backingVariant: Any = Any()
             override val project: Project = project
-            override val variantType: VariantType = VariantType.AndroidBuild
+            override val variantType: VariantType = variantType
             override val extendsFrom: Set<String> = extendsFrom
             override val variantConfigurations: Set<Configuration> = variantConfigurations
             override val compileConfiguration: Set<Configuration> = compileConfigurations

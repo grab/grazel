@@ -68,6 +68,7 @@ internal data class AndroidTestTarget(
             // "Dependencies on .jar artifacts are not allowed" error in some Bazel configurations.
             // The app library dependency is needed for resource linking.
             deps = deps + associates,
+            tags = tags,
             customPackage = customPackage,
             targetPackage = targetPackage,
             debugKey = debugKey,

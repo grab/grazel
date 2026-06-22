@@ -2,6 +2,7 @@ package com.grab.grazel.gradle.variant
 
 import com.grab.grazel.gradle.isAndroid
 import com.grab.grazel.gradle.isJvm
+import com.grab.grazel.gradle.LINT_PLUGIN_ID
 import com.grab.grazel.gradle.variant.VariantType.AndroidBuild
 import com.grab.grazel.gradle.variant.VariantType.AndroidTest
 import com.grab.grazel.gradle.variant.VariantType.JvmBuild
@@ -106,16 +107,28 @@ constructor(
                     .sortedBy { it.name.length }
                     .toSet()
             } else if (project.isJvm) {
-                setOf<Variant<*>>(
-                    JvmVariant(
-                        project = project,
-                        variantType = JvmBuild
-                    ),
-                    JvmVariant(
-                        project = project,
-                        variantType = Test
+                buildSet {
+                    add(
+                        JvmVariant(
+                            project = project,
+                            variantType = JvmBuild
+                        )
                     )
-                )
+                    add(
+                        JvmVariant(
+                            project = project,
+                            variantType = Test
+                        )
+                    )
+                    if (project.plugins.hasPlugin(LINT_PLUGIN_ID)) {
+                        add(
+                            JvmVariant(
+                                project = project,
+                                variantType = Lint
+                            )
+                        )
+                    }
+                }
             } else emptySet()
             variantCache[project.path] = variants
             return variants
@@ -199,7 +212,9 @@ constructor(
             } else if (project.isJvm) {
                 action(JvmVariant(project = project, variantType = JvmBuild))
                 action(JvmVariant(project = project, variantType = Test))
-                action(JvmVariant(project = project, variantType = Lint))
+                if (project.plugins.hasPlugin(LINT_PLUGIN_ID)) {
+                    action(JvmVariant(project = project, variantType = Lint))
+                }
             }
         }
         variantCache.clear()

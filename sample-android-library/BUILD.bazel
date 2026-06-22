@@ -53,6 +53,6 @@ android_unit_test(
         "//:parcelize",
         "//sample-android-library:sample-android-library-debug",
         "@maven//:com_squareup_moshi_moshi",
-        "@maven//:junit_junit",
+        "@test_maven//:junit_junit",
     ],
 )

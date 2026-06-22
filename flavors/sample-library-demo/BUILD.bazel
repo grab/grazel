@@ -26,6 +26,6 @@ kotlin_test(
         "//visibility:public",
     ],
     deps = [
-        "@maven//:junit_junit",
+        "@test_maven//:junit_junit",
     ],
 )

@@ -29,7 +29,8 @@ import org.gradle.api.internal.artifacts.result.DefaultResolvedComponentResult
 @Serializable
 internal data class ResolveDependenciesResult(
     val variantName: String,
-    val dependencies: Map<String, Set<ResolvedDependency>> = HashMap()
+    val dependencies: Map<String, Set<ResolvedDependency>> = HashMap(),
+    val reachableMainBucketsByProject: Map<String, Set<String>> = emptyMap()
 ) {
     companion object {
         enum class Scope {
@@ -161,11 +162,20 @@ internal data class WorkspaceDependencies(
     /**
      * Variant-scoped view of [transitiveClasspath].
      *
-     * The legacy transitive dependency store is intentionally keyed only by direct dependency
-     * shortId, but Maven install root selection needs the current repo's direct-root closure so
-     * override-target carriers do not leak between variants that share the same direct root.
+     * The legacy transitive dependency store is keyed by artifact shortId. Generated targets decide
+     * which declared roots to query, so this map keeps the resolved closure for any artifact root
+     * that carries transitive metadata in a scoped bucket.
      */
-    val variantTransitiveClasspath: Map<String, Map<String, Set<String>>> = emptyMap()
+    val variantTransitiveClasspath: Map<String, Map<String, Set<String>>> = emptyMap(),
+    /**
+     * Main-variant project buckets reachable from the selected app/com.android.test roots.
+     *
+     * Generated BUILD files can still exist for inactive modules, but dependency lookup should only
+     * fail hard for missing Maven labels when the module/bucket participates in the selected root
+     * graph. This keeps root-selected workspace buckets strict without requiring full per-module
+     * resolution for inactive modules.
+     */
+    val reachableMainBucketsByProject: Map<String, Set<String>> = emptyMap()
 )
 
 /**

@@ -216,6 +216,47 @@ class ResolvedComponentsVisitorTest {
     }
 
     @Test
+    fun `assert dependency constraints are not included in transitive artifact closure`() {
+        val realChild = fakeComponentResult(
+            group = "com.example",
+            name = "real-child",
+            version = "1.0",
+            isProject = false
+        )
+        val constrainedChild = fakeComponentResult(
+            group = "com.example",
+            name = "constrained-child",
+            version = "1.0",
+            isProject = false
+        )
+        val directParent = fakeComponentResult(
+            group = "com.example",
+            name = "direct-parent",
+            version = "1.0",
+            isProject = false
+        ) {
+            addDependencyTo(realChild)
+            addDependencyTo(constrainedChild, constraint = true)
+        }
+        val rootComponent = fakeComponentResult(projectPath = ":app") {
+            addDependencyTo(directParent)
+        }
+
+        val directParentResult = ResolvedComponentsVisitor().visit(
+            root = rootComponent,
+            traverseProjectNodes = true
+        ) { visitResult ->
+            visitResult.takeIf {
+                it.component.toString() == "com.example:direct-parent:1.0"
+            }
+        }.single()
+
+        directParentResult.transitiveDeps.map { it.dependency.toString() }.truth {
+            containsExactly("com.example:real-child:1.0")
+        }
+    }
+
+    @Test
     fun `assert direct dependencies below project nodes include owner project path`() {
         val library = fakeComponentResult(
             group = "com.example",

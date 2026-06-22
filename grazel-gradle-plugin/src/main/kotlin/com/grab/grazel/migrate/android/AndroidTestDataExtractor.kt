@@ -21,6 +21,7 @@ import com.android.build.gradle.api.AndroidSourceSet
 import com.grab.grazel.GrazelExtension
 import com.grab.grazel.bazel.starlark.BazelDependency
 import com.grab.grazel.gradle.dependencies.DependenciesDataSource
+import com.grab.grazel.gradle.variant.ANDROID_TEST_VARIANT
 import com.grab.grazel.gradle.variant.VariantGraphKey
 import com.grab.grazel.gradle.variant.VariantType
 import com.grab.grazel.gradle.isAndroid
@@ -246,7 +247,7 @@ constructor(
         val combinedDeps = (libraryDeps + dependenciesDataSource.collectMavenDeps(
             this,
             variantKey,
-            preferredVariantNames = listOf(matchedVariant.variantName)
+            preferredVariantNames = listOf(ANDROID_TEST_VARIANT, matchedVariant.variantName)
         )).filterNot { dep ->
             dep is BazelDependency.ProjectDependency &&
                 dep.dependencyProject.path == targetResolution.targetProject.path

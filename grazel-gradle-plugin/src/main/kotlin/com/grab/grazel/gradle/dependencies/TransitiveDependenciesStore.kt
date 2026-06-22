@@ -20,19 +20,35 @@ import java.util.concurrent.ConcurrentHashMap
 
 interface TransitiveDependenciesStore : AutoCloseable {
     operator fun set(shortId: String, transitiveDeps: Set<String>)
+    fun set(variantName: String, shortId: String, transitiveDeps: Set<String>)
     operator fun get(shortId: String): Set<String>
+    fun get(variants: Set<String>, shortId: String): Set<String>?
 }
 
 class DefaultTransitiveDependenciesStore : TransitiveDependenciesStore {
     private val cache = ConcurrentHashMap<String, Set<String>>()
+    private val variantCache = ConcurrentHashMap<String, ConcurrentHashMap<String, Set<String>>>()
 
     override fun set(shortId: String, transitiveDeps: Set<String>) {
         cache[shortId] = transitiveDeps
     }
 
+    override fun set(variantName: String, shortId: String, transitiveDeps: Set<String>) {
+        variantCache
+            .getOrPut(variantName) { ConcurrentHashMap() }[shortId] = transitiveDeps
+    }
+
     override fun get(shortId: String): Set<String> = cache[shortId] ?: emptySet()
+
+    override fun get(variants: Set<String>, shortId: String): Set<String>? {
+        val scopedCaches = variants.mapNotNull(variantCache::get)
+        if (scopedCaches.isEmpty()) return null
+        return scopedCaches.firstNotNullOfOrNull { scopedCache -> scopedCache[shortId] }
+            ?: emptySet()
+    }
 
     override fun close() {
         cache.clear()
+        variantCache.clear()
     }
 }

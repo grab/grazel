@@ -38,9 +38,6 @@
     "androidx.compose.ui:ui-geometry-android": -1893733706,
     "androidx.compose.ui:ui-graphics": -555218643,
     "androidx.compose.ui:ui-graphics-android": 943680975,
-    "androidx.compose.ui:ui-test": -1102082836,
-    "androidx.compose.ui:ui-test-junit4": 1737816095,
-    "androidx.compose.ui:ui-test-manifest": -455530488,
     "androidx.compose.ui:ui-text": 446959311,
     "androidx.compose.ui:ui-text-android": 561295729,
     "androidx.compose.ui:ui-tooling": 1335226128,
@@ -96,15 +93,6 @@
     "androidx.savedstate:savedstate-ktx": 877332601,
     "androidx.startup:startup-runtime": -1105025667,
     "androidx.test.espresso:espresso-contrib": 1406236047,
-    "androidx.test.espresso:espresso-core": -1436007790,
-    "androidx.test.espresso:espresso-idling-resource": -930901673,
-    "androidx.test.ext:junit": -224944317,
-    "androidx.test.services:storage": 1386371691,
-    "androidx.test:annotation": 585610434,
-    "androidx.test:core": 987691062,
-    "androidx.test:monitor": 1532776253,
-    "androidx.test:rules": 1473121816,
-    "androidx.test:runner": -1165995575,
     "androidx.tracing:tracing": 1862641990,
     "androidx.vectordrawable:vectordrawable": 1933203971,
     "androidx.vectordrawable:vectordrawable-animated": 1834088379,
@@ -118,27 +106,16 @@
     "com.google.ar.sceneform:rendering": 1869564560,
     "com.google.ar.sceneform:sceneform-base": -417010888,
     "com.google.ar:core": 1761415433,
-    "com.google.auto.service:auto-service": -1729498094,
-    "com.google.code.findbugs:jsr305": 495355163,
     "com.google.dagger:dagger": -1770328742,
     "com.google.dagger:dagger-compiler": -846042881,
     "com.google.dagger:dagger-producers": -1558621587,
     "com.google.dagger:dagger-spi": 1252417474,
-    "com.google.errorprone:error_prone_annotations": 1431367875,
-    "com.google.guava:failureaccess": 1582410452,
-    "com.google.guava:guava": -220965576,
-    "com.google.guava:listenablefuture": -66810587,
-    "com.google.j2objc:j2objc-annotations": -47406525,
+    "com.google.guava:listenablefuture": 50807205,
     "com.jakewharton.timber:timber": -277145259,
     "com.squareup.moshi:moshi": -56793254,
     "com.squareup.okio:okio": 795722926,
-    "com.squareup:javawriter": 983088744,
     "javax.inject:javax.inject": -297932879,
-    "junit:junit": 1936859812,
-    "org.checkerframework:checker-compat-qual": 1011320103,
-    "org.hamcrest:hamcrest-core": -1351165872,
-    "org.hamcrest:hamcrest-integration": 684425049,
-    "org.hamcrest:hamcrest-library": -1383845358,
+    "junit:junit": -744267592,
     "org.jetbrains.kotlin:kotlin-parcelize-compiler": -1149945716,
     "org.jetbrains.kotlin:kotlin-parcelize-runtime": -839194913,
     "org.jetbrains.kotlin:kotlin-reflect": 643321830,
@@ -150,8 +127,6 @@
     "org.jetbrains.kotlinx:kotlinx-coroutines-android": -1709166003,
     "org.jetbrains.kotlinx:kotlinx-coroutines-core": -1648913921,
     "org.jetbrains.kotlinx:kotlinx-coroutines-core-jvm": -1487700397,
-    "org.jetbrains.kotlinx:kotlinx-coroutines-test": -140566414,
-    "org.jetbrains.kotlinx:kotlinx-coroutines-test-jvm": -137315514,
     "org.jetbrains:annotations": -628031479,
     "org.json:json": -840512639,
     "repositories": 1725954475
@@ -163,169 +138,153 @@
     "android.arch.lifecycle:livedata-core:aar": -914591173,
     "android.arch.lifecycle:runtime:aar": -1281834730,
     "android.arch.lifecycle:viewmodel:aar": 1504455717,
-    "androidx.activity:activity-compose:aar": -1101289467,
-    "androidx.activity:activity-ktx:aar": -1638601579,
-    "androidx.activity:activity:aar": 171507260,
+    "androidx.activity:activity-compose:aar": -239253983,
+    "androidx.activity:activity-ktx:aar": 1458144489,
+    "androidx.activity:activity:aar": -1660842692,
     "androidx.annotation:annotation": 51125853,
     "androidx.annotation:annotation-experimental:aar": 1580968534,
     "androidx.annotation:annotation-jvm": -377298855,
-    "androidx.appcompat:appcompat-resources:aar": -1137502930,
-    "androidx.appcompat:appcompat:aar": 1076184806,
+    "androidx.appcompat:appcompat-resources:aar": 1362680283,
+    "androidx.appcompat:appcompat:aar": -1251375047,
     "androidx.arch.core:core-common": -776081556,
     "androidx.arch.core:core-runtime:aar": -1315442168,
-    "androidx.autofill:autofill:aar": 1673374873,
+    "androidx.autofill:autofill:aar": -591045375,
     "androidx.collection:collection": 1094234304,
     "androidx.collection:collection-jvm": 516454243,
     "androidx.collection:collection-ktx": -1988393896,
-    "androidx.compose.animation:animation-android:aar": -857892079,
-    "androidx.compose.animation:animation-core-android:aar": -1591765626,
-    "androidx.compose.animation:animation-core:aar": 859654859,
-    "androidx.compose.animation:animation:aar": -223212329,
+    "androidx.compose.animation:animation-android:aar": 2025534251,
+    "androidx.compose.animation:animation-core-android:aar": 1432160166,
+    "androidx.compose.animation:animation-core:aar": -1946851484,
+    "androidx.compose.animation:animation:aar": 900661353,
     "androidx.compose.compiler:compiler": -1636531678,
-    "androidx.compose.foundation:foundation-android:aar": 981444879,
-    "androidx.compose.foundation:foundation-layout-android:aar": -507295601,
-    "androidx.compose.foundation:foundation-layout:aar": 77779295,
-    "androidx.compose.foundation:foundation:aar": 1936490376,
-    "androidx.compose.material:material-android:aar": 211408212,
-    "androidx.compose.material:material-ripple-android:aar": 1805370075,
-    "androidx.compose.material:material-ripple:aar": 1094642158,
-    "androidx.compose.material:material:aar": -1790559622,
+    "androidx.compose.foundation:foundation-android:aar": -1233757388,
+    "androidx.compose.foundation:foundation-layout-android:aar": -898826862,
+    "androidx.compose.foundation:foundation-layout:aar": -2114654732,
+    "androidx.compose.foundation:foundation:aar": 513548741,
+    "androidx.compose.material:material-android:aar": 1850614258,
+    "androidx.compose.material:material-ripple-android:aar": -924483968,
+    "androidx.compose.material:material-ripple:aar": 1859492332,
+    "androidx.compose.material:material:aar": 248928509,
     "androidx.compose.runtime:runtime-android:aar": -1459509910,
     "androidx.compose.runtime:runtime-saveable-android:aar": -957641305,
     "androidx.compose.runtime:runtime-saveable:aar": -1421021400,
     "androidx.compose.runtime:runtime:aar": -2127694620,
-    "androidx.compose.ui:ui-android:aar": 1377764330,
+    "androidx.compose.ui:ui-android:aar": 1599819907,
     "androidx.compose.ui:ui-geometry-android:aar": 101856075,
     "androidx.compose.ui:ui-geometry:aar": 1459939744,
-    "androidx.compose.ui:ui-graphics-android:aar": 950676073,
-    "androidx.compose.ui:ui-graphics:aar": -711412039,
-    "androidx.compose.ui:ui-test-junit4:aar": -1251105836,
-    "androidx.compose.ui:ui-test-manifest:aar": 1571935425,
-    "androidx.compose.ui:ui-test:aar": 664796781,
-    "androidx.compose.ui:ui-text-android:aar": 407297515,
-    "androidx.compose.ui:ui-text:aar": 542201938,
-    "androidx.compose.ui:ui-tooling-android:aar": -358602903,
-    "androidx.compose.ui:ui-tooling-data-android:aar": 955359413,
-    "androidx.compose.ui:ui-tooling-data:aar": 1128319960,
+    "androidx.compose.ui:ui-graphics-android:aar": -1001804058,
+    "androidx.compose.ui:ui-graphics:aar": -140146272,
+    "androidx.compose.ui:ui-text-android:aar": 1233939824,
+    "androidx.compose.ui:ui-text:aar": 1021401127,
+    "androidx.compose.ui:ui-tooling-android:aar": 601447705,
+    "androidx.compose.ui:ui-tooling-data-android:aar": 1170004902,
+    "androidx.compose.ui:ui-tooling-data:aar": -1283198273,
     "androidx.compose.ui:ui-tooling-preview-android:aar": 1123700371,
     "androidx.compose.ui:ui-tooling-preview:aar": 1912522917,
-    "androidx.compose.ui:ui-tooling:aar": 1341223259,
+    "androidx.compose.ui:ui-tooling:aar": 1165331978,
     "androidx.compose.ui:ui-unit-android:aar": -1387308059,
     "androidx.compose.ui:ui-unit:aar": -967193481,
     "androidx.compose.ui:ui-util-android:aar": 1392943865,
     "androidx.compose.ui:ui-util:aar": -1960892923,
-    "androidx.compose.ui:ui:aar": 10187315,
-    "androidx.concurrent:concurrent-futures": -105816058,
+    "androidx.compose.ui:ui:aar": -1899403824,
+    "androidx.concurrent:concurrent-futures": -323420660,
     "androidx.constraintlayout:constraintlayout-core": 1657423304,
     "androidx.constraintlayout:constraintlayout:aar": -1956853300,
-    "androidx.core:core-ktx:aar": -672475998,
-    "androidx.core:core:aar": -1519322492,
+    "androidx.core:core-ktx:aar": 524121910,
+    "androidx.core:core:aar": 1344089457,
     "androidx.cursoradapter:cursoradapter:aar": -2051600768,
-    "androidx.customview:customview-poolingcontainer:aar": 253960004,
-    "androidx.customview:customview:aar": -1139403911,
-    "androidx.databinding:databinding-adapters:aar": 1639171748,
+    "androidx.customview:customview-poolingcontainer:aar": -327735037,
+    "androidx.customview:customview:aar": -1235969503,
+    "androidx.databinding:databinding-adapters:aar": 1693638619,
     "androidx.databinding:databinding-common": -1475214822,
-    "androidx.databinding:databinding-ktx:aar": -279617687,
-    "androidx.databinding:databinding-runtime:aar": -1270818940,
+    "androidx.databinding:databinding-ktx:aar": -1437688873,
+    "androidx.databinding:databinding-runtime:aar": 1110822429,
     "androidx.databinding:viewbinding:aar": -177787072,
-    "androidx.drawerlayout:drawerlayout:aar": -1170113916,
-    "androidx.emoji2:emoji2-views-helper:aar": 1088718198,
-    "androidx.emoji2:emoji2:aar": -1424704054,
-    "androidx.fragment:fragment:aar": -2049461767,
-    "androidx.graphics:graphics-path:aar": 1496449815,
+    "androidx.drawerlayout:drawerlayout:aar": 70383433,
+    "androidx.emoji2:emoji2-views-helper:aar": 1515273830,
+    "androidx.emoji2:emoji2:aar": -2107636077,
+    "androidx.fragment:fragment:aar": 1605381508,
+    "androidx.graphics:graphics-path:aar": -1345575391,
     "androidx.interpolator:interpolator:aar": 703589040,
     "androidx.lifecycle:lifecycle-common": -1690461430,
     "androidx.lifecycle:lifecycle-common-jvm": 1778861113,
     "androidx.lifecycle:lifecycle-livedata-core-ktx:aar": 720097222,
     "androidx.lifecycle:lifecycle-livedata-core:aar": 554415698,
     "androidx.lifecycle:lifecycle-livedata:aar": -575083270,
-    "androidx.lifecycle:lifecycle-process:aar": -539300542,
-    "androidx.lifecycle:lifecycle-runtime-android:aar": -1365309817,
-    "androidx.lifecycle:lifecycle-runtime-compose-android:aar": 1803551507,
-    "androidx.lifecycle:lifecycle-runtime-compose:aar": -1372893967,
-    "androidx.lifecycle:lifecycle-runtime-ktx-android:aar": -1266462279,
-    "androidx.lifecycle:lifecycle-runtime-ktx:aar": -1866572570,
-    "androidx.lifecycle:lifecycle-runtime:aar": -704523032,
-    "androidx.lifecycle:lifecycle-service:aar": 1138418973,
+    "androidx.lifecycle:lifecycle-process:aar": -1212181583,
+    "androidx.lifecycle:lifecycle-runtime-android:aar": -2032623864,
+    "androidx.lifecycle:lifecycle-runtime-compose-android:aar": -934608175,
+    "androidx.lifecycle:lifecycle-runtime-compose:aar": -1791831865,
+    "androidx.lifecycle:lifecycle-runtime-ktx-android:aar": 644176256,
+    "androidx.lifecycle:lifecycle-runtime-ktx:aar": 87164274,
+    "androidx.lifecycle:lifecycle-runtime:aar": -1137351327,
+    "androidx.lifecycle:lifecycle-service:aar": -1242097790,
     "androidx.lifecycle:lifecycle-viewmodel-android:aar": 1160987251,
     "androidx.lifecycle:lifecycle-viewmodel-ktx:aar": -2041215471,
-    "androidx.lifecycle:lifecycle-viewmodel-savedstate:aar": -1832440872,
+    "androidx.lifecycle:lifecycle-viewmodel-savedstate:aar": -679256985,
     "androidx.lifecycle:lifecycle-viewmodel:aar": -749203583,
-    "androidx.loader:loader:aar": -1301349490,
-    "androidx.profileinstaller:profileinstaller:aar": 1087449246,
+    "androidx.loader:loader:aar": -184406428,
+    "androidx.profileinstaller:profileinstaller:aar": -541519682,
     "androidx.resourceinspection:resourceinspection-annotation": 1836708293,
     "androidx.savedstate:savedstate-ktx:aar": 1276098191,
     "androidx.savedstate:savedstate:aar": -1764954318,
     "androidx.startup:startup-runtime:aar": -1683240569,
-    "androidx.test.espresso:espresso-core:aar": 1456418072,
-    "androidx.test.espresso:espresso-idling-resource:aar": -1112641849,
-    "androidx.test.ext:junit:aar": 246816800,
-    "androidx.test.services:storage:aar": -1542579428,
-    "androidx.test:annotation:aar": 230528513,
-    "androidx.test:core:aar": 2070768406,
-    "androidx.test:monitor:aar": 2052938877,
-    "androidx.test:rules:aar": 135554603,
-    "androidx.test:runner:aar": 2091565550,
     "androidx.tracing:tracing:aar": -125561220,
-    "androidx.vectordrawable:vectordrawable-animated:aar": -258582734,
-    "androidx.vectordrawable:vectordrawable:aar": -1199357502,
+    "androidx.vectordrawable:vectordrawable-animated:aar": -1449820181,
+    "androidx.vectordrawable:vectordrawable:aar": 701759160,
     "androidx.versionedparcelable:versionedparcelable:aar": 636004986,
-    "androidx.viewpager:viewpager:aar": 267297834,
+    "androidx.viewpager:viewpager:aar": 1225130211,
     "com.android.support:support-annotations": 1669356980,
     "com.android.support:support-compat:aar": -2035426096,
     "com.android.support:support-core-ui:aar": -2011032776,
     "com.android.support:support-core-utils:aar": 879172092,
     "com.android.support:support-fragment:aar": -1252443864,
     "com.android.tools.analytics-library:protos": 396082418,
-    "com.android.tools.analytics-library:shared": -951889264,
+    "com.android.tools.analytics-library:shared": -1257901834,
     "com.android.tools.build:aapt2-proto": 1551601574,
     "com.android.tools.build:builder-model": -53330676,
-    "com.android.tools.build:manifest-merger": 1181387577,
-    "com.android.tools.ddms:ddmlib": -2132906424,
+    "com.android.tools.build:manifest-merger": 1346930243,
+    "com.android.tools.ddms:ddmlib": 455657443,
     "com.android.tools.external.com-intellij:intellij-core": 906851768,
     "com.android.tools.external.com-intellij:kotlin-compiler": -1989675885,
     "com.android.tools.external.org-jetbrains:uast": 2060500718,
-    "com.android.tools.layoutlib:layoutlib-api": 1204299868,
-    "com.android.tools.lint:lint-api": -1211650468,
-    "com.android.tools.lint:lint-checks": -1319403205,
-    "com.android.tools.lint:lint-model": 147333595,
+    "com.android.tools.layoutlib:layoutlib-api": 524870135,
+    "com.android.tools.lint:lint-api": -1679359305,
+    "com.android.tools.lint:lint-checks": -428848396,
+    "com.android.tools.lint:lint-model": 837057078,
     "com.android.tools:annotations": 1215316819,
-    "com.android.tools:common": 91428645,
-    "com.android.tools:dvlib": 682925528,
+    "com.android.tools:common": 1706403814,
+    "com.android.tools:dvlib": -1356378829,
     "com.android.tools:play-sdk-proto": -693613490,
-    "com.android.tools:repository": 1272339523,
-    "com.android.tools:sdk-common": 650318030,
-    "com.android.tools:sdklib": 1739877262,
+    "com.android.tools:repository": -141001367,
+    "com.android.tools:sdk-common": -143290938,
+    "com.android.tools:sdklib": -1291702060,
     "com.google.ar.sceneform.ux:sceneform-ux:aar": 1577781119,
     "com.google.ar.sceneform:core:aar": -1286029131,
     "com.google.ar.sceneform:filament-android:aar": -1169874927,
     "com.google.ar.sceneform:rendering:aar": -129036429,
     "com.google.ar.sceneform:sceneform-base:aar": -353453602,
     "com.google.ar:core:aar": -1445415602,
-    "com.google.auto.service:auto-service": 776736086,
-    "com.google.auto.service:auto-service-annotations": -860143863,
-    "com.google.auto:auto-common": -147604522,
     "com.google.code.findbugs:jsr305": 467791732,
     "com.google.code.gson:gson": -2096443181,
     "com.google.dagger:dagger": -1649738759,
-    "com.google.dagger:dagger-compiler": -779456708,
-    "com.google.dagger:dagger-producers": -609467294,
-    "com.google.dagger:dagger-spi": 1753054322,
+    "com.google.dagger:dagger-compiler": 1056840728,
+    "com.google.dagger:dagger-producers": -498673285,
+    "com.google.dagger:dagger-spi": 600624296,
     "com.google.devtools.ksp:symbol-processing-api": 1833193672,
-    "com.google.errorprone:error_prone_annotations": 2146737766,
+    "com.google.errorprone:error_prone_annotations": -226022948,
     "com.google.errorprone:javac-shaded": 1258757438,
-    "com.google.googlejavaformat:google-java-format": 1132763272,
+    "com.google.googlejavaformat:google-java-format": -1501193499,
     "com.google.guava:failureaccess": 1495901004,
-    "com.google.guava:guava": 1068206295,
-    "com.google.guava:listenablefuture": 707484502,
-    "com.google.j2objc:j2objc-annotations": -566236296,
-    "com.google.jimfs:jimfs": 1460633644,
+    "com.google.guava:guava": -1364883958,
+    "com.google.guava:listenablefuture": -1031400896,
+    "com.google.j2objc:j2objc-annotations": -1333838003,
+    "com.google.jimfs:jimfs": 72853441,
     "com.google.protobuf:protobuf-java": 157489791,
     "com.jakewharton.timber:timber:aar": 1388409593,
     "com.squareup.moshi:moshi": 1173705304,
     "com.squareup.okio:okio": -1491975762,
     "com.squareup:javapoet": 1859306913,
-    "com.squareup:javawriter": 713849553,
     "com.squareup:kotlinpoet": -807927989,
     "com.sun.activation:javax.activation": -1320276497,
     "com.sun.istack:istack-commons-runtime": -1293397361,
@@ -349,11 +308,10 @@
     "org.bouncycastle:bcprov-jdk18on": -992007550,
     "org.bouncycastle:bcutil-jdk18on": 172361896,
     "org.checkerframework:checker-compat-qual": -1120452412,
+    "org.checkerframework:checker-qual": -1289231818,
     "org.glassfish.jaxb:jaxb-runtime": -1620317731,
     "org.glassfish.jaxb:txw2": 1947483661,
     "org.hamcrest:hamcrest-core": -1455441748,
-    "org.hamcrest:hamcrest-integration": 261575668,
-    "org.hamcrest:hamcrest-library": -803321675,
     "org.jetbrains.intellij.deps:trove4j": 390167843,
     "org.jetbrains.kotlin:kotlin-android-extensions-runtime": 1336628595,
     "org.jetbrains.kotlin:kotlin-compiler-embeddable": -227049188,
@@ -372,8 +330,6 @@
     "org.jetbrains.kotlinx:kotlinx-coroutines-android": 927888789,
     "org.jetbrains.kotlinx:kotlinx-coroutines-core": 373061405,
     "org.jetbrains.kotlinx:kotlinx-coroutines-core-jvm": -131757272,
-    "org.jetbrains.kotlinx:kotlinx-coroutines-test": 1882308280,
-    "org.jetbrains.kotlinx:kotlinx-coroutines-test-jvm": 1162704956,
     "org.jetbrains:annotations": -1494523847,
     "org.json:json": 1973842237,
     "org.jvnet.staxex:stax-ex": 1384029308,
@@ -640,24 +596,6 @@
         "jar": "c6d1470cefd3f743bf87e00179cbd9452e442da8ffc538484c9cc3b8b3b02d49"
       },
       "version": "1.7.8"
-    },
-    "androidx.compose.ui:ui-test-junit4:aar": {
-      "shasums": {
-        "jar": "5a6a6c8e213613e29e0529336483974f6aea9cd0f09fea7212e58a273ec42ce0"
-      },
-      "version": "1.4.3"
-    },
-    "androidx.compose.ui:ui-test-manifest:aar": {
-      "shasums": {
-        "jar": "f8f33961de762aab99f325961e249b646f231c014edb2564204b36ca9dfc698a"
-      },
-      "version": "1.4.3"
-    },
-    "androidx.compose.ui:ui-test:aar": {
-      "shasums": {
-        "jar": "178ecaeb147a0451ac6ad589eec7b7b1594e5ad16754b49216c4702c73303304"
-      },
-      "version": "1.4.3"
     },
     "androidx.compose.ui:ui-text-android:aar": {
       "shasums": {
@@ -989,60 +927,6 @@
       },
       "version": "1.1.1"
     },
-    "androidx.test.espresso:espresso-core:aar": {
-      "shasums": {
-        "jar": "34b0493f4e002f205d961e562add0c0c31bb0acc657e89d89d4b188ac13f242c"
-      },
-      "version": "3.5.1"
-    },
-    "androidx.test.espresso:espresso-idling-resource:aar": {
-      "shasums": {
-        "jar": "84fb8e2f5eda937771bee28582f5d2cfa61b0e9438d02041ca61b81e3dac3c87"
-      },
-      "version": "3.5.1"
-    },
-    "androidx.test.ext:junit:aar": {
-      "shasums": {
-        "jar": "4307c0e60f5d701db9c59bcd9115af705113c36a9132fa3dbad58db1294e9bfd"
-      },
-      "version": "1.1.5"
-    },
-    "androidx.test.services:storage:aar": {
-      "shasums": {
-        "jar": "b34861f0cd920cb1089f08c3f27e5865b7f920284cc45f4ed12ef8d6980dac48"
-      },
-      "version": "1.4.2"
-    },
-    "androidx.test:annotation:aar": {
-      "shasums": {
-        "jar": "c0754928effe1968c3a9a7b55d1dfc7ceb1e1e7c9f3f09f98afd42431f712492"
-      },
-      "version": "1.0.1"
-    },
-    "androidx.test:core:aar": {
-      "shasums": {
-        "jar": "2c06715c0d0843cee2143ab8bb322bb3f34d5247630402fc8c1b6a0eafa15b9f"
-      },
-      "version": "1.5.0"
-    },
-    "androidx.test:monitor:aar": {
-      "shasums": {
-        "jar": "2985ce8556989baf7c84342e7f687713c037a39a922e614d1a3ddf1ca3777079"
-      },
-      "version": "1.6.1"
-    },
-    "androidx.test:rules:aar": {
-      "shasums": {
-        "jar": "dd645929c63e24f41be8e6f57bb06f305d3b02ed1b2a7d961647027ae1d9e17f"
-      },
-      "version": "1.5.0"
-    },
-    "androidx.test:runner:aar": {
-      "shasums": {
-        "jar": "36cd6bc876daa1f183ccd11f9898e094c71f06960fde85a373422959613a44d6"
-      },
-      "version": "1.5.2"
-    },
     "androidx.tracing:tracing:aar": {
       "shasums": {
         "jar": "07b8b6139665b884a162eccf97891ca50f7f56831233bf25168ae04f7b568612"
@@ -1259,24 +1143,6 @@
       },
       "version": "1.15.0"
     },
-    "com.google.auto.service:auto-service": {
-      "shasums": {
-        "jar": "1f48f451503e623daba7d9ed368cca0f81e1e3815653a4560113e12c0129ebd5"
-      },
-      "version": "1.1.1"
-    },
-    "com.google.auto.service:auto-service-annotations": {
-      "shasums": {
-        "jar": "16a76dd00a2650568447f5d6e3a9e2c809d9a42367d56b45215cfb89731f4d24"
-      },
-      "version": "1.1.1"
-    },
-    "com.google.auto:auto-common": {
-      "shasums": {
-        "jar": "f43f29fe2a6ebaf04b2598cdeec32a4e346d49a9404e990f5fc19c19f3a28d0e"
-      },
-      "version": "1.2.1"
-    },
     "com.google.code.findbugs:jsr305": {
       "shasums": {
         "jar": "766ad2a0783f2687962c8ad74ceecc38a28b9f72a2d085ee438b7813e928d0c7"
@@ -1321,9 +1187,9 @@
     },
     "com.google.errorprone:error_prone_annotations": {
       "shasums": {
-        "jar": "baf7d6ea97ce606c53e11b6854ba5f2ce7ef5c24dddf0afa18d1260bd25b002c"
+        "jar": "9e6814cb71816988a4fd1b07a993a8f21bb7058d522c162b1de849e19bea54ae"
       },
-      "version": "2.3.4"
+      "version": "2.18.0"
     },
     "com.google.errorprone:javac-shaded": {
       "shasums": {
@@ -1345,21 +1211,21 @@
     },
     "com.google.guava:guava": {
       "shasums": {
-        "jar": "ea0b5a62b707482eee5cf305c8f35ef91cf4ceaff504f011a5c49c41355f5781"
+        "jar": "bd7fa227591fb8509677d0d1122cf95158f3b8a9f45653f58281d879f6dc48c5"
       },
-      "version": "30.1-android"
+      "version": "32.0.1-jre"
     },
     "com.google.guava:listenablefuture": {
       "shasums": {
-        "jar": "b372a037d4230aa57fbeffdef30fd6123f9c0c2db85d0aced00c91b974f33f99"
+        "jar": "e4ad7607e5c0477c6f890ef26a49cb8d1bb4dffb650bab4502afee64644e3069"
       },
-      "version": "9999.0-empty-to-avoid-conflict-with-guava"
+      "version": "1.0"
     },
     "com.google.j2objc:j2objc-annotations": {
       "shasums": {
-        "jar": "21af30c92267bd6122c0e0b4d20cccb6641a37eaf956c6540ec471d584e64a7b"
+        "jar": "f02a95fa1a5e95edb3ed859fd0fb7df709d121a35290eff8b74dce2ab7f4d6ed"
       },
-      "version": "1.3"
+      "version": "2.8"
     },
     "com.google.jimfs:jimfs": {
       "shasums": {
@@ -1396,12 +1262,6 @@
         "jar": "4c7517e848a71b36d069d12bb3bf46a70fd4cda3105d822b0ed2e19c00b69291"
       },
       "version": "1.13.0"
-    },
-    "com.squareup:javawriter": {
-      "shasums": {
-        "jar": "f699823d0081f69cbb676c1845ea222e0ada79bc88a53e5d22d8bd02d328f57e"
-      },
-      "version": "2.1.1"
     },
     "com.squareup:kotlinpoet": {
       "shasums": {
@@ -1541,6 +1401,12 @@
       },
       "version": "2.5.5"
     },
+    "org.checkerframework:checker-qual": {
+      "shasums": {
+        "jar": "e316255bbfcd9fe50d165314b85abb2b33cb2a66a93c491db648e498a82c2de1"
+      },
+      "version": "3.33.0"
+    },
     "org.glassfish.jaxb:jaxb-runtime": {
       "shasums": {
         "jar": "e6e0a1e89fb6ff786279e6a0082d5cef52dc2ebe67053d041800737652b4fd1b"
@@ -1556,18 +1422,6 @@
     "org.hamcrest:hamcrest-core": {
       "shasums": {
         "jar": "66fdef91e9739348df7a096aa384a5685f4e875584cce89386a7a47251c4d8e9"
-      },
-      "version": "1.3"
-    },
-    "org.hamcrest:hamcrest-integration": {
-      "shasums": {
-        "jar": "70f418efbb506c5155da5f9a5a33262ea08a9e4d7fea186aa9015c41a7224ac2"
-      },
-      "version": "1.3"
-    },
-    "org.hamcrest:hamcrest-library": {
-      "shasums": {
-        "jar": "711d64522f9ec410983bd310934296da134be4254a125080a0416ec178dfad1c"
       },
       "version": "1.3"
     },
@@ -1678,18 +1532,6 @@
         "jar": "1ab3acc38f3e7355c4f9d1ec62107a46fa73c899f3070d055e5d4373dfe67e12"
       },
       "version": "1.7.3"
-    },
-    "org.jetbrains.kotlinx:kotlinx-coroutines-test": {
-      "shasums": {
-        "jar": "993eef7de86d59e99096fbc51b7df33f0cc8a3a655e195590765b7e51e4c0aaa"
-      },
-      "version": "1.6.4"
-    },
-    "org.jetbrains.kotlinx:kotlinx-coroutines-test-jvm": {
-      "shasums": {
-        "jar": "69d65e5fea41cbc0bb905d3ef6623a2348b931fd01b9f2c4a1751a372f2e476d"
-      },
-      "version": "1.6.4"
     },
     "org.jetbrains:annotations": {
       "shasums": {
@@ -2007,44 +1849,6 @@
       "androidx.annotation:annotation",
       "androidx.compose.ui:ui-graphics-android:aar",
       "androidx.compose.ui:ui-unit:aar"
-    ],
-    "androidx.compose.ui:ui-test-junit4:aar": [
-      "androidx.activity:activity-compose:aar",
-      "androidx.activity:activity:aar",
-      "androidx.annotation:annotation",
-      "androidx.compose.runtime:runtime-saveable:aar",
-      "androidx.compose.ui:ui-test:aar",
-      "androidx.lifecycle:lifecycle-common",
-      "androidx.lifecycle:lifecycle-runtime:aar",
-      "androidx.test.espresso:espresso-core:aar",
-      "androidx.test.espresso:espresso-idling-resource:aar",
-      "androidx.test.ext:junit:aar",
-      "androidx.test:core:aar",
-      "androidx.test:monitor:aar",
-      "junit:junit",
-      "org.jetbrains.kotlin:kotlin-stdlib",
-      "org.jetbrains.kotlin:kotlin-stdlib-common",
-      "org.jetbrains.kotlinx:kotlinx-coroutines-core",
-      "org.jetbrains.kotlinx:kotlinx-coroutines-test"
-    ],
-    "androidx.compose.ui:ui-test-manifest:aar": [
-      "androidx.activity:activity:aar"
-    ],
-    "androidx.compose.ui:ui-test:aar": [
-      "androidx.annotation:annotation",
-      "androidx.compose.runtime:runtime:aar",
-      "androidx.compose.ui:ui-graphics:aar",
-      "androidx.compose.ui:ui-text:aar",
-      "androidx.compose.ui:ui-unit:aar",
-      "androidx.compose.ui:ui-util:aar",
-      "androidx.compose.ui:ui:aar",
-      "androidx.core:core-ktx:aar",
-      "androidx.test.espresso:espresso-core:aar",
-      "androidx.test:monitor:aar",
-      "org.jetbrains.kotlin:kotlin-stdlib",
-      "org.jetbrains.kotlin:kotlin-stdlib-common",
-      "org.jetbrains.kotlinx:kotlinx-coroutines-core",
-      "org.jetbrains.kotlinx:kotlinx-coroutines-test"
     ],
     "androidx.compose.ui:ui-text-android:aar": [
       "androidx.annotation:annotation",
@@ -2366,62 +2170,6 @@
       "androidx.annotation:annotation",
       "androidx.tracing:tracing:aar"
     ],
-    "androidx.test.espresso:espresso-core:aar": [
-      "androidx.annotation:annotation",
-      "androidx.test.espresso:espresso-idling-resource:aar",
-      "androidx.test:annotation:aar",
-      "androidx.test:core:aar",
-      "androidx.test:runner:aar",
-      "com.google.code.findbugs:jsr305",
-      "com.squareup:javawriter",
-      "javax.inject:javax.inject",
-      "org.hamcrest:hamcrest-integration",
-      "org.hamcrest:hamcrest-library",
-      "org.jetbrains.kotlin:kotlin-stdlib"
-    ],
-    "androidx.test.ext:junit:aar": [
-      "androidx.annotation:annotation",
-      "androidx.test:core:aar",
-      "androidx.test:monitor:aar",
-      "junit:junit"
-    ],
-    "androidx.test.services:storage:aar": [
-      "androidx.annotation:annotation",
-      "androidx.test:annotation:aar",
-      "androidx.test:monitor:aar",
-      "com.google.code.findbugs:jsr305"
-    ],
-    "androidx.test:annotation:aar": [
-      "androidx.annotation:annotation",
-      "androidx.annotation:annotation-experimental:aar"
-    ],
-    "androidx.test:core:aar": [
-      "androidx.annotation:annotation",
-      "androidx.concurrent:concurrent-futures",
-      "androidx.lifecycle:lifecycle-common",
-      "androidx.test.services:storage:aar",
-      "androidx.test:monitor:aar",
-      "androidx.tracing:tracing:aar",
-      "com.google.guava:listenablefuture",
-      "org.jetbrains.kotlin:kotlin-stdlib"
-    ],
-    "androidx.test:monitor:aar": [
-      "androidx.annotation:annotation",
-      "androidx.test:annotation:aar",
-      "androidx.tracing:tracing:aar"
-    ],
-    "androidx.test:rules:aar": [
-      "androidx.test:annotation:aar",
-      "androidx.test:runner:aar"
-    ],
-    "androidx.test:runner:aar": [
-      "androidx.annotation:annotation",
-      "androidx.test.services:storage:aar",
-      "androidx.test:annotation:aar",
-      "androidx.test:monitor:aar",
-      "androidx.tracing:tracing:aar",
-      "junit:junit"
-    ],
     "androidx.tracing:tracing:aar": [
       "androidx.annotation:annotation"
     ],
@@ -2613,14 +2361,6 @@
     "com.google.ar.sceneform:rendering:aar": [
       "com.google.ar:core:aar"
     ],
-    "com.google.auto.service:auto-service": [
-      "com.google.auto.service:auto-service-annotations",
-      "com.google.auto:auto-common",
-      "com.google.guava:guava"
-    ],
-    "com.google.auto:auto-common": [
-      "com.google.guava:guava"
-    ],
     "com.google.dagger:dagger": [
       "javax.inject:javax.inject"
     ],
@@ -2670,7 +2410,7 @@
       "com.google.guava:failureaccess",
       "com.google.guava:listenablefuture",
       "com.google.j2objc:j2objc-annotations",
-      "org.checkerframework:checker-compat-qual"
+      "org.checkerframework:checker-qual"
     ],
     "com.google.jimfs:jimfs": [
       "com.google.guava:guava"
@@ -2726,12 +2466,6 @@
       "org.glassfish.jaxb:txw2",
       "org.jvnet.staxex:stax-ex"
     ],
-    "org.hamcrest:hamcrest-integration": [
-      "org.hamcrest:hamcrest-library"
-    ],
-    "org.hamcrest:hamcrest-library": [
-      "org.hamcrest:hamcrest-core"
-    ],
     "org.jetbrains.kotlin:kotlin-android-extensions-runtime": [
       "org.jetbrains.kotlin:kotlin-stdlib"
     ],
@@ -2783,14 +2517,6 @@
       "org.jetbrains.kotlin:kotlin-stdlib-common",
       "org.jetbrains.kotlin:kotlin-stdlib-jdk8",
       "org.jetbrains:annotations"
-    ],
-    "org.jetbrains.kotlinx:kotlinx-coroutines-test": [
-      "org.jetbrains.kotlinx:kotlinx-coroutines-test-jvm"
-    ],
-    "org.jetbrains.kotlinx:kotlinx-coroutines-test-jvm": [
-      "org.jetbrains.kotlin:kotlin-stdlib-common",
-      "org.jetbrains.kotlin:kotlin-stdlib-jdk8",
-      "org.jetbrains.kotlinx:kotlinx-coroutines-core-jvm"
     ],
     "org.jvnet.staxex:stax-ex": [
       "jakarta.activation:jakarta.activation-api",
@@ -4459,15 +4185,6 @@
       "com.android.sdklib.tool.sdkmanager",
       "com.android.sdklib.util"
     ],
-    "com.google.auto.service:auto-service": [
-      "com.google.auto.service.processor"
-    ],
-    "com.google.auto.service:auto-service-annotations": [
-      "com.google.auto.service"
-    ],
-    "com.google.auto:auto-common": [
-      "com.google.auto.common"
-    ],
     "com.google.code.findbugs:jsr305": [
       "javax.annotation",
       "javax.annotation.concurrent",
@@ -4633,6 +4350,9 @@
       "com.google.common.xml",
       "com.google.thirdparty.publicsuffix"
     ],
+    "com.google.guava:listenablefuture": [
+      "com.google.common.util.concurrent"
+    ],
     "com.google.j2objc:j2objc-annotations": [
       "com.google.j2objc.annotations"
     ],
@@ -4653,9 +4373,6 @@
     ],
     "com.squareup:javapoet": [
       "com.squareup.javapoet"
-    ],
-    "com.squareup:javawriter": [
-      "com.squareup.javawriter"
     ],
     "com.squareup:kotlinpoet": [
       "com.squareup.kotlinpoet",
@@ -5156,6 +4873,38 @@
     "org.checkerframework:checker-compat-qual": [
       "org.checkerframework.checker.nullness.compatqual"
     ],
+    "org.checkerframework:checker-qual": [
+      "org.checkerframework.checker.builder.qual",
+      "org.checkerframework.checker.calledmethods.qual",
+      "org.checkerframework.checker.compilermsgs.qual",
+      "org.checkerframework.checker.fenum.qual",
+      "org.checkerframework.checker.formatter.qual",
+      "org.checkerframework.checker.guieffect.qual",
+      "org.checkerframework.checker.i18n.qual",
+      "org.checkerframework.checker.i18nformatter.qual",
+      "org.checkerframework.checker.index.qual",
+      "org.checkerframework.checker.initialization.qual",
+      "org.checkerframework.checker.interning.qual",
+      "org.checkerframework.checker.lock.qual",
+      "org.checkerframework.checker.mustcall.qual",
+      "org.checkerframework.checker.nullness.qual",
+      "org.checkerframework.checker.optional.qual",
+      "org.checkerframework.checker.propkey.qual",
+      "org.checkerframework.checker.regex.qual",
+      "org.checkerframework.checker.signature.qual",
+      "org.checkerframework.checker.signedness.qual",
+      "org.checkerframework.checker.tainting.qual",
+      "org.checkerframework.checker.units.qual",
+      "org.checkerframework.common.aliasing.qual",
+      "org.checkerframework.common.initializedfields.qual",
+      "org.checkerframework.common.reflection.qual",
+      "org.checkerframework.common.returnsreceiver.qual",
+      "org.checkerframework.common.subtyping.qual",
+      "org.checkerframework.common.util.report.qual",
+      "org.checkerframework.common.value.qual",
+      "org.checkerframework.dataflow.qual",
+      "org.checkerframework.framework.qual"
+    ],
     "org.glassfish.jaxb:jaxb-runtime": [
       "com.sun.xml.bind",
       "com.sun.xml.bind.annotation",
@@ -5192,19 +4941,6 @@
       "org.hamcrest",
       "org.hamcrest.core",
       "org.hamcrest.internal"
-    ],
-    "org.hamcrest:hamcrest-integration": [
-      "org.hamcrest",
-      "org.hamcrest.integration"
-    ],
-    "org.hamcrest:hamcrest-library": [
-      "org.hamcrest",
-      "org.hamcrest.beans",
-      "org.hamcrest.collection",
-      "org.hamcrest.number",
-      "org.hamcrest.object",
-      "org.hamcrest.text",
-      "org.hamcrest.xml"
     ],
     "org.jetbrains.intellij.deps:trove4j": [
       "gnu.trove",
@@ -6227,10 +5963,6 @@
       "kotlinx.coroutines.sync",
       "kotlinx.coroutines.time"
     ],
-    "org.jetbrains.kotlinx:kotlinx-coroutines-test-jvm": [
-      "kotlinx.coroutines.test",
-      "kotlinx.coroutines.test.internal"
-    ],
     "org.jetbrains:annotations": [
       "org.intellij.lang.annotations",
       "org.jetbrains.annotations"
@@ -6297,9 +6029,6 @@
       "androidx.compose.ui:ui-geometry:aar",
       "androidx.compose.ui:ui-graphics-android:aar",
       "androidx.compose.ui:ui-graphics:aar",
-      "androidx.compose.ui:ui-test-junit4:aar",
-      "androidx.compose.ui:ui-test-manifest:aar",
-      "androidx.compose.ui:ui-test:aar",
       "androidx.compose.ui:ui-text-android:aar",
       "androidx.compose.ui:ui-text:aar",
       "androidx.compose.ui:ui-tooling-android:aar",
@@ -6355,15 +6084,6 @@
       "androidx.savedstate:savedstate-ktx:aar",
       "androidx.savedstate:savedstate:aar",
       "androidx.startup:startup-runtime:aar",
-      "androidx.test.espresso:espresso-core:aar",
-      "androidx.test.espresso:espresso-idling-resource:aar",
-      "androidx.test.ext:junit:aar",
-      "androidx.test.services:storage:aar",
-      "androidx.test:annotation:aar",
-      "androidx.test:core:aar",
-      "androidx.test:monitor:aar",
-      "androidx.test:rules:aar",
-      "androidx.test:runner:aar",
       "androidx.tracing:tracing:aar",
       "androidx.vectordrawable:vectordrawable-animated:aar",
       "androidx.vectordrawable:vectordrawable:aar",
@@ -6400,9 +6120,6 @@
       "com.google.ar.sceneform:rendering:aar",
       "com.google.ar.sceneform:sceneform-base:aar",
       "com.google.ar:core:aar",
-      "com.google.auto.service:auto-service",
-      "com.google.auto.service:auto-service-annotations",
-      "com.google.auto:auto-common",
       "com.google.code.findbugs:jsr305",
       "com.google.code.gson:gson",
       "com.google.dagger:dagger",
@@ -6423,7 +6140,6 @@
       "com.squareup.moshi:moshi",
       "com.squareup.okio:okio",
       "com.squareup:javapoet",
-      "com.squareup:javawriter",
       "com.squareup:kotlinpoet",
       "com.sun.activation:javax.activation",
       "com.sun.istack:istack-commons-runtime",
@@ -6447,11 +6163,10 @@
       "org.bouncycastle:bcprov-jdk18on",
       "org.bouncycastle:bcutil-jdk18on",
       "org.checkerframework:checker-compat-qual",
+      "org.checkerframework:checker-qual",
       "org.glassfish.jaxb:jaxb-runtime",
       "org.glassfish.jaxb:txw2",
       "org.hamcrest:hamcrest-core",
-      "org.hamcrest:hamcrest-integration",
-      "org.hamcrest:hamcrest-library",
       "org.jetbrains.intellij.deps:trove4j",
       "org.jetbrains.kotlin:kotlin-android-extensions-runtime",
       "org.jetbrains.kotlin:kotlin-compiler-embeddable",
@@ -6470,8 +6185,6 @@
       "org.jetbrains.kotlinx:kotlinx-coroutines-android",
       "org.jetbrains.kotlinx:kotlinx-coroutines-core",
       "org.jetbrains.kotlinx:kotlinx-coroutines-core-jvm",
-      "org.jetbrains.kotlinx:kotlinx-coroutines-test",
-      "org.jetbrains.kotlinx:kotlinx-coroutines-test-jvm",
       "org.jetbrains:annotations",
       "org.json:json",
       "org.jvnet.staxex:stax-ex",
@@ -6522,9 +6235,6 @@
       "androidx.compose.ui:ui-geometry:aar",
       "androidx.compose.ui:ui-graphics-android:aar",
       "androidx.compose.ui:ui-graphics:aar",
-      "androidx.compose.ui:ui-test-junit4:aar",
-      "androidx.compose.ui:ui-test-manifest:aar",
-      "androidx.compose.ui:ui-test:aar",
       "androidx.compose.ui:ui-text-android:aar",
       "androidx.compose.ui:ui-text:aar",
       "androidx.compose.ui:ui-tooling-android:aar",
@@ -6580,15 +6290,6 @@
       "androidx.savedstate:savedstate-ktx:aar",
       "androidx.savedstate:savedstate:aar",
       "androidx.startup:startup-runtime:aar",
-      "androidx.test.espresso:espresso-core:aar",
-      "androidx.test.espresso:espresso-idling-resource:aar",
-      "androidx.test.ext:junit:aar",
-      "androidx.test.services:storage:aar",
-      "androidx.test:annotation:aar",
-      "androidx.test:core:aar",
-      "androidx.test:monitor:aar",
-      "androidx.test:rules:aar",
-      "androidx.test:runner:aar",
       "androidx.tracing:tracing:aar",
       "androidx.vectordrawable:vectordrawable-animated:aar",
       "androidx.vectordrawable:vectordrawable:aar",
@@ -6625,9 +6326,6 @@
       "com.google.ar.sceneform:rendering:aar",
       "com.google.ar.sceneform:sceneform-base:aar",
       "com.google.ar:core:aar",
-      "com.google.auto.service:auto-service",
-      "com.google.auto.service:auto-service-annotations",
-      "com.google.auto:auto-common",
       "com.google.code.findbugs:jsr305",
       "com.google.code.gson:gson",
       "com.google.dagger:dagger",
@@ -6648,7 +6346,6 @@
       "com.squareup.moshi:moshi",
       "com.squareup.okio:okio",
       "com.squareup:javapoet",
-      "com.squareup:javawriter",
       "com.squareup:kotlinpoet",
       "com.sun.activation:javax.activation",
       "com.sun.istack:istack-commons-runtime",
@@ -6672,11 +6369,10 @@
       "org.bouncycastle:bcprov-jdk18on",
       "org.bouncycastle:bcutil-jdk18on",
       "org.checkerframework:checker-compat-qual",
+      "org.checkerframework:checker-qual",
       "org.glassfish.jaxb:jaxb-runtime",
       "org.glassfish.jaxb:txw2",
       "org.hamcrest:hamcrest-core",
-      "org.hamcrest:hamcrest-integration",
-      "org.hamcrest:hamcrest-library",
       "org.jetbrains.intellij.deps:trove4j",
       "org.jetbrains.kotlin:kotlin-android-extensions-runtime",
       "org.jetbrains.kotlin:kotlin-compiler-embeddable",
@@ -6695,8 +6391,6 @@
       "org.jetbrains.kotlinx:kotlinx-coroutines-android",
       "org.jetbrains.kotlinx:kotlinx-coroutines-core",
       "org.jetbrains.kotlinx:kotlinx-coroutines-core-jvm",
-      "org.jetbrains.kotlinx:kotlinx-coroutines-test",
-      "org.jetbrains.kotlinx:kotlinx-coroutines-test-jvm",
       "org.jetbrains:annotations",
       "org.json:json",
       "org.jvnet.staxex:stax-ex",
@@ -6747,9 +6441,6 @@
       "androidx.compose.ui:ui-geometry:aar",
       "androidx.compose.ui:ui-graphics-android:aar",
       "androidx.compose.ui:ui-graphics:aar",
-      "androidx.compose.ui:ui-test-junit4:aar",
-      "androidx.compose.ui:ui-test-manifest:aar",
-      "androidx.compose.ui:ui-test:aar",
       "androidx.compose.ui:ui-text-android:aar",
       "androidx.compose.ui:ui-text:aar",
       "androidx.compose.ui:ui-tooling-android:aar",
@@ -6805,15 +6496,6 @@
       "androidx.savedstate:savedstate-ktx:aar",
       "androidx.savedstate:savedstate:aar",
       "androidx.startup:startup-runtime:aar",
-      "androidx.test.espresso:espresso-core:aar",
-      "androidx.test.espresso:espresso-idling-resource:aar",
-      "androidx.test.ext:junit:aar",
-      "androidx.test.services:storage:aar",
-      "androidx.test:annotation:aar",
-      "androidx.test:core:aar",
-      "androidx.test:monitor:aar",
-      "androidx.test:rules:aar",
-      "androidx.test:runner:aar",
       "androidx.tracing:tracing:aar",
       "androidx.vectordrawable:vectordrawable-animated:aar",
       "androidx.vectordrawable:vectordrawable:aar",
@@ -6850,9 +6532,6 @@
       "com.google.ar.sceneform:rendering:aar",
       "com.google.ar.sceneform:sceneform-base:aar",
       "com.google.ar:core:aar",
-      "com.google.auto.service:auto-service",
-      "com.google.auto.service:auto-service-annotations",
-      "com.google.auto:auto-common",
       "com.google.code.findbugs:jsr305",
       "com.google.code.gson:gson",
       "com.google.dagger:dagger",
@@ -6873,7 +6552,6 @@
       "com.squareup.moshi:moshi",
       "com.squareup.okio:okio",
       "com.squareup:javapoet",
-      "com.squareup:javawriter",
       "com.squareup:kotlinpoet",
       "com.sun.activation:javax.activation",
       "com.sun.istack:istack-commons-runtime",
@@ -6897,11 +6575,10 @@
       "org.bouncycastle:bcprov-jdk18on",
       "org.bouncycastle:bcutil-jdk18on",
       "org.checkerframework:checker-compat-qual",
+      "org.checkerframework:checker-qual",
       "org.glassfish.jaxb:jaxb-runtime",
       "org.glassfish.jaxb:txw2",
       "org.hamcrest:hamcrest-core",
-      "org.hamcrest:hamcrest-integration",
-      "org.hamcrest:hamcrest-library",
       "org.jetbrains.intellij.deps:trove4j",
       "org.jetbrains.kotlin:kotlin-android-extensions-runtime",
       "org.jetbrains.kotlin:kotlin-compiler-embeddable",
@@ -6920,8 +6597,6 @@
       "org.jetbrains.kotlinx:kotlinx-coroutines-android",
       "org.jetbrains.kotlinx:kotlinx-coroutines-core",
       "org.jetbrains.kotlinx:kotlinx-coroutines-core-jvm",
-      "org.jetbrains.kotlinx:kotlinx-coroutines-test",
-      "org.jetbrains.kotlinx:kotlinx-coroutines-test-jvm",
       "org.jetbrains:annotations",
       "org.json:json",
       "org.jvnet.staxex:stax-ex",
@@ -6972,9 +6647,6 @@
       "androidx.compose.ui:ui-geometry:aar",
       "androidx.compose.ui:ui-graphics-android:aar",
       "androidx.compose.ui:ui-graphics:aar",
-      "androidx.compose.ui:ui-test-junit4:aar",
-      "androidx.compose.ui:ui-test-manifest:aar",
-      "androidx.compose.ui:ui-test:aar",
       "androidx.compose.ui:ui-text-android:aar",
       "androidx.compose.ui:ui-text:aar",
       "androidx.compose.ui:ui-tooling-android:aar",
@@ -7030,15 +6702,6 @@
       "androidx.savedstate:savedstate-ktx:aar",
       "androidx.savedstate:savedstate:aar",
       "androidx.startup:startup-runtime:aar",
-      "androidx.test.espresso:espresso-core:aar",
-      "androidx.test.espresso:espresso-idling-resource:aar",
-      "androidx.test.ext:junit:aar",
-      "androidx.test.services:storage:aar",
-      "androidx.test:annotation:aar",
-      "androidx.test:core:aar",
-      "androidx.test:monitor:aar",
-      "androidx.test:rules:aar",
-      "androidx.test:runner:aar",
       "androidx.tracing:tracing:aar",
       "androidx.vectordrawable:vectordrawable-animated:aar",
       "androidx.vectordrawable:vectordrawable:aar",
@@ -7075,9 +6738,6 @@
       "com.google.ar.sceneform:rendering:aar",
       "com.google.ar.sceneform:sceneform-base:aar",
       "com.google.ar:core:aar",
-      "com.google.auto.service:auto-service",
-      "com.google.auto.service:auto-service-annotations",
-      "com.google.auto:auto-common",
       "com.google.code.findbugs:jsr305",
       "com.google.code.gson:gson",
       "com.google.dagger:dagger",
@@ -7098,7 +6758,6 @@
       "com.squareup.moshi:moshi",
       "com.squareup.okio:okio",
       "com.squareup:javapoet",
-      "com.squareup:javawriter",
       "com.squareup:kotlinpoet",
       "com.sun.activation:javax.activation",
       "com.sun.istack:istack-commons-runtime",
@@ -7122,11 +6781,10 @@
       "org.bouncycastle:bcprov-jdk18on",
       "org.bouncycastle:bcutil-jdk18on",
       "org.checkerframework:checker-compat-qual",
+      "org.checkerframework:checker-qual",
       "org.glassfish.jaxb:jaxb-runtime",
       "org.glassfish.jaxb:txw2",
       "org.hamcrest:hamcrest-core",
-      "org.hamcrest:hamcrest-integration",
-      "org.hamcrest:hamcrest-library",
       "org.jetbrains.intellij.deps:trove4j",
       "org.jetbrains.kotlin:kotlin-android-extensions-runtime",
       "org.jetbrains.kotlin:kotlin-compiler-embeddable",
@@ -7145,8 +6803,6 @@
       "org.jetbrains.kotlinx:kotlinx-coroutines-android",
       "org.jetbrains.kotlinx:kotlinx-coroutines-core",
       "org.jetbrains.kotlinx:kotlinx-coroutines-core-jvm",
-      "org.jetbrains.kotlinx:kotlinx-coroutines-test",
-      "org.jetbrains.kotlinx:kotlinx-coroutines-test-jvm",
       "org.jetbrains:annotations",
       "org.json:json",
       "org.jvnet.staxex:stax-ex",
@@ -7197,9 +6853,6 @@
       "androidx.compose.ui:ui-geometry:aar",
       "androidx.compose.ui:ui-graphics-android:aar",
       "androidx.compose.ui:ui-graphics:aar",
-      "androidx.compose.ui:ui-test-junit4:aar",
-      "androidx.compose.ui:ui-test-manifest:aar",
-      "androidx.compose.ui:ui-test:aar",
       "androidx.compose.ui:ui-text-android:aar",
       "androidx.compose.ui:ui-text:aar",
       "androidx.compose.ui:ui-tooling-android:aar",
@@ -7255,15 +6908,6 @@
       "androidx.savedstate:savedstate-ktx:aar",
       "androidx.savedstate:savedstate:aar",
       "androidx.startup:startup-runtime:aar",
-      "androidx.test.espresso:espresso-core:aar",
-      "androidx.test.espresso:espresso-idling-resource:aar",
-      "androidx.test.ext:junit:aar",
-      "androidx.test.services:storage:aar",
-      "androidx.test:annotation:aar",
-      "androidx.test:core:aar",
-      "androidx.test:monitor:aar",
-      "androidx.test:rules:aar",
-      "androidx.test:runner:aar",
       "androidx.tracing:tracing:aar",
       "androidx.vectordrawable:vectordrawable-animated:aar",
       "androidx.vectordrawable:vectordrawable:aar",
@@ -7300,9 +6944,6 @@
       "com.google.ar.sceneform:rendering:aar",
       "com.google.ar.sceneform:sceneform-base:aar",
       "com.google.ar:core:aar",
-      "com.google.auto.service:auto-service",
-      "com.google.auto.service:auto-service-annotations",
-      "com.google.auto:auto-common",
       "com.google.code.findbugs:jsr305",
       "com.google.code.gson:gson",
       "com.google.dagger:dagger",
@@ -7323,7 +6964,6 @@
       "com.squareup.moshi:moshi",
       "com.squareup.okio:okio",
       "com.squareup:javapoet",
-      "com.squareup:javawriter",
       "com.squareup:kotlinpoet",
       "com.sun.activation:javax.activation",
       "com.sun.istack:istack-commons-runtime",
@@ -7347,11 +6987,10 @@
       "org.bouncycastle:bcprov-jdk18on",
       "org.bouncycastle:bcutil-jdk18on",
       "org.checkerframework:checker-compat-qual",
+      "org.checkerframework:checker-qual",
       "org.glassfish.jaxb:jaxb-runtime",
       "org.glassfish.jaxb:txw2",
       "org.hamcrest:hamcrest-core",
-      "org.hamcrest:hamcrest-integration",
-      "org.hamcrest:hamcrest-library",
       "org.jetbrains.intellij.deps:trove4j",
       "org.jetbrains.kotlin:kotlin-android-extensions-runtime",
       "org.jetbrains.kotlin:kotlin-compiler-embeddable",
@@ -7370,8 +7009,6 @@
       "org.jetbrains.kotlinx:kotlinx-coroutines-android",
       "org.jetbrains.kotlinx:kotlinx-coroutines-core",
       "org.jetbrains.kotlinx:kotlinx-coroutines-core-jvm",
-      "org.jetbrains.kotlinx:kotlinx-coroutines-test",
-      "org.jetbrains.kotlinx:kotlinx-coroutines-test-jvm",
       "org.jetbrains:annotations",
       "org.json:json",
       "org.jvnet.staxex:stax-ex",
@@ -7498,11 +7135,6 @@
         "class=org.jline.terminal.impl.jni.JniTerminalProvider"
       ]
     },
-    "com.google.auto.service:auto-service": {
-      "javax.annotation.processing.Processor": [
-        "com.google.auto.service.processor.AutoServiceProcessor"
-      ]
-    },
     "com.google.dagger:dagger-compiler": {
       "com.google.devtools.ksp.processing.SymbolProcessorProvider": [
         "dagger.internal.codegen.KspComponentProcessor$Provider"
@@ -7586,11 +7218,6 @@
       ],
       "kotlinx.coroutines.internal.MainDispatcherFactory": [
         "kotlinx.coroutines.android.AndroidDispatcherFactory"
-      ]
-    },
-    "org.jetbrains.kotlinx:kotlinx-coroutines-test-jvm": {
-      "kotlinx.coroutines.internal.MainDispatcherFactory": [
-        "kotlinx.coroutines.test.internal.TestMainDispatcherFactory"
       ]
     }
   },

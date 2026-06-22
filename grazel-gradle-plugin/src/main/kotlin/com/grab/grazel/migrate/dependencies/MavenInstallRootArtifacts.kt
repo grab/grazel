@@ -11,6 +11,11 @@ internal fun WorkspaceDependencies.mavenInstallRootArtifactsByVariant(): Map<Str
     val workspaceArtifactByShortId = variantDeps.selectedArtifactByShortId()
     return variantDeps.mapValues { (variantName, artifacts) ->
         val scopedTransitiveClasspath = variantTransitiveClasspath[variantName]
+        val fallbackTransitiveClasspath = when {
+            variantName == DEFAULT_VARIANT -> emptyMap()
+            scopedTransitiveClasspath == null -> transitiveClasspath
+            else -> transitiveClasspath.filterKeys { shortId -> shortId !in scopedTransitiveClasspath }
+        }
         artifacts.mavenInstallRootArtifacts(
             variantName = variantName,
             workspaceArtifactByShortId = workspaceArtifactByShortId,
@@ -18,10 +23,7 @@ internal fun WorkspaceDependencies.mavenInstallRootArtifactsByVariant(): Map<Str
                 DEFAULT_VARIANT -> transitiveClasspath
                 else -> emptyMap()
             },
-            workspaceTransitiveClasspath = when {
-                scopedTransitiveClasspath == null && variantName != DEFAULT_VARIANT -> transitiveClasspath
-                else -> emptyMap()
-            }
+            workspaceTransitiveClasspath = fallbackTransitiveClasspath
         )
     }
 }

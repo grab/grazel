@@ -116,7 +116,7 @@ internal object WorkspaceDependencyInputsRegistrar {
                 }
                 .forEach { variant ->
                     val targetBuckets = if (standaloneTestProject) {
-                        setOf(DEFAULT_VARIANT, ANDROID_TEST_VARIANT)
+                        setOf(ANDROID_TEST_VARIANT)
                     } else {
                         setOf(variant.name)
                     }
@@ -151,7 +151,7 @@ internal object WorkspaceDependencyInputsRegistrar {
                         kind = AggregatedDependencyRootKind.MAIN_LEAF,
                         bucketName = variant.name,
                         targetBuckets = if (standaloneTestProject) {
-                            setOf(ANDROID_TEST_VARIANT, DEFAULT_VARIANT)
+                            setOf(ANDROID_TEST_VARIANT)
                         } else {
                             setOf(variant.name)
                         }

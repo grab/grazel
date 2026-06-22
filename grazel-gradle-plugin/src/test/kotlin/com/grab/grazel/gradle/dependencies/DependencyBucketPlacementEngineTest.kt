@@ -18,13 +18,17 @@ package com.grab.grazel.gradle.dependencies
 
 import com.grab.grazel.gradle.dependencies.model.ExcludeRule
 import com.grab.grazel.gradle.dependencies.model.ResolvedDependency
+import com.grab.grazel.gradle.variant.ANDROID_TEST_VARIANT
 import com.grab.grazel.gradle.variant.DEFAULT_VARIANT
+import com.grab.grazel.gradle.variant.TEST_VARIANT
+import com.grab.grazel.gradle.variant.VariantType.AndroidTest
 import com.grab.grazel.gradle.variant.VariantType.AndroidBuild
+import com.grab.grazel.gradle.variant.VariantType.Test as TestVariantType
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
 
-class MainDependencyBucketPlannerTest {
+class DependencyBucketPlacementEngineTest {
 
     @Test
     fun `declared main bucket variants are scoped by project path`() {
@@ -55,7 +59,7 @@ class MainDependencyBucketPlannerTest {
 
         assertEquals(
             listOf(
-                MainBucketVariant(
+                DependencyBucketVariant(
                     name = "freeDebug",
                     extendsFrom = setOf(DEFAULT_VARIANT, "debug", "free"),
                     buildType = "debug",
@@ -68,7 +72,7 @@ class MainDependencyBucketPlannerTest {
         )
         assertEquals(
             listOf(
-                MainBucketVariant(
+                DependencyBucketVariant(
                     name = "freeDebug",
                     extendsFrom = setOf(DEFAULT_VARIANT, "debug", "demo"),
                     buildType = "debug",
@@ -124,7 +128,7 @@ class MainDependencyBucketPlannerTest {
         val appDependency = dependency("com.example:app-free:1.0")
         val testAppDependency = dependency("com.example:test-app-demo:1.0")
 
-        val plansByProject = MainDependencyBucketPlanner().planByProject(
+        val plansByProject = DependencyBucketPlacementEngine().planByProject(
             variants = listOf(
                 leaf("freeDebug", "debug", "free").copy(projectPath = ":app"),
                 leaf("freeRelease", "release", "free").copy(projectPath = ":app"),
@@ -154,14 +158,14 @@ class MainDependencyBucketPlannerTest {
 
         assertEquals(
             mapOf(appDependency.shortId to appDependency),
-            plansByProject[":app"]?.flavorBuckets?.get("free")
+            plansByProject[":app"]?.hierarchyBuckets?.get("free")
         )
-        assertNull(plansByProject[":app"]?.flavorBuckets?.get("demo"))
+        assertNull(plansByProject[":app"]?.hierarchyBuckets?.get("demo"))
         assertEquals(
             mapOf(testAppDependency.shortId to testAppDependency),
-            plansByProject[":test-app"]?.flavorBuckets?.get("demo")
+            plansByProject[":test-app"]?.hierarchyBuckets?.get("demo")
         )
-        assertNull(plansByProject[":test-app"]?.flavorBuckets?.get("free"))
+        assertNull(plansByProject[":test-app"]?.hierarchyBuckets?.get("free"))
     }
 
     @Test
@@ -198,7 +202,7 @@ class MainDependencyBucketPlannerTest {
         val variants = metadata.mainBucketVariants(":app")
 
         assertEquals(
-            MainBucketVariant(
+            DependencyBucketVariant(
                 name = "gpsPax",
                 extendsFrom = setOf(DEFAULT_VARIANT, "gps", "pax"),
                 buildType = null,
@@ -213,7 +217,7 @@ class MainDependencyBucketPlannerTest {
             variants.single { variant -> variant.name == "gpsPaxDebug" }.extendsFrom
         )
 
-        val plansByProject = MainDependencyBucketPlanner().planByProject(
+        val plansByProject = DependencyBucketPlacementEngine().planByProject(
             variants = metadata.mainBucketVariantsByProject(),
             hierarchyBucketClosures = metadata.collectDeclaredMainDependenciesByProjectBucket(listOf(":app")),
             leafClosures = mapOf(
@@ -234,7 +238,7 @@ class MainDependencyBucketPlannerTest {
         val defaultDependency = dependency("com.example:library:1.0")
         val debugDependency = dependency("com.example:library:2.0")
 
-        val plan = MainDependencyBucketPlanner().plan(
+        val plan = DependencyBucketPlacementEngine().plan(
             variants = listOf(
                 leaf("freeDebug", "debug", "free"),
                 leaf("freeRelease", "release", "free")
@@ -250,7 +254,7 @@ class MainDependencyBucketPlannerTest {
         )
 
         assertEquals(mapOf(defaultDependency.shortId to defaultDependency), plan.defaultBucket)
-        assertEquals(mapOf(debugDependency.shortId to debugDependency), plan.buildTypeBuckets["debug"])
+        assertEquals(mapOf(debugDependency.shortId to debugDependency), plan.hierarchyBuckets["debug"])
         assertEquals(emptyMap<String, Map<String, ResolvedDependency>>(), plan.leafBuckets)
     }
 
@@ -261,7 +265,7 @@ class MainDependencyBucketPlannerTest {
             excludeRules = setOf(ExcludeRule("com.example", "blocked"))
         )
 
-        val plan = MainDependencyBucketPlanner().plan(
+        val plan = DependencyBucketPlacementEngine().plan(
             variants = listOf(
                 leaf("freeDebug", "debug", "free"),
                 leaf("freeRelease", "release", "free")
@@ -277,14 +281,14 @@ class MainDependencyBucketPlannerTest {
         )
 
         assertEquals(mapOf(defaultDependency.shortId to defaultDependency), plan.defaultBucket)
-        assertEquals(mapOf(debugDependency.shortId to debugDependency), plan.buildTypeBuckets["debug"])
+        assertEquals(mapOf(debugDependency.shortId to debugDependency), plan.hierarchyBuckets["debug"])
     }
 
     @Test
     fun `places common flavor dependency in flavor bucket instead of leaf buckets`() {
         val flavorDependency = dependency("com.example:flavor-only:1.0")
 
-        val plan = MainDependencyBucketPlanner().plan(
+        val plan = DependencyBucketPlacementEngine().plan(
             variants = listOf(
                 leaf("freeDebug", "debug", "free"),
                 leaf("freeRelease", "release", "free"),
@@ -299,7 +303,7 @@ class MainDependencyBucketPlannerTest {
         )
 
         assertEquals(emptyMap<String, ResolvedDependency>(), plan.defaultBucket)
-        assertEquals(mapOf(flavorDependency.shortId to flavorDependency), plan.flavorBuckets["free"])
+        assertEquals(mapOf(flavorDependency.shortId to flavorDependency), plan.hierarchyBuckets["free"])
         assertEquals(emptyMap<String, Map<String, ResolvedDependency>>(), plan.leafBuckets)
     }
 
@@ -317,7 +321,7 @@ class MainDependencyBucketPlannerTest {
             direct = false
         )
 
-        val plan = MainDependencyBucketPlanner().plan(
+        val plan = DependencyBucketPlacementEngine().plan(
             variants = listOf(
                 leaf("gpsPaxDebug", "debug", "gps", "pax"),
                 leaf("gpsOvoDebug", "debug", "gps", "ovo")
@@ -344,7 +348,7 @@ class MainDependencyBucketPlannerTest {
                 ),
                 commonTransitiveDependency.shortId to commonTransitiveDependency
             ),
-            plan.flavorBuckets["gps"]
+            plan.hierarchyBuckets["gps"]
         )
         assertEquals(emptyMap<String, Map<String, ResolvedDependency>>(), plan.leafBuckets)
     }
@@ -353,7 +357,7 @@ class MainDependencyBucketPlannerTest {
     fun `places dependency only used by one leaf in that leaf bucket`() {
         val leafDependency = dependency("com.example:leaf-only:1.0")
 
-        val plan = MainDependencyBucketPlanner().plan(
+        val plan = DependencyBucketPlacementEngine().plan(
             variants = listOf(
                 leaf("freeDebug", "debug", "free"),
                 leaf("freeRelease", "release", "free")
@@ -366,7 +370,7 @@ class MainDependencyBucketPlannerTest {
         )
 
         assertEquals(mapOf(leafDependency.shortId to leafDependency), plan.leafBuckets["freeDebug"])
-        assertEquals(emptyMap<String, Map<String, ResolvedDependency>>(), plan.flavorBuckets)
+        assertEquals(emptyMap<String, Map<String, ResolvedDependency>>(), plan.hierarchyBuckets)
     }
 
     @Test
@@ -375,7 +379,7 @@ class MainDependencyBucketPlannerTest {
         val debugDependency = dependency("com.example:debug-test:1.0")
         val freeDependency = dependency("com.example:free-test:1.0")
 
-        val plan = MainDependencyBucketPlanner().plan(
+        val plan = DependencyBucketPlacementEngine().plan(
             variants = listOf(
                 hierarchy("debugUnitTest", setOf("test")),
                 leafWithParents("freeDebugUnitTest", setOf("test", "debugUnitTest"), "debug"),
@@ -409,10 +413,71 @@ class MainDependencyBucketPlannerTest {
     }
 
     @Test
+    fun `test bucket variant inputs retain main parents for hierarchy graph modeling`() {
+        val metadata = DeclaredDependencyMetadata(
+            projects = mapOf(
+                ":app" to ProjectDeclaredDependencyMetadata(
+                    variants = listOf(
+                        declaredVariant(
+                            name = "freeDebug",
+                            variantType = AndroidBuild,
+                            extendsFrom = setOf(DEFAULT_VARIANT, "debug", "free"),
+                            leaf = true
+                        ),
+                        declaredVariant(
+                            name = TEST_VARIANT,
+                            variantType = TestVariantType,
+                            extendsFrom = setOf(DEFAULT_VARIANT),
+                            leaf = false
+                        ),
+                        declaredVariant(
+                            name = "debugUnitTest",
+                            variantType = TestVariantType,
+                            extendsFrom = setOf(TEST_VARIANT),
+                            leaf = false
+                        ),
+                        declaredVariant(
+                            name = "freeDebugUnitTest",
+                            variantType = TestVariantType,
+                            extendsFrom = setOf(TEST_VARIANT, "debugUnitTest", "freeDebug"),
+                            leaf = true
+                        ),
+                        declaredVariant(
+                            name = ANDROID_TEST_VARIANT,
+                            variantType = AndroidTest,
+                            extendsFrom = setOf(DEFAULT_VARIANT, TEST_VARIANT),
+                            leaf = false
+                        ),
+                        declaredVariant(
+                            name = "freeDebugAndroidTest",
+                            variantType = AndroidTest,
+                            extendsFrom = setOf(ANDROID_TEST_VARIANT, "freeDebug"),
+                            leaf = true
+                        )
+                    )
+                )
+            )
+        )
+
+        assertEquals(
+            setOf(TEST_VARIANT, "debugUnitTest", "freeDebug"),
+            metadata.testBucketVariantsByProject(TestVariantType, TEST_VARIANT)
+                .single { variant -> variant.name == "freeDebugUnitTest" }
+                .extendsFrom
+        )
+        assertEquals(
+            setOf(ANDROID_TEST_VARIANT, "freeDebug"),
+            metadata.testBucketVariantsByProject(AndroidTest, ANDROID_TEST_VARIANT)
+                .single { variant -> variant.name == "freeDebugAndroidTest" }
+                .extendsFrom
+        )
+    }
+
+    @Test
     fun `does not promote filtered leaf dependency to default when non default hierarchy owns it`() {
         val debugDependency = dependency("com.example:debug-only:1.0")
 
-        val plan = MainDependencyBucketPlanner().plan(
+        val plan = DependencyBucketPlacementEngine().plan(
             variants = listOf(
                 leaf("freeDebug", "debug", "free")
             ),
@@ -425,7 +490,7 @@ class MainDependencyBucketPlannerTest {
         )
 
         assertEquals(emptyMap<String, ResolvedDependency>(), plan.defaultBucket)
-        assertEquals(mapOf(debugDependency.shortId to debugDependency), plan.buildTypeBuckets["debug"])
+        assertEquals(mapOf(debugDependency.shortId to debugDependency), plan.hierarchyBuckets["debug"])
     }
 
     @Test
@@ -433,7 +498,7 @@ class MainDependencyBucketPlannerTest {
         val productionOnlyDependency = dependency("com.example:production-only:1.0")
         val selectedLeafDependency = dependency("com.example:selected-leaf:1.0")
 
-        val plan = MainDependencyBucketPlanner().plan(
+        val plan = DependencyBucketPlacementEngine().plan(
             variants = listOf(
                 leaf("gpsMoveitDebug", "debug", "gps", "moveit"),
                 leaf("hmsMoveitDebug", "debug", "hms", "moveit")
@@ -449,9 +514,33 @@ class MainDependencyBucketPlannerTest {
 
         assertNull(
             "Hierarchy deps from filtered/unselected leaves must not create a Maven repo",
-            plan.flavorBuckets["moveit"]
+            plan.hierarchyBuckets["moveit"]
         )
         assertEquals(mapOf(selectedLeafDependency.shortId to selectedLeafDependency), plan.leafBuckets["gpsMoveitDebug"])
+    }
+
+    @Test
+    fun `does not emit default hierarchy dependency absent from selected leaves`() {
+        val excludedDependency = dependency("com.example:excluded:1.0")
+        val selectedLeafDependency = dependency("com.example:selected-leaf:1.0")
+
+        val plan = DependencyBucketPlacementEngine().plan(
+            variants = listOf(
+                leaf("flavor2Debug", "debug", "flavor2")
+            ),
+            hierarchyBucketClosures = mapOf(
+                DEFAULT_VARIANT to mapOf(excludedDependency.shortId to excludedDependency)
+            ),
+            leafClosures = mapOf(
+                "flavor2Debug" to mapOf(selectedLeafDependency.shortId to selectedLeafDependency)
+            )
+        )
+
+        assertEquals(emptyMap<String, ResolvedDependency>(), plan.defaultBucket)
+        assertEquals(
+            mapOf(selectedLeafDependency.shortId to selectedLeafDependency),
+            plan.leafBuckets["flavor2Debug"]
+        )
     }
 
     @Test
@@ -459,7 +548,7 @@ class MainDependencyBucketPlannerTest {
         val debugDependency = dependency("com.example:debug-only:1.0")
         val dependencyMap = mapOf(debugDependency.shortId to debugDependency)
 
-        val plan = MainDependencyBucketPlanner().plan(
+        val plan = DependencyBucketPlacementEngine().plan(
             variants = listOf(
                 leaf("demoFreeDebug", "debug", "demo", "free"),
                 leaf("demoPaidDebug", "debug", "demo", "paid"),
@@ -476,7 +565,7 @@ class MainDependencyBucketPlannerTest {
         )
 
         assertEquals(emptyMap<String, ResolvedDependency>(), plan.defaultBucket)
-        assertEquals(dependencyMap, plan.buildTypeBuckets["debug"])
+        assertEquals(dependencyMap, plan.hierarchyBuckets["debug"])
         assertEquals(emptyMap<String, Map<String, ResolvedDependency>>(), plan.leafBuckets)
     }
 
@@ -484,7 +573,7 @@ class MainDependencyBucketPlannerTest {
     fun `does not infer default bucket from a single selected leaf closure`() {
         val leafDependency = dependency("com.example:leaf-only:1.0")
 
-        val plan = MainDependencyBucketPlanner().plan(
+        val plan = DependencyBucketPlacementEngine().plan(
             variants = listOf(
                 leaf("freeDebug", "debug", "free")
             ),
@@ -502,7 +591,7 @@ class MainDependencyBucketPlannerTest {
     fun `explicit deeper hierarchy bucket wins over inferred ancestor bucket`() {
         val freeDependency = dependency("com.example:free-only:1.0")
 
-        val plan = MainDependencyBucketPlanner().plan(
+        val plan = DependencyBucketPlacementEngine().plan(
             variants = listOf(
                 hierarchy("debug", setOf(DEFAULT_VARIANT), buildType = "debug"),
                 hierarchy("free", setOf("debug"), productFlavors = listOf("free")),
@@ -518,8 +607,8 @@ class MainDependencyBucketPlannerTest {
             )
         )
 
-        assertNull(plan.buildTypeBuckets["debug"])
-        assertEquals(mapOf(freeDependency.shortId to freeDependency), plan.flavorBuckets["free"])
+        assertNull(plan.hierarchyBuckets["debug"])
+        assertEquals(mapOf(freeDependency.shortId to freeDependency), plan.hierarchyBuckets["free"])
         assertEquals(emptyMap<String, Map<String, ResolvedDependency>>(), plan.leafBuckets)
     }
 
@@ -528,7 +617,7 @@ class MainDependencyBucketPlannerTest {
         val dependency = dependency("com.example:explicit-owner:1.0")
         val dependencyMap = mapOf(dependency.shortId to dependency)
 
-        val plan = MainDependencyBucketPlanner().plan(
+        val plan = DependencyBucketPlacementEngine().plan(
             variants = listOf(
                 hierarchy("debug", setOf(DEFAULT_VARIANT), buildType = "debug"),
                 hierarchy("free", setOf("debug"), productFlavors = listOf("free")),
@@ -545,8 +634,8 @@ class MainDependencyBucketPlannerTest {
             )
         )
 
-        assertNull(plan.buildTypeBuckets["debug"])
-        assertEquals(dependencyMap, plan.flavorBuckets["free"])
+        assertNull(plan.hierarchyBuckets["debug"])
+        assertEquals(dependencyMap, plan.hierarchyBuckets["free"])
         assertEquals(emptyMap<String, Map<String, ResolvedDependency>>(), plan.leafBuckets)
     }
 
@@ -555,7 +644,7 @@ class MainDependencyBucketPlannerTest {
         val dependency = dependency("com.example:compile-only:1.0")
         val dependencyMap = mapOf(dependency.shortId to dependency)
 
-        val plan = MainDependencyBucketPlanner().plan(
+        val plan = DependencyBucketPlacementEngine().plan(
             variants = listOf(
                 leaf("freeDebug", "debug", "free")
             ),
@@ -577,7 +666,7 @@ class MainDependencyBucketPlannerTest {
         val dependency = dependency("com.example:flavor-overlap:1.0")
         val dependencyMap = mapOf(dependency.shortId to dependency)
 
-        val plan = MainDependencyBucketPlanner().plan(
+        val plan = DependencyBucketPlacementEngine().plan(
             variants = listOf(
                 leaf("demoFreeDebug", "debug", "demo", "free"),
                 leaf("demoPaidDebug", "debug", "demo", "paid"),
@@ -598,10 +687,10 @@ class MainDependencyBucketPlannerTest {
             )
         )
 
-        assertEquals(dependencyMap, plan.flavorBuckets["demo"])
-        assertEquals(dependencyMap, plan.flavorBuckets["free"])
-        assertEquals(dependencyMap, plan.flavorBuckets["full"])
-        assertEquals(dependencyMap, plan.flavorBuckets["paid"])
+        assertEquals(dependencyMap, plan.hierarchyBuckets["demo"])
+        assertEquals(dependencyMap, plan.hierarchyBuckets["free"])
+        assertEquals(dependencyMap, plan.hierarchyBuckets["full"])
+        assertEquals(dependencyMap, plan.hierarchyBuckets["paid"])
         assertEquals(emptyMap<String, Map<String, ResolvedDependency>>(), plan.leafBuckets)
     }
 
@@ -610,7 +699,7 @@ class MainDependencyBucketPlannerTest {
         val dependency = dependency("com.example:debug-only:1.0")
         val dependencyMap = mapOf(dependency.shortId to dependency)
 
-        val plan = MainDependencyBucketPlanner().plan(
+        val plan = DependencyBucketPlacementEngine().plan(
             variants = listOf(
                 leaf("demoFreeDebug", "debug", "demo", "free"),
                 leaf("demoPaidDebug", "debug", "demo", "paid"),
@@ -628,8 +717,8 @@ class MainDependencyBucketPlannerTest {
             )
         )
 
-        assertEquals(dependencyMap, plan.buildTypeBuckets["debug"])
-        assertEquals(emptyMap<String, Map<String, ResolvedDependency>>(), plan.flavorBuckets)
+        assertEquals(dependencyMap, plan.hierarchyBuckets["debug"])
+        assertEquals(setOf("debug"), plan.hierarchyBuckets.keys)
         assertEquals(emptyMap<String, Map<String, ResolvedDependency>>(), plan.leafBuckets)
     }
 
@@ -637,7 +726,7 @@ class MainDependencyBucketPlannerTest {
     fun `leaf main buckets are included in covered dependencies`() {
         val leafDependency = dependency("com.example:leaf-only:1.0")
 
-        val plan = MainDependencyBucketPlanner().plan(
+        val plan = DependencyBucketPlacementEngine().plan(
             variants = listOf(
                 leaf("freeDebug", "debug", "free"),
                 leaf("freeRelease", "release", "free")
@@ -659,7 +748,7 @@ class MainDependencyBucketPlannerTest {
         name: String,
         buildType: String,
         vararg productFlavors: String
-    ): MainBucketVariant {
+    ): DependencyBucketVariant {
         return leafWithParents(
             name = name,
             extendsFrom = (setOf(DEFAULT_VARIANT, buildType) + productFlavors).toSortedSet(),
@@ -673,7 +762,7 @@ class MainDependencyBucketPlannerTest {
         extendsFrom: Set<String>,
         buildType: String,
         vararg productFlavors: String
-    ): MainBucketVariant {
+    ): DependencyBucketVariant {
         return leafWithParents(
             name = name,
             extendsFrom = extendsFrom,
@@ -687,8 +776,8 @@ class MainDependencyBucketPlannerTest {
         extendsFrom: Set<String>,
         buildType: String,
         productFlavors: List<String>
-    ): MainBucketVariant {
-        return MainBucketVariant(
+    ): DependencyBucketVariant {
+        return DependencyBucketVariant(
             name = name,
             extendsFrom = extendsFrom.toSortedSet(),
             buildType = buildType,
@@ -702,8 +791,8 @@ class MainDependencyBucketPlannerTest {
         extendsFrom: Set<String>,
         buildType: String? = null,
         productFlavors: List<String> = emptyList()
-    ): MainBucketVariant {
-        return MainBucketVariant(
+    ): DependencyBucketVariant {
+        return DependencyBucketVariant(
             name = name,
             extendsFrom = extendsFrom.toSortedSet(),
             buildType = buildType,
@@ -741,6 +830,32 @@ class MainDependencyBucketPlannerTest {
             excludeRulesByShortId = emptyMap(),
             compileOnlyBucketName = name,
             compileOnlyDependenciesByShortId = compileOnlyDependenciesByShortId
+        )
+    }
+
+    private fun declaredVariant(
+        name: String,
+        variantType: com.grab.grazel.gradle.variant.VariantType,
+        extendsFrom: Set<String>,
+        leaf: Boolean
+    ): DeclaredVariantDependencyMetadata {
+        return DeclaredVariantDependencyMetadata(
+            name = name,
+            variantType = variantType,
+            extendsFrom = extendsFrom.toSortedSet(),
+            variantConfigurationNames = emptySet(),
+            compileConfigurationNames = emptySet(),
+            runtimeConfigurationNames = emptySet(),
+            kspConfigurationNames = emptySet(),
+            androidLeafVariant = leaf,
+            buildType = null,
+            productFlavors = emptyList(),
+            declaredDependencies = emptySet(),
+            declaredDependencyDeclarations = emptySet(),
+            declaredProjectDependencies = emptySet(),
+            excludeRulesByShortId = emptyMap(),
+            compileOnlyBucketName = name,
+            compileOnlyDependenciesByShortId = emptyMap()
         )
     }
 }

@@ -146,6 +146,12 @@ class ComputeWorkspaceDependenciesTest {
             setOf("com.example:transitive"),
             workspaceDependencies.transitiveClasspath.getValue("com.example:library")
         )
+        assertEquals(
+            setOf("com.example:transitive"),
+            workspaceDependencies.variantTransitiveClasspath
+                .getValue("debug")
+                .getValue("com.example:library")
+        )
     }
 
     @Test
@@ -345,6 +351,35 @@ class ComputeWorkspaceDependenciesTest {
         assertEquals(
             setOf("com.example:android-test-carrier", "com.example:debug-carrier"),
             workspaceDependencies.transitiveClasspath.getValue("com.example:shared-root")
+        )
+    }
+
+    @Test
+    fun `keeps variant scoped transitive classpath for non direct artifact root`() {
+        val lintApi = dependency(
+            id = "com.android.tools.lint:lint-api:31.5.0",
+            repository = "maven",
+            dependencies = setOf(
+                "com.android.tools.external.com-intellij:intellij-core:31.5.0:maven:false:null"
+            )
+        ).copy(direct = false)
+
+        val workspaceDependencies = ComputeWorkspaceDependencies().computeFromResults(
+            listOf(
+                result("default"),
+                result("lint", lintApi)
+            )
+        )
+
+        assertEquals(
+            setOf("com.android.tools.external.com-intellij:intellij-core"),
+            workspaceDependencies.variantTransitiveClasspath
+                .getValue("lint")
+                .getValue("com.android.tools.lint:lint-api")
+        )
+        assertEquals(
+            setOf("com.android.tools.external.com-intellij:intellij-core"),
+            workspaceDependencies.transitiveClasspath.getValue("com.android.tools.lint:lint-api")
         )
     }
 

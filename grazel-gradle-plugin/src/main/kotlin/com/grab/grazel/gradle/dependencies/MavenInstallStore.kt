@@ -18,7 +18,7 @@ package com.grab.grazel.gradle.dependencies
 
 import com.grab.grazel.bazel.starlark.BazelDependency.MavenDependency
 import com.grab.grazel.gradle.variant.DEFAULT_VARIANT
-import com.grab.grazel.migrate.dependencies.toMavenRepoName
+import com.grab.grazel.migrate.dependencies.toMaterializedMavenRepoName
 import java.util.concurrent.ConcurrentHashMap
 
 /** Data structure to hold information about generated maven repositories in `WORKSPACE` */
@@ -47,8 +47,11 @@ internal interface MavenInstallStore : AutoCloseable {
         group: String,
         name: String,
         version: String?,
-        target: MavenDependency?
+        target: MavenDependency?,
+        direct: Boolean
     )
+
+    fun getAllInRepo(repo: String): Set<MavenDependency>
 }
 
 class DefaultMavenInstallStore : MavenInstallStore {
@@ -60,7 +63,13 @@ class DefaultMavenInstallStore : MavenInstallStore {
         val version: String? = null,
     )
 
-    private val cache = ConcurrentHashMap<ArtifactKey, MavenDependency>()
+    private data class StoredDependency(
+        val dependency: MavenDependency,
+        val direct: Boolean
+    )
+
+    private val cache = ConcurrentHashMap<ArtifactKey, StoredDependency>()
+    private val dependenciesByRepo = ConcurrentHashMap<String, MutableSet<MavenDependency>>()
 
     override fun get(
         variants: Set<String>,
@@ -68,20 +77,40 @@ class DefaultMavenInstallStore : MavenInstallStore {
         name: String,
         version: String?
     ): MavenDependency? {
-        fun get(variant: String, requestedVersion: String?): MavenDependency? =
-            cache[ArtifactKey(variant, group, name, requestedVersion)]
-
-        if (version != null) {
-            variants.asSequence()
-                .mapNotNull { variant -> get(variant, version) }
-                .firstOrNull()
-                ?.let { return it }
-
-            get(DEFAULT_VARIANT, version)?.let { return it }
+        fun variantsWithDefault(): Sequence<String> = sequence {
+            yieldAll(variants)
+            if (DEFAULT_VARIANT !in variants) {
+                yield(DEFAULT_VARIANT)
+            }
         }
 
-        return variants.asSequence().mapNotNull { variant -> get(variant, null) }.firstOrNull()
-            ?: get(DEFAULT_VARIANT, null)
+        fun get(variant: String, requestedVersion: String?): StoredDependency? =
+            cache[ArtifactKey(variant, group, name, requestedVersion)]
+
+        fun select(candidates: Sequence<StoredDependency>): MavenDependency? {
+            var firstIndirectCandidate: MavenDependency? = null
+            candidates.forEach { candidate ->
+                if (candidate.direct) {
+                    return candidate.dependency
+                }
+                if (firstIndirectCandidate == null) {
+                    firstIndirectCandidate = candidate.dependency
+                }
+            }
+            return firstIndirectCandidate
+        }
+
+        if (version != null) {
+            select(
+                variantsWithDefault()
+                    .mapNotNull { variant -> get(variant, version) }
+            )?.let { return it }
+        }
+
+        return select(
+            variantsWithDefault()
+                .mapNotNull { variant -> get(variant, null) }
+        )
     }
 
     override fun set(variantRepoName: String, group: String, name: String) {
@@ -94,7 +123,7 @@ class DefaultMavenInstallStore : MavenInstallStore {
         name: String,
         target: MavenDependency?
     ) {
-        set(variantRepoName, group, name, version = null, target = target)
+        set(variantRepoName, group, name, version = null, target = target, direct = true)
     }
 
     override fun set(
@@ -102,14 +131,36 @@ class DefaultMavenInstallStore : MavenInstallStore {
         group: String,
         name: String,
         version: String?,
-        target: MavenDependency?
+        target: MavenDependency?,
+        direct: Boolean
     ) {
-        val dependency = target ?: MavenDependency(variantRepoName.toMavenRepoName(), group, name)
-        if (version != null) {
-            cache[ArtifactKey(variantRepoName, group, name, version)] = dependency
+        val repoName = variantRepoName.toMaterializedMavenRepoName()
+        val dependency = target ?: MavenDependency(repoName, group, name)
+        val storedDependency = StoredDependency(dependency, direct)
+        dependenciesByRepo
+            .getOrPut(repoName) { sortedSetOf() }
+            .add(dependency)
+
+        fun put(key: ArtifactKey) {
+            cache.merge(key, storedDependency) { existing, candidate ->
+                when {
+                    existing.direct && !candidate.direct -> existing
+                    else -> candidate
+                }
+            }
         }
-        cache[ArtifactKey(variantRepoName, group, name)] = dependency
+
+        if (version != null) {
+            put(ArtifactKey(variantRepoName, group, name, version))
+        }
+        put(ArtifactKey(variantRepoName, group, name))
     }
 
-    override fun close() = cache.clear()
+    override fun getAllInRepo(repo: String): Set<MavenDependency> =
+        dependenciesByRepo[repo]?.toSortedSet() ?: emptySet()
+
+    override fun close() {
+        cache.clear()
+        dependenciesByRepo.clear()
+    }
 }

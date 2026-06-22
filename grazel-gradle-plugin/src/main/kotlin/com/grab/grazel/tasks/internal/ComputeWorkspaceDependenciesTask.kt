@@ -62,7 +62,7 @@ internal abstract class ComputeWorkspaceDependenciesTask : DefaultTask() {
     fun action() {
         logger.logHeap("ComputeWorkspaceDeps:start")
         val result = ComputeWorkspaceDependencies().computeFromResults(
-            fromJson<List<ResolveDependenciesResult>>(workspaceDependencyResults.get())
+            results = fromJson<List<ResolveDependenciesResult>>(workspaceDependencyResults.get())
         )
 
         logger.logHeap("ComputeWorkspaceDeps:computed")

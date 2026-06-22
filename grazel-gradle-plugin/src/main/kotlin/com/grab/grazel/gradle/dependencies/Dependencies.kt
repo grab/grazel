@@ -28,8 +28,11 @@ import com.grab.grazel.bazel.starlark.BazelDependency.StringDependency
 import com.grab.grazel.gradle.ConfigurationDataSource
 import com.grab.grazel.gradle.hasDatabinding
 import com.grab.grazel.gradle.hasKotlinAndroidExtensions
+import com.grab.grazel.gradle.isAndroidTest
 import com.grab.grazel.gradle.variant.AndroidVariant
+import com.grab.grazel.gradle.variant.ANDROID_TEST_VARIANT
 import com.grab.grazel.gradle.variant.DEFAULT_VARIANT
+import com.grab.grazel.gradle.variant.LINT_VARIANT
 import com.grab.grazel.gradle.variant.Variant
 import com.grab.grazel.gradle.variant.VariantBuilder
 import com.grab.grazel.gradle.variant.VariantGraphKey
@@ -65,6 +68,15 @@ internal val PARCELIZE_DEPS = listOf(
     MavenDependency(group = "org.jetbrains.kotlin", name = "kotlin-parcelize-runtime"),
     MavenDependency(group = "org.jetbrains.kotlin", name = "kotlin-android-extensions-runtime"),
 )
+
+private val DATABINDING_ARTIFACT_GROUPS = setOf(
+    DATABINDING_GROUP,
+    "com.android.databinding",
+)
+
+private val MavenArtifact.isDatabindingProvidedArtifact: Boolean
+    get() = group in DATABINDING_ARTIFACT_GROUPS ||
+        (group == ANDROIDX_GROUP && name == ANNOTATION_ARTIFACT)
 
 private const val AUTO_SERVICE_GROUP = "com.google.auto.service"
 private const val AUTO_SERVICE_ARTIFACT = "auto-service"
@@ -120,7 +132,10 @@ internal interface DependenciesDataSource {
     ): List<BazelDependency>
 
     /** Collects all transitive maven dependencies for the given [variantKey] */
-    fun collectTransitiveMavenDeps(project: Project, variantKey: VariantGraphKey): Set<MavenDependency>
+    fun collectTransitiveMavenDeps(
+        project: Project,
+        variantKey: VariantGraphKey
+    ): Set<MavenDependency>
 
     /**
      * Collects KSP plugin dependencies for the given [variantKey].
@@ -205,24 +220,24 @@ internal class DefaultDependenciesDataSource @Inject constructor(
             val artifact = MavenArtifact(group, name)
             if (artifact.isBom || artifact.isExcluded || artifact.isIgnored) return false
 
-            return if (project.hasDatabinding) {
-                group != DATABINDING_GROUP && (group != ANDROIDX_GROUP && name != ANNOTATION_ARTIFACT)
-            } else true
+            return !project.hasDatabinding || !artifact.isDatabindingProvidedArtifact
         }
 
-        val lookupVariantHierarchy = buildSet {
-            addAll(preferredVariantNames)
-            if (variantKey.variantType.prefersDefaultMavenDeps) {
-                add(DEFAULT_VARIANT)
-            }
-            add(grazelVariant.name)
-            addAll(grazelVariant.extendsFrom.reversed())
-        }
-        val repoPriority = buildSet {
-            addAll(preferredVariantNames)
-            add(grazelVariant.name)
-            addAll(grazelVariant.extendsFrom.reversed())
-        }.mapIndexed { index, variantName ->
+        val lookupVariantHierarchy = mavenLookupVariantHierarchy(
+            project = project,
+            allVariants = allVariants,
+            grazelVariant = grazelVariant,
+            variantKey = variantKey,
+            preferredVariantNames = preferredVariantNames
+        )
+        val repoPriority = mavenLookupVariantHierarchy(
+            project = project,
+            allVariants = allVariants,
+            grazelVariant = grazelVariant,
+            variantKey = variantKey,
+            preferredVariantNames = preferredVariantNames,
+            includeDefaultVariant = false
+        ).mapIndexed { index, variantName ->
             variantName.toMavenRepoName() to index
         }.toMap()
 
@@ -302,6 +317,14 @@ internal class DefaultDependenciesDataSource @Inject constructor(
                 ".$versionlessHint"
         }
 
+        fun shouldFailOnMissingMavenDependency(lookupVariants: Set<String>): Boolean {
+            val resolutionService = dependencyResolutionService.get()
+            if (!resolutionService.hasMainBucketReachability()) return true
+            return lookupVariants.any { bucketName ->
+                resolutionService.isReachableMainBucket(project.path, bucketName)
+            }
+        }
+
         val directDeclarationVariantNames = buildSet {
             add(grazelVariant.name)
             addAll(grazelVariant.extendsFrom)
@@ -336,7 +359,7 @@ internal class DefaultDependenciesDataSource @Inject constructor(
             .filter { dependency -> dependency.shouldUseForBazel() }
             .groupBy { dependency -> dependency.shortId }
             .values
-            .map { dependencies ->
+            .mapNotNull { dependencies ->
                 val firstDependency = dependencies.first()
                 when {
                     firstDependency.group == AUTO_SERVICE_GROUP &&
@@ -382,12 +405,16 @@ internal class DefaultDependenciesDataSource @Inject constructor(
                             selectedDependency
                         } else {
                             val declaration = candidateDeclarations.bestErrorDeclaration()
-                            throw IllegalStateException(
-                                missingMavenDependencyMessage(
-                                    declaration = declaration,
-                                    lookupVariants = lookupHierarchyForDeclaration(declaration.bucketName)
+                            val lookupVariants = lookupHierarchyForDeclaration(declaration.bucketName)
+                            if (shouldFailOnMissingMavenDependency(lookupVariants)) {
+                                throw IllegalStateException(
+                                    missingMavenDependencyMessage(
+                                        declaration = declaration,
+                                        lookupVariants = lookupVariants
+                                    )
                                 )
-                            )
+                            }
+                            null
                         }
                     }
                 }
@@ -398,25 +425,112 @@ internal class DefaultDependenciesDataSource @Inject constructor(
     override fun collectTransitiveMavenDeps(
         project: Project,
         variantKey: VariantGraphKey
-    ): Set<MavenDependency> = findGrazelVariantByKey(project, variantKey)
-        .migratableConfigurations
-        .asSequence()
-        .flatMap { it.allDependencies.filterIsInstance<ExternalDependency>() }
-        .filter { dep -> !MavenArtifact(dep.group, dep.name).isBom }
-        .flatMapTo(TreeSet()) { dep ->
-            buildList {
-                dependencyResolutionService.get()
-                    .getTransitiveDependencies(dep.shortId)
-                    .map {
-                        val (group, name) = it.split(":")
-                        MavenDependency(group = group, name = name)
-                    }.addTo(this)
-                add(MavenDependency(group = dep.module.group, name = dep.module.name))
-                if (project.hasKotlinAndroidExtensions) {
-                    addAll(PARCELIZE_DEPS)
-                }
-            }
+    ): Set<MavenDependency> {
+        val allVariants = variantBuilder.build(project)
+        val grazelVariant = findGrazelVariantByKey(allVariants, variantKey)
+        return collectOwnTransitiveMavenDeps(
+            project = project,
+            variantKey = variantKey,
+            allVariants = allVariants,
+            grazelVariant = grazelVariant
+        )
+    }
+
+    private fun collectOwnTransitiveMavenDeps(
+        project: Project,
+        variantKey: VariantGraphKey,
+        allVariants: Set<Variant<*>>,
+        grazelVariant: Variant<*>
+    ): Set<MavenDependency> {
+        val labelLookupVariantHierarchy = mavenLookupVariantHierarchy(
+            project = project,
+            allVariants = allVariants,
+            grazelVariant = grazelVariant,
+            variantKey = variantKey
+        )
+        val closureLookupVariantHierarchy = mavenTransitiveLookupVariantHierarchy(
+            project = project,
+            allVariants = allVariants,
+            grazelVariant = grazelVariant,
+            variantKey = variantKey
+        )
+        val resolutionService = dependencyResolutionService.get()
+
+        fun labelFor(shortId: String): MavenDependency {
+            val (group, name) = shortId.split(":")
+            return resolutionService.getMavenDependency(
+                variants = labelLookupVariantHierarchy,
+                group = group,
+                name = name
+            ) ?: MavenDependency(group = group, name = name)
         }
+
+        return grazelVariant
+            .migratableConfigurations
+            .asSequence()
+            .flatMap { it.allDependencies.filterIsInstance<ExternalDependency>() }
+            .filter { dep -> !MavenArtifact(dep.group, dep.name).isBom }
+            .flatMapTo(TreeSet()) { dep ->
+                val directDependency = labelFor(dep.shortId)
+                val ownerScopedClosureLookupVariantHierarchy =
+                    if (variantKey.variantType == VariantType.AndroidBuild && directDependency.repo == "maven") {
+                        setOf(DEFAULT_VARIANT)
+                    } else {
+                        closureLookupVariantHierarchy
+                    }
+                val variantTransitiveDependencies = resolutionService
+                    .getVariantTransitiveDependencies(
+                        variants = ownerScopedClosureLookupVariantHierarchy,
+                        shortId = dep.shortId
+                    )
+                val globalTransitiveDependencies = resolutionService
+                    .getTransitiveDependencies(dep.shortId)
+                val transitiveDependencyShortIds = when {
+                    variantTransitiveDependencies == null -> globalTransitiveDependencies
+                    variantTransitiveDependencies.isEmpty() && directDependency.repo == "maven" ->
+                        globalTransitiveDependencies
+                    variantTransitiveDependencies.isEmpty() -> emptySet()
+                    else -> variantTransitiveDependencies + globalTransitiveDependencies
+                }
+                val transitiveDependencies = transitiveDependencyShortIds
+                    .map(::labelFor)
+                buildList {
+                    if (
+                        variantTransitiveDependencies == null &&
+                        transitiveDependencies.isEmpty() &&
+                        directDependency.repo != "maven"
+                    ) {
+                        addAll(resolutionService.getMavenDependenciesInRepo(directDependency.repo))
+                    } else {
+                        transitiveDependencies.addTo(this)
+                    }
+                    add(directDependency)
+                    if (project.hasKotlinAndroidExtensions) {
+                        addAll(PARCELIZE_DEPS)
+                    }
+                }
+        }
+    }
+
+    private fun mavenTransitiveLookupVariantHierarchy(
+        project: Project,
+        allVariants: Set<Variant<*>>,
+        grazelVariant: Variant<*>,
+        variantKey: VariantGraphKey,
+    ): Set<String> {
+        val hierarchy = mavenLookupVariantHierarchy(
+            project = project,
+            allVariants = allVariants,
+            grazelVariant = grazelVariant,
+            variantKey = variantKey,
+            includeDefaultVariant = false
+        )
+        return if (variantKey.variantType.prefersDefaultMavenDeps) {
+            hierarchy + DEFAULT_VARIANT
+        } else {
+            hierarchy
+        }
+    }
 
     /**
      * Find variant by VariantGraphKey.
@@ -435,6 +549,28 @@ internal class DefaultDependenciesDataSource @Inject constructor(
         // Strip project path prefix from variantId to match Variant.id format
         val variantIdWithoutProject = variantKey.variantId.substringAfterLast(":")
         return variants.first { it.id == variantIdWithoutProject }
+    }
+
+    private fun mavenLookupVariantHierarchy(
+        project: Project,
+        allVariants: Set<Variant<*>>,
+        grazelVariant: Variant<*>,
+        variantKey: VariantGraphKey,
+        preferredVariantNames: List<String> = emptyList(),
+        includeDefaultVariant: Boolean = true
+    ): Set<String> = buildSet {
+        addAll(preferredVariantNames)
+        if (project.isAndroidTest && variantKey.variantType == VariantType.AndroidBuild) {
+            add(ANDROID_TEST_VARIANT)
+        }
+        if (includeDefaultVariant && variantKey.variantType.prefersDefaultMavenDeps) {
+            add(DEFAULT_VARIANT)
+        }
+        add(grazelVariant.name)
+        addAll(grazelVariant.extendsFrom.reversed())
+        if (variantKey.variantType == VariantType.JvmBuild && allVariants.any { it.variantType == VariantType.Lint }) {
+            add(LINT_VARIANT)
+        }
     }
 
     private val VariantType.prefersDefaultMavenDeps: Boolean
