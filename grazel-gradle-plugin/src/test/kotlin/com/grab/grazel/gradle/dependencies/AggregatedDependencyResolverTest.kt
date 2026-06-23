@@ -34,13 +34,7 @@ import com.grab.grazel.gradle.variant.VariantType.AndroidBuild
 import com.grab.grazel.gradle.variant.VariantType.JvmBuild
 import com.grab.grazel.gradle.variant.VariantType.Test as TestVariantType
 import org.gradle.api.artifacts.ExternalModuleDependency
-import org.gradle.api.artifacts.ModuleVersionIdentifier
-import org.gradle.api.artifacts.component.ComponentIdentifier
-import org.gradle.api.artifacts.result.ComponentSelectionReason
-import org.gradle.api.artifacts.result.DependencyResult
 import org.gradle.api.artifacts.result.ResolvedComponentResult
-import org.gradle.api.artifacts.result.ResolvedDependencyResult
-import org.gradle.api.artifacts.result.ResolvedVariantResult
 import org.gradle.api.internal.artifacts.DefaultModuleIdentifier
 import org.gradle.api.internal.artifacts.result.DefaultResolvedDependencyResult
 import org.gradle.api.internal.artifacts.result.DefaultResolvedVariantResult
@@ -53,6 +47,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.lang.reflect.Proxy
 
 class AggregatedDependencyResolverTest {
 
@@ -2566,38 +2561,19 @@ class AggregatedDependencyResolverTest {
         )
     }
 
-    private fun failingRootComponent(): ResolvedComponentResult = FailingResolvedComponentResult()
-
-    private class FailingResolvedComponentResult : ResolvedComponentResult {
-        override fun getId(): ComponentIdentifier {
-            throw UnsupportedOperationException("id")
-        }
-
-        override fun getDependencies(): Set<DependencyResult> {
-            throw IllegalStateException("broken root")
-        }
-
-        override fun getDependents(): Set<ResolvedDependencyResult> {
-            throw UnsupportedOperationException("dependents")
-        }
-
-        override fun getSelectionReason(): ComponentSelectionReason {
-            throw UnsupportedOperationException("selectionReason")
-        }
-
-        override fun getModuleVersion(): ModuleVersionIdentifier? {
-            throw UnsupportedOperationException("moduleVersion")
-        }
-
-        override fun getVariants(): List<ResolvedVariantResult> {
-            throw UnsupportedOperationException("variants")
-        }
-
-        override fun getDependenciesForVariant(variant: ResolvedVariantResult): List<DependencyResult> {
-            throw UnsupportedOperationException("dependenciesForVariant")
-        }
-
-        override fun toString(): String = "project :app"
+    private fun failingRootComponent(): ResolvedComponentResult {
+        return Proxy.newProxyInstance(
+            ResolvedComponentResult::class.java.classLoader,
+            arrayOf(ResolvedComponentResult::class.java)
+        ) { _, method, _ ->
+            when (method.name) {
+                "toString" -> "project :app"
+                "hashCode" -> 1
+                "equals" -> false
+                "getDependencies" -> throw IllegalStateException("broken root")
+                else -> throw UnsupportedOperationException(method.name)
+            }
+        } as ResolvedComponentResult
     }
 
 }

@@ -251,7 +251,6 @@ constructor(
             defaultOwnerArtifacts.mapTo(mutableSetOf(), ResolvedDependency::shortId)
         val overridesFromDefaultOwner = defaultOwnerArtifacts
             .asSequence()
-            .filter { defaultArtifact -> defaultArtifact.shortId in artifactsShortIdMap }
             .filterNot { defaultArtifact ->
                 artifactsShortIdMap[defaultArtifact.shortId]
                     .orEmpty()

@@ -1,6 +1,6 @@
 # Dependency Refactor Current Status
 
-Last updated: 2026-06-23.
+Last updated: 2026-06-22.
 
 Read `reports/dependencies-refactor-active-anchor.md` first after compaction/resume. This file is
 the current evidence ledger, not a full transcript.
@@ -27,76 +27,6 @@ the current evidence ledger, not a full transcript.
 3. The resolver/compute layer stores bucket labels, selected artifacts, excludes, and transitive
    closure data in workspace/service data.
 4. Module generation remains local: it asks the dependency service for labels and tag closure.
-
-## 2026-06-23 Next Goal Anchor
-
-- The graph-backed bucketing work is already partly implemented. `BucketHierarchyGraph` models
-  typed bucket nodes from `Variant.extendsFrom`, predecessor/successor links, ancestors, and leaf
-  descendants. `DependencyBucketPlacementEngine` wraps it through `BucketPlacementGraph` for bucket
-  placement. The next goal must audit/finish this existing graph architecture, not restart DAG
-  bucketing from scratch.
-- PAX `bug-report-kit-implementation` exposed a scope mismatch: root-first app resolution cannot
-  safely generate modules outside the selected app / `com.android.test` reachable graph. The module
-  is gated behind `isEarlyAccessApp()` and is not in the selected root graph, so ReportKit/AnalyticsKit
-  failures there are a generated-output scope problem, not evidence that root resolution missed a
-  reachable transitive.
-- Decision: use strict reachability-scoped generation. Generate project `BUILD.bazel` only for
-  selected roots and projects reachable from root-resolved app / `com.android.test` graphs.
-  Unreachable migratable modules should not emit active `BUILD.bazel`; stale generated files should
-  be ignored/renamed consistently, preferably `BUILD.bazelignore`.
-- Do not add a declared-Maven fallback closure for unreachable modules in this slice. Declared
-  metadata remains cheap support data for excludes, direct declarations, bucket ownership, and typed
-  variants; Gradle-resolved root graphs remain the source of truth for selected versions and
-  transitive closures.
-- PAX `WORKSPACE` bloat is still a release gate. Old PAX master was roughly `3K` lines and current
-  output grew near `10K`, which is unacceptable. Target old-master parity within about `10-20%`,
-  preferably smaller, by using the existing bucket graph/dedupe path and auditing override-target
-  behavior.
-- Verify old Grazel master behavior before changing override-target logic. Current hypothesis:
-  override labels should primarily redirect inherited/transitive artifacts, while direct Maven deps
-  usually stay in their owning repo. Treat this as a hypothesis until checked against master code.
-- Any tests or production code added for retaining unreachable non-app declared direct deps should be
-  removed or rewritten to assert the new reachability-scoped behavior.
-- Operational rule for the long run: check storage, CPU, memory, and stray Gradle/Bazel processes
-  before expensive Gradle/Bazel/PAX commands and periodically during long verification. Clean only
-  when there is real pressure; prefer `bazelisk clean --expunge`, and delete PAX `bazel-cache` only
-  when genuinely needed. Also check for high-RAM `python3.12` processes during resource checks and
-  kill them before proceeding if they are consuming significant memory.
-- Strict reachability implementation milestone:
-  - removed the shortcut that materialized declared direct Maven deps for generated non-app modules
-    with no selected-root reachability;
-  - `GenerateBazelScriptsTask` now gates active project BUILD generation on dependency-service
-    project reachability when selected-root reachability data exists;
-  - skipped projects write empty referenced-repo manifests, delete scratch generated BUILD input,
-    and rename stale project `BUILD.bazel` to `BUILD.bazelignore`;
-  - `FormatBazelFileTask` skips when its generated input is intentionally absent.
-  - red/green checks:
-    `./gradlew :grazel-gradle-plugin:test --tests "com.grab.grazel.gradle.dependencies.AggregatedDependencyResolverTest.declared main dependencies from generated non app modules require binary root reachability" --console=plain`
-    failed before removing the shortcut and passed after;
-    `./gradlew :grazel-gradle-plugin:functionalTest --tests "com.grab.grazel.migrate.BuildVariantTest.migrateToBazelIgnoresUnreachableNonAppModules" --console=plain`
-    passed after the task/formatter gate.
-- Old Grazel master override-target audit:
-  - master computed automatic overrides in `ComputeWorkspaceDependencies` only for dependencies
-    already present in the default flat classpath and only when `!dependency.direct`;
-  - `MavenInstallArtifactsCalculator` mostly rendered already-computed override targets plus explicit
-    extension `overrideTargetLabels`;
-  - direct Maven deps were not broadly rewritten to default owner on master. Current branch should
-    restore that invariant unless a narrower direct-carrier path is proven necessary and tested.
-- WORKSPACE bloat mitigation milestone:
-  - `MavenInstallArtifactsCalculator` no longer emits default-owner override targets for unrelated
-    default artifacts that are not rooted in the current repo's selected artifact closure;
-  - non-default repos still override default-owned artifacts when those artifacts are part of the
-    repo's rooted closure, preserving the Coursier/rooting behavior without broad `override_targets`
-    expansion;
-  - focused red/green check:
-    `./gradlew :grazel-gradle-plugin:test --tests "com.grab.grazel.migrate.dependencies.MavenInstallArtifactsCalculatorTest" --console=plain`
-    failed with old broad default overrides and passed after scoping overrides to rooted artifacts.
-- Broader local verification after reachability and override changes:
-  - `./gradlew :grazel-gradle-plugin:test --tests "com.grab.grazel.gradle.dependencies.DependencyBucketPlacementEngineTest" --tests "com.grab.grazel.gradle.variant.BucketHierarchyGraphTest" --tests "com.grab.grazel.gradle.dependencies.AggregatedDependencyResolverTest" --tests "com.grab.grazel.gradle.dependencies.ComputeWorkspaceDependenciesTest" --tests "com.grab.grazel.gradle.dependencies.DefaultDependencyResolutionServiceTest" --tests "com.grab.grazel.migrate.dependencies.MavenInstallArtifactsCalculatorTest" --console=plain`
-    passed;
-  - `./gradlew :grazel-gradle-plugin:functionalTest --tests "com.grab.grazel.migrate.BuildVariantTest" --console=plain`
-    passed, including the sample `bazelBuildAll` path. The generated sample fixture artifact
-    `kotlin-library-flavor1/BUILD.bazelignore` was removed after the run because it was test output.
 
 ## Rejected Shortcut
 
@@ -234,19 +164,6 @@ the current evidence ledger, not a full transcript.
 
 ## Remaining Gates
 
-- Test hygiene decision from 2026-06-23:
-  - Do not add architecture tests that inspect task methods/annotations with Java/Kotlin reflection.
-  - Branch-added reflection-only tests for dependency task shape were removed. Their intent is now
-    covered through observable Gradle behavior in `BuildVariantTest`: task graph includes
-    `collectDeclaredDependencyMetadata`, `collectKspProcessorDependencies`,
-    `resolveWorkspaceDependencies`, and `computeWorkspaceDependencies`; no-edit runs are
-    up-to-date; declaration, project-edge, exclude, and KSP edits invalidate the resolver pipeline.
-  - The failing-root resolver regression now uses a concrete fake `ResolvedComponentResult` instead
-    of a dynamic proxy.
-  - Checks passed after cleanup:
-    `./gradlew :grazel-gradle-plugin:test --tests "com.grab.grazel.gradle.dependencies.AggregatedDependencyResolverTest" --tests "com.grab.grazel.tasks.internal.CollectDeclaredDependencyMetadataTaskTest" --console=plain`
-    and
-    `./gradlew :grazel-gradle-plugin:functionalTest --tests "com.grab.grazel.migrate.BuildVariantTest" --console=plain`.
 - Run final Grazel `git diff --check`, commit, and push.
 
 ## Resource Notes

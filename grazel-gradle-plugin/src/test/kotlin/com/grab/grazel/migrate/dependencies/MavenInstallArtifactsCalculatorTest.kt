@@ -754,7 +754,8 @@ class MavenInstallArtifactsCalculatorTest {
             mapOf(
                 "androidx.lifecycle:lifecycle-common" to "@maven//:androidx_lifecycle_lifecycle_common",
                 "androidx.lifecycle:lifecycle-common-java8" to "@maven//:androidx_lifecycle_lifecycle_common_java8",
-                "androidx.lifecycle:lifecycle-common-jvm" to "@maven//:androidx_lifecycle_lifecycle_common_jvm"
+                "androidx.lifecycle:lifecycle-common-jvm" to "@maven//:androidx_lifecycle_lifecycle_common_jvm",
+                "androidx.lifecycle:lifecycle-process" to "@maven//:androidx_lifecycle_lifecycle_process"
             ),
             debugAndroidTestRepo.overrideTargets
         )
@@ -840,6 +841,7 @@ class MavenInstallArtifactsCalculatorTest {
         )
         assertEquals(
             mapOf(
+                "androidx.fragment:fragment" to "@maven//:androidx_fragment_fragment",
                 "androidx.lifecycle:lifecycle-common" to "@maven//:androidx_lifecycle_lifecycle_common",
                 "androidx.lifecycle:lifecycle-common-java8" to "@maven//:androidx_lifecycle_lifecycle_common_java8",
                 "androidx.lifecycle:lifecycle-runtime" to "@maven//:androidx_lifecycle_lifecycle_runtime"
@@ -892,7 +894,12 @@ class MavenInstallArtifactsCalculatorTest {
             gpsRepo.artifacts.map { it.id }.toSet()
         )
         assertEquals(
-            emptyMap<String, String>(),
+            mapOf(
+                "com.google.android.gms:play-services-measurement-api" to
+                    "@maven//:com_google_android_gms_play_services_measurement_api",
+                "com.google.firebase:firebase-analytics" to
+                    "@maven//:com_google_firebase_firebase_analytics"
+            ),
             gpsRepo.overrideTargets
         )
     }
@@ -1132,9 +1139,6 @@ class MavenInstallArtifactsCalculatorTest {
             variantDeps = mapOf(
                 DEFAULT_VARIANT to listOf(defaultOwnedTransitive),
                 "debug" to listOf(debugRoot)
-            ),
-            variantTransitiveClasspath = mapOf(
-                "debug" to mapOf(debugRoot.shortId to setOf(defaultOwnedTransitive.shortId))
             )
         )
 
@@ -1145,10 +1149,6 @@ class MavenInstallArtifactsCalculatorTest {
             externalRepositories = emptySet()
         )
 
-        assertEquals(
-            setOf("com.example:debug-root:1.0.0", "com.example:shared-transitive:1.0.0"),
-            result.single { it.name == "debug_maven" }.artifacts.map { it.id }.toSet()
-        )
         assertEquals(
             mapOf("com.example:shared-transitive" to "@maven//:com_example_shared_transitive"),
             result.single { it.name == "debug_maven" }.overrideTargets

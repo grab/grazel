@@ -20,6 +20,7 @@ import com.grab.grazel.bazel.starlark.writeToFile
 import com.grab.grazel.di.GrazelComponent
 import com.grab.grazel.gradle.MigrationChecker
 import com.grab.grazel.gradle.dependencies.DefaultDependencyResolutionService
+import com.grab.grazel.gradle.isMigrated
 import com.grab.grazel.migrate.internal.ProjectBazelFileBuilder
 import com.grab.grazel.util.BUILD_BAZEL
 import com.grab.grazel.util.BUILD_BAZEL_IGNORE
@@ -82,13 +83,13 @@ constructor(
         logger.logHeap("GeneratebazelScripts:${project.path}:start")
         val buildBazelFile = buildBazel.get().asFile
         val referencedMavenReposFile = referencedMavenRepos.get().asFile
-        val projectBuildBazelFile = project.file(BUILD_BAZEL)
-        val projectBuildBazelIgnoreFile = project.file(BUILD_BAZEL_IGNORE)
+        val bazelIgnoreFile = project.file(BUILD_BAZEL_IGNORE)
 
-        val dependencyService = dependencyResolutionService.get()
-        dependencyService.init(workspaceDependencies.get().asFile)
+        dependencyResolutionService.get()
+            .init(workspaceDependencies.get().asFile)
 
-        if (migrationChecker.get().canMigrate(project) && dependencyService.shouldGenerateFor(project.path)) {
+        // Check if current project can be migrated
+        if (migrationChecker.get().canMigrate(project)) {
             // If yes, proceed to generate build.bazel
             val projectBazelFileBuilder = bazelFileBuilder.get().create(project)
             val targets = projectBazelFileBuilder.targets()
@@ -102,14 +103,11 @@ constructor(
             logger.quiet(generatedMessage.ansiGreen)
         } else {
             GeneratedBuildMavenRepos.writeManifest(referencedMavenReposFile, emptySet())
-            buildBazelFile.delete()
-            // If skipped but already migrated, rename BUILD.bazel to BUILD.bazelignore if it exists.
-            if (projectBuildBazelFile.exists()) {
-                projectBuildBazelIgnoreFile.delete()
-                if (projectBuildBazelFile.renameTo(projectBuildBazelIgnoreFile)) {
-                    project.logger.quiet(
-                        "$projectBuildBazelFile renamed to $projectBuildBazelIgnoreFile".ansiYellow
-                    )
+            // If not migrateable but was already migrated, rename build.bazel to build.bazelignore if it exists
+            bazelIgnoreFile.delete()
+            if (project.isMigrated) {
+                if (buildBazelFile.renameTo(bazelIgnoreFile)) {
+                    project.logger.quiet("$buildBazelFile renamed to $bazelIgnoreFile".ansiYellow)
                 }
             }
         }
@@ -137,8 +135,4 @@ constructor(
             return genTask
         }
     }
-}
-
-private fun DefaultDependencyResolutionService.shouldGenerateFor(projectPath: String): Boolean {
-    return !hasMainBucketReachability() || isReachableMainProject(projectPath)
 }

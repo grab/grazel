@@ -170,9 +170,10 @@ internal data class WorkspaceDependencies(
     /**
      * Main-variant project buckets reachable from the selected app/com.android.test roots.
      *
-     * Project generation uses this to keep root-selected workspace buckets strict: inactive modules
-     * outside the selected root graph should not emit active BUILD files instead of falling back to
-     * per-module resolution.
+     * Generated BUILD files can still exist for inactive modules, but dependency lookup should only
+     * fail hard for missing Maven labels when the module/bucket participates in the selected root
+     * graph. This keeps root-selected workspace buckets strict without requiring full per-module
+     * resolution for inactive modules.
      */
     val reachableMainBucketsByProject: Map<String, Set<String>> = emptyMap()
 )

@@ -1,10 +1,5 @@
 # Dependencies Refactor — HANDOFF (start here)
 
-> SUPERSEDED: do not use this file as the current resume entry point. Read
-> `reports/dependencies-refactor-active-anchor.md` first, then
-> `reports/dependencies-refactor-current-status.md`. This file is preserved only as historical
-> evidence for bounded archaeology.
-
 **Entry point for any agent resuming this work.** Read this top-to-bottom first, then the spec.
 
 > ⚠️ **This file was rewritten 2026-06-16 after a PIVOT.** Earlier revisions of this handoff (and

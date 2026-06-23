@@ -85,8 +85,6 @@ internal interface DependencyResolutionService : BuildService<DependencyResoluti
 
     fun hasMainBucketReachability(): Boolean
 
-    fun isReachableMainProject(projectPath: String): Boolean
-
     fun isReachableMainBucket(projectPath: String, bucketName: String): Boolean
 
     fun init(workspaceDependenciesJson: File): WorkspaceDependencies
@@ -117,12 +115,6 @@ internal abstract class DefaultDependencyResolutionService : DependencyResolutio
 
     override fun hasMainBucketReachability(): Boolean =
         !workspaceDependencies?.reachableMainBucketsByProject.isNullOrEmpty()
-
-    override fun isReachableMainProject(projectPath: String): Boolean =
-        workspaceDependencies
-            ?.reachableMainBucketsByProject
-            ?.containsKey(projectPath)
-            ?: false
 
     override fun isReachableMainBucket(projectPath: String, bucketName: String): Boolean =
         workspaceDependencies
