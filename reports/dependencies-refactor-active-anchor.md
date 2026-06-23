@@ -8,7 +8,7 @@ logs in main context; use subagents for bounded archaeology.
 
 ## Current Goal
 
-The dependency refactor has reached a pushed merge-readiness checkpoint:
+Get the dependency refactor to merge-ready correctness and architecture:
 
 - root app / `com.android.test` Gradle resolution is the expensive source of truth;
 - variant APIs and cheap declared metadata drive ownership, excludes, bucket shape, compileOnly, and
@@ -16,9 +16,9 @@ The dependency refactor has reached a pushed merge-readiness checkpoint:
 - module generation stays local and consumes dependency-service/workspace data;
 - active project `BUILD.bazel` files are generated only for selected roots and projects reachable
   from selected root graphs;
-- PAX `migrateToBazel`, debug APK, and android-test APK passed with acceptable generated diff shape;
-- shortcut fixes, wrong-altitude graph walks, broad WORKSPACE bloat, and reflection-only tests were
-  removed before the final checkpoint.
+- PAX `migrateToBazel`, debug APK, and android-test APK pass with acceptable generated diff shape;
+- shortcut fixes, wrong-altitude graph walks, and broad WORKSPACE bloat are removed before final
+  review.
 
 ## Current Invariants
 
@@ -76,14 +76,17 @@ The dependency refactor has reached a pushed merge-readiness checkpoint:
 - Check for high-RAM `python3.12` processes during resource checks and kill them before proceeding
   if they are consuming significant memory.
 
-## Completed Checkpoint
+## Next Gates
 
-- Code checkpoint: `ac9de092ec3cbfdbe7ef8336498973c9f1dfbe7a`, pushed to
-  `public/arun/dependencies-refactor`.
-- Final local checks after test cleanup:
-  `./gradlew :grazel-gradle-plugin:test --console=plain`,
-  `./gradlew :grazel-gradle-plugin:functionalTest --tests "com.grab.grazel.migrate.BuildVariantTest" --console=plain`,
-  `./gradlew migrateToBazel --console=plain`,
-  `reports/scripts/verify-default-task-graph.sh`,
-  `reports/scripts/verify-sample-bucket-labels.sh`, and `git diff --check`.
-- PAX evidence remains in `reports/dependencies-refactor-current-status.md`.
+- Run focused graph/placement/resolver tests and relevant `BuildVariant` slices.
+- Run `reports/scripts/verify-default-task-graph.sh`, `reports/scripts/verify-sample-bucket-labels.sh`,
+  and `git diff --check`.
+- Run PAX:
+  `./gradlew migrateToBazel --no-daemon --console=plain --stacktrace`,
+  `./bazel.sh build //app:app-gps-pax-debug.apk //app:app-gps-pax-debug-android-test.apk`,
+  and `git diff --check`.
+- Compare PAX `WORKSPACE`, lockfiles, bucket counts, generated `BUILD.bazel`, and direct/transitive
+  tag/deps shape against old PAX master/current baseline. Bucket reduction is acceptable; unexplained
+  bloat is not.
+- After green correctness, run simplify-pass and adversarial review; fix real findings or document
+  rejected findings with rationale.
