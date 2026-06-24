@@ -23,14 +23,11 @@ import com.grab.grazel.bazel.rules.MavenInstallArtifact.Exclusion.SimpleExclusio
 import com.grab.grazel.bazel.rules.MavenInstallArtifact.SimpleArtifact
 import com.grab.grazel.bazel.rules.MavenRepository.DefaultMavenRepository
 import com.grab.grazel.bazel.starlark.BazelDependency.MavenDependency
-import com.grab.grazel.gradle.dependencies.mavenOverrideTarget
 import com.grab.grazel.gradle.RepositoryDataSource
 import com.grab.grazel.gradle.dependencies.DefaultJetifierExclusions
 import com.grab.grazel.gradle.dependencies.model.ExcludeRule
 import com.grab.grazel.gradle.dependencies.model.ResolvedDependency
 import com.grab.grazel.gradle.dependencies.model.WorkspaceDependencies
-import com.grab.grazel.gradle.dependencies.model.hasSameBucketOwnerAs
-import com.grab.grazel.gradle.dependencies.model.versionInfo
 import com.grab.grazel.gradle.variant.ANDROID_TEST_VARIANT
 import com.grab.grazel.gradle.variant.DEFAULT_VARIANT
 import com.grab.grazel.gradle.variant.LINT_VARIANT
@@ -86,7 +83,6 @@ constructor(
         referencedMavenRepos: Set<String> = emptySet(),
     ): Set<MavenInstallData> {
         val rootArtifactsByVariant = workspaceDependencies.mavenInstallRootArtifactsByVariant()
-        val defaultOwnerArtifacts = rootArtifactsByVariant[DEFAULT_VARIANT].orEmpty()
         val variantInputs = workspaceDependencies.variantDeps.map { (variantName, _) ->
             val mavenInstallName = variantName.toMavenRepoName()
             val rootArtifacts = rootArtifactsByVariant.getValue(variantName)
@@ -96,11 +92,7 @@ constructor(
                 rootArtifacts = rootArtifacts,
                 overrideTargets = calculateOverrideTargets(
                     artifacts = rootArtifacts,
-                    owningMavenRepoName = mavenInstallName,
-                    defaultOwnerArtifacts = when (variantName) {
-                        DEFAULT_VARIANT -> emptyList()
-                        else -> defaultOwnerArtifacts
-                    }
+                    owningMavenRepoName = mavenInstallName
                 )
             )
         }
@@ -243,48 +235,21 @@ constructor(
 
     private fun calculateOverrideTargets(
         artifacts: List<ResolvedDependency>,
-        owningMavenRepoName: String,
-        defaultOwnerArtifacts: List<ResolvedDependency> = emptyList()
+        owningMavenRepoName: String
     ): Map<String, String> {
         val artifactsShortIdMap = artifacts.groupBy { it.shortId }
-        val extensionOverrideEligibleShortIds = artifactsShortIdMap.keys +
-            defaultOwnerArtifacts.mapTo(mutableSetOf(), ResolvedDependency::shortId)
-        val overridesFromDefaultOwner = defaultOwnerArtifacts
-            .asSequence()
-            .filterNot { defaultArtifact ->
-                artifactsShortIdMap[defaultArtifact.shortId]
-                    .orEmpty()
-                    .any { artifact -> artifact.shouldKeepOwnTargetInsteadOf(defaultArtifact) }
-            }
-            .map { defaultArtifact ->
-                defaultArtifact.shortId to mavenOverrideTarget(
-                    defaultArtifact.shortId,
-                    DEFAULT_VARIANT
-                ).label.toString()
-            }
         val overridesFromExtension = mavenInstallExtension.overrideTargetLabels
             .get()
             .toList()
-            .filter { (shortId, _) -> shortId in extensionOverrideEligibleShortIds }
+            .filter { (shortId, _) -> shortId in artifactsShortIdMap }
         val overridesFromArtifacts = artifacts
             .asSequence()
             .mapNotNull(ResolvedDependency::overrideTarget)
             .map { it.artifactShortId to it.label.toString() }
-        return (overridesFromDefaultOwner + overridesFromArtifacts + overridesFromExtension)
+        return (overridesFromArtifacts + overridesFromExtension)
             .filterNot { (shortId, label) -> label.isExactSelfOverride(shortId, owningMavenRepoName) }
             .sortedBy { it.toString() }
             .toMap()
-    }
-
-    private fun ResolvedDependency.shouldKeepOwnTargetInsteadOf(
-        defaultArtifact: ResolvedDependency
-    ): Boolean {
-        if (overrideTarget != null) return false
-        return when {
-            versionInfo > defaultArtifact.versionInfo -> true
-            versionInfo < defaultArtifact.versionInfo -> false
-            else -> !defaultArtifact.hasSameBucketOwnerAs(this)
-        }
     }
 
     private fun String.isExactSelfOverride(shortId: String, owningMavenRepoName: String): Boolean {

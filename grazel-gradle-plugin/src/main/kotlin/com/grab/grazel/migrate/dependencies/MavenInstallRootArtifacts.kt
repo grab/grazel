@@ -6,6 +6,7 @@ import com.grab.grazel.gradle.dependencies.model.WorkspaceDependencies
 import com.grab.grazel.gradle.dependencies.model.merge
 import com.grab.grazel.gradle.dependencies.model.versionInfo
 import com.grab.grazel.gradle.variant.DEFAULT_VARIANT
+import java.util.ArrayDeque
 
 internal fun WorkspaceDependencies.mavenInstallRootArtifactsByVariant(): Map<String, List<ResolvedDependency>> {
     val workspaceArtifactByShortId = variantDeps.selectedArtifactByShortId()
@@ -23,7 +24,8 @@ internal fun WorkspaceDependencies.mavenInstallRootArtifactsByVariant(): Map<Str
                 DEFAULT_VARIANT -> transitiveClasspath
                 else -> emptyMap()
             },
-            workspaceTransitiveClasspath = fallbackTransitiveClasspath
+            workspaceTransitiveClasspath = fallbackTransitiveClasspath,
+            promotedTransitiveClasspath = transitiveClasspath
         )
     }
 }
@@ -41,7 +43,8 @@ internal fun List<ResolvedDependency>.mavenInstallRootArtifacts(
         variantName = variantName,
         workspaceArtifactByShortId = workspaceArtifactsByVariant.selectedArtifactByShortId(),
         transitiveClasspath = transitiveClasspath,
-        workspaceTransitiveClasspath = workspaceTransitiveClasspath
+        workspaceTransitiveClasspath = workspaceTransitiveClasspath,
+        promotedTransitiveClasspath = workspaceTransitiveClasspath
     )
 }
 
@@ -50,62 +53,81 @@ private fun List<ResolvedDependency>.mavenInstallRootArtifacts(
     workspaceArtifactByShortId: Map<String, OwnedResolvedDependency>,
     transitiveClasspath: Map<String, Set<String>> = emptyMap(),
     workspaceTransitiveClasspath: Map<String, Set<String>> = emptyMap(),
+    promotedTransitiveClasspath: Map<String, Set<String>> = emptyMap(),
 ): List<ResolvedDependency> {
-    if (transitiveClasspath.isEmpty()) {
-        return when {
-            variantName == DEFAULT_VARIANT || workspaceTransitiveClasspath.isEmpty() ->
-                sortedBy(ResolvedDependency::id)
-            else -> withReachableArtifacts(
-                transitiveClasspath = workspaceTransitiveClasspath,
-                artifactByShortId = workspaceArtifactByShortId,
-                transform = OwnedResolvedDependency::asOwnerOverride
-            )
-        }
+    if (isEmpty()) {
+        return emptyList()
     }
 
-    if (variantName == DEFAULT_VARIANT) {
-        return withReachableArtifacts(
-            transitiveClasspath = transitiveClasspath,
-            artifactByShortId = workspaceArtifactByShortId,
-            transform = { artifact -> artifact.dependency.copy(overrideTarget = null) }
+    val rootShortIds = mapTo(sortedSetOf(), ResolvedDependency::shortId)
+    val reachableShortIds = (
+        transitiveClasspath.reachableTransitiveShortIds(rootShortIds) +
+            workspaceTransitiveClasspath.reachableTransitiveShortIds(rootShortIds) +
+            transitiveClasspath.reachablePromotedRootTransitiveShortIds(
+                rootShortIds = rootShortIds,
+                workspaceTransitiveClasspath = promotedTransitiveClasspath
+            ) +
+            reachableDependencyShortIds(workspaceArtifactByShortId)
         )
+        .filterNot(rootShortIds::contains)
+        .toSortedSet()
+
+    val transform: (OwnedResolvedDependency) -> ResolvedDependency = when (variantName) {
+        DEFAULT_VARIANT -> { artifact -> artifact.dependency.copy(overrideTarget = null) }
+        else -> OwnedResolvedDependency::asOwnerOverride
     }
-
-    return withReachableArtifacts(
-        transitiveClasspath = transitiveClasspath,
-        artifactByShortId = workspaceArtifactByShortId,
-        transform = OwnedResolvedDependency::asOwnerOverride
-    ).withReachableArtifacts(
-        transitiveClasspath = workspaceTransitiveClasspath,
-        artifactByShortId = workspaceArtifactByShortId,
-        transform = OwnedResolvedDependency::asOwnerOverride
-    )
-}
-
-private fun List<ResolvedDependency>.withReachableArtifacts(
-    transitiveClasspath: Map<String, Set<String>>,
-    artifactByShortId: Map<String, OwnedResolvedDependency>,
-    transform: (OwnedResolvedDependency) -> ResolvedDependency
-): List<ResolvedDependency> {
-    val existingShortIds = mapTo(mutableSetOf(), ResolvedDependency::shortId)
-    val inheritedShortIds = transitiveClasspath
+    return (asSequence() + reachableShortIds
         .asSequence()
-        .filter { (rootShortId, _) -> rootShortId in existingShortIds }
-        .flatMap { (_, transitiveShortIds) -> transitiveShortIds.asSequence() }
-        .filterNot(existingShortIds::contains)
-        .toSet()
-
-    if (inheritedShortIds.isEmpty()) {
-        return sortedBy(ResolvedDependency::id)
-    }
-
-    return (asSequence() + inheritedShortIds
-        .asSequence()
-        .mapNotNull(artifactByShortId::get)
+        .mapNotNull(workspaceArtifactByShortId::get)
         .map(transform))
         .distinctBy(ResolvedDependency::shortId)
         .sortedBy(ResolvedDependency::id)
         .toList()
+}
+
+private fun Map<String, Set<String>>.reachableTransitiveShortIds(
+    rootShortIds: Set<String>
+): Set<String> = asSequence()
+    .filter { (rootShortId, _) -> rootShortId in rootShortIds }
+    .flatMap { (_, transitiveShortIds) -> transitiveShortIds.asSequence() }
+    .toSet()
+
+private fun Map<String, Set<String>>.reachablePromotedRootTransitiveShortIds(
+    rootShortIds: Set<String>,
+    workspaceTransitiveClasspath: Map<String, Set<String>>
+): Set<String> = asSequence()
+    .filter { (ownerShortId, scopedTransitiveShortIds) ->
+        ownerShortId !in rootShortIds && scopedTransitiveShortIds.any(rootShortIds::contains)
+    }
+    .flatMap { (ownerShortId, scopedTransitiveShortIds) ->
+        (scopedTransitiveShortIds + workspaceTransitiveClasspath[ownerShortId].orEmpty()).asSequence()
+    }
+    .toSet()
+
+private fun List<ResolvedDependency>.reachableDependencyShortIds(
+    artifactByShortId: Map<String, OwnedResolvedDependency>
+): Set<String> {
+    val queue = ArrayDeque<String>()
+    val visited = sortedSetOf<String>()
+    forEach { dependency ->
+        dependency.dependencies
+            .map(ResolvedDependency::from)
+            .mapTo(queue, ResolvedDependency::shortId)
+    }
+
+    while (queue.isNotEmpty()) {
+        val shortId = queue.removeFirst()
+        if (!visited.add(shortId)) continue
+
+        artifactByShortId[shortId]
+            ?.dependency
+            ?.dependencies
+            .orEmpty()
+            .map(ResolvedDependency::from)
+            .mapTo(queue, ResolvedDependency::shortId)
+    }
+
+    return visited
 }
 
 private data class OwnedResolvedDependency(

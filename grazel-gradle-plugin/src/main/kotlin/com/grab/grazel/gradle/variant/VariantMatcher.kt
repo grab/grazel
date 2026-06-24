@@ -53,6 +53,17 @@ internal interface VariantMatcher {
         project: Project,
         variantType: VariantType
     ): Set<MatchedVariant>
+
+    /**
+     * Same as [matchedVariants], but restricts the app variants that are used as the source of
+     * truth before matching begins. This keeps filtering decisions at call sites while preserving
+     * the variant matcher as the owner of app-to-module variant matching.
+     */
+    fun matchedVariants(
+        project: Project,
+        variantType: VariantType,
+        appVariantFilter: (BaseVariant) -> Boolean
+    ): Set<MatchedVariant>
 }
 
 internal data class MatchedVariant(
@@ -133,10 +144,20 @@ constructor(
     override fun matchedVariants(
         project: Project,
         variantType: VariantType
+    ): Set<MatchedVariant> = matchedVariants(
+        project = project,
+        variantType = variantType,
+        appVariantFilter = { true }
+    )
+
+    override fun matchedVariants(
+        project: Project,
+        variantType: VariantType,
+        appVariantFilter: (BaseVariant) -> Boolean
     ): Set<MatchedVariant> {
         return matchVariantsInternal(
             project = project,
-            appVariants = getVariantsFromBuilder(appProject, variantType),
+            appVariants = getVariantsFromBuilder(appProject, variantType).filter(appVariantFilter).toSet(),
             libraryVariants = getVariantsFromBuilder(project, variantType)
         )
     }
@@ -331,4 +352,3 @@ constructor(
         return matchedVariant
     }
 }
-

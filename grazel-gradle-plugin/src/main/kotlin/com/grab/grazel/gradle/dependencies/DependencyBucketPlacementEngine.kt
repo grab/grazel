@@ -283,8 +283,9 @@ internal class DependencyBucketPlacementEngine {
         leafClosures: Collection<Map<String, ResolvedDependency>>
     ): Map<String, ResolvedDependency> {
         if (isEmpty() || leafClosures.isEmpty()) return this
-        return filter { (shortId, _) ->
-            leafClosures.any { leafClosure -> shortId in leafClosure }
+        return filter { (shortId, dependency) ->
+            dependency.isDeclaredMetadata() ||
+                leafClosures.any { leafClosure -> shortId in leafClosure }
         }
     }
 

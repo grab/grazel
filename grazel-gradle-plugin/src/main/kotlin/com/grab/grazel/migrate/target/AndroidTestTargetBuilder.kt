@@ -17,6 +17,7 @@
 package com.grab.grazel.migrate.target
 
 import com.grab.grazel.bazel.rules.Visibility
+import com.grab.grazel.gradle.dependencies.DefaultDependencyResolutionService
 import com.grab.grazel.gradle.variant.VariantType
 import com.grab.grazel.gradle.isAndroidTest
 import com.grab.grazel.gradle.variant.VariantMatcher
@@ -29,6 +30,7 @@ import com.grab.grazel.migrate.android.AndroidTestTarget
 import com.grab.grazel.migrate.android.DefaultAndroidTestDataExtractor
 import com.grab.grazel.migrate.android.DefaultTargetProjectResolver
 import com.grab.grazel.migrate.android.TargetProjectResolver
+import com.grab.grazel.util.GradleProvider
 import dagger.Binds
 import dagger.Module
 import dagger.multibindings.IntoSet
@@ -59,13 +61,17 @@ internal class AndroidTestTargetBuilder
     private val androidBinaryDataExtractor: AndroidBinaryDataExtractor,
     private val androidTestDataExtractor: AndroidTestDataExtractor,
     private val variantMatcher: VariantMatcher,
+    private val dependencyResolutionService: GradleProvider<DefaultDependencyResolutionService>,
 ) : TargetBuilder {
 
     override fun build(project: Project) = buildList {
+        val isReachableBucket = reachableBucketPredicate(project, dependencyResolutionService)
+
         // Get variants from the TEST MODULE itself
         variantMatcher.matchedVariants(
             project,
-            VariantType.AndroidBuild
+            VariantType.AndroidBuild,
+            appVariantFilter = { appVariant -> appVariant.isReachableTargetVariant(isReachableBucket) }
         ).forEach { matchedVariant ->
             // Extract common library fields (srcs, resourceSets, etc.)
             val androidLibraryData = androidLibraryDataExtractor.extract(

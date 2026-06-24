@@ -16,6 +16,7 @@
 
 package com.grab.grazel.migrate.target
 
+import com.grab.grazel.gradle.dependencies.DefaultDependencyResolutionService
 import com.grab.grazel.gradle.variant.VariantType
 import com.grab.grazel.gradle.hasCrashlytics
 import com.grab.grazel.gradle.hasGooglePlayServicesPlugin
@@ -39,6 +40,7 @@ import com.grab.grazel.migrate.android.KeyStoreExtractor
 import com.grab.grazel.migrate.android.ManifestValuesBuilder
 import com.grab.grazel.migrate.android.toTarget
 import com.grab.grazel.migrate.toBazelDependency
+import com.grab.grazel.util.GradleProvider
 import dagger.Binds
 import dagger.Module
 import dagger.multibindings.IntoSet
@@ -75,7 +77,8 @@ constructor(
     private val androidLibraryDataExtractor: AndroidLibraryDataExtractor,
     private val androidBinaryDataExtractor: AndroidBinaryDataExtractor,
     private val crashlyticsDataExtractor: CrashlyticsDataExtractor,
-    private val variantMatcher: VariantMatcher
+    private val variantMatcher: VariantMatcher,
+    private val dependencyResolutionService: GradleProvider<DefaultDependencyResolutionService>
 ) : TargetBuilder {
 
     override fun build(project: Project): List<BazelTarget> {
@@ -85,7 +88,12 @@ constructor(
     private fun buildAndroidBinaryTargets(
         project: Project
     ): List<BazelTarget> {
-        val targets = variantMatcher.matchedVariants(project, VariantType.AndroidBuild).flatMap { matchedVariant ->
+        val isReachableBucket = reachableBucketPredicate(project, dependencyResolutionService)
+        val targets = variantMatcher.matchedVariants(
+            project = project,
+            variantType = VariantType.AndroidBuild,
+            appVariantFilter = { appVariant -> appVariant.isReachableTargetVariant(isReachableBucket) }
+        ).flatMap { matchedVariant ->
             val androidLibraryData = androidLibraryDataExtractor.extract(
                 project = project,
                 matchedVariant = matchedVariant

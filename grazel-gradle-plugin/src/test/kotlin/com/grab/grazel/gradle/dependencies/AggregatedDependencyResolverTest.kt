@@ -807,7 +807,7 @@ class AggregatedDependencyResolverTest {
     }
 
     @Test
-    fun `unit test classpaths collapse to broad test bucket for current milestone`() {
+    fun `unit test classpaths emit planned test hierarchy buckets`() {
         val commonTestDependency = fakeComponentResult(
             group = "com.example",
             name = "test-common",
@@ -943,20 +943,33 @@ class AggregatedDependencyResolverTest {
         ).resolve()
 
         assertEquals(
-            listOf(
-                "com.example:debug-test:1.0",
-                "com.example:free-test:1.0",
-                "com.example:paid-test:1.0",
-                "com.example:test-common:1.0"
-            ),
+            listOf("com.example:test-common:1.0"),
             results.single { result -> result.variantName == TEST_VARIANT }
                 .dependencies
                 .getValue(COMPILE.name)
                 .map(ResolvedDependency::id)
         )
-        assertNull(results.singleOrNull { result -> result.variantName == "debugUnitTest" })
-        assertNull(results.singleOrNull { result -> result.variantName == "freeDebugUnitTest" })
-        assertNull(results.singleOrNull { result -> result.variantName == "paidDebugUnitTest" })
+        assertEquals(
+            listOf("com.example:debug-test:1.0"),
+            results.single { result -> result.variantName == "debugUnitTest" }
+                .dependencies
+                .getValue(COMPILE.name)
+                .map(ResolvedDependency::id)
+        )
+        assertEquals(
+            listOf("com.example:free-test:1.0"),
+            results.single { result -> result.variantName == "freeDebugUnitTest" }
+                .dependencies
+                .getValue(COMPILE.name)
+                .map(ResolvedDependency::id)
+        )
+        assertEquals(
+            listOf("com.example:paid-test:1.0"),
+            results.single { result -> result.variantName == "paidDebugUnitTest" }
+                .dependencies
+                .getValue(COMPILE.name)
+                .map(ResolvedDependency::id)
+        )
         assertNull(results.singleOrNull { result -> result.variantName == "debug" })
     }
 
@@ -1026,7 +1039,7 @@ class AggregatedDependencyResolverTest {
     }
 
     @Test
-    fun `declared android test dependencies from non app modules use broad androidTest bucket`() {
+    fun `declared android test dependencies from non app modules use planned androidTest bucket`() {
         val mainDependency = fakeComponentResult(
             group = "com.example",
             name = "main",
@@ -1063,7 +1076,7 @@ class AggregatedDependencyResolverTest {
                             declaredVariant(
                                 name = "freeDebugAndroidTest",
                                 variantType = AndroidTest,
-                                leaf = false,
+                                leaf = true,
                                 declaredDependencies = setOf("com.example:android-test-helper:1.0")
                             )
                         )
@@ -1083,12 +1096,549 @@ class AggregatedDependencyResolverTest {
 
         assertEquals(
             listOf("com.example:android-test-helper:1.0"),
+            results.single { result -> result.variantName == "freeDebugAndroidTest" }
+                .dependencies
+                .getValue(COMPILE.name)
+                .map(ResolvedDependency::id)
+        )
+        assertNull(results.singleOrNull { result -> result.variantName == ANDROID_TEST_VARIANT })
+    }
+
+    @Test
+    fun `app base android test declarations are emitted when absent from selected leaf closure`() {
+        val appRoot = fakeComponentResult(projectPath = ":app")
+        val androidTestRoot = fakeComponentResult(projectPath = ":app")
+
+        val results = AggregatedDependencyResolver(
+            logger = ProjectBuilder.builder().build().logger,
+            declaredDependencyMetadata = DeclaredDependencyMetadata(
+                projects = mapOf(
+                    ":app" to ProjectDeclaredDependencyMetadata(
+                        projectType = DeclaredProjectType.ANDROID_APPLICATION,
+                        variants = listOf(
+                            declaredVariant(
+                                name = DEFAULT_VARIANT,
+                                variantType = AndroidBuild,
+                                leaf = false
+                            ),
+                            declaredVariant(
+                                name = "gpsPaxDebug",
+                                variantType = AndroidBuild,
+                                leaf = true,
+                                buildType = "debug",
+                                productFlavors = listOf("gps", "pax"),
+                                extendsFrom = setOf(DEFAULT_VARIANT, "debug", "gps", "pax")
+                            ),
+                            declaredVariant(
+                                name = ANDROID_TEST_VARIANT,
+                                variantType = AndroidTest,
+                                leaf = false,
+                                declaredDependencies = setOf("com.example:android-test-helper:1.0"),
+                                extendsFrom = setOf(DEFAULT_VARIANT, TEST_VARIANT)
+                            ),
+                            declaredVariant(
+                                name = "gpsPaxDebugAndroidTest",
+                                variantType = AndroidTest,
+                                leaf = true,
+                                buildType = "debug",
+                                productFlavors = listOf("gps", "pax"),
+                                extendsFrom = setOf(
+                                    ANDROID_TEST_VARIANT,
+                                    "gpsPaxDebug",
+                                    DEFAULT_VARIANT,
+                                    TEST_VARIANT
+                                )
+                            )
+                        )
+                    )
+                )
+            ),
+            workspaceDependencyRoots = listOf(
+                root(
+                    component = appRoot,
+                    projectPath = ":app",
+                    kind = AggregatedDependencyRootKind.MAIN_LEAF,
+                    bucketName = "gpsPaxDebug",
+                    leafName = "gpsPaxDebug",
+                    variantType = AndroidBuild
+                ),
+                root(
+                    component = androidTestRoot,
+                    projectPath = ":app",
+                    kind = AggregatedDependencyRootKind.ANDROID_TEST,
+                    bucketName = "gpsPaxDebug",
+                    leafName = "gpsPaxDebug",
+                    variantType = AndroidTest
+                )
+            )
+        ).resolve()
+
+        assertEquals(
+            listOf("com.example:android-test-helper:1.0"),
             results.single { result -> result.variantName == ANDROID_TEST_VARIANT }
                 .dependencies
                 .getValue(COMPILE.name)
                 .map(ResolvedDependency::id)
         )
-        assertNull(results.singleOrNull { result -> result.variantName == "freeDebugAndroidTest" })
+    }
+
+    @Test
+    fun `android test roots mark reached project main buckets reachable`() {
+        val libDependency = fakeComponentResult(
+            group = "com.example",
+            name = "lib-main",
+            version = "1.0",
+            isProject = false
+        )
+        val uiTestsProject = fakeComponentResult(
+            isProject = true,
+            projectPath = ":ui-tests"
+        ) {
+            addDependencyTo(libDependency)
+        }
+        val appRoot = fakeComponentResult(projectPath = ":app")
+        val androidTestRoot = fakeComponentResult(projectPath = ":app") {
+            addDependencyTo(uiTestsProject, selectedVariantDisplayName = "debugRuntimeElements")
+        }
+
+        val results = AggregatedDependencyResolver(
+            logger = ProjectBuilder.builder().build().logger,
+            declaredDependencyMetadata = DeclaredDependencyMetadata(
+                projects = mapOf(
+                    ":app" to ProjectDeclaredDependencyMetadata(
+                        projectType = DeclaredProjectType.ANDROID_APPLICATION,
+                        variants = listOf(
+                            declaredVariant(
+                                name = DEFAULT_VARIANT,
+                                variantType = AndroidBuild,
+                                leaf = false
+                            ),
+                            declaredVariant(
+                                name = "gpsPaxDebug",
+                                variantType = AndroidBuild,
+                                leaf = true,
+                                buildType = "debug",
+                                productFlavors = listOf("gps", "pax"),
+                                extendsFrom = setOf(DEFAULT_VARIANT, "debug", "gps", "pax")
+                            ),
+                            declaredVariant(
+                                name = "gpsPaxDebugAndroidTest",
+                                variantType = AndroidTest,
+                                leaf = true,
+                                buildType = "debug",
+                                productFlavors = listOf("gps", "pax"),
+                                extendsFrom = setOf(
+                                    DEFAULT_VARIANT,
+                                    ANDROID_TEST_VARIANT,
+                                    "gpsPaxDebug",
+                                    "debug",
+                                    "gps",
+                                    "pax"
+                                )
+                            )
+                        )
+                    ),
+                    ":ui-tests" to ProjectDeclaredDependencyMetadata(
+                        projectType = DeclaredProjectType.OTHER,
+                        variants = listOf(
+                            declaredVariant(
+                                name = DEFAULT_VARIANT,
+                                variantType = AndroidBuild,
+                                leaf = false
+                            ),
+                            declaredVariant(
+                                name = "debug",
+                                variantType = AndroidBuild,
+                                leaf = true,
+                                buildType = "debug",
+                                extendsFrom = setOf(DEFAULT_VARIANT)
+                            )
+                        )
+                    )
+                )
+            ),
+            workspaceDependencyRoots = listOf(
+                root(
+                    component = appRoot,
+                    projectPath = ":app",
+                    kind = AggregatedDependencyRootKind.MAIN_LEAF,
+                    bucketName = "gpsPaxDebug",
+                    leafName = "gpsPaxDebug",
+                    variantType = AndroidBuild,
+                    variantNames = setOf(DEFAULT_VARIANT, "debug", "gps", "pax", "gpsPaxDebug")
+                ),
+                root(
+                    component = androidTestRoot,
+                    projectPath = ":app",
+                    kind = AggregatedDependencyRootKind.ANDROID_TEST,
+                    bucketName = "gpsPaxDebug",
+                    leafName = "gpsPaxDebug",
+                    variantType = AndroidTest,
+                    variantNames = setOf(DEFAULT_VARIANT, "debug", "gps", "pax", "gpsPaxDebug")
+                )
+            )
+        ).resolve()
+
+        assertEquals(
+            setOf(DEFAULT_VARIANT, "debug"),
+            results.first()
+                .reachableMainBucketsByProject
+                .getValue(":ui-tests")
+        )
+    }
+
+    @Test
+    fun `app base android test declarations are emitted with multiple selected android test leaves`() {
+        val androidTestDependency = fakeComponentResult(
+            group = "com.example",
+            name = "android-test-helper",
+            version = "1.0",
+            isProject = false
+        )
+        val appGpsPaxDebugRoot = fakeComponentResult(projectPath = ":app")
+        val appGpsOvoDebugRoot = fakeComponentResult(projectPath = ":app")
+        val gpsPaxAndroidTestRoot = fakeComponentResult(projectPath = ":app") {
+            addDependencyTo(androidTestDependency)
+        }
+        val gpsOvoAndroidTestRoot = fakeComponentResult(projectPath = ":app") {
+            addDependencyTo(androidTestDependency)
+        }
+
+        val results = AggregatedDependencyResolver(
+            logger = ProjectBuilder.builder().build().logger,
+            declaredDependencyMetadata = DeclaredDependencyMetadata(
+                projects = mapOf(
+                    ":app" to ProjectDeclaredDependencyMetadata(
+                        projectType = DeclaredProjectType.ANDROID_APPLICATION,
+                        variants = listOf(
+                            declaredVariant(
+                                name = DEFAULT_VARIANT,
+                                variantType = AndroidBuild,
+                                leaf = false
+                            ),
+                            declaredVariant(
+                                name = "debug",
+                                variantType = AndroidBuild,
+                                leaf = false,
+                                extendsFrom = setOf(DEFAULT_VARIANT)
+                            ),
+                            declaredVariant(
+                                name = "gps",
+                                variantType = AndroidBuild,
+                                leaf = false,
+                                extendsFrom = setOf(DEFAULT_VARIANT)
+                            ),
+                            declaredVariant(
+                                name = "ovo",
+                                variantType = AndroidBuild,
+                                leaf = false,
+                                extendsFrom = setOf(DEFAULT_VARIANT)
+                            ),
+                            declaredVariant(
+                                name = "pax",
+                                variantType = AndroidBuild,
+                                leaf = false,
+                                extendsFrom = setOf(DEFAULT_VARIANT)
+                            ),
+                            declaredVariant(
+                                name = "gpsOvoDebug",
+                                variantType = AndroidBuild,
+                                leaf = true,
+                                buildType = "debug",
+                                productFlavors = listOf("gps", "ovo"),
+                                extendsFrom = setOf(DEFAULT_VARIANT, "debug", "gps", "ovo")
+                            ),
+                            declaredVariant(
+                                name = "gpsPaxDebug",
+                                variantType = AndroidBuild,
+                                leaf = true,
+                                buildType = "debug",
+                                productFlavors = listOf("gps", "pax"),
+                                extendsFrom = setOf(DEFAULT_VARIANT, "debug", "gps", "pax")
+                            ),
+                            declaredVariant(
+                                name = TEST_VARIANT,
+                                variantType = TestVariantType,
+                                leaf = false,
+                                extendsFrom = setOf(DEFAULT_VARIANT)
+                            ),
+                            declaredVariant(
+                                name = ANDROID_TEST_VARIANT,
+                                variantType = AndroidTest,
+                                leaf = false,
+                                declaredDependencies = setOf("com.example:android-test-helper:1.0"),
+                                extendsFrom = setOf(DEFAULT_VARIANT, TEST_VARIANT)
+                            ),
+                            declaredVariant(
+                                name = "debugAndroidTest",
+                                variantType = AndroidTest,
+                                leaf = false,
+                                extendsFrom = setOf(ANDROID_TEST_VARIANT, "debug", DEFAULT_VARIANT, TEST_VARIANT)
+                            ),
+                            declaredVariant(
+                                name = "gpsAndroidTest",
+                                variantType = AndroidTest,
+                                leaf = false,
+                                extendsFrom = setOf(ANDROID_TEST_VARIANT, "gps", DEFAULT_VARIANT, TEST_VARIANT)
+                            ),
+                            declaredVariant(
+                                name = "ovoAndroidTest",
+                                variantType = AndroidTest,
+                                leaf = false,
+                                extendsFrom = setOf(ANDROID_TEST_VARIANT, "ovo", DEFAULT_VARIANT, TEST_VARIANT)
+                            ),
+                            declaredVariant(
+                                name = "paxAndroidTest",
+                                variantType = AndroidTest,
+                                leaf = false,
+                                extendsFrom = setOf(ANDROID_TEST_VARIANT, "pax", DEFAULT_VARIANT, TEST_VARIANT)
+                            ),
+                            declaredVariant(
+                                name = "gpsOvoDebugAndroidTest",
+                                variantType = AndroidTest,
+                                leaf = true,
+                                extendsFrom = setOf(
+                                    ANDROID_TEST_VARIANT,
+                                    "debug",
+                                    "debugAndroidTest",
+                                    DEFAULT_VARIANT,
+                                    "gps",
+                                    "gpsAndroidTest",
+                                    "gpsOvoDebug",
+                                    "ovo",
+                                    "ovoAndroidTest",
+                                    TEST_VARIANT
+                                )
+                            ),
+                            declaredVariant(
+                                name = "gpsPaxDebugAndroidTest",
+                                variantType = AndroidTest,
+                                leaf = true,
+                                extendsFrom = setOf(
+                                    ANDROID_TEST_VARIANT,
+                                    "debug",
+                                    "debugAndroidTest",
+                                    DEFAULT_VARIANT,
+                                    "gps",
+                                    "gpsAndroidTest",
+                                    "gpsPaxDebug",
+                                    "pax",
+                                    "paxAndroidTest",
+                                    TEST_VARIANT
+                                )
+                            )
+                        )
+                    )
+                )
+            ),
+            workspaceDependencyRoots = listOf(
+                root(
+                    component = appGpsPaxDebugRoot,
+                    projectPath = ":app",
+                    kind = AggregatedDependencyRootKind.MAIN_LEAF,
+                    bucketName = "gpsPaxDebug",
+                    leafName = "gpsPaxDebug",
+                    variantType = AndroidBuild
+                ),
+                root(
+                    component = appGpsOvoDebugRoot,
+                    projectPath = ":app",
+                    kind = AggregatedDependencyRootKind.MAIN_LEAF,
+                    bucketName = "gpsOvoDebug",
+                    leafName = "gpsOvoDebug",
+                    variantType = AndroidBuild
+                ),
+                root(
+                    component = gpsPaxAndroidTestRoot,
+                    projectPath = ":app",
+                    kind = AggregatedDependencyRootKind.ANDROID_TEST,
+                    bucketName = "gpsPaxDebug",
+                    leafName = "gpsPaxDebug",
+                    variantType = AndroidTest
+                ),
+                root(
+                    component = gpsOvoAndroidTestRoot,
+                    projectPath = ":app",
+                    kind = AggregatedDependencyRootKind.ANDROID_TEST,
+                    bucketName = "gpsOvoDebug",
+                    leafName = "gpsOvoDebug",
+                    variantType = AndroidTest
+                )
+            )
+        ).resolve()
+
+        assertEquals(
+            listOf("com.example:android-test-helper:1.0"),
+            results.single { result -> result.variantName == ANDROID_TEST_VARIANT }
+                .dependencies
+                .getValue(COMPILE.name)
+                .map(ResolvedDependency::id)
+        )
+    }
+
+    @Test
+    fun `app base android test declarations are not overwritten by base named leaf buckets`() {
+        val unrelatedAndroidTestDependency = fakeComponentResult(
+            group = "com.example",
+            name = "unrelated-android-test-helper",
+            version = "1.0",
+            isProject = false
+        )
+        val appRoot = fakeComponentResult(projectPath = ":app")
+        val selectedAndroidTestRoot = fakeComponentResult(projectPath = ":app")
+        val baseNamedAndroidTestRoot = fakeComponentResult(projectPath = ":app") {
+            addDependencyTo(unrelatedAndroidTestDependency)
+        }
+
+        val results = AggregatedDependencyResolver(
+            logger = ProjectBuilder.builder().build().logger,
+            declaredDependencyMetadata = DeclaredDependencyMetadata(
+                projects = mapOf(
+                    ":app" to ProjectDeclaredDependencyMetadata(
+                        projectType = DeclaredProjectType.ANDROID_APPLICATION,
+                        variants = listOf(
+                            declaredVariant(
+                                name = DEFAULT_VARIANT,
+                                variantType = AndroidBuild,
+                                leaf = false
+                            ),
+                            declaredVariant(
+                                name = "gpsPaxDebug",
+                                variantType = AndroidBuild,
+                                leaf = true,
+                                buildType = "debug",
+                                productFlavors = listOf("gps", "pax"),
+                                extendsFrom = setOf(DEFAULT_VARIANT, "debug", "gps", "pax")
+                            ),
+                            declaredVariant(
+                                name = TEST_VARIANT,
+                                variantType = TestVariantType,
+                                leaf = false,
+                                extendsFrom = setOf(DEFAULT_VARIANT)
+                            ),
+                            declaredVariant(
+                                name = ANDROID_TEST_VARIANT,
+                                variantType = AndroidTest,
+                                leaf = false,
+                                declaredDependencies = setOf("com.example:android-test-helper:1.0"),
+                                extendsFrom = setOf(DEFAULT_VARIANT, TEST_VARIANT)
+                            ),
+                            declaredVariant(
+                                name = "gpsPaxDebugAndroidTest",
+                                variantType = AndroidTest,
+                                leaf = true,
+                                extendsFrom = setOf(
+                                    ANDROID_TEST_VARIANT,
+                                    "gpsPaxDebug",
+                                    DEFAULT_VARIANT,
+                                    TEST_VARIANT
+                                )
+                            )
+                        )
+                    )
+                )
+            ),
+            workspaceDependencyRoots = listOf(
+                root(
+                    component = appRoot,
+                    projectPath = ":app",
+                    kind = AggregatedDependencyRootKind.MAIN_LEAF,
+                    bucketName = "gpsPaxDebug",
+                    leafName = "gpsPaxDebug",
+                    variantType = AndroidBuild
+                ),
+                root(
+                    component = selectedAndroidTestRoot,
+                    projectPath = ":app",
+                    kind = AggregatedDependencyRootKind.ANDROID_TEST,
+                    bucketName = "gpsPaxDebug",
+                    leafName = "gpsPaxDebug",
+                    variantType = AndroidTest
+                ),
+                root(
+                    component = baseNamedAndroidTestRoot,
+                    projectPath = ":app",
+                    kind = AggregatedDependencyRootKind.ANDROID_TEST,
+                    bucketName = ANDROID_TEST_VARIANT,
+                    leafName = ANDROID_TEST_VARIANT,
+                    variantType = AndroidTest
+                )
+            )
+        ).resolve()
+
+        assertEquals(
+            listOf("com.example:android-test-helper:1.0"),
+            results.single { result -> result.variantName == ANDROID_TEST_VARIANT }
+                .dependencies
+                .getValue(COMPILE.name)
+                .map(ResolvedDependency::id)
+        )
+    }
+
+    @Test
+    fun `explicit app android test declaration is emitted after resolved metadata merge when main also contains it`() {
+        val sharedDependency = fakeComponentResult(
+            group = "com.example",
+            name = "shared",
+            version = "1.0",
+            isProject = false
+        )
+        val appRoot = fakeComponentResult(projectPath = ":app") {
+            addDependencyTo(sharedDependency)
+        }
+        val androidTestRoot = fakeComponentResult(projectPath = ":app") {
+            addDependencyTo(sharedDependency)
+        }
+
+        val results = AggregatedDependencyResolver(
+            logger = ProjectBuilder.builder().build().logger,
+            declaredDependencyMetadata = DeclaredDependencyMetadata(
+                projects = mapOf(
+                    ":app" to ProjectDeclaredDependencyMetadata(
+                        projectType = DeclaredProjectType.ANDROID_APPLICATION,
+                        variants = listOf(
+                            declaredVariant(
+                                name = DEFAULT_VARIANT,
+                                variantType = AndroidBuild,
+                                leaf = false
+                            ),
+                            declaredVariant(
+                                name = ANDROID_TEST_VARIANT,
+                                variantType = AndroidTest,
+                                leaf = false,
+                                declaredDependencies = setOf("com.example:shared:1.0"),
+                                extendsFrom = setOf(DEFAULT_VARIANT, TEST_VARIANT)
+                            )
+                        )
+                    )
+                )
+            ),
+            workspaceDependencyRoots = listOf(
+                root(
+                    component = appRoot,
+                    projectPath = ":app",
+                    kind = AggregatedDependencyRootKind.MAIN_HIERARCHY,
+                    bucketName = DEFAULT_VARIANT,
+                    variantType = AndroidBuild
+                ),
+                root(
+                    component = androidTestRoot,
+                    projectPath = ":app",
+                    kind = AggregatedDependencyRootKind.ANDROID_TEST,
+                    bucketName = DEFAULT_VARIANT,
+                    leafName = DEFAULT_VARIANT,
+                    variantType = AndroidTest
+                )
+            )
+        ).resolve()
+
+        assertEquals(
+            listOf("com.example:shared:1.0"),
+            results.single { result -> result.variantName == ANDROID_TEST_VARIANT }
+                .dependencies
+                .getValue(COMPILE.name)
+                .map(ResolvedDependency::id)
+        )
     }
 
     @Test
@@ -1405,6 +1955,172 @@ class AggregatedDependencyResolverTest {
                 root(
                     component = includingAppRoot,
                     projectPath = ":including-app",
+                    kind = AggregatedDependencyRootKind.MAIN_HIERARCHY,
+                    bucketName = DEFAULT_VARIANT,
+                    variantType = AndroidBuild
+                )
+            )
+        ).resolve()
+
+        assertEquals(
+            listOf("com.example:blocked:1.0"),
+            results.single { result -> result.variantName == DEFAULT_VARIANT }
+                .dependencies
+                .getValue(COMPILE.name)
+                .map(ResolvedDependency::id)
+        )
+    }
+
+    @Test
+    fun `project dependency cycle does not apply unselected root variant excludes`() {
+        val blockedDependency = fakeComponentResult(
+            group = "com.example",
+            name = "blocked",
+            version = "1.0",
+            isProject = false
+        )
+        val libProject = fakeComponentResult(
+            isProject = true,
+            projectPath = ":lib"
+        ) {
+            addDependencyTo(blockedDependency)
+        }
+        val appRoot = fakeComponentResult(projectPath = ":app") {
+            addDependencyTo(libProject, selectedVariantDisplayName = "runtimeElements")
+        }
+
+        val results = AggregatedDependencyResolver(
+            logger = ProjectBuilder.builder().build().logger,
+            declaredDependencyMetadata = DeclaredDependencyMetadata(
+                projects = mapOf(
+                    ":app" to ProjectDeclaredDependencyMetadata(
+                        projectType = DeclaredProjectType.ANDROID_APPLICATION,
+                        variants = listOf(
+                            declaredVariant(
+                                name = DEFAULT_VARIANT,
+                                variantType = AndroidBuild,
+                                leaf = false,
+                                declaredProjectDependencies = setOf("implementation->:lib::[]")
+                            ),
+                            declaredVariant(
+                                name = "debug",
+                                variantType = AndroidBuild,
+                                leaf = false,
+                                declaredProjectDependencies = setOf(
+                                    "debugImplementation->:lib::[com.example:blocked]"
+                                )
+                            )
+                        )
+                    ),
+                    ":lib" to ProjectDeclaredDependencyMetadata(
+                        projectType = DeclaredProjectType.OTHER,
+                        variants = listOf(
+                            declaredVariant(
+                                name = DEFAULT_VARIANT,
+                                variantType = AndroidBuild,
+                                leaf = false,
+                                declaredDependencies = setOf("com.example:blocked:1.0"),
+                                declaredProjectDependencies = setOf("implementation->:app::[]")
+                            )
+                        )
+                    )
+                )
+            ),
+            workspaceDependencyRoots = listOf(
+                root(
+                    component = appRoot,
+                    projectPath = ":app",
+                    kind = AggregatedDependencyRootKind.MAIN_HIERARCHY,
+                    bucketName = DEFAULT_VARIANT,
+                    variantType = AndroidBuild
+                )
+            )
+        ).resolve()
+
+        assertEquals(
+            listOf("com.example:blocked:1.0"),
+            results.single { result -> result.variantName == DEFAULT_VARIANT }
+                .dependencies
+                .getValue(COMPILE.name)
+                .map(ResolvedDependency::id)
+        )
+    }
+
+    @Test
+    fun `transitive project dependency edge excludes do not apply unselected owner variants`() {
+        val blockedDependency = fakeComponentResult(
+            group = "com.example",
+            name = "blocked",
+            version = "1.0",
+            isProject = false
+        )
+        val coreProject = fakeComponentResult(
+            isProject = true,
+            projectPath = ":core"
+        ) {
+            addDependencyTo(blockedDependency)
+        }
+        val libProject = fakeComponentResult(
+            isProject = true,
+            projectPath = ":lib"
+        ) {
+            addDependencyTo(coreProject, selectedVariantDisplayName = "runtimeElements")
+        }
+        val appRoot = fakeComponentResult(projectPath = ":app") {
+            addDependencyTo(libProject, selectedVariantDisplayName = "runtimeElements")
+        }
+
+        val results = AggregatedDependencyResolver(
+            logger = ProjectBuilder.builder().build().logger,
+            declaredDependencyMetadata = DeclaredDependencyMetadata(
+                projects = mapOf(
+                    ":app" to ProjectDeclaredDependencyMetadata(
+                        projectType = DeclaredProjectType.ANDROID_APPLICATION,
+                        variants = listOf(
+                            declaredVariant(
+                                name = DEFAULT_VARIANT,
+                                variantType = AndroidBuild,
+                                leaf = false,
+                                declaredProjectDependencies = setOf("implementation->:lib::[]")
+                            )
+                        )
+                    ),
+                    ":lib" to ProjectDeclaredDependencyMetadata(
+                        projectType = DeclaredProjectType.OTHER,
+                        variants = listOf(
+                            declaredVariant(
+                                name = DEFAULT_VARIANT,
+                                variantType = AndroidBuild,
+                                leaf = false,
+                                declaredProjectDependencies = setOf("implementation->:core::[]")
+                            ),
+                            declaredVariant(
+                                name = "debug",
+                                variantType = AndroidBuild,
+                                leaf = false,
+                                declaredProjectDependencies = setOf(
+                                    "debugImplementation->:core::[com.example:blocked]"
+                                )
+                            )
+                        )
+                    ),
+                    ":core" to ProjectDeclaredDependencyMetadata(
+                        projectType = DeclaredProjectType.OTHER,
+                        variants = listOf(
+                            declaredVariant(
+                                name = DEFAULT_VARIANT,
+                                variantType = AndroidBuild,
+                                leaf = false,
+                                declaredDependencies = setOf("com.example:blocked:1.0")
+                            )
+                        )
+                    )
+                )
+            ),
+            workspaceDependencyRoots = listOf(
+                root(
+                    component = appRoot,
+                    projectPath = ":app",
                     kind = AggregatedDependencyRootKind.MAIN_HIERARCHY,
                     bucketName = DEFAULT_VARIANT,
                     variantType = AndroidBuild

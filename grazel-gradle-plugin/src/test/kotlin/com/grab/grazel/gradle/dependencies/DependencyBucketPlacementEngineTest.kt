@@ -549,6 +549,39 @@ class DependencyBucketPlacementEngineTest {
     }
 
     @Test
+    fun `explicit declared base bucket dependency is retained when absent from selected leaves`() {
+        val declaredDependency = dependency("com.example:android-test-helper:1.0")
+            .copy(repository = DECLARED_DEPENDENCY_REPOSITORY)
+        val leafDependency = dependency("com.example:leaf-only:1.0")
+
+        val plan = DependencyBucketPlacementEngine().plan(
+            variants = listOf(
+                leafWithParents(
+                    name = "freeDebugAndroidTest",
+                    extendsFrom = setOf(ANDROID_TEST_VARIANT, "freeDebug"),
+                    buildType = "debug"
+                )
+            ),
+            hierarchyBucketClosures = mapOf(
+                ANDROID_TEST_VARIANT to mapOf(declaredDependency.shortId to declaredDependency)
+            ),
+            leafClosures = mapOf(
+                "freeDebugAndroidTest" to mapOf(leafDependency.shortId to leafDependency)
+            ),
+            baseBucketName = ANDROID_TEST_VARIANT
+        )
+
+        assertEquals(
+            mapOf(declaredDependency.shortId to declaredDependency),
+            plan.defaultBucket
+        )
+        assertEquals(
+            mapOf(leafDependency.shortId to leafDependency),
+            plan.leafBuckets["freeDebugAndroidTest"]
+        )
+    }
+
+    @Test
     fun `test bucket variant inputs retain main parents for hierarchy graph modeling`() {
         val metadata = DeclaredDependencyMetadata(
             projects = mapOf(

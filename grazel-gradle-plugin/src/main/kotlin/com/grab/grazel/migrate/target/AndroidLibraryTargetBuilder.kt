@@ -19,7 +19,9 @@ package com.grab.grazel.migrate.target
 import com.grab.grazel.gradle.isAndroid
 import com.grab.grazel.gradle.isAndroidApplication
 import com.grab.grazel.gradle.isAndroidTest
+import com.grab.grazel.gradle.dependencies.DefaultDependencyResolutionService
 import com.grab.grazel.gradle.variant.DefaultVariantCompressionService
+import com.grab.grazel.gradle.variant.MatchedVariant
 import com.grab.grazel.gradle.variant.VariantMatcher
 import com.grab.grazel.gradle.variant.VariantType
 import com.grab.grazel.gradle.variant.nameSuffix
@@ -67,30 +69,43 @@ constructor(
     private val androidLibraryDataExtractor: AndroidLibraryDataExtractor,
     private val unitTestDataExtractor: AndroidUnitTestDataExtractor,
     private val variantMatcher: VariantMatcher,
-    private val variantCompressionService: GradleProvider<DefaultVariantCompressionService>
+    private val variantCompressionService: GradleProvider<DefaultVariantCompressionService>,
+    private val dependencyResolutionService: GradleProvider<DefaultDependencyResolutionService>
 ) : TargetBuilder {
 
     override fun build(project: Project): List<BazelTarget> {
+        val androidBuildVariants = reachableMatchedVariants(project, VariantType.AndroidBuild)
+
         // Check if compression result exists for this project
         val compressionResult = variantCompressionService.get().get(project.path)
         val libraryTargets = // Use pre-computed compressed targets from the analysis phase
-            compressionResult?.targets?.map { it.toAndroidLibTarget() }
+            compressionResult?.let {
+                val reachableSuffixes = reachableCompressedTargetSuffixes(
+                    variantToSuffix = it.variantToSuffix,
+                    reachableVariantNames = androidBuildVariants.mapTo(mutableSetOf()) { variant ->
+                        variant.variantName
+                    }
+                )
+                it.targetsBySuffix
+                    .filterKeys { suffix -> suffix in reachableSuffixes }
+                    .values
+                    .map { target -> target.toAndroidLibTarget() }
+            }
                 ?: run {
                     // Fallback to extracting again
                     project.logger.error("Compressed result does not exist for this project")
-                    variantMatcher.matchedVariants(project, VariantType.AndroidBuild)
-                        .map { matchedVariant ->
-                            androidLibraryDataExtractor
-                                .extract(project, matchedVariant)
-                                .toAndroidLibTarget()
-                        }
+                    androidBuildVariants.map { matchedVariant ->
+                        androidLibraryDataExtractor
+                            .extract(project, matchedVariant)
+                            .toAndroidLibTarget()
+                    }
                 }
         return libraryTargets + unitTestsTargets(project)
     }
 
     private fun unitTestsTargets(project: Project): List<AndroidUnitTestTarget> {
         val compressionResult = variantCompressionService.get().get(project.path)
-        val testVariants = variantMatcher.matchedVariants(project, VariantType.Test)
+        val testVariants = reachableMatchedVariants(project, VariantType.Test)
         return if (compressionResult != null) {
             // Deduplicate by compression suffix: only emit one test per unique suffix
             val variantsBySuffix = testVariants.groupBy { matchedVariant ->
@@ -118,6 +133,18 @@ constructor(
         }
     }
 
+    private fun reachableMatchedVariants(
+        project: Project,
+        variantType: VariantType
+    ): Set<MatchedVariant> {
+        val isReachableBucket = reachableBucketPredicate(project, dependencyResolutionService)
+        return variantMatcher.matchedVariants(
+            project = project,
+            variantType = variantType,
+            appVariantFilter = { appVariant -> appVariant.isReachableTargetVariant(isReachableBucket) }
+        )
+    }
+
     override fun canHandle(project: Project): Boolean = with(project) {
         isAndroid && !isAndroidApplication && !isAndroidTest
     }
@@ -138,4 +165,3 @@ private fun AndroidLibraryData.toAndroidLibTarget() = AndroidLibraryTarget(
     tags = tags,
     lintConfigData = lintConfigData
 )
-

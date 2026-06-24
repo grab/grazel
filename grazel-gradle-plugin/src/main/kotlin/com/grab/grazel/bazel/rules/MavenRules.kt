@@ -153,7 +153,7 @@ fun StatementsBuilder.mavenInstall(
         }
     }
 
-    if (artifactPinning) {
+    if (artifactPinning && mavenInstallJsonEnabled) {
         load("@$name//:defs.bzl".quote) {
             "${name}_pinned_maven_install" `=` "pinned_maven_install".quote
         }

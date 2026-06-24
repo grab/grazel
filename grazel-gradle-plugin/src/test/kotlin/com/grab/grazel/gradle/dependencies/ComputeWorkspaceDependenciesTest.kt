@@ -412,6 +412,38 @@ class ComputeWorkspaceDependenciesTest {
             ),
             lintDeps.single { it.shortId == "com.example:annotations" }.overrideTarget
         )
+        assertEquals(false, lintDeps.single { it.shortId == "com.example:annotations" }.direct)
+    }
+
+    @Test
+    fun `default owned child transitive override does not become direct`() {
+        val defaultDependency = dependency("com.example:annotations:1.1", "maven")
+        val lintDependency = dependency(
+            id = "com.example:lint-checks:1.0",
+            repository = "lint_maven",
+            dependencies = setOf("com.example:annotations:1.0:maven:false:null")
+        )
+
+        val workspaceDependencies = ComputeWorkspaceDependencies().computeFromResults(
+            listOf(
+                result("default", defaultDependency),
+                result("lint", lintDependency)
+            )
+        )
+
+        val lintAnnotations = workspaceDependencies.variantDeps
+            .getValue("lint")
+            .single { it.shortId == "com.example:annotations" }
+
+        assertEquals("com.example:annotations:1.1", lintAnnotations.id)
+        assertEquals(false, lintAnnotations.direct)
+        assertEquals(
+            OverrideTarget(
+                artifactShortId = "com.example:annotations",
+                label = MavenDependency(group = "com.example", name = "annotations")
+            ),
+            lintAnnotations.overrideTarget
+        )
     }
 
     private fun result(

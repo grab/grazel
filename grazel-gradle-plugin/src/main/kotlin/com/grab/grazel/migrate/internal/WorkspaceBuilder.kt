@@ -43,12 +43,10 @@ import com.grab.grazel.di.qualifiers.RootProject
 import com.grab.grazel.gradle.DefaultGradleProjectInfo
 import com.grab.grazel.gradle.GradleProjectInfo
 import com.grab.grazel.gradle.dependencies.model.WorkspaceDependencies
-import com.grab.grazel.gradle.variant.DefaultVariantCompressionService
 import com.grab.grazel.gradle.isAndroidApplication
 import com.grab.grazel.migrate.BazelFileBuilder
 import com.grab.grazel.migrate.android.parseCompileSdkVersion
 import com.grab.grazel.migrate.dependencies.MavenInstallArtifactsCalculator
-import com.grab.grazel.util.GradleProvider
 import org.gradle.api.Project
 import org.gradle.kotlin.dsl.the
 import javax.inject.Inject
@@ -71,7 +69,6 @@ internal class WorkspaceBuilder(
         private val grazelExtension: GrazelExtension,
         private val gradleProjectInfoFactory: DefaultGradleProjectInfo.Factory,
         private val mavenInstallArtifactsCalculator: MavenInstallArtifactsCalculator,
-        private val variantCompressionService: GradleProvider<DefaultVariantCompressionService>,
     ) {
         fun create(
             projectsToMigrate: List<Project>,
@@ -85,7 +82,7 @@ internal class WorkspaceBuilder(
             gradleProjectInfoFactory.create(workspaceDependencies),
             workspaceDependencies,
             mavenInstallArtifactsCalculator,
-            variantCompressionService.get().referencedMavenRepos() + referencedMavenRepos
+            referencedMavenRepos
         )
     }
 

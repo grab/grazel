@@ -16,6 +16,7 @@
 
 package com.grab.grazel.migrate.target
 
+import com.grab.grazel.gradle.dependencies.DefaultDependencyResolutionService
 import com.grab.grazel.gradle.variant.VariantType
 import com.grab.grazel.gradle.hasTestInstrumentationRunner
 import com.grab.grazel.gradle.isAndroidApplication
@@ -26,6 +27,7 @@ import com.grab.grazel.migrate.android.AndroidInstrumentationBinaryDataExtractor
 import com.grab.grazel.migrate.android.AndroidInstrumentationBinaryTarget
 import com.grab.grazel.migrate.android.DefaultAndroidInstrumentationBinaryDataExtractor
 import com.grab.grazel.migrate.android.SourceSetType
+import com.grab.grazel.util.GradleProvider
 import dagger.Binds
 import dagger.Module
 import dagger.multibindings.IntoSet
@@ -49,12 +51,15 @@ internal class AndroidInstrumentationBinaryTargetBuilder
 @Inject constructor(
     private val androidInstrumentationBinDataExtractor: AndroidInstrumentationBinaryDataExtractor,
     private val variantMatcher: VariantMatcher,
+    private val dependencyResolutionService: GradleProvider<DefaultDependencyResolutionService>,
 ) : TargetBuilder {
 
     override fun build(project: Project) = buildList {
+        val isReachableBucket = reachableBucketPredicate(project, dependencyResolutionService)
         variantMatcher.matchedVariants(
-            project,
-            VariantType.AndroidTest
+            project = project,
+            variantType = VariantType.AndroidTest,
+            appVariantFilter = { appVariant -> appVariant.isReachableTargetVariant(isReachableBucket) }
         ).forEach { matchedVariant ->
             val androidInstrumentationBinData = androidInstrumentationBinDataExtractor.extract(
                 project = project,

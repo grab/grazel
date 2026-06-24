@@ -6,8 +6,12 @@ import com.grab.grazel.bazel.rules.MavenInstallArtifact.Exclusion.SimpleExclusio
 import com.grab.grazel.bazel.rules.MavenRepository.DefaultMavenRepository
 import com.grab.grazel.bazel.starlark.BazelDependency.MavenDependency
 import com.grab.grazel.buildProject
+import com.grab.grazel.gradle.dependencies.ComputeWorkspaceDependencies
 import com.grab.grazel.gradle.dependencies.DECLARED_DEPENDENCY_REPOSITORY
 import com.grab.grazel.gradle.dependencies.model.OverrideTarget
+import com.grab.grazel.gradle.dependencies.model.ResolveDependenciesResult
+import com.grab.grazel.gradle.dependencies.model.ResolveDependenciesResult.Companion.Scope.COMPILE
+import com.grab.grazel.gradle.dependencies.model.ResolveDependenciesResult.Companion.Scope.KSP
 import com.grab.grazel.gradle.dependencies.model.ResolvedDependency
 import com.grab.grazel.gradle.dependencies.model.WorkspaceDependencies
 import com.grab.grazel.gradle.variant.DEFAULT_VARIANT
@@ -496,6 +500,13 @@ class MavenInstallArtifactsCalculatorTest {
                         LINT_VARIANT
                     )
                 )
+            ),
+            variantTransitiveClasspath = mapOf(
+                LINT_VARIANT to mapOf(
+                    "com.android.tools.lint:lint-api" to setOf(
+                        "androidx.annotation:annotation"
+                    )
+                )
             )
         )
 
@@ -680,7 +691,7 @@ class MavenInstallArtifactsCalculatorTest {
     }
 
     @Test
-    fun `variant maven install roots default owned selected closure for coursier`() {
+    fun `variant maven install redirects same version default owned selected closure`() {
         setup()
 
         val repository = "MavenRepo"
@@ -745,8 +756,8 @@ class MavenInstallArtifactsCalculatorTest {
             setOf(
                 "androidx.compose.ui:ui-test-junit4:1.8.3",
                 "androidx.lifecycle:lifecycle-common-java8:2.8.3",
-                "androidx.lifecycle:lifecycle-common-jvm:2.8.3",
-                "androidx.lifecycle:lifecycle-common:2.8.3"
+                "androidx.lifecycle:lifecycle-common:2.8.3",
+                "androidx.lifecycle:lifecycle-common-jvm:2.8.3"
             ),
             debugAndroidTestRepo.artifacts.map { it.id }.toSet()
         )
@@ -754,15 +765,14 @@ class MavenInstallArtifactsCalculatorTest {
             mapOf(
                 "androidx.lifecycle:lifecycle-common" to "@maven//:androidx_lifecycle_lifecycle_common",
                 "androidx.lifecycle:lifecycle-common-java8" to "@maven//:androidx_lifecycle_lifecycle_common_java8",
-                "androidx.lifecycle:lifecycle-common-jvm" to "@maven//:androidx_lifecycle_lifecycle_common_jvm",
-                "androidx.lifecycle:lifecycle-process" to "@maven//:androidx_lifecycle_lifecycle_process"
+                "androidx.lifecycle:lifecycle-common-jvm" to "@maven//:androidx_lifecycle_lifecycle_common_jvm"
             ),
             debugAndroidTestRepo.overrideTargets
         )
     }
 
     @Test
-    fun `variant maven install roots default closure for existing bucket artifacts`() {
+    fun `variant maven install redirects default closure for existing bucket artifacts`() {
         setup()
 
         val repository = "MavenRepo"
@@ -841,7 +851,6 @@ class MavenInstallArtifactsCalculatorTest {
         )
         assertEquals(
             mapOf(
-                "androidx.fragment:fragment" to "@maven//:androidx_fragment_fragment",
                 "androidx.lifecycle:lifecycle-common" to "@maven//:androidx_lifecycle_lifecycle_common",
                 "androidx.lifecycle:lifecycle-common-java8" to "@maven//:androidx_lifecycle_lifecycle_common_java8",
                 "androidx.lifecycle:lifecycle-runtime" to "@maven//:androidx_lifecycle_lifecycle_runtime"
@@ -894,13 +903,165 @@ class MavenInstallArtifactsCalculatorTest {
             gpsRepo.artifacts.map { it.id }.toSet()
         )
         assertEquals(
-            mapOf(
-                "com.google.android.gms:play-services-measurement-api" to
-                    "@maven//:com_google_android_gms_play_services_measurement_api",
-                "com.google.firebase:firebase-analytics" to
-                    "@maven//:com_google_firebase_firebase_analytics"
-            ),
+            emptyMap<String, String>(),
             gpsRepo.overrideTargets
+        )
+    }
+
+    @Test
+    fun `variant maven install roots and redirects same resolved default owned transitive`() {
+        setup()
+
+        val repository = "MavenRepo"
+        val sharedNotation = "com.example:shared:1.0.0:$repository:false:null"
+        val mainRoot = ResolvedDependency.fromId(
+            "com.example:main:1.0.0",
+            repository
+        ).copy(
+            dependencies = setOf(sharedNotation)
+        )
+        val androidTestRoot = ResolvedDependency.fromId(
+            "com.example:test-helper:1.0.0",
+            repository
+        ).copy(
+            dependencies = setOf(sharedNotation)
+        )
+        val workspaceDependencies = ComputeWorkspaceDependencies().computeFromResults(
+            listOf(
+                result(DEFAULT_VARIANT, mainRoot),
+                result("androidTest", androidTestRoot)
+            )
+        )
+
+        val result = mavenInstallArtifactsCalculator.get(
+            layout = rootProject.layout,
+            workspaceDependencies = workspaceDependencies,
+            externalArtifacts = emptySet(),
+            externalRepositories = emptySet()
+        )
+
+        val androidTestRepo = result.single { it.name == "android_test_maven" }
+        assertEquals(
+            setOf(
+                "com.example:shared:1.0.0",
+                "com.example:test-helper:1.0.0"
+            ),
+            androidTestRepo.artifacts.map { it.id }.toSet()
+        )
+        assertEquals(
+            mapOf("com.example:shared" to "@maven//:com_example_shared"),
+            androidTestRepo.overrideTargets.filterKeys { it == "com.example:shared" }
+        )
+        assertFalse(
+            "generated force-version options should not replace artifact closure constraints",
+            "--force-version" in androidTestRepo.additionalCoursierOptions
+        )
+    }
+
+    @Test
+    fun `variant maven install roots resolved dependencies carried by rooted artifacts`() {
+        setup()
+
+        val repository = "MavenRepo"
+        val monitorNotation = "androidx.test:monitor:1.6.0:$repository:false:null"
+        val rootedArtifact = ResolvedDependency.fromId(
+            "androidx.test.ext:junit-ktx:1.1.5",
+            DECLARED_DEPENDENCY_REPOSITORY
+        ).copy(
+            dependencies = setOf(monitorNotation)
+        )
+        val monitorDependency = ResolvedDependency.fromId(
+            "androidx.test:monitor:1.6.0",
+            repository
+        ).copy(direct = false)
+        val workspaceDependencies = WorkspaceDependencies(
+            variantDeps = mapOf(
+                DEFAULT_VARIANT to listOf(monitorDependency),
+                "debug" to listOf(rootedArtifact)
+            )
+        )
+
+        val result = mavenInstallArtifactsCalculator.get(
+            layout = rootProject.layout,
+            workspaceDependencies = workspaceDependencies,
+            externalArtifacts = emptySet(),
+            externalRepositories = emptySet()
+        )
+
+        val debugRepo = result.single { it.name == "debug_maven" }
+        assertEquals(
+            setOf(
+                "androidx.test.ext:junit-ktx:1.1.5",
+                "androidx.test:monitor:1.6.0"
+            ),
+            debugRepo.artifacts.map { it.id }.toSet()
+        )
+        assertEquals(
+            mapOf(
+                "androidx.test:monitor" to "@maven//:androidx_test_monitor"
+            ),
+            debugRepo.overrideTargets.filterKeys { it == "androidx.test:monitor" }
+        )
+        assertFalse(
+            "generated force-version options should not replace artifact closure constraints",
+            "--force-version" in debugRepo.additionalCoursierOptions
+        )
+    }
+
+    @Test
+    fun `variant maven install roots selected closure for promoted rooted artifacts`() {
+        setup()
+
+        val repository = "MavenRepo"
+        val carrier = ResolvedDependency.fromId(
+            "com.credolab:modular.audio:4.0.0",
+            repository
+        )
+        val junitKtx = ResolvedDependency.fromId(
+            "androidx.test.ext:junit-ktx:1.1.5",
+            DECLARED_DEPENDENCY_REPOSITORY
+        )
+        val monitor = ResolvedDependency.fromId(
+            "androidx.test:monitor:1.6.0",
+            repository
+        ).copy(direct = false)
+        val workspaceDependencies = WorkspaceDependencies(
+            variantDeps = mapOf(
+                DEFAULT_VARIANT to listOf(monitor),
+                "debug" to listOf(junitKtx)
+            ),
+            transitiveClasspath = mapOf(
+                carrier.shortId to setOf(junitKtx.shortId, monitor.shortId)
+            ),
+            variantTransitiveClasspath = mapOf(
+                "debug" to mapOf(carrier.shortId to setOf(junitKtx.shortId))
+            )
+        )
+
+        val result = mavenInstallArtifactsCalculator.get(
+            layout = rootProject.layout,
+            workspaceDependencies = workspaceDependencies,
+            externalArtifacts = emptySet(),
+            externalRepositories = emptySet()
+        )
+
+        val debugRepo = result.single { it.name == "debug_maven" }
+        assertEquals(
+            setOf(
+                "androidx.test.ext:junit-ktx:1.1.5",
+                "androidx.test:monitor:1.6.0"
+            ),
+            debugRepo.artifacts.map { it.id }.toSet()
+        )
+        assertEquals(
+            mapOf(
+                "androidx.test:monitor" to "@maven//:androidx_test_monitor"
+            ),
+            debugRepo.overrideTargets.filterKeys { it == "androidx.test:monitor" }
+        )
+        assertFalse(
+            "generated force-version options should not replace artifact closure constraints",
+            "--force-version" in debugRepo.additionalCoursierOptions
         )
     }
 
@@ -978,7 +1139,7 @@ class MavenInstallArtifactsCalculatorTest {
     }
 
     @Test
-    fun `variant maven install falls back to global closure for roots missing scoped closure`() {
+    fun `variant maven install roots global closure for rooted artifacts without sibling carriers`() {
         setup()
 
         val repository = "MavenRepo"
@@ -1030,6 +1191,12 @@ class MavenInstallArtifactsCalculatorTest {
                 "com.example:scoped-root:1.0.0"
             ),
             result.single { it.name == "debug_maven" }.artifacts.map { it.id }.toSet()
+        )
+        assertEquals(
+            mapOf("androidx.test:monitor" to "@maven//:androidx_test_monitor"),
+            result.single { it.name == "debug_maven" }
+                .overrideTargets
+                .filterKeys { it == "androidx.test:monitor" }
         )
     }
 
@@ -1123,7 +1290,7 @@ class MavenInstallArtifactsCalculatorTest {
     }
 
     @Test
-    fun `non default maven install redirects default owned transitive artifacts`() {
+    fun `non default maven install does not redirect unrelated default owned artifacts`() {
         setup()
 
         val repository = "MavenRepo"
@@ -1150,7 +1317,7 @@ class MavenInstallArtifactsCalculatorTest {
         )
 
         assertEquals(
-            mapOf("com.example:shared-transitive" to "@maven//:com_example_shared_transitive"),
+            emptyMap<String, String>(),
             result.single { it.name == "debug_maven" }.overrideTargets
         )
     }
@@ -1327,6 +1494,19 @@ class MavenInstallArtifactsCalculatorTest {
         assertEquals(
             setOf("com.example:annotations:1.1.0", "com.example:lint-checks:1.0.0"),
             lintRepo.artifacts.map { it.id }.toSet()
+        )
+    }
+
+    private fun result(
+        variantName: String,
+        vararg dependencies: ResolvedDependency
+    ): ResolveDependenciesResult {
+        return ResolveDependenciesResult(
+            variantName = variantName,
+            dependencies = mapOf(
+                COMPILE.name to dependencies.toSet(),
+                KSP.name to emptySet()
+            )
         )
     }
 }

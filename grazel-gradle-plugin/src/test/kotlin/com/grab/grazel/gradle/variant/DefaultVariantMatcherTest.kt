@@ -272,6 +272,35 @@ internal class DefaultVariantMatcherTest {
     }
 
     @Test
+    fun `assert app variant filter skips unreachable variants before matching`() {
+        configure(
+            app = {
+                flavorDimensions("type")
+                productFlavors {
+                    create("paid") {
+                        dimension("type")
+                    }
+                }
+                buildTypes {
+                    create("staging")
+                }
+            },
+        )
+
+        val results = variantMatcher.matchedVariants(
+            libraryProject,
+            VariantType.AndroidBuild,
+            appVariantFilter = { appVariant -> appVariant.buildType.name != "staging" }
+        )
+
+        assertVariantNames(
+            results,
+            "paidDebug",
+            "paidRelease",
+        )
+    }
+
+    @Test
     fun `assert app module with multiple dimensions and library module with single dimension`() {
         fun setup(addFallback: Boolean = false) {
             configure(

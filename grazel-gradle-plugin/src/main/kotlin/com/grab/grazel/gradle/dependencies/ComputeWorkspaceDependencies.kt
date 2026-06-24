@@ -127,7 +127,7 @@ internal class ComputeWorkspaceDependencies {
                             .filter { (shortId, dependency) ->
                                 val defaultDependency = defaultFlatClasspath[shortId]
                                 dependency.isDirectOverrideCarrier() ||
-                                    !dependency.isDirectDependencyCoveredBy(defaultDependency)
+                                    !dependency.isCoveredByDefaultFlatClasspath(defaultDependency)
                             }
                             .collect(
                                 Collectors.toMap(
@@ -136,8 +136,9 @@ internal class ComputeWorkspaceDependencies {
                                         // If a transitive dependency is already in default classpath,
                                         // then we override it to point to default classpath instead
                                         val defaultDependency = defaultFlatClasspath[shortId]
-                                        if (defaultDependency != null && dependency.shouldUseDefaultOwner(defaultDependency)) {
+                                        if (defaultDependency != null && dependency.shouldUseDefaultVersion(defaultDependency)) {
                                             defaultDependency.copy(
+                                                direct = false,
                                                 overrideTarget = mavenOverrideTarget(
                                                     shortId,
                                                     DEFAULT_VARIANT
@@ -259,6 +260,16 @@ internal class ComputeWorkspaceDependencies {
             defaultDependency.hasSameDefaultDirectOwnerIdentityAs(this)
     }
 
+    private fun ResolvedDependency.isCoveredByDefaultFlatClasspath(
+        defaultDependency: ResolvedDependency?
+    ): Boolean {
+        if (defaultDependency == null) return false
+        if (isDirectDependencyCoveredBy(defaultDependency)) return true
+        return !direct &&
+            !shouldUseDefaultVersion(defaultDependency) &&
+            defaultDependency.hasSameDefaultDirectOwnerIdentityAs(this)
+    }
+
     private fun ResolvedDependency.isDeclaredDependency(): Boolean {
         return repository == DECLARED_DEPENDENCY_REPOSITORY
     }
@@ -267,12 +278,10 @@ internal class ComputeWorkspaceDependencies {
         return direct && overrideTarget != null
     }
 
-    private fun ResolvedDependency.shouldUseDefaultOwner(
+    private fun ResolvedDependency.shouldUseDefaultVersion(
         defaultDependency: ResolvedDependency
     ): Boolean {
-        return !direct &&
-            (defaultDependency.hasSameDefaultOwnerIdentityAs(this) ||
-                defaultDependency.versionInfo > versionInfo)
+        return !direct && defaultDependency.versionInfo > versionInfo
     }
 
     private fun ResolvedDependency.hasSameDefaultOwnerIdentityAs(other: ResolvedDependency): Boolean {
