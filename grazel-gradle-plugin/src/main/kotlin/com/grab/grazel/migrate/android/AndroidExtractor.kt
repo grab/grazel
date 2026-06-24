@@ -23,8 +23,6 @@ import com.grab.grazel.bazel.rules.Multidex
 import com.grab.grazel.bazel.starlark.BazelDependency
 import com.grab.grazel.gradle.dependencies.DefaultDependencyGraphsService
 import com.grab.grazel.gradle.dependencies.DependenciesDataSource
-import com.grab.grazel.gradle.variant.VariantGraphKey
-import com.grab.grazel.gradle.variant.VariantType
 import com.grab.grazel.gradle.dependencies.DependencyGraphs
 import com.grab.grazel.gradle.dependencies.GradleDependencyToBazelDependency
 import com.grab.grazel.gradle.hasCompose
@@ -32,7 +30,14 @@ import com.grab.grazel.gradle.hasCrashlytics
 import com.grab.grazel.gradle.hasDatabinding
 import com.grab.grazel.gradle.isAndroid
 import com.grab.grazel.gradle.variant.AndroidVariantDataSource
+import com.grab.grazel.gradle.variant.DEFAULT_VARIANT
 import com.grab.grazel.gradle.variant.MatchedVariant
+import com.grab.grazel.gradle.variant.Variant
+import com.grab.grazel.gradle.variant.VariantBuilder
+import com.grab.grazel.gradle.variant.VariantGraphKey
+import com.grab.grazel.gradle.variant.VariantType
+import com.grab.grazel.gradle.variant.VariantType.AndroidBuild
+import com.grab.grazel.gradle.variant.VariantType.JvmBuild
 import com.grab.grazel.gradle.variant.getMigratableBuildVariants
 import com.grab.grazel.gradle.variant.nameSuffix
 import com.grab.grazel.migrate.android.SourceSetType.JAVA_KOTLIN
@@ -62,6 +67,7 @@ constructor(
     private val dependenciesDataSource: DependenciesDataSource,
     private val dependencyGraphsService: GradleProvider<DefaultDependencyGraphsService>,
     private val gradleDependencyToBazelDependency: GradleDependencyToBazelDependency,
+    private val variantBuilder: VariantBuilder,
 ) : AndroidLibraryDataExtractor {
 
     private val projectDependencyGraphs: DependencyGraphs get() = dependencyGraphsService.get().get()
@@ -75,10 +81,11 @@ constructor(
                 val extension = project.extensions.getByType<BaseExtension>()
 
                 val variantKey = VariantGraphKey.from(project, matchedVariant, VariantType.AndroidBuild)
-                val deps: List<BazelDependency> = projectDependencyGraphs.directDependenciesByVariant(
+                val directProjectDependencies = projectDependencyGraphs.directDependenciesByVariant(
                     project = project,
                     variantKey = variantKey
-                ).map { dependent ->
+                )
+                val deps: List<BazelDependency> = directProjectDependencies.map { dependent ->
                     gradleDependencyToBazelDependency.map(
                         project,
                         dependent,
@@ -89,7 +96,13 @@ constructor(
                     variantKey,
                     preferredVariantNames = listOf(matchedVariant.variantName)
                 ) + project.kotlinParcelizeDeps()
-                return project.extract(matchedVariant, extension, deps, variantKey)
+                return project.extract(
+                    matchedVariant = matchedVariant,
+                    extension = extension,
+                    deps = deps,
+                    variantKey = variantKey,
+                    directProjectDependencies = directProjectDependencies
+                )
             }
 
             else -> throw IllegalArgumentException("${project.name} is not an Android project")
@@ -101,6 +114,7 @@ constructor(
         extension: BaseExtension,
         deps: List<BazelDependency>,
         variantKey: VariantGraphKey,
+        directProjectDependencies: Set<Project>,
     ): AndroidLibraryData {
         // Only consider source sets from migratable variants
         val migratableSourceSets = matchedVariant.variant.sourceSets
@@ -127,10 +141,17 @@ constructor(
             ?.let(::relativePath)
 
         val tags = if (grazelExtension.rules.kotlin.enabledTransitiveReduction) {
-            val transitiveMavenDeps = dependenciesDataSource.collectTransitiveMavenDeps(
-                project = project,
-                variantKey = variantKey
-            )
+            val transitiveMavenDeps = buildSet {
+                addAll(
+                    dependenciesDataSource.collectTransitiveMavenDeps(
+                        project = project,
+                        variantKey = variantKey
+                    )
+                )
+                directProjectDependencies.forEach { dependencyProject ->
+                    addAll(dependencyProject.collectTransitiveMavenDepsForTags(matchedVariant))
+                }
+            }
             calculateDirectDependencyTags(
                 self = name,
                 deps = deps + transitiveMavenDeps
@@ -157,6 +178,40 @@ constructor(
             tags = tags.sorted(),
             lintConfigData = lintConfigs
         )
+    }
+
+    private fun Project.collectTransitiveMavenDepsForTags(
+        matchedVariant: MatchedVariant
+    ): Set<BazelDependency.MavenDependency> {
+        val variantKey = bestVariantKeyForTagClosure(matchedVariant) ?: return emptySet()
+        return dependenciesDataSource.collectTransitiveMavenDeps(
+            project = this,
+            variantKey = variantKey
+        )
+    }
+
+    private fun Project.bestVariantKeyForTagClosure(matchedVariant: MatchedVariant): VariantGraphKey? {
+        val variants = variantBuilder.build(this)
+        val variantType = if (isAndroid) AndroidBuild else JvmBuild
+        val preferredNames = if (isAndroid) {
+            listOf(matchedVariant.variantName, matchedVariant.buildType, DEFAULT_VARIANT)
+        } else {
+            listOf(DEFAULT_VARIANT)
+        }
+        return preferredNames
+            .asSequence()
+            .distinct()
+            .mapNotNull { preferredName ->
+                variants.firstOrNull { variant ->
+                    variant.variantType == variantType && variant.name == preferredName
+                }
+            }
+            .firstOrNull()
+            ?.toVariantGraphKey()
+    }
+
+    private fun Variant<*>.toVariantGraphKey(): VariantGraphKey {
+        return VariantGraphKey.from(project, name, variantType)
     }
 }
 

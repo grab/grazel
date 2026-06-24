@@ -378,15 +378,13 @@ class MavenInstallArtifactsCalculatorTest {
         assertEquals(
             setOf(
                 "com.example:reachable:1.0.0",
-                "com.example:test-only:1.0.0",
-                "com.example:unrelated:1.0.0"
+                "com.example:test-only:1.0.0"
             ),
             androidTestRepo.artifacts.map { it.id }.toSet()
         )
         assertEquals(
             mapOf(
-                "com.example:reachable" to "@maven//:com_example_reachable",
-                "com.example:unrelated" to "@maven//:com_example_unrelated"
+                "com.example:reachable" to "@maven//:com_example_reachable"
             ),
             androidTestRepo.overrideTargets
         )
@@ -401,7 +399,6 @@ class MavenInstallArtifactsCalculatorTest {
             "androidx.work:work-runtime:2.10.2",
             repository
         ).copy(
-            direct = false,
             overrideTarget = OverrideTarget(
                 artifactShortId = "androidx.work:work-runtime",
                 label = MavenDependency(
@@ -584,7 +581,6 @@ class MavenInstallArtifactsCalculatorTest {
         val androidTestRepo = result.single { it.name == "android_test_maven" }
         assertEquals(
             setOf(
-                "com.example:android-test-carrier:1.0.0",
                 "com.example:debug-carrier:1.0.0",
                 "com.example:shared-root:1.0.0"
             ),
@@ -593,7 +589,6 @@ class MavenInstallArtifactsCalculatorTest {
         assertEquals(
             setOf(
                 "com.example:android-test-carrier:1.0.0",
-                "com.example:debug-carrier:1.0.0",
                 "com.example:shared-root:1.0.0"
             ),
             androidTestRepo.artifacts.map { it.id }.toSet()
@@ -691,7 +686,7 @@ class MavenInstallArtifactsCalculatorTest {
     }
 
     @Test
-    fun `variant maven install redirects same version default owned selected closure`() {
+    fun `variant maven install roots same version default owned selected closure without synthetic default overrides`() {
         setup()
 
         val repository = "MavenRepo"
@@ -763,8 +758,6 @@ class MavenInstallArtifactsCalculatorTest {
         )
         assertEquals(
             mapOf(
-                "androidx.lifecycle:lifecycle-common" to "@maven//:androidx_lifecycle_lifecycle_common",
-                "androidx.lifecycle:lifecycle-common-java8" to "@maven//:androidx_lifecycle_lifecycle_common_java8",
                 "androidx.lifecycle:lifecycle-common-jvm" to "@maven//:androidx_lifecycle_lifecycle_common_jvm"
             ),
             debugAndroidTestRepo.overrideTargets
@@ -772,7 +765,7 @@ class MavenInstallArtifactsCalculatorTest {
     }
 
     @Test
-    fun `variant maven install redirects default closure for existing bucket artifacts`() {
+    fun `variant maven install roots default closure for existing bucket artifacts without synthetic default overrides`() {
         setup()
 
         val repository = "MavenRepo"
@@ -851,8 +844,6 @@ class MavenInstallArtifactsCalculatorTest {
         )
         assertEquals(
             mapOf(
-                "androidx.lifecycle:lifecycle-common" to "@maven//:androidx_lifecycle_lifecycle_common",
-                "androidx.lifecycle:lifecycle-common-java8" to "@maven//:androidx_lifecycle_lifecycle_common_java8",
                 "androidx.lifecycle:lifecycle-runtime" to "@maven//:androidx_lifecycle_lifecycle_runtime"
             ),
             debugAndroidTestRepo.overrideTargets
@@ -909,7 +900,7 @@ class MavenInstallArtifactsCalculatorTest {
     }
 
     @Test
-    fun `variant maven install roots and redirects same resolved default owned transitive`() {
+    fun `variant maven install roots same resolved default owned transitive without synthetic default override`() {
         setup()
 
         val repository = "MavenRepo"
@@ -949,12 +940,63 @@ class MavenInstallArtifactsCalculatorTest {
             androidTestRepo.artifacts.map { it.id }.toSet()
         )
         assertEquals(
-            mapOf("com.example:shared" to "@maven//:com_example_shared"),
+            emptyMap<String, String>(),
             androidTestRepo.overrideTargets.filterKeys { it == "com.example:shared" }
         )
         assertFalse(
             "generated force-version options should not replace artifact closure constraints",
             "--force-version" in androidTestRepo.additionalCoursierOptions
+        )
+    }
+
+    @Test
+    fun `variant maven install does not root flattened child artifacts unreachable from child roots`() {
+        setup()
+
+        val repository = "MavenRepo"
+        val testRoot = ResolvedDependency.fromId(
+            "com.example:test-root:1.0.0",
+            repository
+        )
+        val reachableShared = ResolvedDependency.fromId(
+            "com.example:reachable-shared:1.0.0",
+            repository
+        ).copy(direct = false)
+        val unreachableFlattenedCarrier = ResolvedDependency.fromId(
+            "com.example:unreachable-flattened:1.0.0",
+            repository
+        ).copy(direct = false)
+        val workspaceDependencies = WorkspaceDependencies(
+            variantDeps = mapOf(
+                DEFAULT_VARIANT to listOf(reachableShared, unreachableFlattenedCarrier),
+                "androidTest" to listOf(testRoot, reachableShared, unreachableFlattenedCarrier)
+            ),
+            variantTransitiveClasspath = mapOf(
+                "androidTest" to mapOf(testRoot.shortId to setOf(reachableShared.shortId))
+            ),
+            transitiveClasspath = mapOf(
+                testRoot.shortId to setOf(reachableShared.shortId)
+            )
+        )
+
+        val result = mavenInstallArtifactsCalculator.get(
+            layout = rootProject.layout,
+            workspaceDependencies = workspaceDependencies,
+            externalArtifacts = emptySet(),
+            externalRepositories = emptySet()
+        )
+
+        val androidTestRepo = result.single { it.name == "android_test_maven" }
+        assertEquals(
+            setOf(
+                "com.example:reachable-shared:1.0.0",
+                "com.example:test-root:1.0.0"
+            ),
+            androidTestRepo.artifacts.map { it.id }.toSet()
+        )
+        assertEquals(
+            emptyMap<String, String>(),
+            androidTestRepo.overrideTargets
         )
     }
 
@@ -997,9 +1039,7 @@ class MavenInstallArtifactsCalculatorTest {
             debugRepo.artifacts.map { it.id }.toSet()
         )
         assertEquals(
-            mapOf(
-                "androidx.test:monitor" to "@maven//:androidx_test_monitor"
-            ),
+            emptyMap<String, String>(),
             debugRepo.overrideTargets.filterKeys { it == "androidx.test:monitor" }
         )
         assertFalse(
@@ -1054,9 +1094,7 @@ class MavenInstallArtifactsCalculatorTest {
             debugRepo.artifacts.map { it.id }.toSet()
         )
         assertEquals(
-            mapOf(
-                "androidx.test:monitor" to "@maven//:androidx_test_monitor"
-            ),
+            emptyMap<String, String>(),
             debugRepo.overrideTargets.filterKeys { it == "androidx.test:monitor" }
         )
         assertFalse(
@@ -1193,7 +1231,7 @@ class MavenInstallArtifactsCalculatorTest {
             result.single { it.name == "debug_maven" }.artifacts.map { it.id }.toSet()
         )
         assertEquals(
-            mapOf("androidx.test:monitor" to "@maven//:androidx_test_monitor"),
+            emptyMap<String, String>(),
             result.single { it.name == "debug_maven" }
                 .overrideTargets
                 .filterKeys { it == "androidx.test:monitor" }
@@ -1286,6 +1324,94 @@ class MavenInstallArtifactsCalculatorTest {
         assertEquals(
             mapOf("com.example:debug-carrier" to "@debug_maven//:com_example_debug_carrier"),
             freeRepo.overrideTargets
+        )
+    }
+
+    @Test
+    fun `variant maven install uses default closure artifacts without synthetic default overrides`() {
+        setup()
+
+        val repository = "MavenRepo"
+        val defaultOwnedTransitive = ResolvedDependency.fromId(
+            "com.example:shared-transitive:2.0.0",
+            repository
+        ).copy(direct = false)
+        val debugRoot = ResolvedDependency.fromId(
+            "com.example:debug-root:1.0.0",
+            repository
+        )
+        val workspaceDependencies = WorkspaceDependencies(
+            variantDeps = mapOf(
+                DEFAULT_VARIANT to listOf(defaultOwnedTransitive),
+                "debug" to listOf(debugRoot)
+            ),
+            variantTransitiveClasspath = mapOf(
+                "debug" to mapOf(debugRoot.shortId to setOf(defaultOwnedTransitive.shortId))
+            )
+        )
+
+        val result = mavenInstallArtifactsCalculator.get(
+            layout = rootProject.layout,
+            workspaceDependencies = workspaceDependencies,
+            externalArtifacts = emptySet(),
+            externalRepositories = emptySet()
+        )
+
+        val debugRepo = result.single { it.name == "debug_maven" }
+        assertEquals(
+            setOf(
+                "com.example:debug-root:1.0.0",
+                "com.example:shared-transitive:2.0.0"
+            ),
+            debugRepo.artifacts.map { it.id }.toSet()
+        )
+        assertEquals(emptyMap<String, String>(), debugRepo.overrideTargets)
+    }
+
+    @Test
+    fun `variant maven install redirects default owned databinding closure artifacts`() {
+        setup()
+
+        val repository = "MavenRepo"
+        val databindingAdapter = ResolvedDependency.fromId(
+            "androidx.databinding:databinding-adapters:8.6.1",
+            repository
+        ).copy(direct = false)
+        val debugRoot = ResolvedDependency.fromId(
+            "com.example:debug-root:1.0.0",
+            repository
+        )
+        val workspaceDependencies = WorkspaceDependencies(
+            variantDeps = mapOf(
+                DEFAULT_VARIANT to listOf(databindingAdapter),
+                "debug" to listOf(debugRoot)
+            ),
+            variantTransitiveClasspath = mapOf(
+                "debug" to mapOf(debugRoot.shortId to setOf(databindingAdapter.shortId))
+            )
+        )
+
+        val result = mavenInstallArtifactsCalculator.get(
+            layout = rootProject.layout,
+            workspaceDependencies = workspaceDependencies,
+            externalArtifacts = emptySet(),
+            externalRepositories = emptySet()
+        )
+
+        val debugRepo = result.single { it.name == "debug_maven" }
+        assertEquals(
+            setOf(
+                "androidx.databinding:databinding-adapters:8.6.1",
+                "com.example:debug-root:1.0.0"
+            ),
+            debugRepo.artifacts.map { it.id }.toSet()
+        )
+        assertEquals(
+            mapOf(
+                "androidx.databinding:databinding-adapters" to
+                    "@maven//:androidx_databinding_databinding_adapters"
+            ),
+            debugRepo.overrideTargets
         )
     }
 
@@ -1434,6 +1560,9 @@ class MavenInstallArtifactsCalculatorTest {
             variantDeps = mapOf(
                 DEFAULT_VARIANT to listOf(transitiveDependency, defaultOnlyDependency),
                 "debug" to listOf(directDependency, transitiveDependency)
+            ),
+            variantTransitiveClasspath = mapOf(
+                "debug" to mapOf(directDependency.shortId to setOf(transitiveDependency.shortId))
             )
         )
 
@@ -1480,6 +1609,11 @@ class MavenInstallArtifactsCalculatorTest {
             variantDeps = mapOf(
                 DEFAULT_VARIANT to emptyList(),
                 LINT_VARIANT to listOf(lintChecksDependency, selectedTransitiveDependency)
+            ),
+            variantTransitiveClasspath = mapOf(
+                LINT_VARIANT to mapOf(
+                    lintChecksDependency.shortId to setOf(selectedTransitiveDependency.shortId)
+                )
             )
         )
 
@@ -1493,6 +1627,53 @@ class MavenInstallArtifactsCalculatorTest {
         val lintRepo = result.single { it.name == "lint_maven" }
         assertEquals(
             setOf("com.example:annotations:1.1.0", "com.example:lint-checks:1.0.0"),
+            lintRepo.artifacts.map { it.id }.toSet()
+        )
+    }
+
+    @Test
+    fun `lint maven install keeps non direct lint tool roots`() {
+        setup()
+
+        val repository = "MavenRepo"
+        val lintChecksDependency = ResolvedDependency.fromId(
+            "com.example:lint-checks:1.0.0",
+            repository
+        )
+        val lintApiDependency = ResolvedDependency.fromId(
+            "com.android.tools.lint:lint-api:31.5.0",
+            repository
+        ).copy(direct = false)
+        val lintModelDependency = ResolvedDependency.fromId(
+            "com.android.tools.lint:lint-model:31.5.0",
+            repository
+        ).copy(direct = false)
+        val workspaceDependencies = WorkspaceDependencies(
+            variantDeps = mapOf(
+                DEFAULT_VARIANT to emptyList(),
+                LINT_VARIANT to listOf(lintChecksDependency, lintApiDependency, lintModelDependency)
+            ),
+            variantTransitiveClasspath = mapOf(
+                LINT_VARIANT to mapOf(
+                    lintApiDependency.shortId to setOf(lintModelDependency.shortId)
+                )
+            )
+        )
+
+        val result = mavenInstallArtifactsCalculator.get(
+            layout = rootProject.layout,
+            workspaceDependencies = workspaceDependencies,
+            externalArtifacts = emptySet(),
+            externalRepositories = emptySet()
+        )
+
+        val lintRepo = result.single { it.name == "lint_maven" }
+        assertEquals(
+            setOf(
+                "com.android.tools.lint:lint-api:31.5.0",
+                "com.android.tools.lint:lint-model:31.5.0",
+                "com.example:lint-checks:1.0.0"
+            ),
             lintRepo.artifacts.map { it.id }.toSet()
         )
     }

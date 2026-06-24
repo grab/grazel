@@ -1,11 +1,13 @@
 package com.grab.grazel.migrate.dependencies
 
 import com.grab.grazel.gradle.dependencies.mavenOverrideTarget
+import com.grab.grazel.gradle.dependencies.model.OverrideTarget
 import com.grab.grazel.gradle.dependencies.model.ResolvedDependency
 import com.grab.grazel.gradle.dependencies.model.WorkspaceDependencies
 import com.grab.grazel.gradle.dependencies.model.merge
 import com.grab.grazel.gradle.dependencies.model.versionInfo
 import com.grab.grazel.gradle.variant.DEFAULT_VARIANT
+import com.grab.grazel.gradle.variant.LINT_VARIANT
 import java.util.ArrayDeque
 
 internal fun WorkspaceDependencies.mavenInstallRootArtifactsByVariant(): Map<String, List<ResolvedDependency>> {
@@ -59,7 +61,11 @@ private fun List<ResolvedDependency>.mavenInstallRootArtifacts(
         return emptyList()
     }
 
-    val rootShortIds = mapTo(sortedSetOf(), ResolvedDependency::shortId)
+    val rootArtifacts = when (variantName) {
+        DEFAULT_VARIANT, LINT_VARIANT -> this
+        else -> filter(ResolvedDependency::isMavenRootArtifact)
+    }
+    val rootShortIds = rootArtifacts.mapTo(sortedSetOf(), ResolvedDependency::shortId)
     val reachableShortIds = (
         transitiveClasspath.reachableTransitiveShortIds(rootShortIds) +
             workspaceTransitiveClasspath.reachableTransitiveShortIds(rootShortIds) +
@@ -67,7 +73,7 @@ private fun List<ResolvedDependency>.mavenInstallRootArtifacts(
                 rootShortIds = rootShortIds,
                 workspaceTransitiveClasspath = promotedTransitiveClasspath
             ) +
-            reachableDependencyShortIds(workspaceArtifactByShortId)
+            rootArtifacts.reachableDependencyShortIds(workspaceArtifactByShortId)
         )
         .filterNot(rootShortIds::contains)
         .toSortedSet()
@@ -76,7 +82,7 @@ private fun List<ResolvedDependency>.mavenInstallRootArtifacts(
         DEFAULT_VARIANT -> { artifact -> artifact.dependency.copy(overrideTarget = null) }
         else -> OwnedResolvedDependency::asOwnerOverride
     }
-    return (asSequence() + reachableShortIds
+    return (rootArtifacts.asSequence() + reachableShortIds
         .asSequence()
         .mapNotNull(workspaceArtifactByShortId::get)
         .map(transform))
@@ -130,6 +136,10 @@ private fun List<ResolvedDependency>.reachableDependencyShortIds(
     return visited
 }
 
+private fun ResolvedDependency.isMavenRootArtifact(): Boolean {
+    return direct
+}
+
 private data class OwnedResolvedDependency(
     val variantName: String,
     val dependency: ResolvedDependency
@@ -168,6 +178,16 @@ private fun OwnedResolvedDependency.mergeSelected(
 private fun OwnedResolvedDependency.asOwnerOverride(): ResolvedDependency {
     return dependency.copy(
         direct = false,
-        overrideTarget = mavenOverrideTarget(dependency.shortId, variantName)
+        overrideTarget = dependency.overrideTarget ?: when (variantName) {
+            DEFAULT_VARIANT -> dependency.defaultOwnerOverrideTarget()
+            else -> mavenOverrideTarget(dependency.shortId, variantName)
+        }
     )
+}
+
+private fun ResolvedDependency.defaultOwnerOverrideTarget(): OverrideTarget? {
+    return when {
+        shortId.startsWith("androidx.databinding:") -> mavenOverrideTarget(shortId, DEFAULT_VARIANT)
+        else -> null
+    }
 }

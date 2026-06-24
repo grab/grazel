@@ -389,9 +389,10 @@ the current evidence ledger, not a full transcript.
     then sees the selected versions directly in artifacts instead of relying on POM conflict
     behavior or generated force options.
   - Correct fix shape: `artifacts` carries the reachable resolved closure for Coursier correctness;
-    `override_targets` carries Bazel label ownership. A default-owned transitive can appear in a
-    child repo's `artifacts` to force Coursier's version while `override_targets` redirects the
-    Bazel label back to `@maven`.
+    `override_targets` carries explicit Bazel label ownership redirects. A default-owned transitive
+    can appear in a child repo's `artifacts` to force Coursier's version without requiring a
+    synthetic `@maven` override. Preserve explicit overrides from earlier layers and extension
+    configuration, and keep sibling-bucket redirects where a non-default bucket owns the artifact.
   - Focused Maven install tests now assert closure-in-artifacts, default-owned transitive
     redirection, promoted-root closure recovery, and absence of generated `--force-version`.
 - Verification after these fixes:
@@ -411,6 +412,54 @@ the current evidence ledger, not a full transcript.
   - `git diff --check` passed in both PAX and Grazel after the build.
 - Remaining architecture/perf note: PAX `WORKSPACE` is now about `5025` lines. This is acceptable
   for the current milestone per discussion; optimization should be discussed before implementing.
+- Current optimization slice after baseline commit:
+  - Commit `a7c44b8428ba5df89cc3c3fd50911960601c1cd4` is the local no-push baseline that restored
+    closure-in-artifacts and passed the PAX APK/android-test APK gate.
+  - Root-aware Maven artifact pruning is in progress after that commit. Non-default repos now seed
+    `maven_install.artifacts` from direct/root artifacts and their reachable closure, instead of
+    re-rooting every flattened bucket artifact. This reduced PAX `lint_maven` and some variant repos.
+  - Second optimization in progress: do not synthesize default `@maven` override targets for
+    closure-only artifacts. The closure still appears in child repo `artifacts` to force Gradle's
+    resolved versions for Coursier; only explicit overrides and non-default/sibling owner redirects
+    should become `override_targets`.
+  - Focused TDD guard added:
+    `variant maven install uses default closure artifacts without synthetic default overrides`.
+  - `MavenInstallArtifactsCalculatorTest` passes after updating tests to the new default-override
+    contract. PAX regeneration/build gate still needs to be rerun for this optimization before any
+    new commit.
+  - PAX `./gradlew migrateToBazel --no-daemon --console=plain --stacktrace` passed for this
+    optimization in `10m 9s`.
+  - Fresh generated PAX `WORKSPACE` is `3673` lines, down from the previous root-aware-only
+    measurement of `4933` lines and close to the old PAX baseline of about `3532` lines.
+  - Override counts dropped sharply because redundant default `@maven` redirects are no longer
+    synthesized from closure-only artifacts:
+    `test_maven` `281 -> 9`, `android_test_maven` `386 -> 6`, `debug_maven` `224 -> 2`.
+  - Maven-install JSON sizes did not materially change (`test_maven_install.json` still has `387`
+    dependencies and `160` packages; `android_test_maven_install.json` still has `390`
+    dependencies and `109` packages). This is expected for this slice because JSON closure remains
+    the Gradle-resolved Coursier constraint. Further JSON/pinning reduction must address upstream
+    test/android-test direct root classification or bucket placement, not override-target rendering.
+  - `WORKSPACE` contains no generated `--force-version` entries after this optimization.
+  - PAX Bazel gate then exposed two correctness edges:
+    - `@lint_maven//:com_android_tools_lint_lint_api` was missing for `pac/custom-lint-rules`.
+      Root cause: root-aware artifact pruning treated the synthetic `lint` repo like a normal child
+      bucket and kept only direct roots. Fix: `lint` keeps its bucket artifacts as Maven roots
+      because generated lint targets can reference non-direct lint tool artifacts. Regression test:
+      `lint maven install keeps non direct lint tool roots`.
+    - Databinding duplicate analysis error returned for `androidx.databinding:databinding-adapters`
+      across `@maven`, `@debug_maven`, and `@gps_maven`. Root cause: removing all default
+      synthetic overrides was too broad. Fix: default-owned `androidx.databinding:*` closure
+      artifacts still redirect to `@maven` to avoid duplicate databinding `android_library`
+      packages, while ordinary default-owned closure artifacts do not. Regression test:
+      `variant maven install redirects default owned databinding closure artifacts`.
+  - After those fixes, PAX Bazel progressed into compile and failed on missing
+    `androidx.annotation.VisibleForTesting` in
+    `//deliveries/deliveries-menu-items:deliveries-menu-items-gps-pax-debug_kt`.
+    Root cause: consuming target tags were too narrow after root-based refactor. The source imports
+    a Maven artifact reachable through direct project dependencies, not through the module's own
+    direct Maven declaration. Master PAX tags included this closure. Fix in progress: Android target
+    tag calculation now includes the Maven tag closure of direct project dependencies, bounded to
+    the direct project graph rather than all repo artifacts. Needs fresh PAX migrate + Bazel gate.
 - Resource cleanup: the PAX Bazel build dropped disk to about `11GiB` free; ran
   `bazelisk clean --expunge`, recovering to about `27GiB`. `bazel-cache` was about `17GiB` and was
   left intact because disk pressure was no longer critical.
@@ -430,6 +479,39 @@ the current evidence ledger, not a full transcript.
 - Prefer `bazelisk clean --expunge` before deleting PAX `bazel-cache`.
 - Use `rm -rf bazel-cache` only when genuinely needed.
 
+## Current Verification Checkpoint - 2026-06-24
+
+- Local baseline commit before this optimization slice:
+  `a7c44b8428ba5df89cc3c3fd50911960601c1cd4` (`Restore Maven artifact closure constraints`).
+  This commit was not pushed.
+- Current uncommitted optimization keeps closure-in-artifacts for Coursier correctness, prunes
+  non-default Maven repo roots to direct/root artifacts plus reachable closure, keeps `lint` as a
+  full-root special repo, and avoids synthetic default `@maven` override targets except for
+  databinding duplicate-target safety and explicit overrides.
+- Android BUILD tag calculation now includes Maven tag closure from direct project dependencies.
+  Reason: Bazel's compile classpath filter reads tags from the consuming target, so a module needs
+  the Maven closure implied by its direct project deps, not only its own direct Maven declarations.
+- PAX migrate after the direct-project tag fix passed. Key measurements:
+  `WORKSPACE` remained about `3758` lines, contains no generated `--force-version`, and
+  `deliveries/deliveries-menu-items/BUILD.bazel` regained the missing
+  `@maven//:androidx_annotation_annotation` tags.
+- PAX `./bazel.sh build //app:app-gps-pax-debug.apk //app:app-gps-pax-debug-android-test.apk`
+  progressed past the previous `VisibleForTesting` compile failure, compiled the main app, and
+  reached the instrumentation APK tail. It was manually aborted for machine safety when free disk
+  dropped below `1GiB`; no code failure was observed before abort.
+- Recovery: ran `bazelisk clean --expunge` in PAX, then removed PAX `bazel-cache` after measuring
+  it at about `21GiB`. Free disk recovered to about `37GiB`. Next rerun should use lower Bazel
+  concurrency to avoid repeating the disk cliff.
+- Rerun result: PAX Bazel gate passed with lower pressure:
+  `./bazel.sh build --jobs=4 --disk_cache= //app:app-gps-pax-debug.apk //app:app-gps-pax-debug-android-test.apk`.
+  Evidence from `/tmp/pax-bazel-project-tag-closure-rerun2.log`: `Build completed successfully,
+  59833 total actions` after `2712.865s`. This confirms the previous failure was infrastructure
+  disk exhaustion during final android-test deploy jar copy, not a dependency correctness failure.
+  Free disk after the successful run was about `17GiB`.
+- PAX `git diff --check` passed after the successful Bazel gate.
+- Remaining before committing this optimization slice: run fresh Grazel focused tests/scripts and
+  Grazel `git diff --check`; then decide whether to commit the uncommitted optimization changes.
+
 ## Later Architecture Option
 
 - If the current intersection/residual bucket engine keeps fighting correctness or workspace size,
@@ -442,3 +524,50 @@ the current evidence ledger, not a full transcript.
   deltas, especially version-divergent coordinates. Do not pivot to this while the current verified
   path is converging, but keep it as the fallback if bucket intersection continues to create
   duplicate repo roots or broad override maps.
+
+## Verified Optimization Checkpoint - 2026-06-24
+
+- Baseline durability commit remains local only:
+  `a7c44b8428ba5df89cc3c3fd50911960601c1cd4` (`Restore Maven artifact closure constraints`).
+- Current uncommitted optimization is now verified and ready for a local follow-up commit:
+  - Non-default `maven_install` repos seed root artifacts from direct/root artifacts plus reachable
+    Gradle-resolved closure, instead of flattening every bucket artifact as a root.
+  - Closure artifacts still remain in `artifacts` to force Coursier toward Gradle's selected
+    transitive versions. No `additional_coursier_options` / `--force-version` shortcut is used.
+  - `override_targets` are no longer synthesized for every default-owned closure artifact. They are
+    kept for explicit overrides, non-default/sibling ownership redirects, and default-owned
+    `androidx.databinding:*` duplicate-target safety.
+  - Android target tags include the `@maven`-prefixed Maven closure from direct project
+    dependencies. This is required because PAX's Bazel fork uses tags as the compile-classpath
+    filter, and direct project deps can bring Maven classes used by the consuming target.
+  - The direct-project tag helper no longer probes variants with `runCatching`; it uses
+    `VariantBuilder` to choose the best existing key in order: matched variant, build type,
+    default.
+- Verification after this optimization:
+  - Grazel focused tests passed:
+    `MavenInstallArtifactsCalculatorTest`, `ComputeWorkspaceDependenciesTest`,
+    `AggregatedDependencyResolverTest`, `DependencyBucketPlacementEngineTest`,
+    `DefaultVariantMatcherTest.assert app variant filter skips unreachable variants before
+    matching`, `TargetVariantReachabilityTest`, and the two
+    `DefaultDependenciesDataSourceTest.collectTransitiveMavenDeps...` cases.
+  - Grazel script gates passed:
+    `reports/scripts/verify-default-task-graph.sh` and
+    `reports/scripts/verify-sample-bucket-labels.sh`.
+  - PAX `./gradlew migrateToBazel --no-daemon --console=plain --stacktrace` passed after the final
+    tag-helper cleanup.
+  - PAX `./bazel.sh build --jobs=4 --disk_cache= //app:app-gps-pax-debug.apk
+    //app:app-gps-pax-debug-android-test.apk` passed after the final tag-helper cleanup.
+    Evidence: `/tmp/pax-bazel-after-helper-cleanup.log` ended with
+    `Build completed successfully, 59849 total actions`, elapsed `2674.751s`.
+  - PAX `git diff --check` passed. Grazel `git diff --check` passed.
+  - PAX `WORKSPACE` is `3758` lines and contains no generated `--force-version`.
+  - Ran PAX `bazelisk clean --expunge` after the build; disk recovered to about `36GiB` free.
+- Generated PAX BUILD diff note:
+  - The final tag-helper cleanup moved some generated tags from variant repos such as
+    `@test_maven` to `@maven`. This is intentional: tags represent Maven compile-filter labels,
+    and the user rule is that Maven tags should use the `@maven` prefix.
+- Remaining risk / next optimization:
+  - Maven-install JSON/pinning size is still not materially reduced by this slice. The current
+    milestone accepts the verified 3758-line `WORKSPACE`; future work should optimize upstream
+    bucket placement or test/android-test direct-root classification if pinning time remains too
+    high.
