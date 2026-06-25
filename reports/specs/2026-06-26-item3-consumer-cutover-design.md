@@ -15,9 +15,10 @@
 
 ## Goal
 
-Switch the four consumers to read their rendering *decisions* from `WorkspacePlan`
-instead of deriving them ad-hoc — **incrementally, isolated-first, golden-checked after
-each step.** Old derivation code is left physically in place (dead) for Item 4 to delete.
+Switch the consumer groups to read their rendering *decisions* from `WorkspacePlan` /
+`WorkspaceRenderPlan` instead of deriving them ad-hoc — **incrementally, isolated-first,
+golden-checked after each step.** Old derivation code is left physically in place (dead)
+for Item 4 to delete.
 
 ## Reaffirmed correctness principle (from Item 2)
 
@@ -34,28 +35,37 @@ most-entangled extractor is touched.
 ### Step 1 — Pinner (`ArtificatPinner`)
 Replace repo **discovery** with the plan:
 - `materializedMavenInstallRepos()` (WORKSPACE regex, `ArtificatPinner.kt:316-320`) →
-  `plan.materializedRepoNames`.
+  `workspaceRenderPlan.materializedRepoNames`.
 - repo selection inside `pinnableMavenInstallRepos` (`:322-345`) →
-  `plan.repoPlan` pin inputs.
+  `workspacePlan.repoPlan` filtered by `workspaceRenderPlan.materializedRepoNames`.
 
 **Keep** the in-place `maven_install_json` pin/unpin toggle (`:83-99`) and
 `shouldRunPinning`'s `#maven_install_json` scan (`:136-139`) — these mutate WORKSPACE to
 activate pinning and are a legitimate Bazel mechanic, **not** a feedback edge.
 
 ### Step 2 — Root generation (`WorkspaceBuilder` / `MavenInstallArtifactsCalculator`)
-Read `plan.materializedRepoNames` instead of the `referencedMavenRepos` set assembled from
-per-project manifests (`MavenInstallArtifactsCalculator.kt:99,204-229`;
-`WorkspaceBuilder.kt:129-135`). After this step, project gen still *writes* the manifest
-(`GenerateBazelScriptsTask.kt:98-101`) but root gen no longer consumes it — the manifest
-is now dead, deleted in Item 4.
+Read `workspaceRenderPlan.materializedRepoNames` instead of the `referencedMavenRepos` set
+assembled from per-project manifests (`MavenInstallArtifactsCalculator.kt:99,204-229`;
+`WorkspaceBuilder.kt:129-135`). Candidate repo definitions and pin inputs still come from
+`workspacePlan.repoPlan`. After this step, project gen still *writes* the manifest
+(`GenerateBazelScriptsTask.kt:98-101`) but root gen no longer consumes it — the manifest is
+now dead, deleted in Item 4.
 
-### Step 3 — `AndroidExtractor`
-`extract()` reads `plan.tagPlan[(projectPath, variantName)]` instead of computing tags by
-walking direct project dependencies and re-selecting their variants
-(`AndroidExtractor.kt:146-162`, `collectTransitiveMavenDepsForTags` `:186-201`,
-`bestVariantKeyForTagClosure` `:203-221`). This is the most-entangled consumer and runs
-**pre-compression** — the `VariantGraphKey`/`matchedVariant` key alignment defined in
-Item 2 applies (`AndroidExtractor.kt:86`). The walk code stays in place (dead) for Item 4.
+### Step 3 — tag-producing extractors
+Every extractor that emits compile-filter tags reads
+`workspacePlan.tagPlan[TargetTagKey]` instead of calling `collectTransitiveMavenDeps` /
+`calculateDirectDependencyTags` locally:
+- `AndroidExtractor` (`AndroidExtractor.kt:146-162`) replaces its own Maven tag build and
+  the direct-project walk (`collectTransitiveMavenDepsForTags` `:186-201`,
+  `bestVariantKeyForTagClosure` `:203-221`).
+- `AndroidUnitTestDataExtractor` (`AndroidUnitTestDataExtractor.kt:122-128`).
+- `AndroidInstrumentationBinaryDataExtractor`
+  (`AndroidInstrumentationBinaryDataExtractor.kt:140-149`).
+- `KotlinProjectDataExtractor` and `KotlinUnitTestDataExtractor`.
+
+These consumers run pre-compression or during generated target extraction, so the
+`VariantGraphKey` + `targetKind` alignment defined in Item 2 is mandatory. The old tag
+derivation code stays in place (dead/parity-only) for Item 4.
 
 ## Safety mechanism — flag-gated parallel assertion
 
@@ -64,7 +74,7 @@ flow). When enabled, each switched consumer computes **both** the plan value and
 value and asserts exact equality, failing with a diff on mismatch.
 - **Off by default:** normal runs pay nothing (no double computation).
 - **Codex enables it for PAX verification runs** — an exact content check where no content
-  golden exists (PAX acceptance is APK build + count-based bounded audit only).
+  golden exists (PAX acceptance is APK build + bounded count/content audit).
 - **All parity code is removed in Item 4** along with the old derivations.
 
 ## Testing
@@ -73,29 +83,30 @@ value and asserts exact equality, failing with a diff on mismatch.
   outputs); focused dependency tests; full local loop (`verify-*.sh`).
 - **Per phase end:** PAX acceptance loop (migrate + `//app:app-gps-pax-debug.apk` +
   `//app:app-gps-pax-debug-android-test.apk`) **with `-Pgrazel.internal.planParity=true`**,
-  plus the bounded count audit.
+  plus the bounded count/content audit and strict reachability audit from Item 1.
 
 ## Acceptance criteria
 
-- All four consumers read decisions from `WorkspacePlan`; no consumer derives repo
-  set / tags / pin inputs ad-hoc as its source of truth.
+- Pinner, root generation, and all tag-producing extractors read decisions from
+  `WorkspacePlan` / `WorkspaceRenderPlan`; no consumer derives repo set / tags / pin inputs
+  ad-hoc as its source of truth.
 - Sample golden empty-diff after every step.
-- PAX acceptance loop green with parity flag on (no parity-assert failures); bounded audit
-  stable (documented waivers only).
+- PAX acceptance loop green with parity flag on (no parity-assert failures); bounded
+  count/content audit and strict reachability audit stable (documented waivers only).
 - The `maven_install_json` toggle and `shouldRunPinning` WORKSPACE scan are retained
   (pin mechanics, not feedback).
 
 ## Out of scope (explicit)
 
 - **Deleting old derivation code** — the project-gen manifest write, the WORKSPACE-regex
-  repo discovery method, the `AndroidExtractor` cross-project walk, and the parity-assert
-  code all remain until **Item 4**.
+  repo discovery method, extractor-side tag derivation/walks, and the parity-assert code
+  all remain until **Item 4**.
 - **Provenance selection flip** — global collapse stays the behaviour; variant-scoped
   selection is **Item 5**.
 
 ## Non-goal
 
-Variant compression is not refactored (see Item 2 non-goal). The `AndroidExtractor`
-cutover reads `tagPlan` pre-compression; compression's representative-pick carries the
+Variant compression is not refactored (see Item 2 non-goal). Tag-producing extractors read
+`tagPlan` pre-compression where needed; compression's representative-pick carries the
 selected variant's tags through unchanged, and tags are excluded from
 `VariantEquivalenceChecker`, so no compression decision is perturbed.

@@ -76,6 +76,15 @@ Copied verbatim into each later spec's header by reference to this section.
    limitation (see Deferred follow-ups), not a blocker for this work.
 7. **PAX is the acceptance baseline.** Every item must preserve PAX `migrateToBazel` +
    `//app:app-gps-pax-debug.apk` + `//app:app-gps-pax-debug-android-test.apk`.
+8. **Strict root reachability is part of correctness.** Active generated targets are only
+   for projects/variants reachable from the configured app / `com.android.test` roots.
+   Unreachable modules must not get active `BUILD.bazel` output just to mask missing
+   classpaths; if an old file exists, it is renamed/ignored using the existing ignore
+   mechanism.
+9. **Separate candidate repo definitions from materialized repos.** A planner may know how
+   to render many candidate Maven repos, but only repos referenced by reachable generated
+   deps/plugins/tags, plus their override-target closure and always-materialized repos,
+   may be emitted/pinned.
 
 ---
 
@@ -106,6 +115,18 @@ bounded audit covers, per key target — at minimum `//app:app-gps-pax-debug` an
 `tags` count, and `@debug_maven`/`@android_test_maven` direct-dep counts. For behaviour-preserving items, the stronger local signal
 is `git diff --exit-code` against **this item's committed baseline** (not master).
 
+The bounded audit must include a **content audit for compile-filter tags**, not only
+counts. For each key target, the emitted `tags` must use `@maven//:` labels only, must
+contain the Gradle-resolved Maven closure needed by the target's direct Maven deps and
+selected direct project deps, and must not contain unexplained bucket-prefixed labels or
+arbitrary global closure. Smaller tag sets are acceptable only when the audited compile
+closure is still complete.
+
+The bounded audit must also record strict reachability: active generated outputs are
+limited to projects/variants reachable from the app / `com.android.test` roots. Any
+previously generated output for an unreachable module is absent or ignored, not kept as an
+active target.
+
 ### Documented waivers (acceptable failures)
 - `//app:app-gps-pax-debug.lint_test` fails on `SerializedNameDefaultValue` inside
   external Maven AARs — pre-existing baseline lint exposure, not a refactor regression.
@@ -133,7 +154,9 @@ load-bearing knowledge into durable docs; delete the report thrash.
 2. Run the focused dependency test suite (Playbook step 1) → must pass.
 3. `./gradlew migrateToBazel --console=plain` → regenerate sample outputs.
 4. Run `verify-default-task-graph.sh` and `verify-sample-bucket-labels.sh` → must pass.
-5. `git diff --check master...HEAD` → clean.
+5. `git diff --check` on the current worktree → clean. The merge-base form
+   `git diff --check master...HEAD` is required after Part C removes captured legacy
+   report noise.
 6. Commit any regenerated `sample-android/`, `sample-android-tests/`, `sample-*-library/`,
    `flavors/` `BUILD.bazel` + root `WORKSPACE` + `*_install.json`.
    **This committed state is the grazel golden.**
@@ -143,8 +166,10 @@ load-bearing knowledge into durable docs; delete the report thrash.
 8. `./bazel.sh build //app:app-gps-pax-debug.apk //app:app-gps-pax-debug-android-test.apk --verbose_failures` → success.
 9. `bazelisk query 'kind(".*test rule", //app:*)'` → only documented lint tests.
 10. Record the bounded audit baseline (per key target: `deps` count, `tags` count,
-    `@debug_maven`/`@android_test_maven` direct counts) into a committed audit record and
-    a re-runnable audit script. Commit PAX generated output.
+    tag-content closure, strict reachability, and `@debug_maven`/`@android_test_maven`
+    direct counts) into a committed audit record and a re-runnable audit script in
+    grazel. Do not commit PAX output unless the maintainer explicitly asks for a PAX-side
+    baseline commit.
     **This is the PAX golden.**
 
 ### Part C — consolidate & clean
@@ -159,10 +184,14 @@ load-bearing knowledge into durable docs; delete the report thrash.
     `-active-anchor.md`, `-pending-tasks.md`, `dependency-resolution-to-workspace.md`.
     **Keep `reports/scripts/`.**
 13. Commit "Consolidate refactor knowledge; remove working-log noise."
+14. Run `git diff --check master...HEAD` after the cleanup commit so legacy report
+    whitespace no longer hides real merge-readiness issues.
 
 ## Deliverables (the safety net)
 - Committed fresh grazel golden (sample generated outputs).
-- Committed fresh PAX golden + bounded-audit record + re-runnable audit script.
+- Recorded fresh PAX golden via a committed bounded-audit record + re-runnable audit
+  script. PAX generated output may remain an external worktree diff unless separately
+  requested.
 - A **named verification task** (Codex invokes explicitly; NOT wired into `./gradlew
   check`) that runs `migrateToBazel` + `git diff --exit-code` on committed sample outputs
   + `verify-*.sh`.
@@ -170,7 +199,8 @@ load-bearing knowledge into durable docs; delete the report thrash.
 
 ## Acceptance criteria
 - All local gates green; PAX migrate + both APKs build (waivers as documented).
-- `git diff --check master...HEAD` clean.
+- Current worktree `git diff --check` clean before baseline; `git diff --check
+  master...HEAD` clean after report consolidation.
 - Old reports deleted; their load-bearing content provably present in the spec set.
 - Re-running the named verification task on the committed baseline yields an empty
   `git diff` (the golden is self-consistent).

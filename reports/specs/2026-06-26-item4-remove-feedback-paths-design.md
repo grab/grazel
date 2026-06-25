@@ -29,7 +29,7 @@ Each deletion is golden-checked (empty `git diff` on committed sample outputs).
 - In `TasksManager.kt`: remove the `generatedProjectMavenRepoManifests` input wiring **and**
   the `dependsOn(projectGenerateBazelScriptsTasks)` edge on root gen
   (`TasksManager.kt:118-125`). Root gen retains `workspaceDependencies` + the plan +
-  `dependsOn(analyzeVariantCompression)`.
+  `dependsOn(finalizeWorkspacePlan)`.
 - **Update `reports/scripts/verify-default-task-graph.sh`** to the new decoupled graph
   shape. This is an **intentional oracle update**, not a regression: root gen no longer
   depends on project gen.
@@ -41,7 +41,7 @@ Each deletion is golden-checked (empty `git diff` on committed sample outputs).
   `#maven_install_json` scan (`:136-139`) — legitimate Bazel pin mechanics, not feedback.
 - Trim any `DefaultArtifactPinnerTest` cases that targeted the deleted regex method.
 
-### 3. `AndroidExtractor` cross-project walk
+### 3. Extractor-side tag derivation
 - Delete `collectTransitiveMavenDepsForTags` (`:186-201`), `bestVariantKeyForTagClosure`
   (`:203-221`), `MavenTagClosureKey` (`:227-231`), `transitiveMavenDepsForTagsCache`
   (`:74-76`), and the walking tag-build block (`:146-162`); the extractor now reads only
@@ -50,6 +50,11 @@ Each deletion is golden-checked (empty `git diff` on committed sample outputs).
   existed solely for the walk.
 - This also removes the Item 1 baseline's `AndroidExtractor` tag-closure cache naturally
   (it cached the now-deleted walk).
+- Delete local transitive-tag calculation in every other tag-producing extractor switched
+  in Item 3:
+  `AndroidUnitTestDataExtractor`, `AndroidInstrumentationBinaryDataExtractor`,
+  `KotlinProjectDataExtractor`, and `KotlinUnitTestDataExtractor`. After deletion, tags
+  come from `WorkspacePlan.tagPlan` only.
 
 ### 4. Parity-assert code — LAST
 - Remove the `-Pgrazel.internal.planParity` flag and all per-consumer compute-both-and-
@@ -66,12 +71,13 @@ Each deletion is golden-checked (empty `git diff` on committed sample outputs).
   tasks UP-TO-DATE (decoupling should not regress incrementality).
 - **PAX acceptance:** migrate + `//app:app-gps-pax-debug.apk` +
   `//app:app-gps-pax-debug-android-test.apk` (parity flag is gone — normal gate);
-  bounded count audit stable (documented waivers only).
+  bounded count/content audit and strict reachability audit stable (documented waivers only).
 
 ## Acceptance criteria
 
 - `GeneratedBuildMavenRepos`, the manifest output, the WORKSPACE-regex discovery method,
-  the `AndroidExtractor` walk, and the parity code are all gone (with their dead tests).
+  extractor-side tag derivation/walks, and the parity code are all gone (with their dead
+  tests).
 - No generated-output feedback path remains: WORKSPACE repo set comes from the plan;
   pinning repo discovery comes from the plan; tags come from the plan.
 - Root gen no longer depends on project gen; `verify-default-task-graph.sh` reflects and

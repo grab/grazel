@@ -48,14 +48,16 @@ review-ready; the maintainer does the final review and merge.
      `//app:app-gps-pax-debug-android-test.apk` green;
    - `bazelisk test //...` green **except** the documented pre-existing lint targets
      (`SerializedNameDefaultValue` etc.);
+   - PAX bounded audit green for counts, tag-content closure, and strict app /
+     `com.android.test` reachability;
    - `git diff --check master...HEAD` clean.
 
 ## Deliverable
 
 - A clean, verified, **review-ready** branch.
 - A short **review guide** (`reports/specs/REVIEW-GUIDE.md`): a one-page summary of what
-  changed across the six items, the Item 5 documented diffs, and the active waivers — to
-  orient the maintainer's final pass.
+  changed across the six items, the Item 5 documented diffs, the tag-content/reachability
+  audit result, and the active waivers — to orient the maintainer's final pass.
 
 **The plan stops here.** Hand off to the maintainer for final review and merge.
 

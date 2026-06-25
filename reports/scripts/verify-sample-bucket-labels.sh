@@ -164,7 +164,7 @@ if ! grep -q 'artifact = "constraintlayout"' WORKSPACE ||
 fi
 
 actual_buckets="$(jq -r '.result | keys[]' build/grazel/dependencies.json | sort | paste -sd ',' -)"
-expected_buckets="androidTest,debug,default,lint,test"
+expected_buckets="androidTest,debug,debugAndroidTest,debugUnitTest,default,lint,test"
 if [[ "$actual_buckets" != "$expected_buckets" ]]; then
   echo "Unexpected dependency buckets: $actual_buckets" >&2
   exit 1
@@ -185,3 +185,17 @@ for bucket in default test lint; do
     exit 1
   fi
 done
+
+if ! jq -e \
+  '.result.debugUnitTest[]? | select(.shortId == "androidx.constraintlayout:constraintlayout" and .direct == true)' \
+  build/grazel/dependencies.json >/dev/null; then
+  echo "debugUnitTest bucket must own debug unit-test-only constraintlayout dependency directly" >&2
+  exit 1
+fi
+
+if ! jq -e \
+  '.result.debugAndroidTest[]? | select(.shortId == "androidx.paging:paging-runtime" and .direct == true)' \
+  build/grazel/dependencies.json >/dev/null; then
+  echo "debugAndroidTest bucket must preserve debug android-test paging dependency directly" >&2
+  exit 1
+fi

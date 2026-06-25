@@ -16,7 +16,7 @@
 
 ## Goal
 
-Replace `shortId`-only grouping / global collapse with **effective-identity grouping +
+Replace `shortId`-only grouping / global collapse with **Gradle-resolved identity +
 owning-variant provenance**, and replace the exclude **union** with **within-repo
 intersection**. Fixes the two correctness gaps Codex flagged: (1) non-default
 `maven_install` closures rehydrating via global `shortId` selection can take another
@@ -32,17 +32,21 @@ transitive → compile failure).
   have different shapes in `@maven` vs `@debug_maven`, each from its owning variant. No
   merging across repos (provenance).
 - **Within one repo, where a coordinate is unavoidably shared** by multiple owners:
-  reconcile excludes by **intersection** (drop only what all exclude); version by Coursier.
-  Intersection always yields a valid permissive set, so there is **no hard-fail/split**
-  path. Residual risk (a permissively-included transitive causing a duplicate-class error)
-  is caught by the PAX build.
+  reconcile excludes by **intersection** (drop only what all exclude). Version still comes
+  from the owning Gradle-resolved identity; Coursier is constrained by
+  `maven_install.artifacts` to materialize that Gradle-selected value, never trusted to
+  choose a different one. Intersection always yields a valid permissive set, so there is
+  **no hard-fail/split** path. Residual risk (a permissively-included transitive causing a
+  duplicate-class error) is caught by the PAX build.
 
-## Changes (all flow from "group by effective identity, not shortId")
+## Changes (all flow from "group by resolved identity/provenance, not global shortId")
 
-1. **Effective-identity grouping.** Group/dedup artifacts by
-   `(shortId + version + excludeRules + jetifier)` per repo, not `shortId` alone.
-   Consistent with the existing `hasSameBucketOwnerAs` / `hasSameEffectiveIdentityAs`
-   predicates (`ResolveDependenciesResult.kt:121-138`).
+1. **Resolved-identity grouping.** Group/dedup artifacts per repo by Gradle-resolved
+   coordinate/version, repository/owner repo, and jetifier identity, not `shortId` alone.
+   Excludes are not a global grouping key within the same repo; they are reconciled by the
+   within-repo intersection rule below. Update or replace the existing
+   `hasSameBucketOwnerAs` / `hasSameEffectiveIdentityAs` predicates
+   (`ResolveDependenciesResult.kt:121-138`) so their names match this new semantics.
 2. **Provenance / variant-scoped selection.** Retire the global collapse:
    `selectedArtifactByShortId` + `mergeSelected` (`MavenInstallRootArtifacts.kt:148-176`)
    and the `shortId`-only `globalTransitiveClasspath` union
@@ -52,7 +56,9 @@ transitive → compile failure).
 3. **Within-repo exclude intersection.** Replace the union at
    `AggregatedDependencyResolver.kt:1003-1004`, `ResolveDependenciesResult.kt:116`, and
    `maxVersionReducer` (`ComputeWorkspaceDependencies.kt:226-234`) with intersection of the
-   owners' exclude sets for a coordinate shared within one repo.
+   owners' exclude sets for a coordinate shared within one repo. Preserve the
+   Gradle-resolved coordinate/version selected for that repo while changing only the
+   serialized exclusion set.
 
 ## Granularity — two sub-steps, each re-baselined + diff-explained
 
@@ -70,6 +76,9 @@ Split so each diff is attributable to one cause:
 - **PAX acceptance must pass** — `migrateToBazel` + `//app:app-gps-pax-debug.apk` +
   `//app:app-gps-pax-debug-android-test.apk`. This is the primary proof the new output is
   *correct*, not merely different (paths the old union over-excluded now build).
+- **No Coursier shortcut.** Generated `maven_install.artifacts` still contains the
+  Gradle-resolved closure needed to constrain Coursier. `additional_coursier_options =
+  ["--force-version"]` or equivalent conflict masking is not allowed.
 - **Diff-by-diff classification.** Enumerate every change from the prior baseline (sample
   committed outputs + PAX bounded audit) and classify each as a known-correct improvement
   (e.g. "`X` no longer over-excludes `Z`"; "`Y` in `@debug_maven` now uses the debug
@@ -87,8 +96,10 @@ Split so each diff is attributable to one cause:
 ## Acceptance criteria
 
 - Global `shortId` collapse and `shortId`-only transitive union are gone; selection is
-  effective-identity + owning-variant scoped.
+  Gradle-resolved identity + owning-variant scoped.
 - Excludes are intersected (never unioned); regression tests pin both correctness fixes.
+- Generated artifacts constrain Coursier with Gradle-resolved versions and do not add
+  force-version shortcuts.
 - PAX acceptance green; every diff from the prior baseline documented and classified.
 - New sample + PAX goldens committed as the baseline for Item 6.
 
