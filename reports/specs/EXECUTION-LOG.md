@@ -6,10 +6,12 @@ evidence in item-specific logs so context compaction can recover state quickly.
 ## Active State
 
 - Active item: Item 1 - Baseline, Knowledge Consolidation & Hygiene.
-- Current baseline commit: `1188d46` (`Establish dependency refactor baseline checks`).
+- Current code baseline commit: `10cfa22` (`Fix starlark writer trailing separators`).
 - Latest passed local gate:
   - `./gradlew verifyGrazelGoldenBaseline --console=plain`
   - Result: `BUILD SUCCESSFUL in 13s`.
+  - `git diff --check master...HEAD`
+  - Result: clean.
 - Current detailed log:
   - `reports/specs/execution-log/item1-baseline.md`
 
@@ -30,7 +32,6 @@ evidence in item-specific logs so context compaction can recover state quickly.
 
 ## Current Remaining Work
 
-- Commit the Item 1 log split and legacy report cleanup.
 - Run PAX baseline:
   - `./gradlew migrateToBazel --no-daemon --console=plain --stacktrace`
   - `./bazel.sh build //app:app-gps-pax-debug.apk //app:app-gps-pax-debug-android-test.apk --verbose_failures`

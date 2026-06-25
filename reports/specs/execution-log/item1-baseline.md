@@ -97,5 +97,30 @@ This item log keeps the detailed evidence for Item 1. Keep
   - Deleted the legacy dependency-refactor report artifacts listed in Item 1.
   - Kept `reports/scripts/`.
 - Remaining Item 1 work:
-  - Commit this cleanup.
+  - Run PAX migrate/build/audit and record `reports/specs/PAX-BOUNDED-AUDIT-BASELINE.md`.
+
+## 2026-06-26 03:30 +08 - Cleanup Commit And Writer Hygiene
+
+- Commit: `ba99bb8` (`Consolidate dependency refactor reports`).
+  - Deleted the legacy reports listed in Item 1.
+  - Added this item-specific log and kept `EXECUTION-LOG.md` short.
+- Post-cleanup check:
+  - `git diff --check master...HEAD` initially failed on `keystore/BUILD.bazel` with a
+    blank line at EOF.
+- Root cause:
+  - The Starlark statement writer appends separator newlines after statements.
+  - Keystore `BUILD.bazel` is generated outside the normal formatting path, so the
+    trailing separator survived in committed generated output.
+- Fix:
+  - Commit `10cfa22` (`Fix starlark writer trailing separators`).
+  - `List<Statement>.writeToFile` now drops trailing `NewLineStatement` separators only;
+    blank lines between statements are preserved.
+  - Added `StatementWriterTest`.
+  - Regenerated `keystore/BUILD.bazel`.
+- Verification:
+  - `./gradlew :grazel-gradle-plugin:test --console=plain --tests "com.grab.grazel.bazel.starlark.StatementWriterTest"` passed.
+  - `./gradlew migrateToBazel --console=plain` passed.
+  - `./gradlew verifyGrazelGoldenBaseline --console=plain` passed with `BUILD SUCCESSFUL in 13s`.
+  - `git diff --check master...HEAD` passed.
+- Remaining Item 1 work:
   - Run PAX migrate/build/audit and record `reports/specs/PAX-BOUNDED-AUDIT-BASELINE.md`.
