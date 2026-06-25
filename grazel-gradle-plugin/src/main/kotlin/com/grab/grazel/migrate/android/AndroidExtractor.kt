@@ -46,6 +46,7 @@ import com.grab.grazel.migrate.kotlin.kotlinParcelizeDeps
 import com.grab.grazel.util.GradleProvider
 import org.gradle.api.Project
 import org.gradle.kotlin.dsl.getByType
+import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -71,6 +72,8 @@ constructor(
 ) : AndroidLibraryDataExtractor {
 
     private val projectDependencyGraphs: DependencyGraphs get() = dependencyGraphsService.get().get()
+    private val transitiveMavenDepsForTagsCache =
+        ConcurrentHashMap<MavenTagClosureKey, Set<BazelDependency.MavenDependency>>()
 
     override fun extract(
         project: Project,
@@ -183,11 +186,18 @@ constructor(
     private fun Project.collectTransitiveMavenDepsForTags(
         matchedVariant: MatchedVariant
     ): Set<BazelDependency.MavenDependency> {
-        val variantKey = bestVariantKeyForTagClosure(matchedVariant) ?: return emptySet()
-        return dependenciesDataSource.collectTransitiveMavenDeps(
-            project = this,
-            variantKey = variantKey
+        val cacheKey = MavenTagClosureKey(
+            projectPath = path,
+            variantName = matchedVariant.variantName,
+            buildType = matchedVariant.buildType
         )
+        return transitiveMavenDepsForTagsCache.computeIfAbsent(cacheKey) {
+            val variantKey = bestVariantKeyForTagClosure(matchedVariant) ?: return@computeIfAbsent emptySet()
+            dependenciesDataSource.collectTransitiveMavenDeps(
+                project = this,
+                variantKey = variantKey
+            )
+        }
     }
 
     private fun Project.bestVariantKeyForTagClosure(matchedVariant: MatchedVariant): VariantGraphKey? {
@@ -213,6 +223,12 @@ constructor(
     private fun Variant<*>.toVariantGraphKey(): VariantGraphKey {
         return VariantGraphKey.from(project, name, variantType)
     }
+
+    private data class MavenTagClosureKey(
+        val projectPath: String,
+        val variantName: String,
+        val buildType: String,
+    )
 }
 
 internal interface AndroidBinaryDataExtractor : AndroidExtractor<AndroidBinaryData>

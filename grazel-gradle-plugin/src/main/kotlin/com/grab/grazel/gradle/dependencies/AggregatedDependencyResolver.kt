@@ -747,6 +747,7 @@ internal class AggregatedDependencyResolver(
             val buckets = linkedMapOf<String, Map<String, ResolvedDependency>>()
             toSortedMap().forEach { (projectPath, plan) ->
                 val mainCoveredDeps = mainCoveredDepsByProject[projectPath].orEmpty()
+                val mainCoveredDepsByShortId = mainCoveredDeps.groupByShortId()
                 val plannedBuckets = linkedMapOf<String, Map<String, ResolvedDependency>>()
 
                 fun addPlannedBucket(bucketName: String, dependencies: Map<String, ResolvedDependency>) {
@@ -772,7 +773,7 @@ internal class AggregatedDependencyResolver(
                         declaredTestDependencies +
                             dependencies
                                 .filterKeys { shortId -> shortId !in declaredTestShortIds }
-                                .withoutDependenciesCoveredBy(mainCoveredDeps)
+                                .withoutDependenciesCoveredBy(mainCoveredDepsByShortId)
                         )
                         .toSortedMap()
                     if (testOnlyDependencies.isNotEmpty()) {
@@ -1029,8 +1030,15 @@ internal data class CoveredDependency(
 
 internal fun Map<String, ResolvedDependency>.withoutDependenciesCoveredBy(
     coveredDependencies: Iterable<CoveredDependency>
+): Map<String, ResolvedDependency> =
+    withoutDependenciesCoveredBy(coveredDependencies.groupByShortId())
+
+private fun Iterable<CoveredDependency>.groupByShortId(): Map<String, List<CoveredDependency>> =
+    groupBy { it.dependency.shortId }
+
+private fun Map<String, ResolvedDependency>.withoutDependenciesCoveredBy(
+    coveredByShortId: Map<String, List<CoveredDependency>>
 ): Map<String, ResolvedDependency> {
-    val coveredByShortId = coveredDependencies.groupBy { it.dependency.shortId }
     return mapNotNull { (shortId, dependency) ->
         val coveringDependencies = coveredByShortId[shortId]
             .orEmpty()
