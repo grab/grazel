@@ -100,9 +100,10 @@ Copied verbatim into each later spec's header by reference to this section.
 
 ### Oracle definition (NOT byte-identical to master)
 "Correct" = bucket semantics preserved + APK & android-test APK build + **target-local
-bounded audit** stable (per key target: `deps` count, `tags` count,
-`@debug_maven`/`@android_test_maven` direct counts) + every diff from master
-*documented*, not eliminated. For behaviour-preserving items, the stronger local signal
+bounded audit** stable + every diff from master *documented*, not eliminated. The
+bounded audit covers, per key target — at minimum `//app:app-gps-pax-debug` and
+`//app:app-gps-pax-debug-android-test` (the APK-gate targets) — the `deps` count,
+`tags` count, and `@debug_maven`/`@android_test_maven` direct-dep counts. For behaviour-preserving items, the stronger local signal
 is `git diff --exit-code` against **this item's committed baseline** (not master).
 
 ### Documented waivers (acceptable failures)
