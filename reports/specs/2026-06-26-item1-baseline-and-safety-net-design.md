@@ -8,6 +8,18 @@ This is the entry-point spec. It establishes the frozen golden baseline that eve
 later item diffs against, and it is the canonical home for the **Global Constraints**
 and **Verification Playbook** that all later specs reference.
 
+> **⚠️ Execution note — delegate to subagents; protect the main context.**
+> Several tasks here (and across the spec set) involve reading large volumes of
+> material that will not fit, and should not be loaded, into a single main context
+> window — most acutely **Part C consolidation**, which must distill thousands of
+> lines of historical `reports/*.md` into a few durable notes. **Do not read those
+> files into the orchestrating context.** Dispatch focused subagents instead: give
+> each a narrow question (e.g. "extract every documented waiver and its rationale
+> from these three files, with citations") and have it return only the distilled
+> result. The same applies to wide code reads, multi-file audits, and any
+> bounded-audit number gathering on PAX. Keep the main context for sequencing,
+> decisions, and verification — not for raw file content.
+
 ---
 
 ## Spec set index (the six-item backlog)
