@@ -7,4 +7,3 @@ filegroup(
     "//visibility:public",
   ]
 )
-

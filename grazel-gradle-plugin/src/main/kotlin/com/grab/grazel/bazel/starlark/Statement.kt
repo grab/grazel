@@ -217,7 +217,8 @@ fun Statement.asString(): String {
 
 fun List<Statement>.writeToFile(file: File) {
     PrintWriter(file).use { printWriter ->
-        forEach { statement -> statement.write(0, printWriter) }
+        dropLastWhile { it == NewLineStatement }
+            .forEach { statement -> statement.write(0, printWriter) }
         printWriter.flush()
     }
 }
