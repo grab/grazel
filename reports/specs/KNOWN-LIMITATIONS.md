@@ -32,6 +32,38 @@ version-forcing behavior and caused PAX pinning to stall. Future size work shoul
 through better bucket placement, test/lint ownership, or a proven first-class version
 constraint mechanism, not by masking Coursier conflicts with `--force-version`.
 
+Old Grazel/PAX did not pass pinning because `override_targets` made Coursier ignore
+conflicts. It passed because each split `maven_install` repo still carried the relevant
+Gradle-resolved transitive closure in `artifacts`; with `version_conflict_policy =
+"pinned"`, rules_jvm_external used those artifact coordinates as version-forcing inputs.
+`override_targets` is a post-resolution Bazel-label redirection mechanism. It can point a
+resolved target back to `@maven` or a patched label, but it is not a substitute for
+including the Gradle-selected coordinate in the Coursier input set.
+
+The remaining size problem is therefore upstream bucket ownership, not a license to drop
+closure artifacts from materialized repos. The next optimization should reduce which
+direct roots enter each bucket, then keep that bucket's Gradle-resolved closure complete
+for Coursier. In particular:
+
+- Direct declaration ownership should drive placement: `implementation` belongs in the
+  default `maven` bucket, `debugImplementation` in `debug_maven`,
+  `androidTestImplementation` in `android_test_maven`, etc. Declared versions may guide
+  ownership only; selected versions still come from Gradle resolution.
+- Test and android-test buckets should inherit main ownership instead of re-owning main
+  dependencies. Their repos should own direct test deltas and carry only the closure
+  needed for those deltas.
+- Variant hierarchy/DAG placement should move shared direct dependencies to the closest
+  common owner rather than duplicating them across leaf buckets.
+- Lint and test buckets need tighter ownership. KSP is acceptable as a sidecar for this
+  slice, but test/lint pinfiles are the main current bloat source.
+- Candidate repos may exist for planning, but only repos with real direct-owned roots
+  should materialize.
+
+Correctness rule for the next goal: after a repo is materialized, every Gradle-resolved
+coordinate needed to force that repo's selected dependency graph must remain in
+`maven_install.artifacts`, even when `override_targets` redirects its generated Bazel
+label elsewhere.
+
 ## Variant Compression
 
 Variant compression remains downstream of extraction. This is a pre-existing shape and is
