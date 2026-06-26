@@ -6,11 +6,9 @@ evidence in item-specific logs so context compaction can recover state quickly.
 ## Active State
 
 - Active item: Item 6 - Simplify, adversarial review, and final verification.
-- Current HEAD while updating this index: `ee92e8f`
-  (`Simplify workspace planning cleanup`).
-- Current worktree: dirty with Item 6 follow-up fixes and itemized execution
-  logs. Do not claim review-ready until the final verification gates below are
-  rerun from this exact state or a later committed checkpoint.
+- Final verification checkpoint commit: `db05a6d`
+  (`Finalize dependency refactor verification`).
+- Current Grazel worktree after checkpoint: clean, branch ahead of origin.
 - Item 1 baseline/safety-net checkpoint commit: `368a21f`
   (`Record PAX baseline safety gate`).
 - Item 2 structured-planning checkpoint commit: `6393de1`
@@ -66,6 +64,8 @@ evidence in item-specific logs so context compaction can recover state quickly.
   - Item 11 fresh broad `./gradlew check --console=plain --no-daemon`
     failed on unchanged sample-app lint:
     `sample-android/src/main/res/layout/activity_main.xml:73 MissingConstraints`.
+  - Final post-checkpoint Grazel `git diff --check` and
+    `git diff --check master...HEAD` passed.
   - PAX `./gradlew migrateToBazel --no-daemon --console=plain --stacktrace`
     passed after strict reachability and collector fixes.
   - PAX `./bazel.sh build //app:app-gps-pax-debug.apk
@@ -75,6 +75,8 @@ evidence in item-specific logs so context compaction can recover state quickly.
   - PAX `git diff --check` passed.
   - PAX working tree remains dirty from generated output; do not commit PAX
     changes.
+  - PAX generated diff shape at final checkpoint: 2230 generated files changed,
+    705176 insertions, 772265 deletions.
 - Current detailed logs:
   - `reports/specs/execution-log/item6-simplify-review-verification.md`
   - `reports/specs/execution-log/item7-pax-bazel-package-reachability.md`
