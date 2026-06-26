@@ -8,9 +8,13 @@ import com.grab.grazel.di.GradleServices
 import com.grab.grazel.fake.FakeLogger
 import com.grab.grazel.fake.FakeWorkerExecutor
 import com.grab.grazel.gradle.ANDROID_APPLICATION_PLUGIN
+import com.grab.grazel.gradle.dependencies.model.CandidateMavenRepo
+import com.grab.grazel.gradle.dependencies.model.CandidateMavenRepoKind
 import com.grab.grazel.gradle.dependencies.model.OverrideTarget
 import com.grab.grazel.gradle.dependencies.model.ResolvedDependency
 import com.grab.grazel.gradle.dependencies.model.WorkspaceDependencies
+import com.grab.grazel.gradle.dependencies.model.WorkspacePlan
+import com.grab.grazel.gradle.dependencies.model.WorkspaceRenderPlan
 import com.grab.grazel.gradle.variant.DEFAULT_VARIANT
 import com.grab.grazel.util.BUILD_BAZEL
 import com.grab.grazel.util.NoOpProgressLogger
@@ -31,6 +35,7 @@ import org.junit.rules.TemporaryFolder
 import java.io.File
 import kotlin.io.path.copyTo
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 
 class DefaultArtifactPinnerTest {
@@ -90,10 +95,10 @@ class DefaultArtifactPinnerTest {
             val gradleServices = GradleServices.from(rootProject)
             artifactPinner.shouldRunPinning(
                 workspace,
-                workspaceDependencies = WorkspaceDependencies(emptyMap()),
                 gradleServices = gradleServices,
                 parentProgress = gradleServices.progressLoggerFactory.startOperation("test"),
-                logger = FakeLogger()
+                logger = FakeLogger(),
+                pinnableRepos = emptyMap()
             )
         }
     }
@@ -110,21 +115,17 @@ class DefaultArtifactPinnerTest {
         }
 
         rootProject.file("maven_install.json").writeText(MAVEN_INSTALL_JSON)
+        val annotation = ResolvedDependency.from("androidx.annotation:annotation:1.2.0:maven:false:null")
 
         assertTrue("Pinning is done when artifacts are actually out of date")
         {
             val gradleServices = GradleServices.from(rootProject)
             artifactPinner.shouldRunPinning(
                 workspace,
-                workspaceDependencies = WorkspaceDependencies(variantDeps = buildMap {
-                    put(
-                        DEFAULT_VARIANT,
-                        listOf(ResolvedDependency.from("androidx.annotation:annotation:1.2.0:maven:false:null"))
-                    )
-                }),
                 gradleServices = gradleServices,
                 parentProgress = gradleServices.progressLoggerFactory.startOperation("test"),
                 logger = rootProject.logger,
+                pinnableRepos = mapOf("maven" to listOf(annotation)),
                 logOutput = true
             )
         }
@@ -146,17 +147,16 @@ class DefaultArtifactPinnerTest {
         val gradleServices = GradleServices.from(rootProject).copy(
             workerExecutor = FakeWorkerExecutor()
         )
+        val annotation = ResolvedDependency.from("androidx.annotation:annotation:1.1.0:maven:false:null")
         assertTrue("Pinning is done and maven install json is generated") {
             artifactPinner.pinArtifacts(
                 workspace,
-                workspaceDependencies = WorkspaceDependencies(variantDeps = buildMap {
-                    put(
-                        DEFAULT_VARIANT,
-                        listOf(ResolvedDependency.from("androidx.annotation:annotation:1.1.0:maven:false:null"))
-                    )
-                }),
+                workspacePlan = workspacePlan("maven" to listOf(annotation)),
+                workspaceRenderPlan = WorkspaceRenderPlan(materializedRepoNames = setOf("maven")),
                 gradleServices = gradleServices,
                 logger = rootProject.logger,
+                legacyWorkspaceDependencies = null,
+                assertPlanParity = false
             )
         }
     }
@@ -231,39 +231,61 @@ class DefaultArtifactPinnerTest {
 
         assertEquals(setOf("maven", "debug_maven", "full_paid_debug_maven", "ksp_maven"), repos.keys)
         assertEquals(listOf(transitiveOnly), repos.getValue("maven"))
-        assertEquals(listOf(debugDirect, transitiveOnly), repos.getValue("debug_maven"))
-        assertEquals(listOf(overrideCarrier, fullPaidDirect, transitiveOnly), repos.getValue("full_paid_debug_maven"))
+        assertEquals(setOf(debugDirect), repos.getValue("debug_maven").toSet())
+        assertEquals(setOf(overrideCarrier, fullPaidDirect), repos.getValue("full_paid_debug_maven").toSet())
         assertEquals(listOf(kspProcessor), repos.getValue("ksp_maven"))
     }
 
     @Test
-    fun `pinnable repos are filtered to materialized workspace repos`() {
-        val workspace = rootProject.file(WORKSPACE).apply {
-            writeText(
-                """
-                maven_install(
-                    name = "maven",
-                )
-
-                maven_install(
-                    name = "debug_maven",
-                )
-                """.trimIndent()
-            )
-        }
+    fun `pinnable repos are filtered to materialized render plan repos`() {
         val defaultDirect = ResolvedDependency.fromId("com.example:default-only:1.0.0", "MavenRepo")
         val debugDirect = ResolvedDependency.fromId("com.example:debug-only:1.0.0", "MavenRepo")
         val unmaterializedFlavorDirect = ResolvedDependency.fromId("com.example:flavor-only:1.0.0", "MavenRepo")
 
-        val repos = WorkspaceDependencies(
-            variantDeps = mapOf(
-                DEFAULT_VARIANT to listOf(defaultDirect),
-                "debug" to listOf(debugDirect),
-                "moveit" to listOf(unmaterializedFlavorDirect)
-            )
-        ).pinnableMavenInstallRepos(workspace.materializedMavenInstallRepos())
+        val repos = workspacePlan(
+            "maven" to listOf(defaultDirect),
+            "debug_maven" to listOf(debugDirect),
+            "moveit_maven" to listOf(unmaterializedFlavorDirect),
+            "empty_maven" to emptyList()
+        ).pinnableMavenInstallRepos(
+            WorkspaceRenderPlan(materializedRepoNames = setOf("maven", "debug_maven", "empty_maven"))
+        )
 
         assertEquals(setOf("maven", "debug_maven"), repos.keys)
+    }
+
+    @Test
+    fun `pinner plan parity accepts exact legacy match`() {
+        val defaultDirect = ResolvedDependency.fromId("com.example:default-only:1.0.0", "MavenRepo")
+        val debugDirect = ResolvedDependency.fromId("com.example:debug-only:1.0.0", "MavenRepo")
+
+        assertNoThrow("Matching pinner plan and legacy repos are accepted") {
+            assertPinnableRepoParity(
+                planRepos = mapOf(
+                    "maven" to listOf(defaultDirect),
+                    "debug_maven" to listOf(debugDirect)
+                ),
+                legacyRepos = mapOf(
+                    "maven" to listOf(defaultDirect),
+                    "debug_maven" to listOf(debugDirect)
+                )
+            )
+        }
+    }
+
+    @Test
+    fun `pinner plan parity fails on repo content mismatch`() {
+        val defaultDirect = ResolvedDependency.fromId("com.example:default-only:1.0.0", "MavenRepo")
+        val debugDirect = ResolvedDependency.fromId("com.example:debug-only:1.0.0", "MavenRepo")
+
+        val error = assertFailsWith<IllegalStateException> {
+            assertPinnableRepoParity(
+                planRepos = mapOf("maven" to listOf(defaultDirect)),
+                legacyRepos = mapOf("maven" to listOf(debugDirect))
+            )
+        }
+
+        assertTrue(error.message.orEmpty().contains("Pinner WorkspacePlan parity mismatch"))
     }
 
     @Test
@@ -304,11 +326,12 @@ class DefaultArtifactPinnerTest {
         assertTrue("Pinning skips repos that were not generated") {
             artifactPinner.pinArtifacts(
                 workspace,
-                workspaceDependencies = WorkspaceDependencies(
-                    variantDeps = mapOf("fullPaidDebug" to listOf(overrideCarrier))
-                ),
+                workspacePlan = workspacePlan("full_paid_debug_maven" to listOf(overrideCarrier)),
+                workspaceRenderPlan = WorkspaceRenderPlan(materializedRepoNames = emptySet()),
                 gradleServices = gradleServices,
                 logger = rootProject.logger,
+                legacyWorkspaceDependencies = null,
+                assertPlanParity = false
             )
         }
     }
@@ -352,6 +375,20 @@ class DefaultArtifactPinnerTest {
             !mavenInstall.exists()
         }
     }
+
+    private fun workspacePlan(
+        vararg repos: Pair<String, List<ResolvedDependency>>
+    ): WorkspacePlan =
+        WorkspacePlan(
+            repoPlan = repos.associate { (repoName, pinInputs) ->
+                repoName to CandidateMavenRepo(
+                    repoName = repoName,
+                    kind = CandidateMavenRepoKind.AGGREGATED,
+                    rootArtifacts = pinInputs,
+                    pinInputs = pinInputs
+                )
+            }
+        )
 
     companion object {
         private val WORKSPACE_TEMPLATE = """

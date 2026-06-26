@@ -5,9 +5,13 @@ evidence in item-specific logs so context compaction can recover state quickly.
 
 ## Active State
 
-- Active item: Item 2 - Structured Planning Seam (`WorkspacePlan`).
+- Active item: Item 3 - Consumer Cutover onto `WorkspacePlan`.
 - Item 1 baseline/safety-net checkpoint commit: `368a21f`
   (`Record PAX baseline safety gate`).
+- Item 2 structured-planning checkpoint commit: `6393de1`
+  (`Add workspace dependency planning seam`).
+- Item 3 Step 1 pinner cutover checkpoint commit: this commit
+  (`Cut pinner over to workspace plan`).
 - Latest passed local gate:
   - `./gradlew verifyGrazelGoldenBaseline --console=plain`
   - Result: `BUILD SUCCESSFUL in 14s` after adding
@@ -40,7 +44,8 @@ evidence in item-specific logs so context compaction can recover state quickly.
 
 - Item 1: `reports/specs/execution-log/item1-baseline.md`
 - Item 2: `reports/specs/execution-log/item2-structured-planning.md`
-- Items 3-6: create `reports/specs/execution-log/itemN-*.md` when each item starts.
+- Item 3: `reports/specs/execution-log/item3-consumer-cutover.md`
+- Items 4-6: create `reports/specs/execution-log/itemN-*.md` when each item starts.
 
 ## Standing Constraints
 
@@ -54,4 +59,6 @@ evidence in item-specific logs so context compaction can recover state quickly.
 
 ## Current Remaining Work
 
-- Continue Items 3-6 in order after Item 2 passes its additive checks.
+- Item 3 Step 1 pinner cutover passed focused/local golden checks; decide whether to
+  run PAX at this checkpoint or proceed to Step 2 root generation cutover first.
+- Continue Items 3-6 in order.

@@ -181,8 +181,9 @@ constructor(
         )
 
         val pinArtifactsTask = PinMavenArtifactsTask.register(rootProject, grazelComponent) {
-            dependencyResolutionService.set(grazelComponent.dependencyResolutionService())
             workspaceFile.set(rootFormattingTasks.workspace.flatMap { it.outputFile })
+            workspacePlan.set(computeWorkspacePlanTask.flatMap { it.workspacePlan })
+            workspaceRenderPlan.set(finalizeWorkspacePlanTask.flatMap { it.workspaceRenderPlan })
             workspaceDependencies.set(computeWorkspaceDependenciesTask.flatMap { it.workspaceDependencies })
         }
 

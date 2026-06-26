@@ -20,6 +20,8 @@ import com.grab.grazel.GrazelExtension
 import com.grab.grazel.bazel.exec.bazelCommand
 import com.grab.grazel.bazel.starlark.BazelDependency.MavenDependency
 import com.grab.grazel.di.GradleServices
+import com.grab.grazel.gradle.dependencies.model.WorkspacePlan
+import com.grab.grazel.gradle.dependencies.model.WorkspaceRenderPlan
 import com.grab.grazel.gradle.dependencies.model.ResolvedDependency
 import com.grab.grazel.gradle.dependencies.model.WorkspaceDependencies
 import com.grab.grazel.util.NoOpProgressLogger
@@ -46,9 +48,12 @@ internal interface ArtifactPinner {
 
     fun pinArtifacts(
         workspaceFile: File,
-        workspaceDependencies: WorkspaceDependencies,
+        workspacePlan: WorkspacePlan,
+        workspaceRenderPlan: WorkspaceRenderPlan,
         gradleServices: GradleServices,
-        logger: Logger
+        logger: Logger,
+        legacyWorkspaceDependencies: WorkspaceDependencies? = null,
+        assertPlanParity: Boolean = false
     ): Boolean
 
     /**
@@ -118,13 +123,10 @@ constructor(
      */
     internal fun shouldRunPinning(
         workspaceFile: File,
-        workspaceDependencies: WorkspaceDependencies,
         gradleServices: GradleServices,
         parentProgress: ProgressLogger,
         logger: Logger,
-        pinnableRepos: Map<String, List<ResolvedDependency>> = workspaceDependencies.pinnableMavenInstallRepos(
-            workspaceFile.materializedMavenInstallRepos()
-        ),
+        pinnableRepos: Map<String, List<ResolvedDependency>>,
         logOutput: Boolean = false
     ): Boolean {
         val progressLoggerFactory = gradleServices.progressLoggerFactory
@@ -206,21 +208,32 @@ constructor(
 
     override fun pinArtifacts(
         workspaceFile: File,
-        workspaceDependencies: WorkspaceDependencies,
+        workspacePlan: WorkspacePlan,
+        workspaceRenderPlan: WorkspaceRenderPlan,
         gradleServices: GradleServices,
         logger: Logger,
+        legacyWorkspaceDependencies: WorkspaceDependencies?,
+        assertPlanParity: Boolean
     ): Boolean {
         val progressLoggerFactory = gradleServices.progressLoggerFactory
 
         val progressLogger = progressLoggerFactory.startOperation("Pin maven artifacts")
-        val allRepos = workspaceDependencies.pinnableMavenInstallRepos(
-            workspaceFile.materializedMavenInstallRepos()
-        )
+        val allRepos = workspacePlan.pinnableMavenInstallRepos(workspaceRenderPlan)
+        if (assertPlanParity) {
+            requireNotNull(legacyWorkspaceDependencies) {
+                "Workspace dependency parity input is required when grazel.internal.planParity=true"
+            }
+            assertPinnableRepoParity(
+                planRepos = allRepos,
+                legacyRepos = legacyWorkspaceDependencies.pinnableMavenInstallRepos(
+                    workspaceFile.materializedMavenInstallRepos()
+                )
+            )
+        }
         cleanupStaleMavenInstallJsons(gradleServices.layout, allRepos.keys)
 
         val shouldRun = shouldRunPinning(
             workspaceFile,
-            workspaceDependencies,
             gradleServices,
             progressLogger,
             logger,
@@ -318,6 +331,39 @@ internal fun File.materializedMavenInstallRepos(): Set<String> =
         .findAll(readText())
         .map { matchResult -> matchResult.groupValues[1] }
         .toSortedSet()
+
+internal fun WorkspacePlan.pinnableMavenInstallRepos(
+    workspaceRenderPlan: WorkspaceRenderPlan
+): Map<String, List<ResolvedDependency>> =
+    workspaceRenderPlan.materializedRepoNames
+        .mapNotNull { repoName ->
+            val repo = repoPlan[repoName] ?: return@mapNotNull null
+            repoName to repo.pinInputs
+        }
+        .filter { (_, pinInputs) -> pinInputs.isNotEmpty() }
+        .toMap()
+
+internal fun assertPinnableRepoParity(
+    planRepos: Map<String, List<ResolvedDependency>>,
+    legacyRepos: Map<String, List<ResolvedDependency>>
+) {
+    val planIds = planRepos.mapValues { (_, deps) -> deps.map(ResolvedDependency::id) }
+    val legacyIds = legacyRepos.mapValues { (_, deps) -> deps.map(ResolvedDependency::id) }
+    check(planIds == legacyIds) {
+        buildString {
+            appendLine("Pinner WorkspacePlan parity mismatch.")
+            appendLine("Plan-only repos: ${(planIds.keys - legacyIds.keys).sorted()}")
+            appendLine("Legacy-only repos: ${(legacyIds.keys - planIds.keys).sorted()}")
+            (planIds.keys intersect legacyIds.keys).sorted().forEach { repoName ->
+                val planValues = planIds.getValue(repoName)
+                val legacyValues = legacyIds.getValue(repoName)
+                if (planValues != legacyValues) {
+                    appendLine("$repoName plan=$planValues legacy=$legacyValues")
+                }
+            }
+        }
+    }
+}
 
 internal fun WorkspaceDependencies.pinnableMavenInstallRepos(
     materializedMavenRepos: Set<String> = emptySet()
