@@ -168,7 +168,7 @@ class AggregatedDependencyResolverTest {
     }
 
     @Test
-    fun `merges duplicate dependency metadata while keeping max version representative`() {
+    fun `merges duplicate dependency metadata while dropping one sided excludes`() {
         val excludeRule = ExcludeRule("com.example", "blocked")
         val lowerVersionWithExclude = dependency("com.example:library:1.0").copy(
             dependencies = setOf("com.example:lower-transitive:1.0:maven:false:null"),
@@ -185,7 +185,24 @@ class AggregatedDependencyResolverTest {
 
         assertEquals("2.0", merged.version)
         assertEquals(higherVersionWithoutExclude.dependencies, merged.dependencies)
-        assertEquals(setOf(excludeRule), merged.excludeRules)
+        assertEquals(emptySet<ExcludeRule>(), merged.excludeRules)
+    }
+
+    @Test
+    fun `intersects duplicate dependency excludes while keeping max version representative`() {
+        val commonExclude = ExcludeRule("com.example", "common")
+        val firstOnlyExclude = ExcludeRule("com.example", "first-only")
+        val secondOnlyExclude = ExcludeRule("com.example", "second-only")
+        val firstDependency = dependency("com.example:library:1.0").copy(
+            excludeRules = setOf(commonExclude, firstOnlyExclude)
+        )
+        val secondDependency = dependency("com.example:library:1.0").copy(
+            excludeRules = setOf(commonExclude, secondOnlyExclude)
+        )
+
+        val merged = mergeDependencyMetadataByMaxVersion(firstDependency, secondDependency)
+
+        assertEquals(setOf(commonExclude), merged.excludeRules)
     }
 
     @Test
@@ -262,7 +279,7 @@ class AggregatedDependencyResolverTest {
     }
 
     @Test
-    fun `does not apply child only excludes to parent configuration metadata`() {
+    fun `classpath exclude metadata drops child only exclude when inherited parent keeps dependency`() {
         val project = ProjectBuilder.builder().build()
         val implementation = project.configurations.create("implementation")
         val debugImplementation = project.configurations.create("debugImplementation")
@@ -279,7 +296,7 @@ class AggregatedDependencyResolverTest {
 
         assertEquals(emptyMap<String, Set<ExcludeRule>>(), implementation.extractExcludeRulesByShortId())
         assertEquals(
-            mapOf("com.example:library" to setOf(ExcludeRule("com.example", "blocked"))),
+            emptyMap<String, Set<ExcludeRule>>(),
             debugRuntimeClasspath.extractExcludeRulesByShortId()
         )
     }
@@ -467,6 +484,38 @@ class AggregatedDependencyResolverTest {
 
         assertEquals(
             setOf(paidRule),
+            excludeRules.excludeRulesFor(
+                rootProjectPath = ":app",
+                rootExcludeRulesByShortId = emptyMap(),
+                ownerProjectPath = ":lib",
+                ownerProjectVariantDisplayName = "paidDebugRuntimeElements",
+                shortId = shortId
+            )
+        )
+    }
+
+    @Test
+    fun `intersects selected project variant hierarchy excludes`() {
+        val shortId = "com.example:library"
+        val commonRule = ExcludeRule("com.example", "common-blocked")
+        val paidRule = ExcludeRule("com.example", "paid-blocked")
+        val debugRule = ExcludeRule("com.example", "debug-blocked")
+
+        val excludeRules = mapOf(
+            ":lib" to ProjectExcludeRules(
+                bucketRulesByShortId = emptyMap(),
+                variantRulesByName = mapOf(
+                    "paidDebug" to mapOf(shortId to setOf(commonRule, paidRule)),
+                    "debug" to mapOf(shortId to setOf(commonRule, debugRule))
+                ),
+                variantHierarchyNamesByName = mapOf(
+                    "paidDebug" to setOf("paidDebug", "paid", "debug", "default")
+                )
+            )
+        )
+
+        assertEquals(
+            setOf(commonRule),
             excludeRules.excludeRulesFor(
                 rootProjectPath = ":app",
                 rootExcludeRulesByShortId = emptyMap(),

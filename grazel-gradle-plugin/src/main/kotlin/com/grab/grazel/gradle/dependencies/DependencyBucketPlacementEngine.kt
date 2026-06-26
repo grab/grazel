@@ -17,7 +17,6 @@
 package com.grab.grazel.gradle.dependencies
 
 import com.grab.grazel.gradle.dependencies.model.ResolvedDependency
-import com.grab.grazel.gradle.dependencies.model.merge
 import com.grab.grazel.gradle.variant.BucketHierarchyEntry
 import com.grab.grazel.gradle.variant.BucketHierarchyGraph
 import com.grab.grazel.gradle.variant.BucketHierarchyNode
@@ -275,7 +274,9 @@ internal class DependencyBucketPlacementEngine {
                 matchingOwnerDependency ?: sameVersionLeafDependencies
                     .reduceOrNull(::mergeDependencyMetadataByMaxVersion)
             }
-            resolvedDependency?.merge(explicitDependency) ?: explicitDependency
+            resolvedDependency
+                ?.let { dependency -> mergeDependencyMetadataByMaxVersion(dependency, explicitDependency) }
+                ?: explicitDependency
         }.toSortedMap()
     }
 
@@ -300,13 +301,27 @@ internal class DependencyBucketPlacementEngine {
             merged[shortId] = if (explicitDependency == null) {
                 inferredDependency
             } else {
-                inferredDependency.merge(explicitDependency).copy(
-                    requiresJetifier = inferredDependency.requiresJetifier ||
-                        explicitDependency.requiresJetifier
-                )
+                explicitDependency.withInferredClosureMetadata(inferredDependency)
             }
         }
         return merged.toSortedMap()
+    }
+
+    private fun ResolvedDependency.withInferredClosureMetadata(
+        inferredDependency: ResolvedDependency
+    ): ResolvedDependency {
+        return copy(
+            direct = direct || inferredDependency.direct,
+            dependencies = if (version == inferredDependency.version) {
+                (dependencies + inferredDependency.dependencies).toSortedSet()
+            } else {
+                dependencies
+            },
+            requiresJetifier = requiresJetifier || inferredDependency.requiresJetifier,
+            jetifierSource = jetifierSource ?: inferredDependency.jetifierSource,
+            overrideTarget = overrideTarget ?: inferredDependency.overrideTarget,
+            processorClass = processorClass ?: inferredDependency.processorClass
+        )
     }
 }
 

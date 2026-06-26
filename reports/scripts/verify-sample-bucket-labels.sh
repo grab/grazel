@@ -157,14 +157,37 @@ if grep -q '"com.google.auto.service:auto-service-annotations:1.0"' <<<"$lint_ma
   exit 1
 fi
 
-if ! grep -q 'artifact = "constraintlayout"' WORKSPACE ||
-  ! grep -q '"androidx.appcompat:appcompat"' WORKSPACE; then
-  echo "WORKSPACE must preserve Gradle exclude rules for androidx.constraintlayout:constraintlayout" >&2
+maven_block="$(awk '/name = "maven"/,/^)/' WORKSPACE)"
+constraintlayout_block="$(awk '
+  /maven\.artifact\(/ {
+    in_artifact = 1
+    block = ""
+  }
+  in_artifact {
+    block = block $0 "\n"
+  }
+  in_artifact && /^        \),/ {
+    if (block ~ /group = "androidx.constraintlayout"/ && block ~ /artifact = "constraintlayout"/) {
+      print block
+    }
+    in_artifact = 0
+  }
+' <<<"$maven_block")"
+if ! grep -q 'artifact = "constraintlayout"' <<<"$constraintlayout_block"; then
+  echo "WORKSPACE must emit androidx.constraintlayout:constraintlayout as a structured artifact" >&2
+  exit 1
+fi
+if grep -q '"androidx.appcompat:appcompat"' <<<"$constraintlayout_block"; then
+  echo "WORKSPACE must not union one-sided appcompat exclude onto androidx.constraintlayout:constraintlayout" >&2
+  exit 1
+fi
+if ! grep -q '"androidx.core:core"' <<<"$constraintlayout_block"; then
+  echo "WORKSPACE must preserve remaining Gradle exclude rules for androidx.constraintlayout:constraintlayout" >&2
   exit 1
 fi
 
 actual_buckets="$(jq -r '.result | keys[]' build/grazel/dependencies.json | sort | paste -sd ',' -)"
-expected_buckets="androidTest,debug,debugAndroidTest,debugUnitTest,default,lint,test"
+expected_buckets="androidTest,debug,debugAndroidTest,default,lint,test"
 if [[ "$actual_buckets" != "$expected_buckets" ]]; then
   echo "Unexpected dependency buckets: $actual_buckets" >&2
   exit 1
@@ -185,13 +208,6 @@ for bucket in default test lint; do
     exit 1
   fi
 done
-
-if ! jq -e \
-  '.result.debugUnitTest[]? | select(.shortId == "androidx.constraintlayout:constraintlayout" and .direct == true)' \
-  build/grazel/dependencies.json >/dev/null; then
-  echo "debugUnitTest bucket must own debug unit-test-only constraintlayout dependency directly" >&2
-  exit 1
-fi
 
 if ! jq -e \
   '.result.debugAndroidTest[]? | select(.shortId == "androidx.paging:paging-runtime" and .direct == true)' \

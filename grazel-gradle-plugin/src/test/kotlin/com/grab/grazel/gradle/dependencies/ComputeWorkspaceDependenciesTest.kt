@@ -235,6 +235,34 @@ class ComputeWorkspaceDependenciesTest {
     }
 
     @Test
+    fun `intersects excludes when same resolved dependency appears multiple times in one bucket`() {
+        val commonExclude = ExcludeRule("com.example", "common")
+        val firstOnlyExclude = ExcludeRule("com.example", "first-only")
+        val secondOnlyExclude = ExcludeRule("com.example", "second-only")
+        val firstDependency = dependency("com.example:root:1.0", "maven").copy(
+            excludeRules = setOf(commonExclude, firstOnlyExclude)
+        )
+        val secondDependency = dependency("com.example:root:1.0", "maven").copy(
+            excludeRules = setOf(commonExclude, secondOnlyExclude)
+        )
+
+        val workspaceDependencies = ComputeWorkspaceDependencies().computeFromResults(
+            listOf(
+                result("default", firstDependency),
+                result("default", secondDependency)
+            )
+        )
+
+        assertEquals(
+            setOf(commonExclude),
+            workspaceDependencies.variantDeps
+                .getValue("default")
+                .single { it.shortId == "com.example:root" }
+                .excludeRules
+        )
+    }
+
+    @Test
     fun `removes child direct dependency that already resolves through default override target`() {
         val defaultDependency = dependency("androidx.test:runner:1.5.2", "Google")
             .copy(jetifierSource = "com.android.support.test:runner")

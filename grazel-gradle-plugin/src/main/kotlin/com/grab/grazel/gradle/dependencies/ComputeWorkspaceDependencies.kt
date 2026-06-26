@@ -7,7 +7,6 @@ import com.grab.grazel.gradle.dependencies.model.ResolvedDependency
 import com.grab.grazel.gradle.dependencies.model.WorkspaceDependencies
 import com.grab.grazel.gradle.dependencies.model.allDependencies
 import com.grab.grazel.gradle.dependencies.model.hasSameEffectiveIdentityAs
-import com.grab.grazel.gradle.dependencies.model.merge
 import com.grab.grazel.gradle.dependencies.model.versionInfo
 import com.grab.grazel.gradle.variant.DEFAULT_VARIANT
 import com.grab.grazel.util.KSP_MAVEN
@@ -228,8 +227,7 @@ internal class ComputeWorkspaceDependencies {
             when {
                 old == null -> new
                 new == null -> old
-                // Pick the max version
-                else -> if (old.versionInfo > new.versionInfo) old.merge(new) else new.merge(old)
+                else -> mergeDependencyMetadataByMaxVersion(old, new)
             }
         }
     }

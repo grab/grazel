@@ -113,10 +113,16 @@ internal fun ResolvedDependency.merge(other: ResolvedDependency): ResolvedDepend
         dependencies = (dependencies + other.dependencies).toSortedSet(),
         jetifierSource = jetifierSource ?: other.jetifierSource,
         overrideTarget = overrideTarget ?: other.overrideTarget,
-        excludeRules = (excludeRules + other.excludeRules).toSortedSet(compareBy(ExcludeRule::toString)),
+        excludeRules = excludeRules.intersectWith(other.excludeRules),
         processorClass = processorClass ?: other.processorClass,
     )
 }
+
+internal fun Set<ExcludeRule>.intersectWith(other: Set<ExcludeRule>): Set<ExcludeRule> =
+    when {
+        isEmpty() || other.isEmpty() -> emptySet()
+        else -> intersect(other).toSortedSet(compareBy(ExcludeRule::toString))
+    }
 
 internal fun ResolvedDependency.hasSameEffectiveIdentityAs(other: ResolvedDependency): Boolean {
     return shortId == other.shortId &&

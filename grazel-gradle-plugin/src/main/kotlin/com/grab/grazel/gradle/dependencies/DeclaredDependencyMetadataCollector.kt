@@ -19,6 +19,7 @@ package com.grab.grazel.gradle.dependencies
 import com.android.build.gradle.api.BaseVariant
 import com.grab.grazel.gradle.dependencies.model.ExcludeRule
 import com.grab.grazel.gradle.dependencies.model.ResolvedDependency
+import com.grab.grazel.gradle.dependencies.model.intersectWith
 import com.grab.grazel.gradle.variant.ANDROID_TEST_VARIANT
 import com.grab.grazel.gradle.variant.DEFAULT_VARIANT
 import com.grab.grazel.gradle.variant.TEST_VARIANT
@@ -353,8 +354,8 @@ internal data class ProjectExcludeRules(
         )
         if (selectedVariantNames.isNotEmpty()) {
             return selectedVariantNames
-                .flatMap { variantName -> variantRulesByName[variantName]?.get(shortId).orEmpty() }
-                .toSortedSet(compareBy(ExcludeRule::toString))
+                .mapNotNull { variantName -> variantRulesByName[variantName]?.get(shortId) }
+                .intersectExcludeRuleSets()
         }
         return bucketRulesByShortId[shortId].orEmpty()
     }
@@ -412,8 +413,8 @@ internal fun Configuration.extractExcludeRulesByShortId(): Map<String, Set<Exclu
         .groupBy { dependency -> "${dependency.group}:${dependency.name}" }
         .mapValues { (_, dependencies) ->
             dependencies
-                .flatMap { dependency -> dependency.extractExcludeRules() }
-                .toSortedSet(compareBy(ExcludeRule::toString))
+                .map { dependency -> dependency.extractExcludeRules() }
+                .intersectExcludeRuleSets()
         }
         .filterValues { it.isNotEmpty() }
         .toSortedMap()
@@ -424,9 +425,7 @@ internal fun Iterable<Configuration>.extractExcludeRulesByShortId(): Map<String,
         .flatMap { configuration -> configuration.extractExcludeRulesByShortId().asSequence() }
         .groupBy({ it.key }, { it.value })
         .mapValues { (_, ruleSets) ->
-            ruleSets
-                .flatten()
-                .toSortedSet(compareBy(ExcludeRule::toString))
+            ruleSets.intersectExcludeRuleSets()
         }
         .filterValues { it.isNotEmpty() }
         .toSortedMap()
@@ -440,8 +439,8 @@ internal fun Configuration.extractDeclaredExcludeRulesByShortId(): Map<String, S
         .groupBy { dependency -> "${dependency.group}:${dependency.name}" }
         .mapValues { (_, dependencies) ->
             dependencies
-                .flatMap { dependency -> dependency.extractExcludeRules() }
-                .toSortedSet(compareBy(ExcludeRule::toString))
+                .map { dependency -> dependency.extractExcludeRules() }
+                .intersectExcludeRuleSets()
         }
         .filterValues { it.isNotEmpty() }
         .toSortedMap()
@@ -452,9 +451,7 @@ internal fun Iterable<Configuration>.extractDeclaredExcludeRulesByShortId(): Map
         .flatMap { configuration -> configuration.extractDeclaredExcludeRulesByShortId().asSequence() }
         .groupBy({ it.key }, { it.value })
         .mapValues { (_, ruleSets) ->
-            ruleSets
-                .flatten()
-                .toSortedSet(compareBy(ExcludeRule::toString))
+            ruleSets.intersectExcludeRuleSets()
         }
         .filterValues { it.isNotEmpty() }
         .toSortedMap()
@@ -612,12 +609,21 @@ private fun Iterable<Map<String, Set<ExcludeRule>>>.mergeExcludeRulesByShortId()
         .flatMap { rulesByShortId -> rulesByShortId.asSequence() }
         .groupBy({ it.key }, { it.value })
         .mapValues { (_, ruleSets) ->
-            ruleSets
-                .flatten()
-                .toSortedSet(compareBy(ExcludeRule::toString))
+            ruleSets.intersectExcludeRuleSets()
         }
         .filterValues { it.isNotEmpty() }
         .toSortedMap()
+}
+
+private fun Iterable<Set<ExcludeRule>>.intersectExcludeRuleSets(): Set<ExcludeRule> {
+    val iterator = iterator()
+    if (!iterator.hasNext()) return emptySet()
+    var result = iterator.next().toSortedSet(compareBy(ExcludeRule::toString))
+    while (iterator.hasNext()) {
+        result = result.intersectWith(iterator.next()).toSortedSet(compareBy(ExcludeRule::toString))
+        if (result.isEmpty()) return emptySet()
+    }
+    return result
 }
 
 internal fun Map<String, ProjectExcludeRules>.excludeRulesFor(

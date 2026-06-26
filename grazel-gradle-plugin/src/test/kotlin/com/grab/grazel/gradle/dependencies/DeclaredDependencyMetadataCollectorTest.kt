@@ -17,6 +17,7 @@
 package com.grab.grazel.gradle.dependencies
 
 import com.grab.grazel.gradle.variant.DEFAULT_VARIANT
+import com.grab.grazel.gradle.dependencies.model.ExcludeRule
 import com.grab.grazel.gradle.variant.Variant
 import com.grab.grazel.gradle.variant.VariantType
 import com.grab.grazel.gradle.variant.VariantType.AndroidTest
@@ -24,6 +25,7 @@ import com.grab.grazel.gradle.variant.VariantType.Test as UnitTest
 import com.grab.grazel.gradle.dependencies.model.ResolvedDependency
 import org.gradle.api.Project
 import org.gradle.api.artifacts.Configuration
+import org.gradle.api.artifacts.ExternalModuleDependency
 import org.gradle.testfixtures.ProjectBuilder
 import org.junit.Assert.assertEquals
 import org.junit.Test
@@ -189,6 +191,37 @@ class DeclaredDependencyMetadataCollectorTest {
         assertEquals(
             emptyMap<ProjectDependencyBucket, Map<String, ResolvedDependency>>(),
             metadata.collectDeclaredMainDependenciesByProjectBucket(listOf(":library"))
+        )
+    }
+
+    @Test
+    fun `configuration exclude metadata intersects duplicate declarations`() {
+        val project = ProjectBuilder.builder().withName("library").build()
+        val implementation = project.configurations.create("implementation")
+        val commonRule = ExcludeRule("com.example", "common-blocked")
+        val firstOnlyRule = ExcludeRule("com.example", "first-only-blocked")
+        val secondOnlyRule = ExcludeRule("com.example", "second-only-blocked")
+
+        val firstDependency = project.dependencies.add(
+            "implementation",
+            "com.example:library:1.0"
+        ) as ExternalModuleDependency
+        firstDependency.exclude(mapOf("group" to commonRule.group, "module" to commonRule.artifact))
+        firstDependency.exclude(mapOf("group" to firstOnlyRule.group, "module" to firstOnlyRule.artifact))
+        val secondDependency = project.dependencies.add(
+            "implementation",
+            "com.example:library:2.0"
+        ) as ExternalModuleDependency
+        secondDependency.exclude(mapOf("group" to commonRule.group, "module" to commonRule.artifact))
+        secondDependency.exclude(mapOf("group" to secondOnlyRule.group, "module" to secondOnlyRule.artifact))
+
+        assertEquals(
+            mapOf("com.example:library" to setOf(commonRule)),
+            implementation.extractExcludeRulesByShortId()
+        )
+        assertEquals(
+            mapOf("com.example:library" to setOf(commonRule)),
+            implementation.extractDeclaredExcludeRulesByShortId()
         )
     }
 

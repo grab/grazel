@@ -24,6 +24,7 @@ import com.grab.grazel.gradle.dependencies.model.ResolveDependenciesResult.Compa
 import com.grab.grazel.gradle.dependencies.model.ResolvedDependency
 import com.grab.grazel.gradle.dependencies.model.hasSameBucketOwnerAs
 import com.grab.grazel.gradle.dependencies.model.hasSameEffectiveIdentityAs
+import com.grab.grazel.gradle.dependencies.model.intersectWith
 import com.grab.grazel.gradle.dependencies.model.versionInfo
 import com.grab.grazel.gradle.variant.ANDROID_TEST_VARIANT
 import com.grab.grazel.gradle.variant.DEFAULT_VARIANT
@@ -986,6 +987,7 @@ internal fun mergeDependencyMetadataByMaxVersion(
     existing: ResolvedDependency,
     candidate: ResolvedDependency
 ): ResolvedDependency {
+    val exactlyOneSideIsDeclaredMetadata = existing.isDeclaredMetadata() xor candidate.isDeclaredMetadata()
     val winner = when {
         existing.isDeclaredMetadata() && !candidate.isDeclaredMetadata() -> candidate
         candidate.isDeclaredMetadata() && !existing.isDeclaredMetadata() -> existing
@@ -1000,8 +1002,11 @@ internal fun mergeDependencyMetadataByMaxVersion(
             other.version -> (winner.dependencies + other.dependencies).toSortedSet()
             else -> winner.dependencies
         },
-        excludeRules = (winner.excludeRules + other.excludeRules)
-            .toSortedSet(compareBy(ExcludeRule::toString)),
+        excludeRules = if (exactlyOneSideIsDeclaredMetadata) {
+            (winner.excludeRules + other.excludeRules).toSortedSet(compareBy(ExcludeRule::toString))
+        } else {
+            winner.excludeRules.intersectWith(other.excludeRules)
+        },
         requiresJetifier = winner.requiresJetifier || other.requiresJetifier,
         jetifierSource = winner.jetifierSource ?: other.jetifierSource,
         overrideTarget = winner.overrideTarget ?: other.overrideTarget,

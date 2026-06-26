@@ -449,7 +449,6 @@ maven_install(
         maven.artifact(
             artifact = "constraintlayout",
             exclusions = [
-                "androidx.appcompat:appcompat",
                 "androidx.core:core",
             ],
             group = "androidx.constraintlayout",
@@ -534,6 +533,7 @@ maven_install(
         "android.arch.lifecycle:livedata-core",
         "android.arch.lifecycle:runtime",
         "android.arch.lifecycle:viewmodel",
+        "androidx.fragment:fragment",
         "com.android.databinding:baseLibrary",
         "com.android.databinding:library",
         "com.android.support:animated-vector-drawable",
@@ -549,7 +549,6 @@ maven_install(
         "com.android.support:support-compat",
         "com.android.support:support-core-ui",
         "com.android.support:support-core-utils",
-        "com.android.support:support-fragment",
         "com.android.support:support-vector-drawable",
         "com.android.support:versionedparcelable",
         "com.android.support:viewpager",
