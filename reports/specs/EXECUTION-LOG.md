@@ -430,6 +430,165 @@ evidence in item-specific logs so context compaction can recover state quickly.
     gates.
   - Local checkpoint commit: current HEAD after this checkpoint
     (`Reduce Maven bucket direct roots`).
+- 2026-06-27 02:55 +08 - Item 8 single-pass prototype:
+  - Started from clean Grazel checkpoint `6e9e87b`.
+  - Added a focused red regression showing the old fixpoint re-evaluated every
+    project multiple times for a consumer-first reference chain. The test now
+    passes with the single-pass collector.
+  - Implementation: `CollectTargetMavenRepoReferencesTask` orders projects by
+    reverse topological order, explicitly including test/androidTest variant
+    graph edges, then populates the render plan before each project. The old
+    fixpoint remains only behind `-Pgrazel.internal.reachabilityParity=true`.
+  - Local verification passed:
+    focused new red/green test;
+    `WorkspacePlanTasksTest`, `TopologicalSorterTest`, and
+    `DefaultDependencyGraphsTest`;
+    `./gradlew migrateToBazel -Pgrazel.internal.reachabilityParity=true
+    --console=plain --no-daemon`.
+  - Sample generated output stayed unchanged after parity migrate. Next: run the
+    PAX parity migrate before removing the old fixpoint.
+- 2026-06-27 03:12 +08 - Item 8 PAX parity failure / Item 7 seam reminder:
+  - PAX parity migrate failed in `:collectTargetMavenRepoReferences` with a real
+    project graph cycle when the prototype sorted all variant edges:
+    `:deliveries:deliveries-model-food -> :food-testkit ->
+    :deliveries:deliveries-model-food`.
+  - Root cause hypothesis: all-variant project edges are too broad for the
+    target-reference single-pass ordering graph. Build-only sorting is acyclic
+    but may miss test/androidTest reference activation; all-variant sorting
+    includes test fixtures that legitimately create cycles. Do not remove the
+    fixpoint until a cycle-aware, target-reference-appropriate ordering graph is
+    proven on PAX.
+  - Direct-root reduction remains the accepted Item 7 checkpoint at `6e9e87b`.
+    The important seam is `WorkspacePlanBuilder ->
+    WorkspaceDependencies.mavenInstallRootArtifactsByVariant()`:
+    `variantDeps` direct ownership is selected before `MavenInstallRootArtifacts`
+    expands each bucket with the Gradle-resolved closure. Further pin-size wins
+    must reduce direct-owned roots in placement, not drop closure artifacts.
+  - Latest measured PAX direct-root results from Item 7: after
+    `ComputeWorkspaceDependencies`, direct roots are `default` 313, `test` 35,
+    `androidTest` 20, `debug` 11, `hms` 10, `gps` 8, `lint` 2, leaf/flavor
+    buckets 1. Expanded workspace-plan roots: `test_maven` 229 roots / 35
+    direct, `android_test_maven` 448 roots / 20 direct, `maven` 667 roots / 313
+    direct. Remaining bloat is therefore upstream bucket ownership/test-lint
+    ownership debt, not a Coursier artifact-pruning problem.
+  - Fresh JSON measurement from PAX `build/grazel`: `workspace-plan.json`
+    currently has 13 candidate repos, 2117 total root artifacts, and 408 direct
+    roots. Remaining direct-root overlap with `maven` is not a trivial duplicate:
+    `test_maven` overlaps on 2 shortIds and `android_test_maven` overlaps on 11
+    shortIds, but the retained bucket direct roots have different exclude
+    metadata. Dropping them would change Gradle-resolved Coursier inputs, so this
+    is not a safe size shortcut. The largest raw fanout roots are androidTest
+    SDKs such as `com.moca:kyc-sdk`, `com.grab.geo.kampung.map:kampungmap-sdk`,
+    PaySDK, OVO, and Kakao; future reduction needs a real ownership/exclude
+    model improvement, not closure pruning.
+- 2026-06-27 03:35 +08 - Item 8 SCC-local reachability direction:
+  - Read-only explorer agreed the pure one-visit-per-project design is unsound:
+    build-only ordering under-collects test/androidTest/lint references, while
+    all-variant ordering includes legitimate PAX cycles. Minimal acceptable
+    architecture is a conservative consumer->dependency ordering condensed into
+    strongly connected components: process acyclic SCC singletons once,
+    consumers-first, and run the old fixpoint only inside cyclic SCCs.
+  - Implemented prototype `ProjectReachabilityOrder.consumersFirstGroups(...)`
+    plus grouped collection in `CollectTargetMavenRepoReferencesTask`. The task
+    still verifies parity against the old global fixpoint behind
+    `-Pgrazel.internal.reachabilityParity=true`.
+  - Focused tests passed:
+    `TopologicalSorterTest.reachability groups return consumers first and
+    condense cycles`, `WorkspacePlanTasksTest.collect target references fixes
+    cyclic groups locally`, full `WorkspacePlanTasksTest`,
+    `TopologicalSorterTest`, and `DefaultDependencyGraphsTest`.
+  - Next: run sample parity migrate, then PAX parity migrate. If parity is
+    green, remove the old global fixpoint/parity path per Item 8 acceptance; if
+    parity fails, diagnose the exact missing reference edge before changing the
+    collector further.
+- 2026-06-27 03:58 +08 - Item 8 parity verification:
+  - Sample parity migrate passed:
+    `./gradlew migrateToBazel -Pgrazel.internal.reachabilityParity=true
+    --console=plain --no-daemon`. Generated output stayed unchanged.
+  - PAX parity migrate passed:
+    `./gradlew migrateToBazel -Pgrazel.internal.reachabilityParity=true
+    --no-daemon --console=plain --stacktrace` in about 10 minutes.
+    The earlier all-variant topo cycle no longer occurs because SCC condensation
+    handles cyclic components locally. The old global fixpoint and the
+    SCC-local collector produced identical references on PAX.
+  - Next action per Item 8: remove the temporary parity property and old global
+    fixpoint path, then rerun focused tests, sample migrate, and PAX
+    non-parity migrate/build/test gates.
+- 2026-06-27 04:24 +08 - Item 8 non-parity generation:
+  - Removed the temporary reachability parity property and old global fixpoint
+    path. The collector now uses graph-ordered SCC groups: acyclic singleton
+    projects run once, while cyclic project groups use a bounded local fixpoint.
+  - Focused/surrounding Grazel tests passed after removal:
+    `WorkspacePlanTasksTest`, `TopologicalSorterTest`, and
+    `DefaultDependencyGraphsTest`.
+  - Sample `./gradlew migrateToBazel --console=plain --no-daemon` passed with
+    no generated-output drift.
+  - PAX `./gradlew migrateToBazel --no-daemon --console=plain --stacktrace`
+    passed in 9m19s; `git diff --check` in PAX passed.
+  - Next gates: run the bounded PAX baseline audit, PAX debug/android-test APK
+    build, PAX focused Bazel unit tests, then local Grazel final checks before
+    simplifying/reviewing/committing Item 8.
+- 2026-06-27 04:33 +08 - Item 8 PAX verification:
+  - Resource preflight before PAX build: about 40 GiB free, Gradle caches 8.3G,
+    PAX `bazel-cache` 23G, private Bazel output root 51G. No cleanup was
+    needed.
+  - `reports/scripts/audit-pax-bounded-baseline.sh` passed after PAX migrate:
+    audited Maven tags use normalized `@maven//:` labels, direct Maven tag
+    audit passed for the android-test target, `bug-report-kit-implementation`
+    active BUILD output is absent, WORKSPACE is 4772 lines, and there are 24
+    `maven_install` entries.
+  - PAX APK gate passed:
+    `./bazel.sh build --verbose_failures //app:app-gps-pax-debug.apk
+    //app:app-gps-pax-debug-android-test.apk` completed successfully in
+    221.259s.
+  - PAX focused unit gate passed:
+    `./bazel.sh test --test_output=errors //app-utils:app-utils-gps-pax-debug-test
+    //app-test:app-test-gps-pax-debug-test
+    //application-initializer:application-initializer-gps-pax-debug-test`.
+  - Next gates: Grazel `git diff --check`, task-graph/sample-bucket scripts,
+    and broader plugin tests before cleanup/review/commit.
+- 2026-06-27 04:39 +08 - Item 8 local verification:
+  - Grazel `git diff --check` passed.
+  - `reports/scripts/verify-default-task-graph.sh` passed.
+  - `reports/scripts/verify-sample-bucket-labels.sh` still fails only on the
+    previously documented appcompat/constraintlayout one-sided exclude-union
+    waiver; no new sample-bucket failure was observed.
+  - `./gradlew :grazel-gradle-plugin:test --console=plain --no-daemon` passed.
+  - Item 8 is green through PAX and local checks. Next: run quality-only
+    simplify/review, rerun impacted checks if code changes, then commit locally.
+- 2026-06-27 05:05 +08 - Item 8 simplify pass and re-verification:
+  - Simplify reviewers found duplicated Kahn topological sorting, duplicated SCC
+    sorting, an unnecessary initial empty render-plan mutation, repeated
+    `canMigrate` checks inside cyclic SCCs, and a larger target-reference graph
+    altitude caveat.
+  - Applied behavior-preserving cleanup: extracted shared dependency-first
+    ordering, reused sorted SCC members, iterated normalized edges without
+    re-sorting, removed the unused initial render-plan mutation, and filtered
+    migratable projects once per cyclic SCC.
+  - Skipped broader graph-merge rewrite because it changes a shared seam beyond
+    this verified slice.
+  - Persisted the target-reference graph caveat in
+    `reports/specs/KNOWN-LIMITATIONS.md`; current PAX verification is green, but
+    a future cleanup can model non-configuration target edges explicitly.
+  - Post-cleanup checks passed:
+    - focused `TopologicalSorterTest`, `WorkspacePlanTasksTest`, and
+      `DefaultDependencyGraphsTest`;
+    - root `./gradlew migrateToBazel --console=plain --no-daemon`;
+    - PAX `./gradlew migrateToBazel --no-daemon --console=plain --stacktrace`
+      in 10m02s;
+    - PAX `git diff --check`;
+    - `reports/scripts/audit-pax-bounded-baseline.sh` with WORKSPACE 4772 lines,
+      no bucket-prefixed Maven tags in audited targets, and
+      `bug-report-kit-implementation` absent;
+    - PAX APK build gate in 221.448s;
+    - PAX focused unit-test gate;
+    - Grazel `git diff --check`;
+    - `reports/scripts/verify-default-task-graph.sh`;
+    - `./gradlew :grazel-gradle-plugin:test --console=plain --no-daemon`.
+  - `reports/scripts/verify-sample-bucket-labels.sh` still has only the known
+    appcompat/constraintlayout one-sided exclude-union waiver.
+  - Next: adversarial review of current diff, fix any real findings, then commit
+    locally. Do not commit PAX output.
 
 ## Item Logs
 
@@ -474,11 +633,99 @@ evidence in item-specific logs so context compaction can recover state quickly.
     in Android configuration, plus sample-flavor duplicate generated
     `res_values`;
   - PAX dependency-refactor gates are green.
-- Item 7 is the current output-changing follow-up. Correctness is primary; size
-  reduction is the target. Do not shrink pinfiles by dropping Gradle-resolved
-  closure artifacts or by adding Coursier force-version shortcuts. Improve
-  bucket ownership in the existing variant-driven placement layer.
-- Item 8 follows only after Item 7 is green: replace target-reference fixpoint
-  collection with a reverse-topological single pass after parity verification.
+- Item 7 is green for the current direct-root optimization slice. Correctness
+  remains primary; size reduction came from bucket ownership before transitive
+  expansion, not from dropping Gradle-resolved closure artifacts.
+- Item 8 is green for the verified PAX slice with the documented target-reference
+  ordering limitation in `KNOWN-LIMITATIONS.md`: ordering is Gradle-project-edge
+  based plus fallback path order, not a first-class target-reference graph.
 - Keep follow-up execution notes itemized; do not append long essays to this
   file.
+
+## 2026-06-27 Direct Root Sizing Audit
+
+- Confirmed the pre-expansion seam: `WorkspaceDependencies.variantDeps` in
+  `build/grazel/dependencies.json` is the bucketed direct/root artifact set
+  produced by `ComputeWorkspaceDependencies`; `mavenInstallRootArtifactsByVariant`
+  expands those roots to the full Gradle-resolved direct-plus-transitive closure
+  used by `maven_install.artifacts`.
+- Accepted Item 7 baseline before further optimization:
+  - materialized direct roots: `androidTest=20`, `debug=11`, `default=313`,
+    `gps=8`, `gps*Debug=1` each, `hms=10`, `hmsPaxDebug=1`, `lint=2`,
+    `test=35`;
+  - materialized expanded roots: `androidTest=448`, `debug=235`,
+    `default=667`, `gps=119`, each leaf debug repo `46`, `hms=122`,
+    `lint=63`, `test=229`; total expanded roots `2071`.
+- Tried a local declaration-owned non-default pruning experiment to reduce
+  inferred default direct roots. It reduced `default` from `313/667` to
+  `309/659`, but regressed `test` from `35/229` to `39/318` and total
+  materialized expanded roots from `2071` to `2148`.
+- Decision: reject and revert that experiment. Future direct-root reduction must
+  prove it lowers materialized expanded roots, especially `test_maven`, before
+  keeping code. Do not shrink by dropping Gradle-resolved transitive closure or
+  by adding Coursier conflict-masking options.
+- Implemented a narrower direct-root reduction in
+  `AggregatedDependencyResolver`: after per-project planning and global bucket
+  merge, remove only non-default declared placeholders that are covered by an
+  exact default direct root with the same resolved identity/version/jetifier and
+  identical exclude rules. This intentionally leaves resolved non-default roots
+  and exclude-divergent declarations in place.
+- Local verification passed for focused/global placeholder tests plus the
+  relevant dependency placement and workspace-plan tests.
+- PAX `./gradlew migrateToBazel --no-daemon --console=plain --stacktrace
+  --rerun-tasks` passed in 12m09s. PAX `git diff --check` passed.
+- PAX pre-expansion count deltas versus the accepted Item 7 baseline:
+  - `debug_maven`: direct roots `11 -> 4`, expanded root artifacts `235 -> 211`,
+    overrides `224 -> 207`;
+  - `gps_maven`: direct roots `8 -> 5`, expanded root artifacts `119 -> 112`,
+    overrides `111 -> 107`;
+  - other materialized repos unchanged.
+- PAX final pin JSON deltas versus the accepted Item 7 baseline:
+  - `debug_maven_install.json`: artifacts `246 -> 222`, dependencies
+    `212 -> 192`, packages `58 -> 56`;
+  - `gps_maven_install.json`: artifacts `123 -> 116`, dependencies
+    `106 -> 100`, packages unchanged at `27`;
+  - `test_maven`, `android_test_maven`, `maven`, `hms_maven`, `lint_maven`,
+    leaf debug repos, `pax_maven`, and `ksp_maven` unchanged.
+- Remaining duplicate direct roots are mostly typed test/flavor ownership cases,
+  plus the intentionally retained `kampungmap-sdk` default/debug duplicate
+  because exclude rules differ. Next gate: PAX APK/android-test build after
+  resource check.
+- PAX Bazel verification passed:
+  `./bazel.sh build --verbose_failures //app:app-gps-pax-debug.apk
+  //app:app-gps-pax-debug-android-test.apk` completed successfully in
+  1911.919s. This verifies the direct-root reduction still preserves the
+  Gradle-resolved direct-plus-transitive closure needed for both the debug APK
+  and android-test APK.
+- Post-build hygiene: Grazel `git diff --check` passed; PAX `git diff --check`
+  passed. Disk was tight after the long build (`16GiB` free on the data volume),
+  so avoid another large verification run before deciding whether cleanup is
+  needed.
+- Subagent adversarial review found no resolved-vs-declared, closure-dropping,
+  force-version, bucket-label tag, or PAX-hack issue. It repeated the known Item
+  8 risk that a target-only relationship absent from Gradle project graphs can be
+  discovered too late outside the verified PAX shape. Decision: keep this as a
+  documented limitation for the checkpoint rather than reintroducing the global
+  fixpoint.
+- Fresh focused Grazel verification passed after review/log cleanup:
+  `./gradlew :grazel-gradle-plugin:test --console=plain --no-daemon --tests
+  "com.grab.grazel.gradle.dependencies.AggregatedDependencyResolverTest" --tests
+  "com.grab.grazel.gradle.dependencies.TopologicalSorterTest" --tests
+  "com.grab.grazel.tasks.internal.WorkspacePlanTasksTest"`.
+- PAX focused Bazel unit-test gate passed after the checkpoint commit:
+  `./bazel.sh test --test_output=errors //app-utils:app-utils-gps-pax-debug-test
+  //app-test:app-test-gps-pax-debug-test
+  //application-initializer:application-initializer-gps-pax-debug-test`.
+  Result: 3 of 3 tests passed in 269.519s. PAX `git diff --check` passed.
+  Disk fell to `10GiB` free afterward, so clean PAX Bazel output root before any
+  further heavy run.
+- Ran `bazelisk clean --expunge` in PAX after verification; disk recovered to
+  `40GiB` free without deleting PAX `bazel-cache`.
+- Final cheap checks after the amended checkpoint:
+  - `reports/scripts/audit-pax-bounded-baseline.sh` passed. Current PAX shape:
+    WORKSPACE `4552` lines, `22` maven_install entries, no bucket-prefixed Maven
+    tags in audited targets, and `bug-report-kit-implementation` absent.
+  - `reports/scripts/verify-default-task-graph.sh` passed.
+  - Grazel `git diff --check` and `git diff --check master...HEAD` passed.
+  - `reports/scripts/verify-sample-bucket-labels.sh` still fails only on the
+    known one-sided appcompat/constraintlayout exclude-union waiver.

@@ -643,6 +643,7 @@ internal class AggregatedDependencyResolver(
             val hierarchyBuckets = mergeNamedBuckets(
                 mainBucketPlans.map(DependencyBucketPlacementPlan::hierarchyBuckets)
             ).withDeclaredMetadataByBucket(declaredMetadataByOutputBucket)
+                .withoutDeclaredPlaceholdersCoveredByDefault(defaultDeps)
             val mainCoveredDepsByProject = mainBucketPlansByProject
                 .mapValues { (_, plan) -> plan.coveredDependencies() }
             val leafAncestorsByName = linkedMapOf<String, MutableSet<String>>()
@@ -672,6 +673,7 @@ internal class AggregatedDependencyResolver(
                 leafAncestorsByName = leafAncestorsByName,
                 hierarchyBuckets = hierarchyBuckets
             ).withDeclaredMetadataByBucket(declaredMetadataByOutputBucket)
+                .withoutDeclaredPlaceholdersCoveredByDefault(defaultDeps)
             val aggregateMainCoveredDeps = buildList {
                 addAll(defaultDeps.asCoveredBy(DEFAULT_VARIANT))
                 hierarchyBuckets.forEach { (bucketName, dependencies) ->
@@ -1327,8 +1329,42 @@ private fun Map<String, ResolvedDependency>.withoutTestDependenciesCoveredBy(
 }
 
 private fun CoveredDependency.canCover(dependency: ResolvedDependency): Boolean {
-    return this.dependency.hasSameResolvedOwnerIdentityAs(dependency) &&
+    return (this.dependency.hasSameResolvedOwnerIdentityAs(dependency) ||
+        this.dependency.canCoverDeclaredPlaceholder(dependency)) &&
         (!dependency.direct || this.dependency.direct)
+}
+
+private fun ResolvedDependency.canCoverDeclaredPlaceholder(dependency: ResolvedDependency): Boolean {
+    return direct &&
+        !isDeclaredMetadata() &&
+        dependency.direct &&
+        dependency.isDeclaredMetadata() &&
+        shortId == dependency.shortId &&
+        version == dependency.version &&
+        requiresJetifier == dependency.requiresJetifier &&
+        jetifierSource == dependency.jetifierSource &&
+        dependency.excludeRules == excludeRules
+}
+
+private fun Map<String, Map<String, ResolvedDependency>>.withoutDeclaredPlaceholdersCoveredByDefault(
+    defaultDeps: Map<String, ResolvedDependency>
+): Map<String, Map<String, ResolvedDependency>> {
+    if (isEmpty() || defaultDeps.isEmpty()) return this
+    val defaultCoveredDepsByShortId = defaultDeps
+        .asCoveredBy(DEFAULT_VARIANT)
+        .groupByShortId()
+    return mapValues { (_, dependencies) ->
+        dependencies
+            .filterNot { (_, dependency) ->
+                dependency.isDeclaredMetadata() &&
+                    defaultCoveredDepsByShortId[dependency.shortId]
+                        .orEmpty()
+                        .any { covered -> covered.canCover(dependency) }
+            }
+            .toSortedMap()
+    }
+        .filterValues(Map<String, ResolvedDependency>::isNotEmpty)
+        .toSortedMap()
 }
 
 private fun CoveredDependency.canCoverDeclaredTestMetadata(dependency: ResolvedDependency): Boolean {

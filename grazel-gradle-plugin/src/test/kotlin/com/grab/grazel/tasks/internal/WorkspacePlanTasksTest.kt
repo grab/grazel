@@ -23,6 +23,7 @@ import com.grab.grazel.bazel.starlark.BazelDependency.MavenDependency
 import com.grab.grazel.bazel.starlark.BazelDependency.ProjectDependency
 import com.grab.grazel.bazel.starlark.StatementsBuilder
 import com.grab.grazel.gradle.dependencies.DefaultDependencyResolutionService
+import com.grab.grazel.gradle.dependencies.ProjectReachabilityGroup
 import com.grab.grazel.gradle.dependencies.WorkspacePlanBuilder
 import com.grab.grazel.gradle.dependencies.WorkspacePlanService
 import com.grab.grazel.gradle.dependencies.WorkspaceTargetTagPlanCollector
@@ -39,6 +40,8 @@ import dagger.Lazy
 import org.gradle.api.Project
 import org.junit.Assert.assertEquals
 import org.junit.Test
+import kotlin.test.assertFailsWith
+import kotlin.test.assertTrue
 
 class WorkspacePlanTasksTest {
 
@@ -234,7 +237,7 @@ class WorkspacePlanTasksTest {
         val workspacePlanService = WorkspacePlanService.register(rootProject).get()
 
         val references = collectTargetMavenRepoReferences(
-            projects = listOf(appProject, uiTestsProject),
+            projects = listOf(uiTestsProject, appProject),
             canMigrate = { true },
             targetsForProject = { project ->
                 when (project.path) {
@@ -269,6 +272,190 @@ class WorkspacePlanTasksTest {
         assertEquals(setOf("debug_maven"), references.repoNames)
         assertEquals(setOf(":app"), references.projectPaths)
         assertEquals(mapOf(":app" to setOf("app-gps-pax-debug")), references.projectTargets)
+    }
+
+    @Test
+    fun `collect target references uses consumer first single pass`() {
+        val rootProject = buildProject("root")
+        val appProject = buildProject("app", rootProject)
+        val libProject = buildProject("lib", rootProject)
+        val uiTestsProject = buildProject("ui-tests", rootProject)
+        val workspacePlanService = WorkspacePlanService.register(rootProject).get()
+        val callsByProject = mutableMapOf<String, Int>()
+
+        val references = collectTargetMavenRepoReferences(
+            projects = listOf(uiTestsProject, appProject, libProject),
+            canMigrate = { true },
+            targetsForProject = { project ->
+                callsByProject[project.path] = callsByProject.getOrDefault(project.path, 0) + 1
+                when (project.path) {
+                    ":ui-tests" -> listOf(
+                        fakeTarget(
+                            name = "ui-tests-gps-pax-debug",
+                            deps = listOf(ProjectDependency(appProject, suffix = "-gps-pax-debug"))
+                        )
+                    )
+                    ":app" -> if (workspacePlanService.isReferencedTarget(":app", "app-gps-pax-debug")) {
+                        listOf(
+                            fakeTarget(
+                                name = "app-gps-pax-debug",
+                                deps = listOf(
+                                    MavenDependency(
+                                        repo = "debug_maven",
+                                        group = "com.example",
+                                        name = "app-debug"
+                                    ),
+                                    ProjectDependency(libProject, suffix = "-gps-pax-debug")
+                                )
+                            )
+                        )
+                    } else {
+                        emptyList()
+                    }
+                    ":lib" -> if (workspacePlanService.isReferencedTarget(":lib", "lib-gps-pax-debug")) {
+                        listOf(
+                            fakeTarget(
+                                name = "lib-gps-pax-debug",
+                                deps = listOf(
+                                    MavenDependency(
+                                        repo = "lint_maven",
+                                        group = "com.example",
+                                        name = "lib-lint"
+                                    )
+                                )
+                            )
+                        )
+                    } else {
+                        emptyList()
+                    }
+                    else -> emptyList()
+                }
+            },
+            workspacePlanService = workspacePlanService
+        )
+
+        assertEquals(setOf("debug_maven", "lint_maven"), references.repoNames)
+        assertEquals(setOf(":app", ":lib"), references.projectPaths)
+        assertEquals(
+            mapOf(
+                ":app" to setOf("app-gps-pax-debug"),
+                ":lib" to setOf("lib-gps-pax-debug")
+            ),
+            references.projectTargets
+        )
+        assertEquals(
+            mapOf(
+                ":ui-tests" to 1,
+                ":app" to 1,
+                ":lib" to 1
+            ),
+            callsByProject
+        )
+    }
+
+    @Test
+    fun `collect target references fixes cyclic groups locally`() {
+        val rootProject = buildProject("root")
+        val rootConsumerProject = buildProject("root-consumer", rootProject)
+        val projectA = buildProject("a", rootProject)
+        val projectB = buildProject("b", rootProject)
+        val workspacePlanService = WorkspacePlanService.register(rootProject).get()
+        val callsByProject = mutableMapOf<String, Int>()
+
+        val references = collectTargetMavenRepoReferencesByGroup(
+            projectGroups = listOf(
+                ProjectReachabilityGroup(listOf(rootConsumerProject), cyclic = false),
+                ProjectReachabilityGroup(listOf(projectB, projectA), cyclic = true)
+            ),
+            canMigrate = { true },
+            targetsForProject = { project ->
+                callsByProject[project.path] = callsByProject.getOrDefault(project.path, 0) + 1
+                when (project.path) {
+                    ":root-consumer" -> listOf(
+                        fakeTarget(
+                            name = "root-consumer",
+                            deps = listOf(ProjectDependency(projectA, suffix = ""))
+                        )
+                    )
+                    ":a" -> if (workspacePlanService.isReferencedTarget(":a", "a")) {
+                        listOf(
+                            fakeTarget(
+                                name = "a",
+                                deps = listOf(ProjectDependency(projectB, suffix = ""))
+                            )
+                        )
+                    } else {
+                        emptyList()
+                    }
+                    ":b" -> if (workspacePlanService.isReferencedTarget(":b", "b")) {
+                        listOf(
+                            fakeTarget(
+                                name = "b",
+                                deps = listOf(
+                                    MavenDependency(
+                                        repo = "cycle_maven",
+                                        group = "com.example",
+                                        name = "cycle"
+                                    )
+                                )
+                            )
+                        )
+                    } else {
+                        emptyList()
+                    }
+                    else -> emptyList()
+                }
+            },
+            workspacePlanService = workspacePlanService
+        )
+
+        assertEquals(setOf("cycle_maven"), references.repoNames)
+        assertEquals(setOf(":a", ":b"), references.projectPaths)
+        assertEquals(
+            mapOf(
+                ":a" to setOf("a"),
+                ":b" to setOf("b")
+            ),
+            references.projectTargets
+        )
+        assertEquals(1, callsByProject.getValue(":root-consumer"))
+        assertEquals(3, callsByProject.getValue(":a"))
+        assertEquals(3, callsByProject.getValue(":b"))
+    }
+
+    @Test
+    fun `collect target references fails when cyclic group does not converge`() {
+        val rootProject = buildProject("root")
+        val projectA = buildProject("a", rootProject)
+        val workspacePlanService = WorkspacePlanService.register(rootProject).get()
+        var repoIndex = 0
+
+        val exception = assertFailsWith<IllegalStateException> {
+            collectTargetMavenRepoReferencesByGroup(
+                projectGroups = listOf(ProjectReachabilityGroup(listOf(projectA), cyclic = true)),
+                canMigrate = { true },
+                targetsForProject = {
+                    repoIndex += 1
+                    listOf(
+                        fakeTarget(
+                            name = "a",
+                            deps = listOf(
+                                MavenDependency(
+                                    repo = "repo_$repoIndex",
+                                    group = "com.example",
+                                    name = "non-converging"
+                                )
+                            )
+                        )
+                    )
+                },
+                workspacePlanService = workspacePlanService
+            )
+        }
+
+        assertTrue(exception.message!!.contains("did not converge"))
+        assertTrue(exception.message!!.contains(":a"))
+        assertTrue(exception.message!!.contains("repo_2"))
     }
 
     private fun fakeTarget(

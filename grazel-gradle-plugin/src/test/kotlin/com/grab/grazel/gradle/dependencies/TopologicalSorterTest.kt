@@ -359,4 +359,51 @@ class TopologicalSorterTest {
         val result = TopologicalSorter.sort(graphs)
         assertEquals(listOf(projectB, projectA), result)
     }
+
+    @Test
+    fun `reachability groups return consumers first and condense cycles`() {
+        // Graph: :app -> :a -> :b -> :a, and :b -> :leaf
+        // Consumers-first SCC order should be :app, {:a, :b}, :leaf.
+        val projectApp = FakeProject("app")
+        val projectA = FakeProject("a")
+        val projectB = FakeProject("b")
+        val projectLeaf = FakeProject("leaf")
+
+        val graphs = FakeDependencyGraphs(
+            projectGraph = mapOf(
+                projectApp to setOf(projectA),
+                projectA to setOf(projectB),
+                projectB to setOf(projectA, projectLeaf),
+                projectLeaf to emptySet()
+            )
+        )
+
+        val groups = ProjectReachabilityOrder.consumersFirstGroups(graphs)
+
+        assertEquals(
+            listOf(
+                ProjectReachabilityGroup(listOf(projectApp), cyclic = false),
+                ProjectReachabilityGroup(listOf(projectA, projectB), cyclic = true),
+                ProjectReachabilityGroup(listOf(projectLeaf), cyclic = false)
+            ),
+            groups
+        )
+    }
+
+    @Test
+    fun `reachability groups handle deep dependency chain iteratively`() {
+        val projects = (0 until 2_000).map { index -> FakeProject("p%04d".format(index)) }
+        val graphs = FakeDependencyGraphs(
+            projectGraph = projects.mapIndexed { index, project ->
+                project to projects.getOrNull(index + 1)?.let(::setOf).orEmpty()
+            }.toMap()
+        )
+
+        val groups = ProjectReachabilityOrder.consumersFirstGroups(graphs)
+
+        assertEquals(projects.size, groups.size)
+        assertEquals(projects.first(), groups.first().projects.single())
+        assertEquals(projects.last(), groups.last().projects.single())
+        assertTrue(groups.none(ProjectReachabilityGroup::cyclic))
+    }
 }

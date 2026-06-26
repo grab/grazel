@@ -127,6 +127,223 @@ class AggregatedDependencyResolverTest {
     }
 
     @Test
+    fun `removes child declared placeholder when resolved parent roots superset closure`() {
+        val defaultDependency = dependency("com.example:library:1.0").copy(
+            dependencies = setOf("com.example:first:1.0:maven:false:null"),
+            repository = "maven"
+        )
+        val debugDependency = dependency("com.example:library:1.0").copy(
+            dependencies = emptySet(),
+            repository = DECLARED_DEPENDENCY_REPOSITORY
+        )
+        val childBucket = mapOf(debugDependency.shortId to debugDependency)
+
+        val filteredBucket = childBucket.withoutDependenciesCoveredBy(
+            listOf(covered("default", defaultDependency))
+        )
+
+        assertEquals(emptyMap<String, ResolvedDependency>(), filteredBucket)
+    }
+
+    @Test
+    fun `keeps child declared placeholder when exclude rules differ from resolved parent`() {
+        val defaultDependency = dependency("com.example:library:1.0").copy(
+            dependencies = setOf("com.example:first:1.0:maven:false:null"),
+            excludeRules = setOf(ExcludeRule(group = "com.example", artifact = "second")),
+            repository = "maven"
+        )
+        val debugDependency = dependency("com.example:library:1.0").copy(
+            dependencies = emptySet(),
+            excludeRules = setOf(ExcludeRule(group = "com.example", artifact = "first")),
+            repository = DECLARED_DEPENDENCY_REPOSITORY
+        )
+        val childBucket = mapOf(debugDependency.shortId to debugDependency)
+
+        val filteredBucket = childBucket.withoutDependenciesCoveredBy(
+            listOf(covered("default", defaultDependency))
+        )
+
+        assertEquals(childBucket, filteredBucket)
+    }
+
+    @Test
+    fun `global hierarchy merge removes declared placeholder covered by default bucket from another project`() {
+        val sharedDependency = fakeComponentResult(
+            group = "com.example",
+            name = "shared",
+            version = "1.0",
+            isProject = false
+        )
+        val appDefaultRoot = fakeComponentResult(projectPath = ":app") {
+            addDependencyTo(sharedDependency)
+        }
+        val appDebugRoot = fakeComponentResult(projectPath = ":app")
+
+        val results = AggregatedDependencyResolver(
+            logger = ProjectBuilder.builder().build().logger,
+            declaredDependencyMetadata = DeclaredDependencyMetadata(
+                projects = mapOf(
+                    ":app" to ProjectDeclaredDependencyMetadata(
+                        projectType = DeclaredProjectType.ANDROID_APPLICATION,
+                        variants = listOf(
+                            declaredVariant(
+                                name = DEFAULT_VARIANT,
+                                variantType = AndroidBuild,
+                                leaf = false,
+                                declaredProjectDependencies = setOf("implementation->:lib::[]")
+                            ),
+                            declaredVariant(
+                                name = "debug",
+                                variantType = AndroidBuild,
+                                leaf = true,
+                                buildType = "debug",
+                                declaredProjectDependencies = setOf("implementation->:lib::[]")
+                            )
+                        )
+                    ),
+                    ":lib" to ProjectDeclaredDependencyMetadata(
+                        projectType = DeclaredProjectType.OTHER,
+                        variants = listOf(
+                            declaredVariant(
+                                name = DEFAULT_VARIANT,
+                                variantType = AndroidBuild,
+                                leaf = false
+                            ),
+                            declaredVariant(
+                                name = "debug",
+                                variantType = AndroidBuild,
+                                leaf = true,
+                                buildType = "debug",
+                                declaredDependencies = setOf("com.example:shared:1.0")
+                            )
+                        )
+                    )
+                )
+            ),
+            workspaceDependencyRoots = listOf(
+                root(
+                    component = appDefaultRoot,
+                    projectPath = ":app",
+                    kind = AggregatedDependencyRootKind.MAIN_HIERARCHY,
+                    bucketName = DEFAULT_VARIANT,
+                    variantType = AndroidBuild,
+                    traverseProjectNodes = false,
+                    directDependencyShortIds = setOf("com.example:shared")
+                ),
+                root(
+                    component = appDebugRoot,
+                    projectPath = ":app",
+                    kind = AggregatedDependencyRootKind.MAIN_HIERARCHY,
+                    bucketName = "debug",
+                    variantType = AndroidBuild,
+                    traverseProjectNodes = false
+                )
+            )
+        ).resolve()
+
+        assertEquals(
+            listOf("com.example:shared:1.0"),
+            results.single { result -> result.variantName == DEFAULT_VARIANT }
+                .dependencies
+                .getValue(COMPILE.name)
+                .map(ResolvedDependency::id)
+        )
+        assertNull(results.singleOrNull { result -> result.variantName == "debug" })
+    }
+
+    @Test
+    fun `global hierarchy merge keeps declared placeholder when default excludes differ`() {
+        val mainExcludeRule = ExcludeRule("com.example", "main-blocked")
+        val debugExcludeRule = ExcludeRule("com.example", "debug-blocked")
+        val sharedDependency = fakeComponentResult(
+            group = "com.example",
+            name = "shared",
+            version = "1.0",
+            isProject = false
+        )
+        val appDefaultRoot = fakeComponentResult(projectPath = ":app") {
+            addDependencyTo(sharedDependency)
+        }
+        val appDebugRoot = fakeComponentResult(projectPath = ":app")
+
+        val results = AggregatedDependencyResolver(
+            logger = ProjectBuilder.builder().build().logger,
+            declaredDependencyMetadata = DeclaredDependencyMetadata(
+                projects = mapOf(
+                    ":app" to ProjectDeclaredDependencyMetadata(
+                        projectType = DeclaredProjectType.ANDROID_APPLICATION,
+                        variants = listOf(
+                            declaredVariant(
+                                name = DEFAULT_VARIANT,
+                                variantType = AndroidBuild,
+                                leaf = false,
+                                declaredProjectDependencies = setOf("implementation->:lib::[]")
+                            ),
+                            declaredVariant(
+                                name = "debug",
+                                variantType = AndroidBuild,
+                                leaf = true,
+                                buildType = "debug",
+                                declaredProjectDependencies = setOf("implementation->:lib::[]")
+                            )
+                        )
+                    ),
+                    ":lib" to ProjectDeclaredDependencyMetadata(
+                        projectType = DeclaredProjectType.OTHER,
+                        variants = listOf(
+                            declaredVariant(
+                                name = DEFAULT_VARIANT,
+                                variantType = AndroidBuild,
+                                leaf = false
+                            ),
+                            declaredVariant(
+                                name = "debug",
+                                variantType = AndroidBuild,
+                                leaf = true,
+                                buildType = "debug",
+                                declaredDependencies = setOf("com.example:shared:1.0"),
+                                excludeRulesByShortId = mapOf(
+                                    "com.example:shared" to setOf(debugExcludeRule)
+                                )
+                            )
+                        )
+                    )
+                )
+            ),
+            workspaceDependencyRoots = listOf(
+                root(
+                    component = appDefaultRoot,
+                    projectPath = ":app",
+                    kind = AggregatedDependencyRootKind.MAIN_HIERARCHY,
+                    bucketName = DEFAULT_VARIANT,
+                    variantType = AndroidBuild,
+                    traverseProjectNodes = false,
+                    directDependencyShortIds = setOf("com.example:shared"),
+                    rootExcludeRulesByShortId = mapOf(
+                        "com.example:shared" to setOf(mainExcludeRule)
+                    )
+                ),
+                root(
+                    component = appDebugRoot,
+                    projectPath = ":app",
+                    kind = AggregatedDependencyRootKind.MAIN_HIERARCHY,
+                    bucketName = "debug",
+                    variantType = AndroidBuild,
+                    traverseProjectNodes = false
+                )
+            )
+        ).resolve()
+
+        assertEquals(
+            listOf("com.example:shared:1.0"),
+            results.single { result -> result.variantName == "debug" }
+                .dependencies
+                .getValue(COMPILE.name)
+                .map(ResolvedDependency::id)
+        )
+    }
+
+    @Test
     fun `keeps child bucket dependency when same identity parent dependency is only transitive`() {
         val transitiveDefaultDependency = dependency("com.example:library:1.0").copy(direct = false)
         val directChildDependency = dependency("com.example:library:1.0")

@@ -77,6 +77,24 @@ left alone because the dependency-refactor blockers are in dependency planning,
 materialization, provenance, and reachability. Tags are excluded from compression
 equivalence, so moving tag decisions into the plan does not change compression decisions.
 
+## Target Reference Ordering
+
+`collectTargetMavenRepoReferences` now uses dependency-graph SCC ordering so acyclic
+projects are processed once and cyclic project groups use only a local fixpoint. This
+removes the expensive global fixpoint for the verified PAX slice.
+
+The ordering graph is still derived from Gradle project dependency edges, not from a
+dedicated target-reference graph. Non-configuration references, such as an
+`com.android.test` target project relation, can therefore depend on fallback path order
+when no Gradle project dependency edge also represents that target relationship. PAX
+migrate, debug APK, android-test APK, focused unit tests, and the bounded tag/reachability
+audit pass with this shape.
+
+Future work can make the altitude cleaner by modeling a first-class target-reference
+reachability graph in the dependency/variant layer, augmenting Gradle project edges with
+known non-configuration target edges before SCC ordering. The task should remain
+orchestration only.
+
 ## Cacheability Caveat
 
 The refactor preserves the master-like approach of letting Gradle own resolution and

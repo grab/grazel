@@ -18,10 +18,13 @@ package com.grab.grazel.tasks.internal
 
 import com.grab.grazel.di.GrazelComponent
 import com.grab.grazel.di.qualifiers.RootProject
+import com.grab.grazel.gradle.dependencies.DefaultDependencyGraphsService
 import com.grab.grazel.gradle.MigrationChecker
 import com.grab.grazel.gradle.dependencies.DefaultDependencyResolutionService
 import com.grab.grazel.gradle.dependencies.WorkspacePlanService
 import com.grab.grazel.gradle.dependencies.DefaultWorkspacePlanService
+import com.grab.grazel.gradle.dependencies.ProjectReachabilityGroup
+import com.grab.grazel.gradle.dependencies.ProjectReachabilityOrder
 import com.grab.grazel.gradle.dependencies.model.TargetMavenRepoReferences
 import com.grab.grazel.gradle.dependencies.model.WorkspaceRenderPlan
 import com.grab.grazel.migrate.BazelTarget
@@ -53,6 +56,7 @@ internal open class CollectTargetMavenRepoReferencesTask
 constructor(
     private val migrationChecker: Lazy<MigrationChecker>,
     private val bazelFileBuilder: Lazy<ProjectBazelFileBuilder.Factory>,
+    private val dependencyGraphsService: GradleProvider<DefaultDependencyGraphsService>,
     private val workspacePlanService: GradleProvider<DefaultWorkspacePlanService>,
     objectFactory: ObjectFactory,
     layout: ProjectLayout
@@ -86,8 +90,20 @@ constructor(
         workspacePlanService.get().initPlan(workspacePlan.get().asFile)
         compressionResults.get().asFile.readText()
 
-        val targetReferences = collectTargetMavenRepoReferences(
-            projects = project.rootProject.subprojects.sortedBy(Project::getPath),
+        val reachabilityGroups = ProjectReachabilityOrder
+            .consumersFirstGroups(
+                dependencyGraphsService.get().get(),
+                variantTypeFilter = { true }
+            )
+        val graphProjects = reachabilityGroups.flatMap(ProjectReachabilityGroup::projects).toSet()
+        val orderedGroups = reachabilityGroups +
+            project.rootProject.subprojects
+                .filterNot { subproject -> subproject in graphProjects }
+                .sortedBy(Project::getPath)
+                .map { subproject -> ProjectReachabilityGroup(listOf(subproject), cyclic = false) }
+
+        val targetReferences = collectTargetMavenRepoReferencesByGroup(
+            projectGroups = orderedGroups,
             canMigrate = { subproject -> migrationChecker.get().canMigrate(subproject) },
             targetsForProject = { subproject -> bazelFileBuilder.get().create(subproject).targets() },
             workspacePlanService = workspacePlanService.get()
@@ -117,6 +133,7 @@ constructor(
             TASK_NAME,
             grazelComponent.migrationChecker(),
             grazelComponent.projectBazelFileBuilderFactory(),
+            grazelComponent.dependencyGraphsService(),
             grazelComponent.workspacePlanService(),
             rootProject.objects,
             rootProject.layout
@@ -135,33 +152,124 @@ internal fun collectTargetMavenRepoReferences(
     canMigrate: (Project) -> Boolean,
     targetsForProject: (Project) -> List<BazelTarget>,
     workspacePlanService: WorkspacePlanService
+): TargetMavenRepoReferences =
+    collectTargetMavenRepoReferencesByGroup(
+        projectGroups = projects.map { project -> ProjectReachabilityGroup(listOf(project), cyclic = false) },
+        canMigrate = canMigrate,
+        targetsForProject = targetsForProject,
+        workspacePlanService = workspacePlanService
+    )
+
+internal fun collectTargetMavenRepoReferencesByGroup(
+    projectGroups: Iterable<ProjectReachabilityGroup>,
+    canMigrate: (Project) -> Boolean,
+    targetsForProject: (Project) -> List<BazelTarget>,
+    workspacePlanService: WorkspacePlanService
+): TargetMavenRepoReferences {
+    val references = collectTargetMavenRepoReferencesSinglePass(
+        projectGroups = projectGroups,
+        canMigrate = canMigrate,
+        targetsForProject = targetsForProject,
+        workspacePlanService = workspacePlanService
+    )
+
+    workspacePlanService.populateRenderPlan(references.asRenderPlan())
+    return references
+}
+
+private fun collectTargetMavenRepoReferencesSinglePass(
+    projectGroups: Iterable<ProjectReachabilityGroup>,
+    canMigrate: (Project) -> Boolean,
+    targetsForProject: (Project) -> List<BazelTarget>,
+    workspacePlanService: WorkspacePlanService
 ): TargetMavenRepoReferences {
     var accumulated = TargetMavenRepoReferences()
-    val projectList = projects.toList()
-
-    repeat(projectList.size + 1) {
-        workspacePlanService.populateRenderPlan(
-            WorkspaceRenderPlan(
-                referencedProjectPaths = accumulated.projectPaths,
-                referencedProjectTargets = accumulated.projectTargets
+    projectGroups.forEach { group ->
+        accumulated = if (group.cyclic) {
+            collectCyclicProjectGroup(
+                accumulated = accumulated,
+                projects = group.projects,
+                canMigrate = canMigrate,
+                targetsForProject = targetsForProject,
+                workspacePlanService = workspacePlanService
             )
-        )
-        val collected = projectList
-            .asSequence()
-            .filter(canMigrate)
-            .map { project ->
-                TargetMavenRepoReferencesCollector.fromTargets(targetsForProject(project))
+        } else {
+            group.projects.fold(accumulated) { current, project ->
+                collectProjectReferences(
+                    accumulated = current,
+                    project = project,
+                    canMigrate = canMigrate,
+                    targetsForProject = targetsForProject,
+                    workspacePlanService = workspacePlanService
+                )
             }
-            .fold(TargetMavenRepoReferences(), ::mergeTargetMavenRepoReferences)
-        val next = mergeTargetMavenRepoReferences(accumulated, collected)
-        if (next == accumulated) {
-            return next.normalized()
         }
-        accumulated = next
     }
 
     return accumulated.normalized()
 }
+
+private fun collectCyclicProjectGroup(
+    accumulated: TargetMavenRepoReferences,
+    projects: Iterable<Project>,
+    canMigrate: (Project) -> Boolean,
+    targetsForProject: (Project) -> List<BazelTarget>,
+    workspacePlanService: WorkspacePlanService
+): TargetMavenRepoReferences {
+    var groupAccumulated = TargetMavenRepoReferences()
+    val projectList = projects.filter(canMigrate).toList()
+    var lastDelta = TargetMavenRepoReferences()
+
+    repeat(projectList.size + 1) {
+        var next = groupAccumulated
+        projectList.forEach { project ->
+            workspacePlanService.populateRenderPlan(
+                mergeTargetMavenRepoReferences(accumulated, next).asRenderPlan()
+            )
+            next = mergeTargetMavenRepoReferences(
+                next,
+                TargetMavenRepoReferencesCollector.fromTargets(targetsForProject(project))
+            )
+        }
+        if (next == groupAccumulated) {
+            return mergeTargetMavenRepoReferences(accumulated, next).normalized()
+        }
+        lastDelta = subtractTargetMavenRepoReferences(next, groupAccumulated)
+        groupAccumulated = next
+    }
+
+    error(
+        buildString {
+            append("Target Maven repo reference fixpoint did not converge for cyclic project group ")
+            append(projectList.map(Project::getPath).sorted())
+            append(" after ${projectList.size + 1} passes. Last discovered delta: ")
+            append(lastDelta.toSummary())
+        }
+    )
+}
+
+private fun collectProjectReferences(
+    accumulated: TargetMavenRepoReferences,
+    project: Project,
+    canMigrate: (Project) -> Boolean,
+    targetsForProject: (Project) -> List<BazelTarget>,
+    workspacePlanService: WorkspacePlanService
+): TargetMavenRepoReferences {
+    workspacePlanService.populateRenderPlan(accumulated.asRenderPlan())
+    if (!canMigrate(project)) {
+        return accumulated
+    }
+    return mergeTargetMavenRepoReferences(
+        accumulated,
+        TargetMavenRepoReferencesCollector.fromTargets(targetsForProject(project))
+    )
+}
+
+private fun TargetMavenRepoReferences.asRenderPlan(): WorkspaceRenderPlan =
+    WorkspaceRenderPlan(
+        referencedProjectPaths = projectPaths,
+        referencedProjectTargets = projectTargets
+    )
 
 private fun mergeTargetMavenRepoReferences(
     left: TargetMavenRepoReferences,
@@ -184,6 +292,29 @@ private fun mergeProjectTargets(
         }
         .toSortedMap()
 }
+
+private fun subtractTargetMavenRepoReferences(
+    left: TargetMavenRepoReferences,
+    right: TargetMavenRepoReferences
+): TargetMavenRepoReferences =
+    TargetMavenRepoReferences(
+        repoNames = left.repoNames - right.repoNames,
+        projectPaths = left.projectPaths - right.projectPaths,
+        projectTargets = subtractProjectTargets(left.projectTargets, right.projectTargets)
+    ).normalized()
+
+private fun subtractProjectTargets(
+    left: Map<String, Set<String>>,
+    right: Map<String, Set<String>>
+): Map<String, Set<String>> =
+    left.mapValues { (projectPath, targetNames) ->
+        targetNames - right.getOrDefault(projectPath, emptySet())
+    }
+        .filterValues(Set<String>::isNotEmpty)
+        .toSortedMap()
+
+private fun TargetMavenRepoReferences.toSummary(): String =
+    "repoNames=$repoNames, projectPaths=$projectPaths, projectTargets=$projectTargets"
 
 private fun TargetMavenRepoReferences.normalized(): TargetMavenRepoReferences =
     TargetMavenRepoReferences(
