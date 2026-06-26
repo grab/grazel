@@ -92,3 +92,51 @@ This log tracks deletion of old feedback paths after Item 3 moved consumers onto
   passed in about 280s with 117 total actions.
 - Resource notes: disk dipped to about 12 GiB during migrate and was about
   13 GiB before the Bazel gate. No cache cleanup was run.
+
+## Step 3 - Extractor-side tag derivation
+
+### Target
+
+- Tags in project extractors must use local direct tags plus `WorkspacePlan.tagPlan`.
+- No extractor may recompute transitive Maven closure as a fallback.
+- The workspace tag-plan collector remains the owner of Maven transitive tag closure.
+
+### Red check
+
+- Added no-plan extractor tests for Android library and Android instrumentation
+  targets. Both failed before the production change because transitive child Maven
+  tags leaked from extractor fallback.
+
+### Change
+
+- Removed Android library extractor's legacy Maven tag walk, cache, and
+  `VariantBuilder` dependency.
+- Replaced fallback `collectTransitiveMavenDeps` calls with empty plan defaults in
+  Android unit test, Android instrumentation, Kotlin library, and Kotlin unit test
+  extractors.
+
+### Verification
+
+- Focused red tests passed after the change:
+  `DefaultAndroidLibraryDataExtractorTest.extract does not derive transitive maven tag labels without workspace plan`
+  and
+  `AndroidInstrumentationBinaryDataExtractorTest.extract does not derive transitive maven tags without workspace plan`.
+- Extractor structural search found no `collectTransitiveMavenDeps` calls under
+  `migrate/*`.
+- Focused extractor/tag-plan test slice passed.
+- `git diff --check`, `reports/scripts/verify-default-task-graph.sh`, and
+  `reports/scripts/verify-sample-bucket-labels.sh` passed.
+- `./gradlew verifyGrazelGoldenBaseline -Pgrazel.internal.planParity=true --console=plain`
+  passed in 18s with clean generated-file diff.
+
+### PAX verification
+
+- `./gradlew migrateToBazel -Pgrazel.internal.planParity=true --no-daemon --console=plain --stacktrace`
+  passed in 10m12s.
+- `git diff --check` passed in `/Users/arun.sampathkumar/work/pax-android`.
+- Generated tag-prefix audit found zero bucket Maven labels inside `tags`
+  arrays.
+- `./bazel.sh build //app:app-gps-pax-debug.apk //app:app-gps-pax-debug-android-test.apk --verbose_failures`
+  passed in 267.777s with 117 total actions.
+- Resource notes: disk was about 14 GiB before and after this gate. No cache
+  cleanup was run.

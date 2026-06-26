@@ -155,10 +155,7 @@ internal class DefaultAndroidInstrumentationBinaryDataExtractor
                     variantType = variantKey.variantType.toString(),
                     targetKind = TargetTagKinds.ANDROID_INSTRUMENTATION
                 )
-                ?: dependenciesDataSource.collectTransitiveMavenDeps(
-                    project = project,
-                    variantKey = variantKey
-                ).map { mavenDependency -> mavenDependency.copy(repo = "maven").toString() }
+                .orEmpty()
             (localTags + mavenTags).sorted()
         } else emptyList()
 

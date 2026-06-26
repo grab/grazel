@@ -42,7 +42,8 @@ class DefaultAndroidLibraryDataExtractorTest {
 
     private fun configure(
         app: AppExtension.() -> Unit = {},
-        lib: LibraryExtension.() -> Unit = {}
+        lib: LibraryExtension.() -> Unit = {},
+        appDependencies: Project.() -> Unit = {}
     ) {
         rootProject = buildProject("root").also {
             it.addGrazelExtension()
@@ -69,6 +70,7 @@ class DefaultAndroidLibraryDataExtractorTest {
             dependencies {
                 add("implementation", libraryProject)
             }
+            appDependencies()
         }
         with(libraryProject) {
             with(plugins) {
@@ -284,5 +286,41 @@ class DefaultAndroidLibraryDataExtractorTest {
             contains("@maven//:com_example_planned")
             contains("@self//android")
         }
+    }
+
+    @Test
+    fun `extract does not derive transitive maven tag labels without workspace plan`() {
+        configure(
+            appDependencies = {
+                dependencies {
+                    add("implementation", "com.example:root:1.0")
+                }
+            }
+        )
+        rootProject.the<com.grab.grazel.GrazelExtension>()
+            .rules.kotlin.enabledTransitiveReduction = true
+        dependencyResolutionService.get().close()
+        dependencyResolutionService.get().populateCache(
+            WorkspaceDependencies(
+                variantDeps = mapOf(
+                    DEFAULT_VARIANT to listOf(
+                        fromId("com.example:root:1.0", DEFAULT_VARIANT),
+                        fromId("com.example:child:1.0", DEFAULT_VARIANT)
+                    )
+                ),
+                transitiveClasspath = mapOf("com.example:root" to setOf("com.example:child"))
+            )
+        )
+
+        val androidLibraryData = androidLibraryDataExtractor.extract(appProject, debugVariant())
+
+        androidLibraryData.tags.truth {
+            contains("@maven//:com_example_root")
+            contains("@self//android")
+        }
+        assertFalse(
+            androidLibraryData.tags.contains("@maven//:com_example_child"),
+            "Transitive Maven tags must come from WorkspacePlan, not extractor fallback"
+        )
     }
 }

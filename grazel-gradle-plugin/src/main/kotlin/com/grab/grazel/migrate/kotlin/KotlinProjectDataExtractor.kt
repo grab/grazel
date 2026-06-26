@@ -98,10 +98,7 @@ internal class DefaultKotlinProjectDataExtractor
                     variantType = variantKey.variantType.toString(),
                     targetKind = TargetTagKinds.KOTLIN_LIBRARY
                 )
-                ?: dependenciesDataSource.collectTransitiveMavenDeps(
-                    project = project,
-                    variantKey = variantKey
-                ).map { mavenDependency -> mavenDependency.copy(repo = "maven").toString() }
+                .orEmpty()
             (localTags + mavenTags).sorted()
         } else emptyList()
 

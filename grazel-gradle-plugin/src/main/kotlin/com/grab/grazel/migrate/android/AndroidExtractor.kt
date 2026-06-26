@@ -33,14 +33,9 @@ import com.grab.grazel.gradle.hasCrashlytics
 import com.grab.grazel.gradle.hasDatabinding
 import com.grab.grazel.gradle.isAndroid
 import com.grab.grazel.gradle.variant.AndroidVariantDataSource
-import com.grab.grazel.gradle.variant.DEFAULT_VARIANT
 import com.grab.grazel.gradle.variant.MatchedVariant
-import com.grab.grazel.gradle.variant.Variant
-import com.grab.grazel.gradle.variant.VariantBuilder
 import com.grab.grazel.gradle.variant.VariantGraphKey
 import com.grab.grazel.gradle.variant.VariantType
-import com.grab.grazel.gradle.variant.VariantType.AndroidBuild
-import com.grab.grazel.gradle.variant.VariantType.JvmBuild
 import com.grab.grazel.gradle.variant.getMigratableBuildVariants
 import com.grab.grazel.gradle.variant.nameSuffix
 import com.grab.grazel.migrate.android.SourceSetType.JAVA_KOTLIN
@@ -49,7 +44,6 @@ import com.grab.grazel.migrate.kotlin.kotlinParcelizeDeps
 import com.grab.grazel.util.GradleProvider
 import org.gradle.api.Project
 import org.gradle.kotlin.dsl.getByType
-import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -72,12 +66,9 @@ constructor(
     private val dependencyGraphsService: GradleProvider<DefaultDependencyGraphsService>,
     private val workspacePlanService: GradleProvider<DefaultWorkspacePlanService>,
     private val gradleDependencyToBazelDependency: GradleDependencyToBazelDependency,
-    private val variantBuilder: VariantBuilder,
 ) : AndroidLibraryDataExtractor {
 
     private val projectDependencyGraphs: DependencyGraphs get() = dependencyGraphsService.get().get()
-    private val transitiveMavenDepsForTagsCache =
-        ConcurrentHashMap<MavenTagClosureKey, Set<BazelDependency.MavenDependency>>()
 
     override fun extract(
         project: Project,
@@ -108,7 +99,6 @@ constructor(
                     extension = extension,
                     deps = deps,
                     variantKey = variantKey,
-                    directProjectDependencies = directProjectDependencies
                 )
             }
 
@@ -121,7 +111,6 @@ constructor(
         extension: BaseExtension,
         deps: List<BazelDependency>,
         variantKey: VariantGraphKey,
-        directProjectDependencies: Set<Project>,
     ): AndroidLibraryData {
         // Only consider source sets from migratable variants
         val migratableSourceSets = matchedVariant.variant.sourceSets
@@ -152,7 +141,7 @@ constructor(
                 self = name,
                 deps = deps
             )
-            val plannedMavenTags = workspacePlanService
+            val mavenTags = workspacePlanService
                 .get()
                 .getPlan()
                 ?.tagsFor(
@@ -160,12 +149,7 @@ constructor(
                     variantType = variantKey.variantType.toString(),
                     targetKind = TargetTagKinds.ANDROID_LIBRARY
                 )
-            val mavenTags = plannedMavenTags ?: legacyMavenTagLabels(
-                project = project,
-                variantKey = variantKey,
-                matchedVariant = matchedVariant,
-                directProjectDependencies = directProjectDependencies
-            )
+                .orEmpty()
             (localTags + mavenTags).sorted()
         } else emptyList()
 
@@ -190,74 +174,6 @@ constructor(
             lintConfigData = lintConfigs
         )
     }
-
-    private fun legacyMavenTagLabels(
-        project: Project,
-        variantKey: VariantGraphKey,
-        matchedVariant: MatchedVariant,
-        directProjectDependencies: Set<Project>,
-    ): List<String> {
-        val transitiveMavenDeps = buildSet {
-            addAll(
-                dependenciesDataSource.collectTransitiveMavenDeps(
-                    project = project,
-                    variantKey = variantKey
-                )
-            )
-            directProjectDependencies.forEach { dependencyProject ->
-                addAll(dependencyProject.collectTransitiveMavenDepsForTags(matchedVariant))
-            }
-        }
-        return transitiveMavenDeps
-            .map { mavenDependency -> mavenDependency.copy(repo = "maven").toString() }
-    }
-
-    private fun Project.collectTransitiveMavenDepsForTags(
-        matchedVariant: MatchedVariant
-    ): Set<BazelDependency.MavenDependency> {
-        val cacheKey = MavenTagClosureKey(
-            projectPath = path,
-            variantName = matchedVariant.variantName,
-            buildType = matchedVariant.buildType
-        )
-        return transitiveMavenDepsForTagsCache.computeIfAbsent(cacheKey) {
-            val variantKey = bestVariantKeyForTagClosure(matchedVariant) ?: return@computeIfAbsent emptySet()
-            dependenciesDataSource.collectTransitiveMavenDeps(
-                project = this,
-                variantKey = variantKey
-            )
-        }
-    }
-
-    private fun Project.bestVariantKeyForTagClosure(matchedVariant: MatchedVariant): VariantGraphKey? {
-        val variants = variantBuilder.build(this)
-        val variantType = if (isAndroid) AndroidBuild else JvmBuild
-        val preferredNames = if (isAndroid) {
-            listOf(matchedVariant.variantName, matchedVariant.buildType, DEFAULT_VARIANT)
-        } else {
-            listOf(DEFAULT_VARIANT)
-        }
-        return preferredNames
-            .asSequence()
-            .distinct()
-            .mapNotNull { preferredName ->
-                variants.firstOrNull { variant ->
-                    variant.variantType == variantType && variant.name == preferredName
-                }
-            }
-            .firstOrNull()
-            ?.toVariantGraphKey()
-    }
-
-    private fun Variant<*>.toVariantGraphKey(): VariantGraphKey {
-        return VariantGraphKey.from(project, name, variantType)
-    }
-
-    private data class MavenTagClosureKey(
-        val projectPath: String,
-        val variantName: String,
-        val buildType: String,
-    )
 }
 
 internal interface AndroidBinaryDataExtractor : AndroidExtractor<AndroidBinaryData>
