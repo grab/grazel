@@ -696,7 +696,7 @@ class AggregatedDependencyResolverTest {
     }
 
     @Test
-    fun `test bucket subtraction is scoped by project before global emission`() {
+    fun `test bucket reuses identical default dependency owned by another project`() {
         val sharedDependency = fakeComponentResult(
             group = "com.example",
             name = "shared",
@@ -755,13 +755,7 @@ class AggregatedDependencyResolverTest {
             )
         ).resolve()
 
-        assertEquals(
-            listOf("com.example:shared:1.0"),
-            results.single { result -> result.variantName == TEST_VARIANT }
-                .dependencies
-                .getValue(COMPILE.name)
-                .map(ResolvedDependency::id)
-        )
+        assertNull(results.singleOrNull { result -> result.variantName == TEST_VARIANT })
     }
 
     @Test
@@ -853,6 +847,315 @@ class AggregatedDependencyResolverTest {
                 .single()
                 .overrideTarget
         )
+    }
+
+    @Test
+    fun `test bucket inherits main direct dependency when only excludes differ and test did not declare it`() {
+        val mainExcludeRule = ExcludeRule("com.example", "blocked")
+        val inheritedDependency = fakeComponentResult(
+            group = "com.example",
+            name = "library",
+            version = "1.0",
+            isProject = false
+        )
+        val testOnlyDependency = fakeComponentResult(
+            group = "com.example",
+            name = "test-helper",
+            version = "1.0",
+            isProject = false
+        )
+        val appRoot = fakeComponentResult(projectPath = ":app") {
+            addDependencyTo(inheritedDependency)
+        }
+        val testRoot = fakeComponentResult(projectPath = ":app") {
+            addDependencyTo(inheritedDependency)
+            addDependencyTo(testOnlyDependency)
+        }
+
+        val results = AggregatedDependencyResolver(
+            logger = ProjectBuilder.builder().build().logger,
+            declaredDependencyMetadata = DeclaredDependencyMetadata(
+                projects = mapOf(
+                    ":app" to ProjectDeclaredDependencyMetadata(
+                        projectType = DeclaredProjectType.ANDROID_APPLICATION,
+                        variants = listOf(
+                            declaredVariant(
+                                name = DEFAULT_VARIANT,
+                                variantType = AndroidBuild,
+                                leaf = false,
+                                excludeRulesByShortId = mapOf(
+                                    "com.example:library" to setOf(mainExcludeRule)
+                                )
+                            ),
+                            declaredVariant(
+                                name = TEST_VARIANT,
+                                variantType = TestVariantType,
+                                leaf = false,
+                                declaredDependencies = setOf("com.example:test-helper:1.0")
+                            )
+                        )
+                    )
+                )
+            ),
+            workspaceDependencyRoots = listOf(
+                root(
+                    component = appRoot,
+                    projectPath = ":app",
+                    kind = AggregatedDependencyRootKind.MAIN_HIERARCHY,
+                    bucketName = DEFAULT_VARIANT,
+                    variantType = AndroidBuild,
+                    directDependencyShortIds = setOf("com.example:library"),
+                    traverseProjectNodes = false,
+                    rootExcludeRulesByShortId = mapOf(
+                        "com.example:library" to setOf(mainExcludeRule)
+                    )
+                ),
+                root(
+                    component = testRoot,
+                    projectPath = ":app",
+                    kind = AggregatedDependencyRootKind.UNIT_TEST,
+                    bucketName = DEFAULT_VARIANT,
+                    leafName = DEFAULT_VARIANT,
+                    variantType = TestVariantType,
+                    directDependencyShortIds = setOf("com.example:library", "com.example:test-helper"),
+                    traverseProjectNodes = false
+                )
+            )
+        ).resolve()
+
+        assertEquals(
+            listOf("com.example:test-helper:1.0"),
+            results.single { result -> result.variantName == TEST_VARIANT }
+                .dependencies
+                .getValue(COMPILE.name)
+                .map(ResolvedDependency::id)
+        )
+    }
+
+    @Test
+    fun `test bucket keeps explicitly declared direct dependency with distinct excludes`() {
+        val mainExcludeRule = ExcludeRule("com.example", "main-blocked")
+        val testExcludeRule = ExcludeRule("com.example", "test-blocked")
+        val dependency = fakeComponentResult(
+            group = "com.example",
+            name = "library",
+            version = "1.0",
+            isProject = false
+        )
+        val appRoot = fakeComponentResult(projectPath = ":app") {
+            addDependencyTo(dependency)
+        }
+        val testRoot = fakeComponentResult(projectPath = ":app") {
+            addDependencyTo(dependency)
+        }
+
+        val results = AggregatedDependencyResolver(
+            logger = ProjectBuilder.builder().build().logger,
+            declaredDependencyMetadata = DeclaredDependencyMetadata(
+                projects = mapOf(
+                    ":app" to ProjectDeclaredDependencyMetadata(
+                        projectType = DeclaredProjectType.ANDROID_APPLICATION,
+                        variants = listOf(
+                            declaredVariant(
+                                name = DEFAULT_VARIANT,
+                                variantType = AndroidBuild,
+                                leaf = false,
+                                excludeRulesByShortId = mapOf(
+                                    "com.example:library" to setOf(mainExcludeRule)
+                                )
+                            ),
+                            declaredVariant(
+                                name = TEST_VARIANT,
+                                variantType = TestVariantType,
+                                leaf = false,
+                                declaredDependencies = setOf("com.example:library:1.0"),
+                                excludeRulesByShortId = mapOf(
+                                    "com.example:library" to setOf(testExcludeRule)
+                                )
+                            )
+                        )
+                    )
+                )
+            ),
+            workspaceDependencyRoots = listOf(
+                root(
+                    component = appRoot,
+                    projectPath = ":app",
+                    kind = AggregatedDependencyRootKind.MAIN_HIERARCHY,
+                    bucketName = DEFAULT_VARIANT,
+                    variantType = AndroidBuild,
+                    directDependencyShortIds = setOf("com.example:library"),
+                    traverseProjectNodes = false,
+                    rootExcludeRulesByShortId = mapOf(
+                        "com.example:library" to setOf(mainExcludeRule)
+                    )
+                ),
+                root(
+                    component = testRoot,
+                    projectPath = ":app",
+                    kind = AggregatedDependencyRootKind.UNIT_TEST,
+                    bucketName = DEFAULT_VARIANT,
+                    leafName = DEFAULT_VARIANT,
+                    variantType = TestVariantType,
+                    directDependencyShortIds = setOf("com.example:library"),
+                    traverseProjectNodes = false,
+                    rootExcludeRulesByShortId = mapOf(
+                        "com.example:library" to setOf(testExcludeRule)
+                    )
+                )
+            )
+        ).resolve()
+
+        assertEquals(
+            listOf("com.example:library:1.0"),
+            results.single { result -> result.variantName == TEST_VARIANT }
+                .dependencies
+                .getValue(COMPILE.name)
+                .map(ResolvedDependency::id)
+        )
+        assertEquals(
+            setOf(testExcludeRule),
+            results.single { result -> result.variantName == TEST_VARIANT }
+                .dependencies
+                .getValue(COMPILE.name)
+                .single()
+                .excludeRules
+        )
+    }
+
+    @Test
+    fun `test bucket keeps declared dependency covered only by non visible main bucket`() {
+        val dependency = fakeComponentResult(
+            group = "com.example",
+            name = "library",
+            version = "1.0",
+            isProject = false
+        )
+        val paxRoot = fakeComponentResult(projectPath = ":app") {
+            addDependencyTo(dependency)
+        }
+        val testRoot = fakeComponentResult(projectPath = ":app") {
+            addDependencyTo(dependency)
+        }
+
+        val results = AggregatedDependencyResolver(
+            logger = ProjectBuilder.builder().build().logger,
+            declaredDependencyMetadata = DeclaredDependencyMetadata(
+                projects = mapOf(
+                    ":app" to ProjectDeclaredDependencyMetadata(
+                        projectType = DeclaredProjectType.ANDROID_APPLICATION,
+                        variants = listOf(
+                            declaredVariant(
+                                name = DEFAULT_VARIANT,
+                                variantType = AndroidBuild,
+                                leaf = false
+                            ),
+                            declaredVariant(
+                                name = "pax",
+                                variantType = AndroidBuild,
+                                leaf = false
+                            ),
+                            declaredVariant(
+                                name = TEST_VARIANT,
+                                variantType = TestVariantType,
+                                leaf = false,
+                                declaredDependencies = setOf("com.example:library:1.0")
+                            )
+                        )
+                    )
+                )
+            ),
+            workspaceDependencyRoots = listOf(
+                root(
+                    component = paxRoot,
+                    projectPath = ":app",
+                    kind = AggregatedDependencyRootKind.MAIN_LEAF,
+                    bucketName = "pax",
+                    leafName = "pax",
+                    variantType = AndroidBuild,
+                    directDependencyShortIds = setOf("com.example:library"),
+                    traverseProjectNodes = false
+                ),
+                root(
+                    component = testRoot,
+                    projectPath = ":app",
+                    kind = AggregatedDependencyRootKind.UNIT_TEST,
+                    bucketName = DEFAULT_VARIANT,
+                    leafName = DEFAULT_VARIANT,
+                    variantType = TestVariantType,
+                    directDependencyShortIds = setOf("com.example:library"),
+                    traverseProjectNodes = false
+                )
+            )
+        ).resolve()
+
+        assertEquals(
+            listOf("com.example:library:1.0"),
+            results.single { result -> result.variantName == TEST_VARIANT }
+                .dependencies
+                .getValue(COMPILE.name)
+                .map(ResolvedDependency::id)
+        )
+        assertEquals(
+            listOf("com.example:library:1.0"),
+            results.single { result -> result.variantName == "pax" }
+                .dependencies
+                .getValue(COMPILE.name)
+                .map(ResolvedDependency::id)
+        )
+    }
+
+    @Test
+    fun `test compile only metadata is inherited from visible main bucket`() {
+        val sharedDependency = fakeComponentResult(
+            group = "com.example",
+            name = "shared",
+            version = "1.0",
+            isProject = false
+        )
+        val appRoot = fakeComponentResult(projectPath = ":app") {
+            addDependencyTo(sharedDependency)
+        }
+
+        val results = AggregatedDependencyResolver(
+            logger = ProjectBuilder.builder().build().logger,
+            declaredDependencyMetadata = DeclaredDependencyMetadata(
+                projects = mapOf(
+                    ":app" to ProjectDeclaredDependencyMetadata(
+                        projectType = DeclaredProjectType.ANDROID_APPLICATION,
+                        variants = listOf(
+                            declaredVariant(
+                                name = DEFAULT_VARIANT,
+                                variantType = AndroidBuild,
+                                leaf = false
+                            ),
+                            declaredVariant(
+                                name = TEST_VARIANT,
+                                variantType = TestVariantType,
+                                leaf = false,
+                                compileOnlyDependenciesByShortId = mapOf(
+                                    "com.example:shared" to ResolvedDependency.fromId(
+                                        "com.example:shared:1.0",
+                                        DECLARED_DEPENDENCY_REPOSITORY
+                                    )
+                                )
+                            )
+                        )
+                    )
+                )
+            ),
+            workspaceDependencyRoots = listOf(
+                root(
+                    component = appRoot,
+                    projectPath = ":app",
+                    kind = AggregatedDependencyRootKind.MAIN_HIERARCHY,
+                    bucketName = DEFAULT_VARIANT,
+                    variantType = AndroidBuild
+                )
+            )
+        ).resolve()
+
+        assertNull(results.singleOrNull { result -> result.variantName == TEST_VARIANT })
     }
 
     @Test
@@ -1627,7 +1930,7 @@ class AggregatedDependencyResolverTest {
     }
 
     @Test
-    fun `explicit app android test declaration is emitted after resolved metadata merge when main also contains it`() {
+    fun `explicit app android test declaration is inherited from main when main owns same resolved dependency`() {
         val sharedDependency = fakeComponentResult(
             group = "com.example",
             name = "shared",
@@ -1683,13 +1986,244 @@ class AggregatedDependencyResolverTest {
             )
         ).resolve()
 
+        assertNull(results.singleOrNull { result -> result.variantName == ANDROID_TEST_VARIANT })
+    }
+
+    @Test
+    fun `explicit app android test declaration is emitted when resolved dependency differs from main`() {
+        val mainSharedDependency = fakeComponentResult(
+            group = "com.example",
+            name = "shared",
+            version = "1.0",
+            isProject = false
+        )
+        val androidTestSharedDependency = fakeComponentResult(
+            group = "com.example",
+            name = "shared",
+            version = "2.0",
+            isProject = false
+        )
+        val appRoot = fakeComponentResult(projectPath = ":app") {
+            addDependencyTo(mainSharedDependency)
+        }
+        val androidTestRoot = fakeComponentResult(projectPath = ":app") {
+            addDependencyTo(androidTestSharedDependency)
+        }
+
+        val results = AggregatedDependencyResolver(
+            logger = ProjectBuilder.builder().build().logger,
+            declaredDependencyMetadata = DeclaredDependencyMetadata(
+                projects = mapOf(
+                    ":app" to ProjectDeclaredDependencyMetadata(
+                        projectType = DeclaredProjectType.ANDROID_APPLICATION,
+                        variants = listOf(
+                            declaredVariant(
+                                name = DEFAULT_VARIANT,
+                                variantType = AndroidBuild,
+                                leaf = false
+                            ),
+                            declaredVariant(
+                                name = ANDROID_TEST_VARIANT,
+                                variantType = AndroidTest,
+                                leaf = false,
+                                declaredDependencies = setOf("com.example:shared:2.0"),
+                                extendsFrom = setOf(DEFAULT_VARIANT, TEST_VARIANT)
+                            )
+                        )
+                    )
+                )
+            ),
+            workspaceDependencyRoots = listOf(
+                root(
+                    component = appRoot,
+                    projectPath = ":app",
+                    kind = AggregatedDependencyRootKind.MAIN_HIERARCHY,
+                    bucketName = DEFAULT_VARIANT,
+                    variantType = AndroidBuild
+                ),
+                root(
+                    component = androidTestRoot,
+                    projectPath = ":app",
+                    kind = AggregatedDependencyRootKind.ANDROID_TEST,
+                    bucketName = DEFAULT_VARIANT,
+                    leafName = DEFAULT_VARIANT,
+                    variantType = AndroidTest
+                )
+            )
+        ).resolve()
+
         assertEquals(
-            listOf("com.example:shared:1.0"),
+            listOf("com.example:shared:2.0"),
             results.single { result -> result.variantName == ANDROID_TEST_VARIANT }
                 .dependencies
                 .getValue(COMPILE.name)
                 .map(ResolvedDependency::id)
         )
+    }
+
+    @Test
+    fun `android test bucket inherits direct dependency already owned by test bucket`() {
+        val sharedTestDependency = fakeComponentResult(
+            group = "com.example",
+            name = "shared-test-helper",
+            version = "1.0",
+            isProject = false
+        )
+        val appRoot = fakeComponentResult(projectPath = ":app")
+        val unitTestRoot = fakeComponentResult(projectPath = ":app") {
+            addDependencyTo(sharedTestDependency)
+        }
+        val androidTestRoot = fakeComponentResult(projectPath = ":app") {
+            addDependencyTo(sharedTestDependency)
+        }
+
+        val results = AggregatedDependencyResolver(
+            logger = ProjectBuilder.builder().build().logger,
+            declaredDependencyMetadata = DeclaredDependencyMetadata(
+                projects = mapOf(
+                    ":app" to ProjectDeclaredDependencyMetadata(
+                        projectType = DeclaredProjectType.ANDROID_APPLICATION,
+                        variants = listOf(
+                            declaredVariant(
+                                name = DEFAULT_VARIANT,
+                                variantType = AndroidBuild,
+                                leaf = false
+                            ),
+                            declaredVariant(
+                                name = TEST_VARIANT,
+                                variantType = TestVariantType,
+                                leaf = false,
+                                extendsFrom = setOf(DEFAULT_VARIANT)
+                            ),
+                            declaredVariant(
+                                name = ANDROID_TEST_VARIANT,
+                                variantType = AndroidTest,
+                                leaf = false,
+                                extendsFrom = setOf(DEFAULT_VARIANT, TEST_VARIANT)
+                            )
+                        )
+                    )
+                )
+            ),
+            workspaceDependencyRoots = listOf(
+                root(
+                    component = appRoot,
+                    projectPath = ":app",
+                    kind = AggregatedDependencyRootKind.MAIN_HIERARCHY,
+                    bucketName = DEFAULT_VARIANT,
+                    variantType = AndroidBuild
+                ),
+                root(
+                    component = unitTestRoot,
+                    projectPath = ":app",
+                    kind = AggregatedDependencyRootKind.UNIT_TEST,
+                    bucketName = DEFAULT_VARIANT,
+                    leafName = DEFAULT_VARIANT,
+                    variantType = TestVariantType
+                ),
+                root(
+                    component = androidTestRoot,
+                    projectPath = ":app",
+                    kind = AggregatedDependencyRootKind.ANDROID_TEST,
+                    bucketName = DEFAULT_VARIANT,
+                    leafName = DEFAULT_VARIANT,
+                    variantType = AndroidTest
+                )
+            )
+        ).resolve()
+
+        assertEquals(
+            listOf("com.example:shared-test-helper:1.0"),
+            results.single { result -> result.variantName == TEST_VARIANT }
+                .dependencies
+                .getValue(COMPILE.name)
+                .map(ResolvedDependency::id)
+        )
+        assertNull(results.singleOrNull { result -> result.variantName == ANDROID_TEST_VARIANT })
+    }
+
+    @Test
+    fun `android test bucket reuses identical default dependency owned by another project`() {
+        val sharedDependency = fakeComponentResult(
+            group = "com.example",
+            name = "shared-main",
+            version = "1.0",
+            isProject = false
+        )
+        val appRoot = fakeComponentResult(projectPath = ":app")
+        val libraryRoot = fakeComponentResult(projectPath = ":library") {
+            addDependencyTo(sharedDependency)
+        }
+        val appAndroidTestRoot = fakeComponentResult(projectPath = ":app") {
+            addDependencyTo(sharedDependency)
+        }
+
+        val results = AggregatedDependencyResolver(
+            logger = ProjectBuilder.builder().build().logger,
+            declaredDependencyMetadata = DeclaredDependencyMetadata(
+                projects = mapOf(
+                    ":app" to ProjectDeclaredDependencyMetadata(
+                        projectType = DeclaredProjectType.ANDROID_APPLICATION,
+                        variants = listOf(
+                            declaredVariant(
+                                name = DEFAULT_VARIANT,
+                                variantType = AndroidBuild,
+                                leaf = false
+                            ),
+                            declaredVariant(
+                                name = ANDROID_TEST_VARIANT,
+                                variantType = AndroidTest,
+                                leaf = false,
+                                extendsFrom = setOf(DEFAULT_VARIANT, TEST_VARIANT)
+                            )
+                        )
+                    ),
+                    ":library" to ProjectDeclaredDependencyMetadata(
+                        projectType = DeclaredProjectType.OTHER,
+                        variants = listOf(
+                            declaredVariant(
+                                name = DEFAULT_VARIANT,
+                                variantType = AndroidBuild,
+                                leaf = false
+                            )
+                        )
+                    )
+                )
+            ),
+            workspaceDependencyRoots = listOf(
+                root(
+                    component = appRoot,
+                    projectPath = ":app",
+                    kind = AggregatedDependencyRootKind.MAIN_HIERARCHY,
+                    bucketName = DEFAULT_VARIANT,
+                    variantType = AndroidBuild
+                ),
+                root(
+                    component = libraryRoot,
+                    projectPath = ":library",
+                    kind = AggregatedDependencyRootKind.MAIN_HIERARCHY,
+                    bucketName = DEFAULT_VARIANT,
+                    variantType = AndroidBuild
+                ),
+                root(
+                    component = appAndroidTestRoot,
+                    projectPath = ":app",
+                    kind = AggregatedDependencyRootKind.ANDROID_TEST,
+                    bucketName = DEFAULT_VARIANT,
+                    leafName = DEFAULT_VARIANT,
+                    variantType = AndroidTest
+                )
+            )
+        ).resolve()
+
+        assertEquals(
+            listOf("com.example:shared-main:1.0"),
+            results.single { result -> result.variantName == DEFAULT_VARIANT }
+                .dependencies
+                .getValue(COMPILE.name)
+                .map(ResolvedDependency::id)
+        )
+        assertNull(results.singleOrNull { result -> result.variantName == ANDROID_TEST_VARIANT })
     }
 
     @Test
@@ -3441,7 +3975,8 @@ class AggregatedDependencyResolverTest {
         traverseProjectNodes: Boolean = true,
         directDependencyShortIds: Set<String> = emptySet(),
         variantNames: Set<String> = setOf(bucketName, DEFAULT_VARIANT),
-        targetBuckets: Set<String> = emptySet()
+        targetBuckets: Set<String> = emptySet(),
+        rootExcludeRulesByShortId: Map<String, Set<ExcludeRule>> = emptyMap()
     ): AggregatedDependencyRoot {
         return AggregatedDependencyRoot(
             root = component,
@@ -3455,7 +3990,8 @@ class AggregatedDependencyResolverTest {
                 variantType = variantType,
                 traverseProjectNodes = traverseProjectNodes,
                 directDependencyShortIds = directDependencyShortIds,
-                targetBuckets = targetBuckets
+                targetBuckets = targetBuckets,
+                rootExcludeRulesByShortId = rootExcludeRulesByShortId
             )
         )
     }

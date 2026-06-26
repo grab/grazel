@@ -129,6 +129,76 @@ class BucketHierarchyGraphTest {
         )
     }
 
+    @Test
+    fun `finds closest common ancestors in multi-parent variant graph`() {
+        val default = node(DEFAULT_VARIANT, AndroidBuild)
+        val debug = node("debug", AndroidBuild)
+        val demo = node("demo", AndroidBuild)
+        val full = node("full", AndroidBuild)
+        val free = node("free", AndroidBuild)
+        val paid = node("paid", AndroidBuild)
+        val demoFreeDebug = node("demoFreeDebug", AndroidBuild)
+        val demoPaidDebug = node("demoPaidDebug", AndroidBuild)
+        val fullFreeDebug = node("fullFreeDebug", AndroidBuild)
+        val fullPaidDebug = node("fullPaidDebug", AndroidBuild)
+
+        val graph = BucketHierarchyGraph.from(
+            entries = listOf(
+                entry(default),
+                entry(debug, DEFAULT_VARIANT),
+                entry(demo, DEFAULT_VARIANT),
+                entry(full, DEFAULT_VARIANT),
+                entry(free, DEFAULT_VARIANT),
+                entry(paid, DEFAULT_VARIANT),
+                entry(demoFreeDebug, DEFAULT_VARIANT, "debug", "demo", "free", leaf = true),
+                entry(demoPaidDebug, DEFAULT_VARIANT, "debug", "demo", "paid", leaf = true),
+                entry(fullFreeDebug, DEFAULT_VARIANT, "debug", "full", "free", leaf = true),
+                entry(fullPaidDebug, DEFAULT_VARIANT, "debug", "full", "paid", leaf = true)
+            )
+        )
+
+        assertEquals(
+            setOf(default, debug),
+            graph.commonAncestorsOf(setOf(demoFreeDebug, demoPaidDebug, fullFreeDebug, fullPaidDebug))
+        )
+        assertEquals(
+            setOf(debug),
+            graph.closestCommonAncestorsOf(setOf(demoFreeDebug, demoPaidDebug, fullFreeDebug, fullPaidDebug))
+        )
+    }
+
+    @Test
+    fun `closest common ancestors stays set valued when graph is ambiguous`() {
+        val default = node(DEFAULT_VARIANT, AndroidBuild)
+        val demo = node("demo", AndroidBuild)
+        val free = node("free", AndroidBuild)
+        val debug = node("debug", AndroidBuild)
+        val release = node("release", AndroidBuild)
+        val demoFreeDebug = node("demoFreeDebug", AndroidBuild)
+        val demoFreeRelease = node("demoFreeRelease", AndroidBuild)
+
+        val graph = BucketHierarchyGraph.from(
+            entries = listOf(
+                entry(default),
+                entry(demo, DEFAULT_VARIANT),
+                entry(free, DEFAULT_VARIANT),
+                entry(debug, DEFAULT_VARIANT),
+                entry(release, DEFAULT_VARIANT),
+                entry(demoFreeDebug, DEFAULT_VARIANT, "demo", "free", "debug", leaf = true),
+                entry(demoFreeRelease, DEFAULT_VARIANT, "demo", "free", "release", leaf = true)
+            )
+        )
+
+        assertEquals(
+            setOf(default, demo, free),
+            graph.commonAncestorsOf(setOf(demoFreeDebug, demoFreeRelease))
+        )
+        assertEquals(
+            setOf(demo, free),
+            graph.closestCommonAncestorsOf(setOf(demoFreeDebug, demoFreeRelease))
+        )
+    }
+
     private fun node(
         name: String,
         variantType: VariantType,

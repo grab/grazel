@@ -51,10 +51,11 @@ Known remaining concern:
 ## Current Verification Evidence
 
 Latest recorded PAX gates:
-- `./gradlew migrateToBazel --no-daemon --console=plain --stacktrace` passed.
-- `./bazel.sh build --jobs=4 --disk_cache= --verbose_failures
+- `./gradlew migrateToBazel --no-daemon --console=plain --stacktrace
+  --rerun-tasks` passed.
+- `./bazel.sh build --verbose_failures
   //app:app-gps-pax-debug.apk //app:app-gps-pax-debug-android-test.apk`
-  passed after one automatic transient remote-cache retry.
+  passed in 448s.
 - Focused PAX unit-test gate passed for:
   `//app-utils:app-utils-gps-pax-debug-test`,
   `//app-test:app-test-gps-pax-debug-test`, and
@@ -62,13 +63,19 @@ Latest recorded PAX gates:
 - PAX `git diff --check` passed after generation.
 - PAX bounded audit passed: no bucket-prefixed Maven labels in tags, strict
   reachability spot-check for `bug-report-kit-implementation` passed, WORKSPACE had
-  5327 lines and 24 `maven_install` entries.
+  4772 lines and 24 `maven_install` entries.
+- PAX pin-size shape after Item 7: materialized pinfiles decreased from 17 to 12 and
+  `maven_install` calls from 28 to 24; input artifact roots increased from 1784 to
+  2094 (+17.4%) because non-default test/lint repos retain complete Gradle-resolved
+  closure. This is accepted as correctness-first but remains size debt.
 
 Latest recorded Grazel gates:
 - `:grazel-gradle-plugin:test` passed.
-- `:grazel-gradle-plugin:check` passed.
+- `./gradlew migrateToBazel --console=plain --no-daemon` passed.
 - `verify-default-task-graph.sh` passed.
-- `verify-sample-bucket-labels.sh` passed.
+- `verify-sample-bucket-labels.sh` is currently waived for the clean-9730083
+  appcompat/constraintlayout exclude-union drift documented in
+  `reports/specs/EXECUTION-LOG.md`.
 - `verifyGrazelGoldenBaseline` passed before the latest PAX reachability fixes.
 - Grazel `git diff --check` passed after the latest log update.
 

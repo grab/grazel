@@ -39,6 +39,7 @@ internal data class DependencyBucketPlacementPlan(
     val defaultBucket: Map<String, ResolvedDependency>,
     val hierarchyBuckets: Map<String, Map<String, ResolvedDependency>>,
     val leafBuckets: Map<String, Map<String, ResolvedDependency>>,
+    val bucketAncestors: Map<String, Set<String>>,
     val leafAncestors: Map<String, Set<String>>
 ) {
     fun coveredDependencies(): List<CoveredDependency> {
@@ -195,6 +196,9 @@ internal class DependencyBucketPlacementEngine {
         val leafAncestors = graph.leafVariantNames.associateWith { leafName ->
             graph.ancestorsOf(leafName)
         }.toSortedMap()
+        val bucketAncestors = graph.bucketNames.associateWith { bucketName ->
+            graph.ancestorsOf(bucketName)
+        }.toSortedMap()
         val outputLeafNames = (leafNames + selectedLeafBuckets.keys).toSortedSet()
         val leafBuckets = outputLeafNames
             .mapNotNull { leafName ->
@@ -222,6 +226,7 @@ internal class DependencyBucketPlacementEngine {
             defaultBucket = defaultDeps,
             hierarchyBuckets = hierarchyBuckets,
             leafBuckets = leafBuckets,
+            bucketAncestors = bucketAncestors,
             leafAncestors = leafAncestors
         )
     }
@@ -337,8 +342,10 @@ private class BucketPlacementGraph(
         variants.filterNot(DependencyBucketVariant::leaf).map(DependencyBucketVariant::name) +
             parentNames +
             baseBucketName
-        )
+    )
         .toSortedSet()
+    val bucketNames: Set<String>
+        get() = nodeByName.keys
     private lateinit var nodeByName: Map<String, BucketHierarchyNode>
     private lateinit var graph: BucketHierarchyGraph
     private val ancestorNamesByName: Map<String, Set<String>> by lazy(LazyThreadSafetyMode.NONE) {
@@ -650,8 +657,9 @@ internal fun DeclaredDependencyMetadata.testBucketVariantsByProject(
 private fun DeclaredVariantDependencyMetadata.testBucketExtendsFrom(
     baseBucketName: String
 ): Set<String> {
-    if (name == baseBucketName) return emptySet()
-    return (extendsFrom + baseBucketName).toSortedSet()
+    return (extendsFrom + baseBucketName)
+        .filter { parentName -> parentName != name }
+        .toSortedSet()
 }
 
 internal fun Map<String, ResolvedDependency>.asCoveredBy(bucketName: String): List<CoveredDependency> {

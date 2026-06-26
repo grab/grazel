@@ -51,7 +51,7 @@
     "androidx.compose.ui:ui-util": 409328548,
     "androidx.compose.ui:ui-util-android": -1281697466,
     "androidx.concurrent:concurrent-futures": -241468558,
-    "androidx.constraintlayout:constraintlayout": -1117332240,
+    "androidx.constraintlayout:constraintlayout": 129964294,
     "androidx.constraintlayout:constraintlayout-core": -817755974,
     "androidx.core:core": -196207747,
     "androidx.core:core-ktx": 438051419,
@@ -189,7 +189,7 @@
     "androidx.compose.ui:ui:aar": -1899403824,
     "androidx.concurrent:concurrent-futures": -323420660,
     "androidx.constraintlayout:constraintlayout-core": 1657423304,
-    "androidx.constraintlayout:constraintlayout:aar": -1907963736,
+    "androidx.constraintlayout:constraintlayout:aar": -1956853300,
     "androidx.core:core-ktx:aar": 524121910,
     "androidx.core:core:aar": 1344089457,
     "androidx.cursoradapter:cursoradapter:aar": -2051600768,
@@ -1947,7 +1947,6 @@
       "com.google.guava:listenablefuture"
     ],
     "androidx.constraintlayout:constraintlayout:aar": [
-      "androidx.appcompat:appcompat:aar",
       "androidx.constraintlayout:constraintlayout-core"
     ],
     "androidx.core:core-ktx:aar": [

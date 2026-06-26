@@ -42,12 +42,12 @@ internal class WorkspaceRenderPlanBuilder(
         referencedRepoNames: Set<String> = emptySet()
     ): WorkspaceRenderPlan {
         val availableRepos = workspacePlan.repoPlan
-            .filterValues { candidate -> candidate.hasPinInputs() }
+            .filterValues { candidate -> candidate.hasMaterializedRoot() }
             .keys
             .toSortedSet()
         val alwaysMaterializedRepoNames = workspacePlan.repoPlan
             .filter { (repoName, candidate) ->
-                candidate.hasPinInputs() &&
+                candidate.hasMaterializedRoot() &&
                     (repoName in alwaysMaterializedVariantRepos || candidate.kind == AGGREGATED)
             }
             .keys
@@ -73,7 +73,10 @@ internal class WorkspaceRenderPlanBuilder(
         )
     }
 
-    private fun CandidateMavenRepo.hasPinInputs(): Boolean = pinInputs.isNotEmpty()
+    private fun CandidateMavenRepo.hasMaterializedRoot(): Boolean =
+        kind == AGGREGATED || pinInputs.any { artifact ->
+            artifact.direct && artifact.overrideTarget == null
+        }
 
     private fun String.referencedMavenRepo(availableRepos: Set<String>): String? =
         removePrefix("@")

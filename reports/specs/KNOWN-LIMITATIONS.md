@@ -27,6 +27,12 @@ current accepted behavior keeps the Gradle-resolved closure in
 `maven_install.artifacts` so rules_jvm_external/Coursier are constrained to the Gradle
 selected versions.
 
+After the Item 7 direct-root ownership pass, PAX materialized pinfiles decreased from 17
+to 12 and `maven_install` calls decreased from 28 to 24, but input artifact roots are
+still 2094 versus 1784 in PAX HEAD/master (+17.4%). The remaining growth is accepted only
+because PAX migrate, debug APK, android-test APK, selected unit tests, and tag/reachability
+audits pass while preserving complete Gradle-resolved closure.
+
 The compact-root experiment was rejected because dropping closure artifacts removed that
 version-forcing behavior and caused PAX pinning to stall. Future size work should happen
 through better bucket placement, test/lint ownership, or a proven first-class version

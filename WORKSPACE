@@ -494,6 +494,7 @@ maven_install(
         maven.artifact(
             artifact = "constraintlayout",
             exclusions = [
+                "androidx.appcompat:appcompat",
                 "androidx.core:core",
             ],
             group = "androidx.constraintlayout",

@@ -17,11 +17,14 @@
 package com.grab.grazel.gradle.dependencies
 
 import com.grab.grazel.bazel.starlark.BazelDependency.MavenDependency
+import com.grab.grazel.gradle.dependencies.model.CandidateMavenRepo
+import com.grab.grazel.gradle.dependencies.model.CandidateMavenRepoKind.VARIANT
 import com.grab.grazel.gradle.dependencies.model.OverrideTarget
 import com.grab.grazel.gradle.dependencies.model.ResolvedDependency
 import com.grab.grazel.gradle.dependencies.model.TargetTagKey
 import com.grab.grazel.gradle.dependencies.model.TargetTagPlan
 import com.grab.grazel.gradle.dependencies.model.WorkspaceDependencies
+import com.grab.grazel.gradle.dependencies.model.WorkspacePlan
 import com.grab.grazel.gradle.variant.DEFAULT_VARIANT
 import org.junit.Assert.assertEquals
 import org.junit.Test
@@ -234,6 +237,36 @@ class WorkspacePlanBuilderTest {
             emptySet<String>(),
             renderPlan.materializedRepoNames
         )
+    }
+
+    @Test
+    fun `render plan does not materialize variant repo without direct owned roots`() {
+        val inheritedCarrier = dependency("com.example:shared:1.0.0").copy(
+            direct = false,
+            overrideTarget = OverrideTarget(
+                artifactShortId = "com.example:shared",
+                label = MavenDependency(
+                    group = "com.example",
+                    name = "shared"
+                )
+            )
+        )
+        val renderPlan = WorkspaceRenderPlanBuilder().build(
+            workspacePlan = WorkspacePlan(
+                repoPlan = mapOf(
+                    "debug_maven" to CandidateMavenRepo(
+                        variantName = "debug",
+                        kind = VARIANT,
+                        rootArtifacts = listOf(inheritedCarrier),
+                        pinInputs = listOf(inheritedCarrier),
+                        overrideTargets = mapOf("com.example:shared" to "@maven//:com_example_shared")
+                    )
+                )
+            ),
+            referencedRepoNames = setOf("debug_maven")
+        )
+
+        assertEquals(emptySet<String>(), renderPlan.materializedRepoNames)
     }
 
     @Test
