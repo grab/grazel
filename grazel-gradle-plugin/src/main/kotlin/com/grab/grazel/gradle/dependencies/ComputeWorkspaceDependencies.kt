@@ -97,7 +97,7 @@ internal class ComputeWorkspaceDependencies {
                                         // Group by short id to ignore version in keys
                                         ResolvedDependency::shortId,
                                         // Once grouped, reduce it and only pick the highest version
-                                        maxVersionReducer()
+                                        flattenedClasspathReducer()
                                     )
                                 )
                             )
@@ -228,6 +228,36 @@ internal class ComputeWorkspaceDependencies {
                 new == null -> old
                 else -> mergeDependencyMetadataByMaxVersion(old, new)
             }
+        }
+    }
+
+    private fun flattenedClasspathReducer(): Collector<ResolvedDependency, *, ResolvedDependency> {
+        return Collectors.reducing(null) { old, new ->
+            when {
+                old == null -> new
+                new == null -> old
+                else -> mergeFlattenedDependencyMetadata(old, new)
+            }
+        }
+    }
+
+    private fun mergeFlattenedDependencyMetadata(
+        old: ResolvedDependency,
+        new: ResolvedDependency
+    ): ResolvedDependency {
+        val merged = mergeDependencyMetadataByMaxVersion(old, new)
+        val directDependency = when {
+            old.direct && !new.direct -> old
+            new.direct && !old.direct -> new
+            else -> null
+        }
+        return if (directDependency != null && directDependency.version == merged.version) {
+            merged.copy(
+                excludeRules = (merged.excludeRules + directDependency.excludeRules)
+                    .toSortedSet(compareBy { rule -> rule.toString() })
+            )
+        } else {
+            merged
         }
     }
 

@@ -84,19 +84,38 @@ constructor(
 
     private fun pin(workspaceFile: File) {
         workspaceFile.writeText(
-            workspaceFile.readText().replace(
-                "#maven_install_json ",
-                "maven_install_json "
-            )
+            workspaceFile.readText()
+                .replace("#maven_install_json ", "maven_install_json ")
+                .replace(
+                    Regex(
+                        """(?m)^#(load\("@[^"]+//:defs\.bzl", [A-Za-z0-9_]+_pinned_maven_install = "pinned_maven_install"\))"""
+                    ),
+                    "$1"
+                )
+                .replace(
+                    Regex("""(?m)^#([A-Za-z0-9_]+_pinned_maven_install\(\))"""),
+                    "$1"
+                )
         )
     }
 
     private fun unpin(workspaceFile: File) {
         workspaceFile.writeText(
-            workspaceFile.readText().replace(
-                "maven_install_json ".toRegex(),
-                "#maven_install_json ",
-            )
+            workspaceFile.readText()
+                .replace(
+                    Regex("""(?m)^(\s*)maven_install_json """),
+                    "$1#maven_install_json ",
+                )
+                .replace(
+                    Regex(
+                        """(?m)^(?!#)(load\("@[^"]+//:defs\.bzl", [A-Za-z0-9_]+_pinned_maven_install = "pinned_maven_install"\))"""
+                    ),
+                    "#$1"
+                )
+                .replace(
+                    Regex("""(?m)^(?!#)([A-Za-z0-9_]+_pinned_maven_install\(\))"""),
+                    "#$1"
+                )
         )
     }
 

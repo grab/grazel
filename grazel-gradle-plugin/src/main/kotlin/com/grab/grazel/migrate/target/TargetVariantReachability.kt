@@ -18,6 +18,7 @@ package com.grab.grazel.migrate.target
 
 import com.android.build.gradle.api.BaseVariant
 import com.grab.grazel.gradle.dependencies.DefaultDependencyResolutionService
+import com.grab.grazel.gradle.variant.MatchedVariant
 import com.grab.grazel.util.GradleProvider
 import org.gradle.api.Project
 
@@ -30,6 +31,11 @@ internal fun BaseVariant.isReachableTargetVariant(
     isReachableBucket = isReachableBucket,
 )
 
+internal fun MatchedVariant.isReachableProjectVariant(
+    isReachableBucket: ((String) -> Boolean)?
+): Boolean = variant.isReachableTargetVariant(isReachableBucket)
+
+@Suppress("UNUSED_PARAMETER")
 internal fun isReachableTargetVariant(
     variantName: String,
     buildType: String,
@@ -40,8 +46,18 @@ internal fun isReachableTargetVariant(
         return true
     }
     return isReachableBucket(variantName) ||
-        isReachableBucket(buildType) ||
-        flavors.any(isReachableBucket)
+        variantName.removeTypedTestSuffix()
+            ?.let(isReachableBucket)
+            ?: false
+}
+
+private fun String.removeTypedTestSuffix(): String? {
+    val mainVariantName = when {
+        endsWith("AndroidTest") -> removeSuffix("AndroidTest")
+        endsWith("UnitTest") -> removeSuffix("UnitTest")
+        else -> null
+    }
+    return mainVariantName?.takeUnless(String::isBlank)
 }
 
 internal fun reachableCompressedTargetSuffixes(
@@ -52,6 +68,13 @@ internal fun reachableCompressedTargetSuffixes(
     .filter { (variantName, _) -> variantName in reachableVariantNames }
     .map { (_, suffix) -> suffix }
     .toSet()
+
+internal fun isReferencedGeneratedTarget(
+    targetName: String,
+    referencedTargetNames: Set<String>
+): Boolean =
+    targetName in referencedTargetNames ||
+        "${targetName}_lib" in referencedTargetNames
 
 internal fun reachableBucketPredicate(
     project: Project,

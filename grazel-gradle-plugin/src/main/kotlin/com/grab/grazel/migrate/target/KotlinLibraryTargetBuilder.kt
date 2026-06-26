@@ -19,6 +19,9 @@ package com.grab.grazel.migrate.target
 import com.grab.grazel.gradle.isAndroid
 import com.grab.grazel.gradle.isAndroidTest
 import com.grab.grazel.gradle.isKotlin
+import com.grab.grazel.gradle.dependencies.DefaultDependencyResolutionService
+import com.grab.grazel.gradle.dependencies.DefaultWorkspacePlanService
+import com.grab.grazel.gradle.variant.DEFAULT_VARIANT
 import com.grab.grazel.migrate.BazelTarget
 import com.grab.grazel.migrate.TargetBuilder
 import com.grab.grazel.migrate.kotlin.DefaultKotlinProjectDataExtractor
@@ -28,6 +31,7 @@ import com.grab.grazel.migrate.kotlin.KotlinProjectData
 import com.grab.grazel.migrate.kotlin.KotlinProjectDataExtractor
 import com.grab.grazel.migrate.kotlin.KotlinUnitTestDataExtractor
 import com.grab.grazel.migrate.kotlin.toUnitTestTarget
+import com.grab.grazel.util.GradleProvider
 import dagger.Binds
 import dagger.Module
 import dagger.multibindings.IntoSet
@@ -55,9 +59,12 @@ internal class KotlinLibraryTargetBuilder
 constructor(
     private val projectDataExtractor: KotlinProjectDataExtractor,
     private val kotlinUnitTestDataExtractor: KotlinUnitTestDataExtractor,
+    private val dependencyResolutionService: GradleProvider<DefaultDependencyResolutionService>,
+    private val workspacePlanService: GradleProvider<DefaultWorkspacePlanService>,
 ) : TargetBuilder {
 
     override fun build(project: Project): List<BazelTarget> {
+        if (!project.isReachableJvmProject()) return emptyList()
         val projectData = projectDataExtractor.extract(project)
         val ktLibTargets = projectData.toKotlinLibraryTarget()
         val unitTestsTargets = kotlinUnitTestDataExtractor
@@ -70,6 +77,13 @@ constructor(
         !isAndroid && !isAndroidTest && isKotlin
     }
 
+    private fun Project.isReachableJvmProject(): Boolean {
+        val service = dependencyResolutionService.get()
+        return !service.hasMainBucketReachability() ||
+            service.isReachableMainBucket(path, DEFAULT_VARIANT) ||
+            workspacePlanService.get().isReferencedProjectPath(path)
+    }
+
     private fun KotlinProjectData.toKotlinLibraryTarget() = KotlinLibraryTarget(
         name = name,
         srcs = srcs,
@@ -80,4 +94,3 @@ constructor(
         plugins = plugins
     )
 }
-

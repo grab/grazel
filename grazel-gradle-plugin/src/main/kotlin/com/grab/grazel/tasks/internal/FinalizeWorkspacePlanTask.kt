@@ -46,10 +46,6 @@ internal abstract class FinalizeWorkspacePlanTask : DefaultTask() {
 
     @get:InputFile
     @get:PathSensitive(PathSensitivity.RELATIVE)
-    abstract val compressionResults: RegularFileProperty
-
-    @get:InputFile
-    @get:PathSensitive(PathSensitivity.RELATIVE)
     abstract val targetMavenRepoReferences: RegularFileProperty
 
     @get:Internal
@@ -66,14 +62,14 @@ internal abstract class FinalizeWorkspacePlanTask : DefaultTask() {
     @TaskAction
     fun action() {
         logger.logHeap("FinalizeWorkspacePlan:start")
-        // Read the compression summary as an input gate; target references are collected after
-        // compression so repo materialization matches generated target models.
-        compressionResults.get().asFile.readText()
         val plan = workspacePlanService.get().initPlan(workspacePlan.get().asFile)
         val targetReferences = fromJson<TargetMavenRepoReferences>(targetMavenRepoReferences.get())
         val renderPlan = WorkspaceRenderPlanBuilder().build(
             workspacePlan = plan,
             referencedRepoNames = targetReferences.repoNames
+        ).copy(
+            referencedProjectPaths = targetReferences.projectPaths,
+            referencedProjectTargets = targetReferences.projectTargets
         )
         workspaceRenderPlan.get().asFile.parentFile.mkdirs()
         writeJson(renderPlan, workspaceRenderPlan.get())

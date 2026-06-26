@@ -16,6 +16,8 @@
 
 package com.grab.grazel.migrate.target
 
+import com.grab.grazel.fake.FakeVariant
+import com.grab.grazel.gradle.variant.MatchedVariant
 import kotlin.test.Test
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
@@ -34,8 +36,8 @@ internal class TargetVariantReachabilityTest {
     }
 
     @Test
-    fun `assert generated target variants match concrete reachable buckets`() {
-        val reachableBuckets = setOf("debug", "gps")
+    fun `assert generated target variants require concrete reachable variant`() {
+        val reachableBuckets = setOf("gpsPaxDebug", "debug", "gps", "pax")
 
         assertTrue {
             isReachableTargetVariant(
@@ -47,9 +49,39 @@ internal class TargetVariantReachabilityTest {
         }
         assertFalse {
             isReachableTargetVariant(
-                variantName = "paxRelease",
-                buildType = "release",
-                flavors = setOf("pax"),
+                variantName = "gpsOvoDebug",
+                buildType = "debug",
+                flavors = setOf("gps", "ovo"),
+                isReachableBucket = reachableBuckets::contains,
+            )
+        }
+    }
+
+    @Test
+    fun `assert typed test variants are reachable through their concrete main variant`() {
+        val reachableBuckets = setOf("gpsPaxDebug", "debug", "gps", "pax")
+
+        assertTrue {
+            isReachableTargetVariant(
+                variantName = "gpsPaxDebugAndroidTest",
+                buildType = "debug",
+                flavors = setOf("gps", "pax"),
+                isReachableBucket = reachableBuckets::contains,
+            )
+        }
+        assertTrue {
+            isReachableTargetVariant(
+                variantName = "gpsPaxDebugUnitTest",
+                buildType = "debug",
+                flavors = setOf("gps", "pax"),
+                isReachableBucket = reachableBuckets::contains,
+            )
+        }
+        assertFalse {
+            isReachableTargetVariant(
+                variantName = "gpsOvoDebugAndroidTest",
+                buildType = "debug",
+                flavors = setOf("gps", "ovo"),
                 isReachableBucket = reachableBuckets::contains,
             )
         }
@@ -70,6 +102,29 @@ internal class TargetVariantReachabilityTest {
     }
 
     @Test
+    fun `assert matched library variant reachability uses selected project variant`() {
+        val reachableBuckets = setOf("debug")
+        val matchedVariant = MatchedVariant(
+            variantName = "demoFreeDebug",
+            flavors = setOf("demo", "free"),
+            buildType = "debug",
+            variant = FakeVariant("debug"),
+        )
+
+        assertFalse("app leaf is not itself a reachable library bucket") {
+            isReachableTargetVariant(
+                variantName = matchedVariant.variantName,
+                buildType = matchedVariant.buildType,
+                flavors = matchedVariant.flavors,
+                isReachableBucket = reachableBuckets::contains,
+            )
+        }
+        assertTrue("matched project variant is reachable") {
+            matchedVariant.isReachableProjectVariant(reachableBuckets::contains)
+        }
+    }
+
+    @Test
     fun `assert compressed suffix is kept only when one mapped variant is reachable`() {
         val variantToSuffix = mapOf(
             "gpsPaxDebug" to "Debug",
@@ -86,5 +141,23 @@ internal class TargetVariantReachabilityTest {
         assertTrue("Debug" in reachableSuffixes)
         assertFalse("Release" in reachableSuffixes)
         assertFalse("Staging" in reachableSuffixes)
+    }
+
+    @Test
+    fun `assert generated target is reachable through referenced macro library target`() {
+        val referencedTargetNames = setOf("ui-tests-gps-pax-debug_lib")
+
+        assertTrue {
+            isReferencedGeneratedTarget(
+                targetName = "ui-tests-gps-pax-debug",
+                referencedTargetNames = referencedTargetNames
+            )
+        }
+        assertFalse {
+            isReferencedGeneratedTarget(
+                targetName = "ui-tests-gps-ovo-debug",
+                referencedTargetNames = referencedTargetNames
+            )
+        }
     }
 }

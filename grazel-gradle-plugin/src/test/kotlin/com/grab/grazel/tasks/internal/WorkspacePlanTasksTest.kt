@@ -17,6 +17,11 @@
 package com.grab.grazel.tasks.internal
 
 import com.grab.grazel.buildProject
+import com.grab.grazel.bazel.rules.Visibility
+import com.grab.grazel.bazel.starlark.BazelDependency
+import com.grab.grazel.bazel.starlark.BazelDependency.MavenDependency
+import com.grab.grazel.bazel.starlark.BazelDependency.ProjectDependency
+import com.grab.grazel.bazel.starlark.StatementsBuilder
 import com.grab.grazel.gradle.dependencies.DefaultDependencyResolutionService
 import com.grab.grazel.gradle.dependencies.WorkspacePlanBuilder
 import com.grab.grazel.gradle.dependencies.WorkspacePlanService
@@ -27,6 +32,7 @@ import com.grab.grazel.gradle.dependencies.model.TargetTagPlan
 import com.grab.grazel.gradle.dependencies.model.WorkspaceDependencies
 import com.grab.grazel.gradle.dependencies.model.WorkspacePlan
 import com.grab.grazel.gradle.dependencies.model.WorkspaceRenderPlan
+import com.grab.grazel.migrate.BazelBuildTarget
 import com.grab.grazel.util.fromJson
 import com.grab.grazel.util.writeJson
 import dagger.Lazy
@@ -160,10 +166,6 @@ class WorkspacePlanTasksTest {
             .buildDirectory
             .file("grazel/test-workspace-plan.json")
             .get()
-        val compressionResultsFile = rootProject.layout
-            .buildDirectory
-            .file("grazel/test-compression-results.json")
-            .get()
         val targetMavenRepoReferencesFile = rootProject.layout
             .buildDirectory
             .file("grazel/test-target-maven-repo-references.json")
@@ -180,13 +182,17 @@ class WorkspacePlanTasksTest {
             ),
             workspacePlanFile
         )
-        compressionResultsFile.asFile.apply {
-            parentFile.mkdirs()
-            writeText("""{"projectCount":0,"projects":[]}""")
-        }
         targetMavenRepoReferencesFile.asFile.apply {
             parentFile.mkdirs()
-            writeText("""{"repoNames":["debug_maven"]}""")
+            writeText(
+                """
+                {
+                  "repoNames":["debug_maven"],
+                  "projectPaths":[":lint:custom-lint-rules"],
+                  "projectTargets":{":ui-tests":["ui-tests-gps-pax-debug_lib"]}
+                }
+                """.trimIndent()
+            )
         }
 
         val workspacePlanService = WorkspacePlanService.register(rootProject)
@@ -195,7 +201,6 @@ class WorkspacePlanTasksTest {
             workspacePlanService = workspacePlanService
         ) {
             workspacePlan.set(workspacePlanFile)
-            compressionResults.set(compressionResultsFile)
             targetMavenRepoReferences.set(targetMavenRepoReferencesFile)
         }.get()
 
@@ -206,6 +211,78 @@ class WorkspacePlanTasksTest {
             setOf("debug_maven"),
             writtenRenderPlan.materializedRepoNames
         )
+        assertEquals(
+            setOf(":lint:custom-lint-rules"),
+            writtenRenderPlan.referencedProjectPaths
+        )
+        assertEquals(
+            mapOf(":ui-tests" to setOf("ui-tests-gps-pax-debug_lib")),
+            writtenRenderPlan.referencedProjectTargets
+        )
         assertEquals(writtenRenderPlan, workspacePlanService.get().getRenderPlan())
+        assertEquals(
+            setOf("ui-tests-gps-pax-debug_lib"),
+            workspacePlanService.get().referencedTargetNames(":ui-tests")
+        )
+    }
+
+    @Test
+    fun `collect target references reaches targets activated by prior references`() {
+        val rootProject = buildProject("root")
+        val appProject = buildProject("app", rootProject)
+        val uiTestsProject = buildProject("ui-tests", rootProject)
+        val workspacePlanService = WorkspacePlanService.register(rootProject).get()
+
+        val references = collectTargetMavenRepoReferences(
+            projects = listOf(appProject, uiTestsProject),
+            canMigrate = { true },
+            targetsForProject = { project ->
+                when (project.path) {
+                    ":ui-tests" -> listOf(
+                        fakeTarget(
+                            name = "ui-tests-gps-pax-debug",
+                            deps = listOf(ProjectDependency(appProject, suffix = "-gps-pax-debug"))
+                        )
+                    )
+                    ":app" -> if (workspacePlanService.isReferencedTarget(":app", "app-gps-pax-debug")) {
+                        listOf(
+                            fakeTarget(
+                                name = "app-gps-pax-debug",
+                                deps = listOf(
+                                    MavenDependency(
+                                        repo = "debug_maven",
+                                        group = "com.example",
+                                        name = "debug-only"
+                                    )
+                                )
+                            )
+                        )
+                    } else {
+                        emptyList()
+                    }
+                    else -> emptyList()
+                }
+            },
+            workspacePlanService = workspacePlanService
+        )
+
+        assertEquals(setOf("debug_maven"), references.repoNames)
+        assertEquals(setOf(":app"), references.projectPaths)
+        assertEquals(mapOf(":app" to setOf("app-gps-pax-debug")), references.projectTargets)
+    }
+
+    private fun fakeTarget(
+        name: String,
+        deps: List<BazelDependency> = emptyList()
+    ): BazelBuildTarget {
+        return object : BazelBuildTarget {
+            override val name: String = name
+            override val srcs: List<String> = emptyList()
+            override val deps: List<BazelDependency> = deps
+            override val visibility: Visibility = Visibility.Public
+            override val tags: List<String> = emptyList()
+            override val sortKey: String = name
+            override fun statements(builder: StatementsBuilder) = Unit
+        }
     }
 }

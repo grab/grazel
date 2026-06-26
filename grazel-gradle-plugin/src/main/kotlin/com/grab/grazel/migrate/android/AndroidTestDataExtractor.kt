@@ -98,8 +98,9 @@ constructor(
         }
 
         // Create the instruments dependency - this points to the binary target
-        val instrumentsDependency = BazelDependency.StringDependency(
-            "//${targetProject.path.removePrefix(":")}:${targetProject.name}${targetVariant.nameSuffix}"
+        val instrumentsDependency = BazelDependency.ProjectDependency(
+            dependencyProject = targetProject,
+            suffix = targetVariant.nameSuffix
         )
 
         // Create the associate dependency - this points to the library target

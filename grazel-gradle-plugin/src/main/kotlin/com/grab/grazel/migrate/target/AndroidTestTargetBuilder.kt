@@ -18,9 +18,11 @@ package com.grab.grazel.migrate.target
 
 import com.grab.grazel.bazel.rules.Visibility
 import com.grab.grazel.gradle.dependencies.DefaultDependencyResolutionService
+import com.grab.grazel.gradle.dependencies.DefaultWorkspacePlanService
 import com.grab.grazel.gradle.variant.VariantType
 import com.grab.grazel.gradle.isAndroidTest
 import com.grab.grazel.gradle.variant.VariantMatcher
+import com.grab.grazel.gradle.variant.nameSuffix
 import com.grab.grazel.migrate.TargetBuilder
 import com.grab.grazel.migrate.android.AndroidBinaryDataExtractor
 import com.grab.grazel.migrate.android.AndroidLibraryDataExtractor
@@ -62,17 +64,24 @@ internal class AndroidTestTargetBuilder
     private val androidTestDataExtractor: AndroidTestDataExtractor,
     private val variantMatcher: VariantMatcher,
     private val dependencyResolutionService: GradleProvider<DefaultDependencyResolutionService>,
+    private val workspacePlanService: GradleProvider<DefaultWorkspacePlanService>,
 ) : TargetBuilder {
 
     override fun build(project: Project) = buildList {
         val isReachableBucket = reachableBucketPredicate(project, dependencyResolutionService)
+        val referencedTargetNames = workspacePlanService.get().referencedTargetNames(project.path)
 
         // Get variants from the TEST MODULE itself
         variantMatcher.matchedVariants(
             project,
             VariantType.AndroidBuild,
-            appVariantFilter = { appVariant -> appVariant.isReachableTargetVariant(isReachableBucket) }
-        ).forEach { matchedVariant ->
+        ).filter { matchedVariant ->
+            matchedVariant.isReachableProjectVariant(isReachableBucket) ||
+                isReferencedGeneratedTarget(
+                    targetName = "${project.name}${matchedVariant.nameSuffix}",
+                    referencedTargetNames = referencedTargetNames
+                )
+        }.forEach { matchedVariant ->
             // Extract common library fields (srcs, resourceSets, etc.)
             val androidLibraryData = androidLibraryDataExtractor.extract(
                 project = project,

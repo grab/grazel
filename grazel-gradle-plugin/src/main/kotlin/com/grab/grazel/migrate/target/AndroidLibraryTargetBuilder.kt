@@ -86,21 +86,32 @@ constructor(
                         variant.variantName
                     }
                 )
-                it.targetsBySuffix
-                    .filterKeys { suffix -> suffix in reachableSuffixes }
-                    .values
-                    .map { target -> target.toAndroidLibTarget() }
+                if (reachableSuffixes.isEmpty()) {
+                    extractLibraryTargets(project, androidBuildVariants)
+                } else {
+                    it.targetsBySuffix
+                        .filterKeys { suffix -> suffix in reachableSuffixes }
+                        .values
+                        .map { target -> target.toAndroidLibTarget() }
+                }
             }
                 ?: run {
                     // Fallback to extracting again
                     project.logger.error("Compressed result does not exist for this project")
-                    androidBuildVariants.map { matchedVariant ->
-                        androidLibraryDataExtractor
-                            .extract(project, matchedVariant)
-                            .toAndroidLibTarget()
-                    }
+                    extractLibraryTargets(project, androidBuildVariants)
                 }
         return libraryTargets + unitTestsTargets(project)
+    }
+
+    private fun extractLibraryTargets(
+        project: Project,
+        androidBuildVariants: Set<MatchedVariant>
+    ): List<AndroidLibraryTarget> {
+        return androidBuildVariants.map { matchedVariant ->
+            androidLibraryDataExtractor
+                .extract(project, matchedVariant)
+                .toAndroidLibTarget()
+        }
     }
 
     private fun unitTestsTargets(project: Project): List<AndroidUnitTestTarget> {
@@ -138,11 +149,13 @@ constructor(
         variantType: VariantType
     ): Set<MatchedVariant> {
         val isReachableBucket = reachableBucketPredicate(project, dependencyResolutionService)
-        return variantMatcher.matchedVariants(
-            project = project,
-            variantType = variantType,
-            appVariantFilter = { appVariant -> appVariant.isReachableTargetVariant(isReachableBucket) }
-        )
+        return variantMatcher
+            .matchedVariants(
+                project = project,
+                variantType = variantType,
+            )
+            .filter { matchedVariant -> matchedVariant.isReachableProjectVariant(isReachableBucket) }
+            .toSet()
     }
 
     override fun canHandle(project: Project): Boolean = with(project) {

@@ -21,6 +21,9 @@ import com.grab.grazel.di.GrazelComponent
 import com.grab.grazel.gradle.MigrationChecker
 import com.grab.grazel.gradle.dependencies.DefaultDependencyResolutionService
 import com.grab.grazel.gradle.dependencies.DefaultWorkspacePlanService
+import com.grab.grazel.gradle.isAndroid
+import com.grab.grazel.gradle.isJava
+import com.grab.grazel.gradle.isKotlin
 import com.grab.grazel.gradle.isMigrated
 import com.grab.grazel.migrate.internal.ProjectBazelFileBuilder
 import com.grab.grazel.util.BUILD_BAZEL
@@ -45,6 +48,7 @@ import org.gradle.api.tasks.TaskProvider
 import org.gradle.api.tasks.UntrackedTask
 import org.gradle.kotlin.dsl.property
 import org.gradle.kotlin.dsl.register
+import java.io.File
 import javax.inject.Inject
 
 @UntrackedTask(because = "Up to dateness not implemented correctly")
@@ -65,6 +69,9 @@ constructor(
 
     @get:InputFile
     val workspacePlan: RegularFileProperty = project.objects.fileProperty()
+
+    @get:InputFile
+    val workspaceRenderPlan: RegularFileProperty = project.objects.fileProperty()
 
     @get:InputFile
     @get:Optional
@@ -89,24 +96,45 @@ constructor(
             .init(workspaceDependencies.get().asFile)
         workspacePlanService.get()
             .initPlan(workspacePlan.get().asFile)
+        workspacePlanService.get()
+            .initRenderPlan(workspaceRenderPlan.get().asFile)
 
         // Check if current project can be migrated
         if (migrationChecker.get().canMigrate(project)) {
             // If yes, proceed to generate build.bazel
             val projectBazelFileBuilder = bazelFileBuilder.get().create(project)
             val targets = projectBazelFileBuilder.targets()
+            if (targets.isEmpty()) {
+                logger.info("No reachable Bazel targets generated for ${project.path}")
+                if (project.hasConcreteTargetPlugin) {
+                    disableProjectBuildFile(buildBazelFile, bazelIgnoreFile)
+                } else {
+                    buildBazelFile.delete()
+                }
+                return
+            }
             val content = projectBazelFileBuilder.build(targets)
             content.writeToFile(buildBazelFile)
             val generatedMessage = "Generated ${rootProject.relativePath(buildBazelFile)}"
             logger.quiet(generatedMessage.ansiGreen)
         } else {
-            // If not migrateable but was already migrated, rename build.bazel to build.bazelignore if it exists
-            bazelIgnoreFile.delete()
-            if (project.isMigrated) {
-                if (buildBazelFile.renameTo(bazelIgnoreFile)) {
-                    project.logger.quiet("$buildBazelFile renamed to $bazelIgnoreFile".ansiYellow)
-                }
-            }
+            logger.info("Skipping ${project.path}; project is not migratable")
+            buildBazelFile.delete()
+        }
+    }
+
+    private val Project.hasConcreteTargetPlugin: Boolean
+        get() = isAndroid || isJava || isKotlin
+
+    private fun disableProjectBuildFile(
+        stagedBuildBazelFile: File,
+        bazelIgnoreFile: File
+    ) {
+        stagedBuildBazelFile.delete()
+        bazelIgnoreFile.delete()
+        val activeBuildBazelFile = project.file(BUILD_BAZEL)
+        if (project.isMigrated && activeBuildBazelFile.renameTo(bazelIgnoreFile)) {
+            project.logger.quiet("$activeBuildBazelFile renamed to $bazelIgnoreFile".ansiYellow)
         }
     }
 

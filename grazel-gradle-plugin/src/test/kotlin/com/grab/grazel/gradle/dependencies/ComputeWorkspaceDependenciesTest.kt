@@ -263,6 +263,33 @@ class ComputeWorkspaceDependenciesTest {
     }
 
     @Test
+    fun `flattened classpath keeps direct excludes when same artifact also appears transitively`() {
+        val directDependency = dependency("org.hamcrest:hamcrest-library:1.3", "BintrayJCenter").copy(
+            excludeRules = setOf(ExcludeRule("com.example", "android-test-only-hamcrest-exclude"))
+        )
+        val transitiveCarrier = dependency(
+            id = "androidx.test.espresso:espresso-core:3.3.0",
+            repository = "Google",
+            dependencies = setOf("org.hamcrest:hamcrest-library:1.3:BintrayJCenter:false:null")
+        )
+
+        val workspaceDependencies = ComputeWorkspaceDependencies().computeFromResults(
+            listOf(
+                result("default"),
+                result("androidTest", directDependency, transitiveCarrier)
+            )
+        )
+
+        assertEquals(
+            setOf(ExcludeRule("com.example", "android-test-only-hamcrest-exclude")),
+            workspaceDependencies.variantDeps
+                .getValue("androidTest")
+                .single { it.shortId == "org.hamcrest:hamcrest-library" }
+                .excludeRules
+        )
+    }
+
+    @Test
     fun `removes child direct dependency that already resolves through default override target`() {
         val defaultDependency = dependency("androidx.test:runner:1.5.2", "Google")
             .copy(jetifierSource = "com.android.support.test:runner")

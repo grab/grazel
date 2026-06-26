@@ -40,7 +40,9 @@ internal class MavenRulesTest {
         }.asString()
 
         assertTrue("#maven_install_json" in workspace)
-        assertFalse("debug_maven_pinned_maven_install()" in workspace)
+        assertTrue("""#load("@debug_maven//:defs.bzl", debug_maven_pinned_maven_install = "pinned_maven_install")""" in workspace)
+        assertTrue("#debug_maven_pinned_maven_install()" in workspace)
+        assertFalse("\ndebug_maven_pinned_maven_install()" in workspace)
     }
 
     @Test

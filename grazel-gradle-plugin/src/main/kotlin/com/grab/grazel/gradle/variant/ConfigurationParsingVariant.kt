@@ -164,7 +164,9 @@ interface ConfigurationParsingVariant<VariantData> : Variant<VariantData> {
         if (variantType == Lint) return setOf(project.configurations["lintChecks"]!!)
 
         val classpathName = "grazel${name.capitalize()}${classpath.name.capitalize()}Classpath"
-        val classpathConfiguration = project.configurations.maybeCreate(classpathName)
+        val existingClasspathConfiguration = project.configurations.findByName(classpathName)
+        val classpathConfiguration = existingClasspathConfiguration
+            ?: project.configurations.create(classpathName)
         val onlyConfig = when (classpath) {
             Runtime -> "RuntimeOnly"
             Compile -> "CompileOnly"
@@ -190,7 +192,9 @@ interface ConfigurationParsingVariant<VariantData> : Variant<VariantData> {
             .distinctBy { it.name }
             .filter { !it.name.contains(metadata) }
 
-        classpathConfiguration.applyAttributes(baseConfigurations, classpath)
+        if (existingClasspathConfiguration == null) {
+            classpathConfiguration.applyAttributes(baseConfigurations, classpath)
+        }
         return setOf(classpathConfiguration)
     }
 

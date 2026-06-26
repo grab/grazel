@@ -8,6 +8,7 @@ import com.grab.grazel.gradle.ANDROID_APPLICATION_PLUGIN
 import com.grab.grazel.gradle.ANDROID_TEST_PLUGIN
 import com.grab.grazel.gradle.KOTLIN_ANDROID_PLUGIN
 import com.grab.grazel.gradle.variant.MatchedVariant
+import com.grab.grazel.bazel.starlark.BazelDependency.ProjectDependency
 import com.grab.grazel.util.addGrazelExtension
 import com.grab.grazel.util.createGrazelComponent
 import com.grab.grazel.util.initDependencyGraphsForTest
@@ -183,9 +184,14 @@ class DefaultAndroidTestDataExtractorTest : GrazelPluginTest() {
         val androidBinaryData = androidBinaryDataExtractor.extract(testProject, variant)
         val testData = androidTestDataExtractor.extract(testProject, variant, androidLibraryData, androidBinaryData)
 
-        val instrumentsStr = testData.instruments.toString()
-        assertTrue(instrumentsStr.contains("//app:app"),
-            "Expected instruments to contain app binary, but got: $instrumentsStr")
+        val instruments = testData.instruments
+        assertTrue(
+            instruments is ProjectDependency,
+            "Expected instruments to keep structured project dependency, but got: $instruments"
+        )
+        assertEquals(appProject, instruments.dependencyProject)
+        assertEquals("-debug", instruments.suffix)
+        assertEquals("", instruments.prefix)
     }
 
     @Test

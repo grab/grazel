@@ -20,8 +20,11 @@ import com.grab.grazel.di.GrazelComponent
 import com.grab.grazel.di.qualifiers.RootProject
 import com.grab.grazel.gradle.MigrationChecker
 import com.grab.grazel.gradle.dependencies.DefaultDependencyResolutionService
+import com.grab.grazel.gradle.dependencies.WorkspacePlanService
 import com.grab.grazel.gradle.dependencies.DefaultWorkspacePlanService
 import com.grab.grazel.gradle.dependencies.model.TargetMavenRepoReferences
+import com.grab.grazel.gradle.dependencies.model.WorkspaceRenderPlan
+import com.grab.grazel.migrate.BazelTarget
 import com.grab.grazel.migrate.internal.ProjectBazelFileBuilder
 import com.grab.grazel.util.GradleProvider
 import com.grab.grazel.util.logHeap
@@ -83,19 +86,21 @@ constructor(
         workspacePlanService.get().initPlan(workspacePlan.get().asFile)
         compressionResults.get().asFile.readText()
 
-        val repoNames = project.rootProject
-            .subprojects
-            .asSequence()
-            .sortedBy(Project::getPath)
-            .filter { subproject -> migrationChecker.get().canMigrate(subproject) }
-            .flatMap { subproject ->
-                val targets = bazelFileBuilder.get().create(subproject).targets()
-                TargetMavenRepoReferencesCollector.fromTargets(targets).asSequence()
-            }
-            .toSortedSet()
+        val targetReferences = collectTargetMavenRepoReferences(
+            projects = project.rootProject.subprojects.sortedBy(Project::getPath),
+            canMigrate = { subproject -> migrationChecker.get().canMigrate(subproject) },
+            targetsForProject = { subproject -> bazelFileBuilder.get().create(subproject).targets() },
+            workspacePlanService = workspacePlanService.get()
+        )
 
         writeJson(
-            TargetMavenRepoReferences(repoNames = repoNames),
+            TargetMavenRepoReferences(
+                repoNames = targetReferences.repoNames.toSortedSet(),
+                projectPaths = targetReferences.projectPaths.toSortedSet(),
+                projectTargets = targetReferences.projectTargets
+                    .mapValues { (_, targetNames) -> targetNames.toSortedSet() }
+                    .toSortedMap()
+            ),
             targetMavenRepoReferences.get()
         )
         logger.logHeap("CollectTargetMavenRepoReferences:done")
@@ -124,3 +129,67 @@ constructor(
         }
     }
 }
+
+internal fun collectTargetMavenRepoReferences(
+    projects: Iterable<Project>,
+    canMigrate: (Project) -> Boolean,
+    targetsForProject: (Project) -> List<BazelTarget>,
+    workspacePlanService: WorkspacePlanService
+): TargetMavenRepoReferences {
+    var accumulated = TargetMavenRepoReferences()
+    val projectList = projects.toList()
+
+    repeat(projectList.size + 1) {
+        workspacePlanService.populateRenderPlan(
+            WorkspaceRenderPlan(
+                referencedProjectPaths = accumulated.projectPaths,
+                referencedProjectTargets = accumulated.projectTargets
+            )
+        )
+        val collected = projectList
+            .asSequence()
+            .filter(canMigrate)
+            .map { project ->
+                TargetMavenRepoReferencesCollector.fromTargets(targetsForProject(project))
+            }
+            .fold(TargetMavenRepoReferences(), ::mergeTargetMavenRepoReferences)
+        val next = mergeTargetMavenRepoReferences(accumulated, collected)
+        if (next == accumulated) {
+            return next.normalized()
+        }
+        accumulated = next
+    }
+
+    return accumulated.normalized()
+}
+
+private fun mergeTargetMavenRepoReferences(
+    left: TargetMavenRepoReferences,
+    right: TargetMavenRepoReferences
+): TargetMavenRepoReferences =
+    TargetMavenRepoReferences(
+        repoNames = left.repoNames + right.repoNames,
+        projectPaths = left.projectPaths + right.projectPaths,
+        projectTargets = mergeProjectTargets(left.projectTargets, right.projectTargets)
+    )
+
+private fun mergeProjectTargets(
+    left: Map<String, Set<String>>,
+    right: Map<String, Set<String>>
+): Map<String, Set<String>> {
+    return (left.keys + right.keys)
+        .associateWith { projectPath ->
+            left.getOrDefault(projectPath, emptySet()) +
+                right.getOrDefault(projectPath, emptySet())
+        }
+        .toSortedMap()
+}
+
+private fun TargetMavenRepoReferences.normalized(): TargetMavenRepoReferences =
+    TargetMavenRepoReferences(
+        repoNames = repoNames.toSortedSet(),
+        projectPaths = projectPaths.toSortedSet(),
+        projectTargets = projectTargets
+            .mapValues { (_, targetNames) -> targetNames.toSortedSet() }
+            .toSortedMap()
+    )

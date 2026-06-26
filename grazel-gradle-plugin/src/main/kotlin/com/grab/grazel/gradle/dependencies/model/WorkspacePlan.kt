@@ -69,10 +69,14 @@ internal fun WorkspacePlan.tagsFor(
 
 @Serializable
 internal data class WorkspaceRenderPlan(
-    val materializedRepoNames: Set<String> = emptySet()
+    val materializedRepoNames: Set<String> = emptySet(),
+    val referencedProjectPaths: Set<String> = emptySet(),
+    val referencedProjectTargets: Map<String, Set<String>> = emptyMap()
 )
 
 @Serializable
 internal data class TargetMavenRepoReferences(
-    val repoNames: Set<String> = emptySet()
+    val repoNames: Set<String> = emptySet(),
+    val projectPaths: Set<String> = emptySet(),
+    val projectTargets: Map<String, Set<String>> = emptyMap()
 )

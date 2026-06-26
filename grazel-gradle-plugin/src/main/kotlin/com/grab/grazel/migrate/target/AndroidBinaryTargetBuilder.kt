@@ -17,6 +17,7 @@
 package com.grab.grazel.migrate.target
 
 import com.grab.grazel.gradle.dependencies.DefaultDependencyResolutionService
+import com.grab.grazel.gradle.dependencies.DefaultWorkspacePlanService
 import com.grab.grazel.gradle.variant.VariantType
 import com.grab.grazel.gradle.hasCrashlytics
 import com.grab.grazel.gradle.hasGooglePlayServicesPlugin
@@ -24,6 +25,7 @@ import com.grab.grazel.gradle.isAndroidApplication
 import com.grab.grazel.gradle.variant.MatchedVariant
 import com.grab.grazel.gradle.variant.VariantMatcher
 import com.grab.grazel.gradle.variant.nameSuffix
+import com.grab.grazel.gradle.variant.normalizeVariantSuffix
 import com.grab.grazel.migrate.BazelTarget
 import com.grab.grazel.migrate.TargetBuilder
 import com.grab.grazel.migrate.android.AndroidBinaryDataExtractor
@@ -78,7 +80,8 @@ constructor(
     private val androidBinaryDataExtractor: AndroidBinaryDataExtractor,
     private val crashlyticsDataExtractor: CrashlyticsDataExtractor,
     private val variantMatcher: VariantMatcher,
-    private val dependencyResolutionService: GradleProvider<DefaultDependencyResolutionService>
+    private val dependencyResolutionService: GradleProvider<DefaultDependencyResolutionService>,
+    private val workspacePlanService: GradleProvider<DefaultWorkspacePlanService>,
 ) : TargetBuilder {
 
     override fun build(project: Project): List<BazelTarget> {
@@ -89,10 +92,17 @@ constructor(
         project: Project
     ): List<BazelTarget> {
         val isReachableBucket = reachableBucketPredicate(project, dependencyResolutionService)
+        val referencedTargetNames = workspacePlanService.get().referencedTargetNames(project.path)
         val targets = variantMatcher.matchedVariants(
             project = project,
             variantType = VariantType.AndroidBuild,
-            appVariantFilter = { appVariant -> appVariant.isReachableTargetVariant(isReachableBucket) }
+            appVariantFilter = { appVariant ->
+                appVariant.isReachableTargetVariant(isReachableBucket) ||
+                    isReferencedGeneratedTarget(
+                        targetName = "${project.name}${normalizeVariantSuffix(appVariant.name)}",
+                        referencedTargetNames = referencedTargetNames
+                    )
+            }
         ).flatMap { matchedVariant ->
             val androidLibraryData = androidLibraryDataExtractor.extract(
                 project = project,

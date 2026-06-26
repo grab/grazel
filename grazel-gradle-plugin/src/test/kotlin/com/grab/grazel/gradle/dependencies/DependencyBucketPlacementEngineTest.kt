@@ -549,7 +549,7 @@ class DependencyBucketPlacementEngineTest {
     }
 
     @Test
-    fun `explicit declared base bucket dependency is retained when absent from selected leaves`() {
+    fun `explicit declared base bucket dependency is dropped when absent from selected leaves`() {
         val declaredDependency = dependency("com.example:android-test-helper:1.0")
             .copy(repository = DECLARED_DEPENDENCY_REPOSITORY)
         val leafDependency = dependency("com.example:leaf-only:1.0")
@@ -571,10 +571,7 @@ class DependencyBucketPlacementEngineTest {
             baseBucketName = ANDROID_TEST_VARIANT
         )
 
-        assertEquals(
-            mapOf(declaredDependency.shortId to declaredDependency),
-            plan.defaultBucket
-        )
+        assertEquals(emptyMap<String, ResolvedDependency>(), plan.defaultBucket)
         assertEquals(
             mapOf(leafDependency.shortId to leafDependency),
             plan.leafBuckets["freeDebugAndroidTest"]

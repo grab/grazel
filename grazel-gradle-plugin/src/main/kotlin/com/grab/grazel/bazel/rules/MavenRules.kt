@@ -153,11 +153,16 @@ fun StatementsBuilder.mavenInstall(
         }
     }
 
-    if (artifactPinning && mavenInstallJsonEnabled) {
-        load("@$name//:defs.bzl".quote) {
-            "${name}_pinned_maven_install" `=` "pinned_maven_install".quote
+    if (artifactPinning) {
+        val prefix = if (!mavenInstallJsonEnabled) "#" else ""
+        if (mavenInstallJsonEnabled) {
+            load("@$name//:defs.bzl".quote) {
+                "${name}_pinned_maven_install" `=` "pinned_maven_install".quote
+            }
+        } else {
+            add("""#load("@$name//:defs.bzl", ${name}_pinned_maven_install = "pinned_maven_install")""")
         }
-        add("${name}_pinned_maven_install()")
+        add("${prefix}${name}_pinned_maven_install()")
     }
 }
 

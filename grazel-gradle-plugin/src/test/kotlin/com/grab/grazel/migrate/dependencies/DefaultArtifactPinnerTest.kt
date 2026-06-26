@@ -154,6 +154,16 @@ class DefaultArtifactPinnerTest {
                 logger = rootProject.logger,
             )
         }
+        val activatedWorkspace = workspace.readText()
+        assertTrue("maven_install_json is activated") {
+            "maven_install_json = \"//:maven_install.json\"" in activatedWorkspace
+        }
+        assertTrue("pinned macro load is activated") {
+            """load("@maven//:defs.bzl", maven_pinned_maven_install = "pinned_maven_install")""" in activatedWorkspace
+        }
+        assertTrue("pinned macro call is activated") {
+            "maven_pinned_maven_install()" in activatedWorkspace
+        }
     }
 
     @Test
@@ -295,6 +305,16 @@ class DefaultArtifactPinnerTest {
         assertTrue("maven_install.json is deleted") {
             !mavenInstall.exists()
         }
+        val recoveredWorkspace = rootProject.file(WORKSPACE).readText()
+        assertTrue("maven_install_json is commented after recovery") {
+            "#maven_install_json = \"//:maven_install.json\"" in recoveredWorkspace
+        }
+        assertTrue("pinned macro load is commented after recovery") {
+            """#load("@maven//:defs.bzl", maven_pinned_maven_install = "pinned_maven_install")""" in recoveredWorkspace
+        }
+        assertTrue("pinned macro call is commented after recovery") {
+            "#maven_pinned_maven_install()" in recoveredWorkspace
+        }
     }
 
     private fun workspacePlan(
@@ -333,7 +353,9 @@ class DefaultArtifactPinnerTest {
                 repositories = [
                     "https://dl.google.com/dl/android/maven2/",
                 ],
-            )""".trimIndent()
+            )
+            %2${'$'}sload("@maven//:defs.bzl", maven_pinned_maven_install = "pinned_maven_install")
+            %2${'$'}smaven_pinned_maven_install()""".trimIndent()
 
         private val MAVEN_INSTALL_JSON = """
             {

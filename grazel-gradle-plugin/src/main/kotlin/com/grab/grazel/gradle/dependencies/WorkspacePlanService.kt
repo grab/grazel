@@ -47,6 +47,12 @@ internal interface WorkspacePlanService : BuildService<WorkspacePlanService.Para
         targetKind: String
     ): List<String>?
 
+    fun isReferencedProjectPath(projectPath: String): Boolean
+
+    fun referencedTargetNames(projectPath: String): Set<String>
+
+    fun isReferencedTarget(projectPath: String, targetName: String): Boolean
+
     companion object {
         internal const val SERVICE_NAME = "WorkspacePlanService"
 
@@ -60,53 +66,88 @@ internal interface WorkspacePlanService : BuildService<WorkspacePlanService.Para
 }
 
 internal abstract class DefaultWorkspacePlanService : WorkspacePlanService {
+    private val lock = Any()
     private var workspacePlan: WorkspacePlan? = null
     private var workspaceRenderPlan: WorkspaceRenderPlan? = null
     private var targetTagsByKey: Map<TargetTagKey, List<String>>? = null
 
     override fun populatePlan(workspacePlan: WorkspacePlan) {
-        this.workspacePlan = workspacePlan
-        targetTagsByKey = null
+        synchronized(lock) {
+            this.workspacePlan = workspacePlan
+            targetTagsByKey = null
+        }
     }
 
     override fun populateRenderPlan(workspaceRenderPlan: WorkspaceRenderPlan) {
-        this.workspaceRenderPlan = workspaceRenderPlan
+        synchronized(lock) {
+            this.workspaceRenderPlan = workspaceRenderPlan
+        }
     }
 
     override fun initPlan(workspacePlanJson: File): WorkspacePlan {
-        if (workspacePlan == null) {
-            workspacePlan = fromJson(workspacePlanJson)
+        return synchronized(lock) {
+            if (workspacePlan == null) {
+                workspacePlan = fromJson(workspacePlanJson)
+                targetTagsByKey = null
+            }
+            workspacePlan!!
         }
-        return workspacePlan!!
     }
 
     override fun initRenderPlan(workspaceRenderPlanJson: File): WorkspaceRenderPlan {
-        if (workspaceRenderPlan == null) {
-            workspaceRenderPlan = fromJson(workspaceRenderPlanJson)
+        return synchronized(lock) {
+            if (workspaceRenderPlan == null) {
+                workspaceRenderPlan = fromJson(workspaceRenderPlanJson)
+            }
+            workspaceRenderPlan!!
         }
-        return workspaceRenderPlan!!
     }
 
-    override fun getPlan(): WorkspacePlan? = workspacePlan
+    override fun getPlan(): WorkspacePlan? = synchronized(lock) { workspacePlan }
 
-    override fun getRenderPlan(): WorkspaceRenderPlan? = workspaceRenderPlan
+    override fun getRenderPlan(): WorkspaceRenderPlan? = synchronized(lock) { workspaceRenderPlan }
 
     override fun tagsFor(
         variantId: String,
         variantType: String,
         targetKind: String
     ): List<String>? {
-        return tagsByKey()[TargetTagKey(
-            variantId = variantId,
-            variantType = variantType,
-            targetKind = targetKind
-        )]
+        return synchronized(lock) {
+            tagsByKey()[TargetTagKey(
+                variantId = variantId,
+                variantType = variantType,
+                targetKind = targetKind
+            )]
+        }
     }
 
+    override fun isReferencedProjectPath(projectPath: String): Boolean =
+        synchronized(lock) {
+            projectPath in workspaceRenderPlan?.referencedProjectPaths.orEmpty()
+        }
+
+    override fun referencedTargetNames(projectPath: String): Set<String> =
+        synchronized(lock) {
+            workspaceRenderPlan
+                ?.referencedProjectTargets
+                .orEmpty()[projectPath]
+                .orEmpty()
+        }
+
+    override fun isReferencedTarget(projectPath: String, targetName: String): Boolean =
+        synchronized(lock) {
+            targetName in workspaceRenderPlan
+                ?.referencedProjectTargets
+                .orEmpty()[projectPath]
+                .orEmpty()
+        }
+
     override fun close() {
-        workspacePlan = null
-        workspaceRenderPlan = null
-        targetTagsByKey = null
+        synchronized(lock) {
+            workspacePlan = null
+            workspaceRenderPlan = null
+            targetTagsByKey = null
+        }
     }
 
     private fun tagsByKey(): Map<TargetTagKey, List<String>> {

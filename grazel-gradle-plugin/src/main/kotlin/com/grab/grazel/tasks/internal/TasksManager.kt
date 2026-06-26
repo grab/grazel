@@ -114,7 +114,6 @@ constructor(
             workspacePlanService = grazelComponent.workspacePlanService()
         ) {
             workspacePlan.set(computeWorkspacePlanTask.flatMap { it.workspacePlan })
-            compressionResults.set(analyzeVariantCompressionTask.flatMap { it.compressionResultsFile })
             targetMavenRepoReferences.set(
                 collectTargetMavenRepoReferencesTask.flatMap { it.targetMavenRepoReferences }
             )
@@ -144,6 +143,7 @@ constructor(
                 dependencyResolutionService.set(grazelComponent.dependencyResolutionService())
                 workspaceDependencies.set(computeWorkspaceDependenciesTask.flatMap { it.workspaceDependencies })
                 workspacePlan.set(computeWorkspacePlanTask.flatMap { it.workspacePlan })
+                workspaceRenderPlan.set(finalizeWorkspacePlanTask.flatMap { it.workspaceRenderPlan })
                 variantCompressionResults.set(analyzeVariantCompressionTask.flatMap { it.compressionResultsFile })
                 dependsOn(finalizeWorkspacePlanTask)
             }
