@@ -164,5 +164,5 @@ Keep entries short and grouped by step.
 - Resource notes: `/System/Volumes/Data` stayed around 16 GiB free. Bazel
   memory peaked around 4.4 GiB RSS during the build gate. No Gradle/Bazel cache
   cleanup was run.
-- Step 3 checkpoint commit: `3349758`
+- Step 3 checkpoint commit: `8e22c01`
   (`Move target tag planning into workspace plan`).

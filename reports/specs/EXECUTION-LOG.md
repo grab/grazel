@@ -14,7 +14,7 @@ evidence in item-specific logs so context compaction can recover state quickly.
   (`Cut pinner over to workspace plan`).
 - Item 3 Step 2 root-generation cutover checkpoint commit: `f5296bd`
   (`Cut root generation over to workspace render plan`).
-- Item 3 Step 3 tag-producer cutover checkpoint commit: `3349758`
+- Item 3 Step 3 tag-producer cutover checkpoint commit: `8e22c01`
   (`Move target tag planning into workspace plan`).
 - Latest passed local gate:
   - Focused plan/task/collector/extractor tests for Item 3 Step 3.
