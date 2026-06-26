@@ -9,7 +9,11 @@ import com.grab.grazel.gradle.KOTLIN_ANDROID_PLUGIN
 import com.grab.grazel.gradle.KOTLIN_KAPT
 import com.grab.grazel.gradle.dependencies.DefaultDependencyResolutionService
 import com.grab.grazel.gradle.dependencies.model.ResolvedDependency.Companion.fromId
+import com.grab.grazel.gradle.dependencies.TargetTagKinds
+import com.grab.grazel.gradle.dependencies.model.TargetTagKey
+import com.grab.grazel.gradle.dependencies.model.TargetTagPlan
 import com.grab.grazel.gradle.dependencies.model.WorkspaceDependencies
+import com.grab.grazel.gradle.dependencies.model.WorkspacePlan
 import com.grab.grazel.gradle.variant.DEFAULT_VARIANT
 import com.grab.grazel.gradle.variant.MatchedVariant
 import com.grab.grazel.util.addGrazelExtension
@@ -33,6 +37,7 @@ class DefaultAndroidLibraryDataExtractorTest {
     private lateinit var appProject: Project
     private lateinit var libraryProject: Project
     private lateinit var dependencyResolutionService: Provider<DefaultDependencyResolutionService>
+    private lateinit var grazelComponent: com.grab.grazel.di.GrazelComponent
     private lateinit var androidLibraryDataExtractor: AndroidLibraryDataExtractor
 
     private fun configure(
@@ -82,7 +87,7 @@ class DefaultAndroidLibraryDataExtractorTest {
 
         libraryProject.doEvaluate()
         appProject.doEvaluate()
-        val grazelComponent = rootProject.createGrazelComponent()
+        grazelComponent = rootProject.createGrazelComponent()
         grazelComponent.initDependencyGraphsForTest(rootProject)
         dependencyResolutionService = grazelComponent.dependencyResolutionService()
         androidLibraryDataExtractor = grazelComponent.androidLibraryDataExtractor().get()
@@ -250,6 +255,34 @@ class DefaultAndroidLibraryDataExtractorTest {
                     "Expected manifest path not to start with 'build/' but found: $manifest"
                 )
             }
+        }
+    }
+
+    @Test
+    fun `extract uses workspace plan for maven tag labels`() {
+        configure()
+        rootProject.the<com.grab.grazel.GrazelExtension>()
+            .rules.kotlin.enabledTransitiveReduction = true
+        grazelComponent.workspacePlanService().get().populatePlan(
+            WorkspacePlan(
+                tagPlan = listOf(
+                    TargetTagPlan(
+                        key = TargetTagKey(
+                            variantId = ":android:debugAndroidBuild",
+                            variantType = "AndroidBuild",
+                            targetKind = TargetTagKinds.ANDROID_LIBRARY
+                        ),
+                        tags = listOf("@maven//:com_example_planned")
+                    )
+                )
+            )
+        )
+
+        val androidLibraryData = androidLibraryDataExtractor.extract(appProject, debugVariant())
+
+        androidLibraryData.tags.truth {
+            contains("@maven//:com_example_planned")
+            contains("@self//android")
         }
     }
 }

@@ -20,8 +20,10 @@ import com.grab.grazel.di.GrazelComponent
 import com.grab.grazel.di.qualifiers.RootProject
 import com.grab.grazel.gradle.MigrationChecker
 import com.grab.grazel.gradle.dependencies.DefaultDependencyResolutionService
+import com.grab.grazel.gradle.dependencies.DefaultWorkspacePlanService
 import com.grab.grazel.gradle.dependencies.model.TargetMavenRepoReferences
 import com.grab.grazel.migrate.internal.ProjectBazelFileBuilder
+import com.grab.grazel.util.GradleProvider
 import com.grab.grazel.util.logHeap
 import com.grab.grazel.util.writeJson
 import dagger.Lazy
@@ -48,6 +50,7 @@ internal open class CollectTargetMavenRepoReferencesTask
 constructor(
     private val migrationChecker: Lazy<MigrationChecker>,
     private val bazelFileBuilder: Lazy<ProjectBazelFileBuilder.Factory>,
+    private val workspacePlanService: GradleProvider<DefaultWorkspacePlanService>,
     objectFactory: ObjectFactory,
     layout: ProjectLayout
 ) : DefaultTask() {
@@ -55,6 +58,10 @@ constructor(
     @get:InputFile
     @get:PathSensitive(PathSensitivity.RELATIVE)
     val workspaceDependencies: RegularFileProperty = objectFactory.fileProperty()
+
+    @get:InputFile
+    @get:PathSensitive(PathSensitivity.RELATIVE)
+    val workspacePlan: RegularFileProperty = objectFactory.fileProperty()
 
     @get:InputFile
     @get:PathSensitive(PathSensitivity.RELATIVE)
@@ -73,6 +80,7 @@ constructor(
     fun action() {
         logger.logHeap("CollectTargetMavenRepoReferences:start")
         dependencyResolutionService.get().init(workspaceDependencies.get().asFile)
+        workspacePlanService.get().initPlan(workspacePlan.get().asFile)
         compressionResults.get().asFile.readText()
 
         val repoNames = project.rootProject
@@ -104,6 +112,7 @@ constructor(
             TASK_NAME,
             grazelComponent.migrationChecker(),
             grazelComponent.projectBazelFileBuilderFactory(),
+            grazelComponent.workspacePlanService(),
             rootProject.objects,
             rootProject.layout
         ).apply {

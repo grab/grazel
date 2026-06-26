@@ -32,6 +32,7 @@ import com.grab.grazel.gradle.dependencies.DefaultDependenciesDataSource
 import com.grab.grazel.gradle.dependencies.DefaultDependencyGraphsService
 import com.grab.grazel.gradle.dependencies.DefaultDependencyResolutionService
 import com.grab.grazel.gradle.dependencies.GradleDependencyToBazelDependency
+import com.grab.grazel.gradle.dependencies.WorkspacePlanService
 import com.grab.grazel.gradle.variant.AndroidVariantsExtractor
 import com.grab.grazel.gradle.variant.DefaultAndroidVariantDataSource
 import com.grab.grazel.gradle.variant.DefaultAndroidVariantsExtractor
@@ -134,7 +135,8 @@ class DefaultAndroidUnitTestDataExtractorTest : GrazelPluginTest() {
             grazelExtension = extension,
             gradleDependencyToBazelDependency = gradleDependencyToBazelDependency,
             testSizeCalculator = TestSizeCalculator(extension),
-            variantCompressionService = fakeVariantCompressionService
+            variantCompressionService = fakeVariantCompressionService,
+            workspacePlanService = WorkspacePlanService.register(rootProject)
         )
     }
 

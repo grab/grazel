@@ -68,14 +68,24 @@ constructor(
             computeTask = computeWorkspaceDependenciesTask
         )
 
+        val collectWorkspaceTargetTagPlanTask = CollectWorkspaceTargetTagPlanTask.register(
+            rootProject = rootProject,
+            grazelComponent = grazelComponent
+        ) {
+            workspaceDependencies.set(computeWorkspaceDependenciesTask.flatMap { it.workspaceDependencies })
+            dependsOn(computeWorkspaceDependenciesTask)
+        }
+
         val computeWorkspacePlanTask = ComputeWorkspacePlanTask.register(
             rootProject = rootProject,
             workspacePlanService = grazelComponent.workspacePlanService()
         ) {
             workspaceDependencies.set(computeWorkspaceDependenciesTask.flatMap { it.workspaceDependencies })
+            targetTagPlan.set(collectWorkspaceTargetTagPlanTask.flatMap { it.targetTagPlan })
             configuredOverrideTargets.set(
                 grazelComponent.extension().rules.mavenInstall.overrideTargetLabels
             )
+            dependsOn(collectWorkspaceTargetTagPlanTask)
         }
 
         // Analyze variant compression opportunities in topological order
@@ -84,6 +94,7 @@ constructor(
             grazelComponent = grazelComponent
         ) {
             workspaceDependencies.set(computeWorkspaceDependenciesTask.flatMap { it.workspaceDependencies })
+            workspacePlan.set(computeWorkspacePlanTask.flatMap { it.workspacePlan })
             dependsOn(computeWorkspacePlanTask)
         }
 
@@ -92,6 +103,7 @@ constructor(
             grazelComponent = grazelComponent
         ) {
             workspaceDependencies.set(computeWorkspaceDependenciesTask.flatMap { it.workspaceDependencies })
+            workspacePlan.set(computeWorkspacePlanTask.flatMap { it.workspacePlan })
             compressionResults.set(analyzeVariantCompressionTask.flatMap { it.compressionResultsFile })
             dependencyResolutionService.set(grazelComponent.dependencyResolutionService())
             dependsOn(analyzeVariantCompressionTask)
@@ -131,6 +143,7 @@ constructor(
             ) {
                 dependencyResolutionService.set(grazelComponent.dependencyResolutionService())
                 workspaceDependencies.set(computeWorkspaceDependenciesTask.flatMap { it.workspaceDependencies })
+                workspacePlan.set(computeWorkspacePlanTask.flatMap { it.workspacePlan })
                 variantCompressionResults.set(analyzeVariantCompressionTask.flatMap { it.compressionResultsFile })
                 dependsOn(finalizeWorkspacePlanTask)
             }

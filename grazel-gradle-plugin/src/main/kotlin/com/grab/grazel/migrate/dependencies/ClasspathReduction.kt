@@ -20,6 +20,13 @@ import com.grab.grazel.bazel.starlark.BazelDependency
 import com.grab.grazel.bazel.starlark.BazelDependency.MavenDependency
 import com.grab.grazel.bazel.starlark.BazelDependency.ProjectDependency
 
+fun calculateMavenDependencyTags(
+    deps: Iterable<MavenDependency>
+) = deps.asSequence()
+    .map { it.copy(repo = "maven").toString() }
+    .sorted()
+    .toList()
+
 fun calculateDirectDependencyTags(
     self: String,
     deps: List<BazelDependency>

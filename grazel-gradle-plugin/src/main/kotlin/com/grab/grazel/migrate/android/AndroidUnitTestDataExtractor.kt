@@ -20,9 +20,12 @@ import com.grab.grazel.GrazelExtension
 import com.grab.grazel.bazel.starlark.BazelDependency
 import com.grab.grazel.extension.KotlinExtension
 import com.grab.grazel.gradle.dependencies.DefaultDependencyGraphsService
+import com.grab.grazel.gradle.dependencies.DefaultWorkspacePlanService
 import com.grab.grazel.gradle.dependencies.DependenciesDataSource
 import com.grab.grazel.gradle.dependencies.DependencyGraphs
 import com.grab.grazel.gradle.dependencies.GradleDependencyToBazelDependency
+import com.grab.grazel.gradle.dependencies.TargetTagKinds
+import com.grab.grazel.gradle.dependencies.model.tagsFor
 import com.grab.grazel.gradle.hasCompose
 import com.grab.grazel.gradle.variant.AndroidVariantDataSource
 import com.grab.grazel.gradle.variant.DefaultVariantCompressionService
@@ -61,7 +64,8 @@ constructor(
     private val variantDataSource: AndroidVariantDataSource,
     private val gradleDependencyToBazelDependency: GradleDependencyToBazelDependency,
     private val testSizeCalculator: TestSizeCalculator,
-    private val variantCompressionService: GradleProvider<DefaultVariantCompressionService>
+    private val variantCompressionService: GradleProvider<DefaultVariantCompressionService>,
+    private val workspacePlanService: GradleProvider<DefaultWorkspacePlanService>
 ) : AndroidUnitTestDataExtractor {
 
     private val projectDependencyGraphs: DependencyGraphs
@@ -120,11 +124,20 @@ constructor(
             )
 
         val tags = if (kotlinExtension.enabledTransitiveReduction) {
-            val transitiveMavenDeps = dependenciesDataSource.collectTransitiveMavenDeps(
-                project = project,
-                variantKey = variantKey
-            )
-            calculateDirectDependencyTags(name, deps + transitiveMavenDeps)
+            val localTags = calculateDirectDependencyTags(name, deps)
+            val mavenTags = workspacePlanService
+                .get()
+                .getPlan()
+                ?.tagsFor(
+                    variantId = variantKey.variantId,
+                    variantType = variantKey.variantType.toString(),
+                    targetKind = TargetTagKinds.ANDROID_UNIT_TEST
+                )
+                ?: dependenciesDataSource.collectTransitiveMavenDeps(
+                    project = project,
+                    variantKey = variantKey
+                ).map { mavenDependency -> mavenDependency.copy(repo = "maven").toString() }
+            (localTags + mavenTags).sorted()
         } else emptyList()
 
         return AndroidUnitTestData(

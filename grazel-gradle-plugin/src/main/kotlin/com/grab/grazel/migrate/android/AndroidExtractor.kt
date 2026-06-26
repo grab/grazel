@@ -22,9 +22,12 @@ import com.grab.grazel.GrazelExtension
 import com.grab.grazel.bazel.rules.Multidex
 import com.grab.grazel.bazel.starlark.BazelDependency
 import com.grab.grazel.gradle.dependencies.DefaultDependencyGraphsService
+import com.grab.grazel.gradle.dependencies.DefaultWorkspacePlanService
 import com.grab.grazel.gradle.dependencies.DependenciesDataSource
 import com.grab.grazel.gradle.dependencies.DependencyGraphs
 import com.grab.grazel.gradle.dependencies.GradleDependencyToBazelDependency
+import com.grab.grazel.gradle.dependencies.TargetTagKinds
+import com.grab.grazel.gradle.dependencies.model.tagsFor
 import com.grab.grazel.gradle.hasCompose
 import com.grab.grazel.gradle.hasCrashlytics
 import com.grab.grazel.gradle.hasDatabinding
@@ -67,6 +70,7 @@ constructor(
     private val grazelExtension: GrazelExtension,
     private val dependenciesDataSource: DependenciesDataSource,
     private val dependencyGraphsService: GradleProvider<DefaultDependencyGraphsService>,
+    private val workspacePlanService: GradleProvider<DefaultWorkspacePlanService>,
     private val gradleDependencyToBazelDependency: GradleDependencyToBazelDependency,
     private val variantBuilder: VariantBuilder,
 ) : AndroidLibraryDataExtractor {
@@ -144,21 +148,25 @@ constructor(
             ?.let(::relativePath)
 
         val tags = if (grazelExtension.rules.kotlin.enabledTransitiveReduction) {
-            val transitiveMavenDeps = buildSet {
-                addAll(
-                    dependenciesDataSource.collectTransitiveMavenDeps(
-                        project = project,
-                        variantKey = variantKey
-                    )
-                )
-                directProjectDependencies.forEach { dependencyProject ->
-                    addAll(dependencyProject.collectTransitiveMavenDepsForTags(matchedVariant))
-                }
-            }
-            calculateDirectDependencyTags(
+            val localTags = calculateDirectDependencyTags(
                 self = name,
-                deps = deps + transitiveMavenDeps
+                deps = deps
             )
+            val plannedMavenTags = workspacePlanService
+                .get()
+                .getPlan()
+                ?.tagsFor(
+                    variantId = variantKey.variantId,
+                    variantType = variantKey.variantType.toString(),
+                    targetKind = TargetTagKinds.ANDROID_LIBRARY
+                )
+            val mavenTags = plannedMavenTags ?: legacyMavenTagLabels(
+                project = project,
+                variantKey = variantKey,
+                matchedVariant = matchedVariant,
+                directProjectDependencies = directProjectDependencies
+            )
+            (localTags + mavenTags).sorted()
         } else emptyList()
 
         val lintConfigs = lintConfigs(extension.lintOptions, project)
@@ -181,6 +189,27 @@ constructor(
             tags = tags.sorted(),
             lintConfigData = lintConfigs
         )
+    }
+
+    private fun legacyMavenTagLabels(
+        project: Project,
+        variantKey: VariantGraphKey,
+        matchedVariant: MatchedVariant,
+        directProjectDependencies: Set<Project>,
+    ): List<String> {
+        val transitiveMavenDeps = buildSet {
+            addAll(
+                dependenciesDataSource.collectTransitiveMavenDeps(
+                    project = project,
+                    variantKey = variantKey
+                )
+            )
+            directProjectDependencies.forEach { dependencyProject ->
+                addAll(dependencyProject.collectTransitiveMavenDepsForTags(matchedVariant))
+            }
+        }
+        return transitiveMavenDeps
+            .map { mavenDependency -> mavenDependency.copy(repo = "maven").toString() }
     }
 
     private fun Project.collectTransitiveMavenDepsForTags(

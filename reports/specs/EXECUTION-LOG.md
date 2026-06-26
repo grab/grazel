@@ -5,40 +5,35 @@ evidence in item-specific logs so context compaction can recover state quickly.
 
 ## Active State
 
-- Active item: Item 3 - Consumer Cutover onto `WorkspacePlan`.
+- Active item: Item 4 - Remove Generated-Output Feedback Paths.
 - Item 1 baseline/safety-net checkpoint commit: `368a21f`
   (`Record PAX baseline safety gate`).
 - Item 2 structured-planning checkpoint commit: `6393de1`
   (`Add workspace dependency planning seam`).
-- Item 3 Step 1 pinner cutover checkpoint commit: this commit
+- Item 3 Step 1 pinner cutover checkpoint commit: `95c1036`
   (`Cut pinner over to workspace plan`).
+- Item 3 Step 2 root-generation cutover checkpoint commit: `f5296bd`
+  (`Cut root generation over to workspace render plan`).
+- Item 3 Step 3 tag-producer cutover checkpoint commit: `3349758`
+  (`Move target tag planning into workspace plan`).
 - Latest passed local gate:
-  - `./gradlew verifyGrazelGoldenBaseline --console=plain`
-  - Result: `BUILD SUCCESSFUL in 14s` after adding
-    `collectTargetMavenRepoReferences`.
+  - Focused plan/task/collector/extractor tests for Item 3 Step 3.
+  - `reports/scripts/verify-default-task-graph.sh`
+  - `reports/scripts/verify-sample-bucket-labels.sh`
+  - `./gradlew verifyGrazelGoldenBaseline -Pgrazel.internal.planParity=true --console=plain`
   - Grazel `git diff --check`
-  - Result: clean.
+  - Result: all passed; generated sample diff stayed clean.
 - Latest passed PAX gate:
-  - `./gradlew migrateToBazel --no-daemon --console=plain --stacktrace`
-  - Result: `BUILD SUCCESSFUL in 14m 5s` after the exact target-reference collector
-    correction.
-  - Current PAX `WORKSPACE`: 3760 lines, 238 below PAX `HEAD`.
-  - Current materialized repos: 12. Test/lint pinning still grew versus PAX `HEAD`
-    (`android_test_maven` +279 artifacts, `test_maven` +245, `lint_maven` +61);
-    keep as an optimization concern after correctness.
+  - `./gradlew migrateToBazel -Pgrazel.internal.planParity=true --no-daemon --console=plain --stacktrace`
+  - Result: passed in about 11m01s.
   - `./bazel.sh build //app:app-gps-pax-debug.apk //app:app-gps-pax-debug-android-test.apk --verbose_failures`
-  - Result after collector correction: `INFO: Build completed successfully, 8778 total actions`
-    in 455.871s.
+  - Result: passed in about 5m00s with 41 actions after cache checking.
   - PAX `git diff --check`: passed.
-  - PAX app test query: only app lint test targets.
-  - Extra `./bazel.sh test //app:app-gps-pax-debug.lint_test`: failed with lint
-    `SerializedNameDefaultValue` findings in existing external artifacts; not a
-    dependency compilation/linkage failure. Needs baseline comparison before
-    attributing to this refactor.
-  - Requires local uncommitted PAX build-logic compatibility edits; do not commit PAX
-    changes.
+  - Tag-prefix audit: scanned 2208 changed Bazel files and found zero bucket Maven
+    labels inside `tags` arrays.
+  - PAX working tree remains dirty from generated output; do not commit PAX changes.
 - Current detailed log:
-  - `reports/specs/execution-log/item2-structured-planning.md`
+  - `reports/specs/execution-log/item3-consumer-cutover.md`
 
 ## Item Logs
 
@@ -59,6 +54,8 @@ evidence in item-specific logs so context compaction can recover state quickly.
 
 ## Current Remaining Work
 
-- Item 3 Step 1 pinner cutover passed focused/local golden checks; decide whether to
-  run PAX at this checkpoint or proceed to Step 2 root generation cutover first.
-- Continue Items 3-6 in order.
+- Start Item 4. Delete generated-output feedback paths in the spec order:
+  manifest/task-graph decouple, pinner WORKSPACE-regex discovery, extractor-side tag
+  derivation, then parity code last.
+- Create `reports/specs/execution-log/item4-remove-feedback-paths.md` when Item 4 starts.
+- Continue Items 4-6 in order.

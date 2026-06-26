@@ -20,6 +20,7 @@ import com.grab.grazel.bazel.starlark.BazelDependency.ProjectDependency
 import com.grab.grazel.di.GrazelComponent
 import com.grab.grazel.gradle.dependencies.DefaultDependencyGraphsService
 import com.grab.grazel.gradle.dependencies.DefaultDependencyResolutionService
+import com.grab.grazel.gradle.dependencies.DefaultWorkspacePlanService
 import com.grab.grazel.gradle.dependencies.TopologicalSorter
 import com.grab.grazel.gradle.isAndroidLibrary
 import com.grab.grazel.gradle.variant.DefaultVariantCompressionService
@@ -71,11 +72,15 @@ constructor(
     private val variantMatcher: Lazy<VariantMatcher>,
     private val variantCompressor: Lazy<VariantCompressor>,
     private val dependencyGraphsService: GradleProvider<DefaultDependencyGraphsService>,
-    private val variantCompressionService: GradleProvider<DefaultVariantCompressionService>
+    private val variantCompressionService: GradleProvider<DefaultVariantCompressionService>,
+    private val workspacePlanService: GradleProvider<DefaultWorkspacePlanService>
 ) : DefaultTask() {
 
     @get:InputFile
     val workspaceDependencies: RegularFileProperty = project.objects.fileProperty()
+
+    @get:InputFile
+    val workspacePlan: RegularFileProperty = project.objects.fileProperty()
 
     @get:OutputFile
     val compressionResultsFile: RegularFileProperty = project.objects.fileProperty()
@@ -90,6 +95,9 @@ constructor(
         dependencyResolutionService
             .get()
             .init(workspaceDependencies.get().asFile)
+        workspacePlanService
+            .get()
+            .initPlan(workspacePlan.get().asFile)
 
         val graphs = dependencyGraphsService.get().get()
         val orderedProjects = TopologicalSorter.sort(graphs)
@@ -211,7 +219,8 @@ constructor(
                 grazelComponent.variantMatcher(),
                 grazelComponent.variantCompressor(),
                 grazelComponent.dependencyGraphsService(),
-                grazelComponent.variantCompressionService()
+                grazelComponent.variantCompressionService(),
+                grazelComponent.workspacePlanService()
             ).apply {
                 configure {
                     group = GRAZEL_TASK_GROUP

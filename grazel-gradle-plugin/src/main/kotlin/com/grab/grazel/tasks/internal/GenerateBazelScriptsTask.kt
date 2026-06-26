@@ -20,10 +20,12 @@ import com.grab.grazel.bazel.starlark.writeToFile
 import com.grab.grazel.di.GrazelComponent
 import com.grab.grazel.gradle.MigrationChecker
 import com.grab.grazel.gradle.dependencies.DefaultDependencyResolutionService
+import com.grab.grazel.gradle.dependencies.DefaultWorkspacePlanService
 import com.grab.grazel.gradle.isMigrated
 import com.grab.grazel.migrate.internal.ProjectBazelFileBuilder
 import com.grab.grazel.util.BUILD_BAZEL
 import com.grab.grazel.util.BUILD_BAZEL_IGNORE
+import com.grab.grazel.util.GradleProvider
 import com.grab.grazel.util.ansiGreen
 import com.grab.grazel.util.ansiYellow
 import com.grab.grazel.util.logHeap
@@ -51,6 +53,7 @@ internal open class GenerateBazelScriptsTask
 constructor(
     private val migrationChecker: Lazy<MigrationChecker>,
     private val bazelFileBuilder: Lazy<ProjectBazelFileBuilder.Factory>,
+    private val workspacePlanService: GradleProvider<DefaultWorkspacePlanService>,
     objectFactory: ObjectFactory,
     private val layout: ProjectLayout
 ) : DefaultTask() {
@@ -59,6 +62,9 @@ constructor(
 
     @get:InputFile
     val workspaceDependencies: RegularFileProperty = project.objects.fileProperty()
+
+    @get:InputFile
+    val workspacePlan: RegularFileProperty = project.objects.fileProperty()
 
     @get:InputFile
     @get:Optional
@@ -87,6 +93,8 @@ constructor(
 
         dependencyResolutionService.get()
             .init(workspaceDependencies.get().asFile)
+        workspacePlanService.get()
+            .initPlan(workspacePlan.get().asFile)
 
         // Check if current project can be migrated
         if (migrationChecker.get().canMigrate(project)) {
@@ -125,6 +133,7 @@ constructor(
                 TASK_NAME,
                 grazelComponent.migrationChecker(),
                 grazelComponent.projectBazelFileBuilderFactory(),
+                grazelComponent.workspacePlanService(),
             ).apply {
                 configure {
                     group = GRAZEL_TASK_GROUP

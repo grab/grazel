@@ -21,9 +21,12 @@ import com.android.build.gradle.api.AndroidSourceSet
 import com.grab.grazel.GrazelExtension
 import com.grab.grazel.bazel.starlark.BazelDependency
 import com.grab.grazel.gradle.dependencies.DefaultDependencyGraphsService
+import com.grab.grazel.gradle.dependencies.DefaultWorkspacePlanService
 import com.grab.grazel.gradle.dependencies.DependenciesDataSource
 import com.grab.grazel.gradle.dependencies.DependencyGraphs
 import com.grab.grazel.gradle.dependencies.GradleDependencyToBazelDependency
+import com.grab.grazel.gradle.dependencies.TargetTagKinds
+import com.grab.grazel.gradle.dependencies.model.tagsFor
 import com.grab.grazel.gradle.variant.VariantGraphKey
 import com.grab.grazel.gradle.variant.VariantType
 import com.grab.grazel.gradle.hasCompose
@@ -58,6 +61,7 @@ internal class DefaultAndroidInstrumentationBinaryDataExtractor
     private val manifestValuesBuilder: ManifestValuesBuilder,
     private val keyStoreExtractor: KeyStoreExtractor,
     private val grazelExtension: GrazelExtension,
+    private val workspacePlanService: GradleProvider<DefaultWorkspacePlanService>,
 ) : AndroidInstrumentationBinaryDataExtractor {
     private val projectDependencyGraphs: DependencyGraphs get() = dependencyGraphsService.get().get()
 
@@ -138,14 +142,24 @@ internal class DefaultAndroidInstrumentationBinaryDataExtractor
         // TODO: this is a workaround and should be removed after bazel 8 compatibility
         val minSdkVersion = if (grazelExtension.experiments.minSdkVersionWorkaround.get()) 0 else null
         val tags = if (grazelExtension.rules.kotlin.enabledTransitiveReduction) {
-            val transitiveMavenDeps = dependenciesDataSource.collectTransitiveMavenDeps(
-                project = project,
-                variantKey = VariantGraphKey.from(project, matchedVariant, VariantType.AndroidTest)
-            )
-            calculateDirectDependencyTags(
+            val variantKey = VariantGraphKey.from(project, matchedVariant, VariantType.AndroidTest)
+            val localTags = calculateDirectDependencyTags(
                 self = "${name}${matchedVariant.nameSuffix}-android-test",
-                deps = deps + transitiveMavenDeps
+                deps = deps
             )
+            val mavenTags = workspacePlanService
+                .get()
+                .getPlan()
+                ?.tagsFor(
+                    variantId = variantKey.variantId,
+                    variantType = variantKey.variantType.toString(),
+                    targetKind = TargetTagKinds.ANDROID_INSTRUMENTATION
+                )
+                ?: dependenciesDataSource.collectTransitiveMavenDeps(
+                    project = project,
+                    variantKey = variantKey
+                ).map { mavenDependency -> mavenDependency.copy(repo = "maven").toString() }
+            (localTags + mavenTags).sorted()
         } else emptyList()
 
         return AndroidInstrumentationBinaryData(

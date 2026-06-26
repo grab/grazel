@@ -31,6 +31,7 @@ import com.grab.grazel.gradle.dependencies.DefaultDependencyResolutionService
 import com.grab.grazel.gradle.dependencies.DefaultWorkspacePlanService
 import com.grab.grazel.gradle.dependencies.DependenciesDataSource
 import com.grab.grazel.gradle.dependencies.DependenciesModule
+import com.grab.grazel.gradle.dependencies.WorkspaceTargetTagPlanCollector
 import com.grab.grazel.gradle.variant.AndroidVariantDataSource
 import com.grab.grazel.gradle.variant.DefaultVariantCompressionService
 import com.grab.grazel.gradle.variant.VariantBuilder
@@ -83,6 +84,7 @@ internal interface GrazelComponent {
     fun gradleProjectInfoFactory(): Lazy<DefaultGradleProjectInfo.Factory>
     fun artifactPinner(): Lazy<ArtifactPinner>
     fun dependenciesDataSource(): Lazy<DependenciesDataSource>
+    fun workspaceTargetTagPlanCollector(): Lazy<WorkspaceTargetTagPlanCollector>
     fun mavenInstallArtifactsCalculator(): Lazy<MavenInstallArtifactsCalculator>
     fun androidVariantDataSource(): Lazy<AndroidVariantDataSource>
     fun hybridBuildExecutor(): HybridBuildExecutor
@@ -145,5 +147,4 @@ internal interface GrazelModule {
         fun @receiver:RootProject Project.gradleServices() = GradleServices.from(this)
     }
 }
-
 

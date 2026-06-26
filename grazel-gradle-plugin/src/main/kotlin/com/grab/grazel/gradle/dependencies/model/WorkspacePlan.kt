@@ -54,6 +54,20 @@ internal data class TargetTagKey(
     val targetKind: String
 )
 
+internal fun WorkspacePlan.tagsFor(
+    variantId: String,
+    variantType: String,
+    targetKind: String
+): List<String>? = tagPlan
+    .firstOrNull { targetTagPlan ->
+        targetTagPlan.key == TargetTagKey(
+            variantId = variantId,
+            variantType = variantType,
+            targetKind = targetKind
+        )
+    }
+    ?.tags
+
 @Serializable
 internal data class WorkspaceRenderPlan(
     val materializedRepoNames: Set<String> = emptySet(),

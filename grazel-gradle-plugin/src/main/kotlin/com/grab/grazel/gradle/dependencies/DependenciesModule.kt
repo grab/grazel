@@ -30,6 +30,9 @@ internal interface DependenciesModule {
     @Binds
     fun DefaultDependenciesDataSource.dependenciesDataSource(): DependenciesDataSource
 
+    @Binds
+    fun DefaultWorkspaceTargetTagPlanCollector.workspaceTargetTagPlanCollector(): WorkspaceTargetTagPlanCollector
+
     @Module
     companion object {
         @Provides
