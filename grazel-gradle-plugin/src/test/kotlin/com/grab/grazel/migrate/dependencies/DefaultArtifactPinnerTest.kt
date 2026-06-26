@@ -199,7 +199,7 @@ class DefaultArtifactPinnerTest {
     }
 
     @Test
-    fun `pinnable repos only include generated maven install repos`() {
+    fun `legacy pinnable repos include resolved root artifacts by Maven repo`() {
         val debugDirect = ResolvedDependency.fromId("com.example:debug-only:1.0.0", "MavenRepo")
         val fullPaidDirect = ResolvedDependency.fromId("com.example:full-paid-only:1.0.0", "MavenRepo")
         val transitiveOnly = ResolvedDependency.fromId("com.example:transitive-only:1.0.0", "MavenRepo")

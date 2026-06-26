@@ -226,7 +226,7 @@ constructor(
             assertPinnableRepoParity(
                 planRepos = allRepos,
                 legacyRepos = legacyWorkspaceDependencies.pinnableMavenInstallRepos(
-                    workspaceFile.materializedMavenInstallRepos()
+                    workspaceRenderPlan.materializedRepoNames
                 )
             )
         }
@@ -325,12 +325,6 @@ constructor(
         }
     }
 }
-
-internal fun File.materializedMavenInstallRepos(): Set<String> =
-    Regex("""maven_install\(\s*name = "([^"]+)"""")
-        .findAll(readText())
-        .map { matchResult -> matchResult.groupValues[1] }
-        .toSortedSet()
 
 internal fun WorkspacePlan.pinnableMavenInstallRepos(
     workspaceRenderPlan: WorkspaceRenderPlan

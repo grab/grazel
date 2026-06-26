@@ -48,3 +48,47 @@ This log tracks deletion of old feedback paths after Item 3 moved consumers onto
 - `./bazel.sh build //app:app-gps-pax-debug.apk //app:app-gps-pax-debug-android-test.apk --verbose_failures`
   passed in 279s with 1 executed action after cache checking.
 - Resource notes: disk stayed around 15 GiB free. No cache cleanup was run.
+
+## Step 2 - Pinner WORKSPACE-regex discovery
+
+### Target
+
+- Delete the pinner's `maven_install(name = "...")` WORKSPACE regex helper.
+- Keep `maven_install_json` pin/unpin and corruption recovery mechanics.
+- Keep remaining pinner parity temporarily, but filter the legacy view with
+  `WorkspaceRenderPlan.materializedRepoNames` instead of rendered WORKSPACE text.
+
+### Red check
+
+- Structural search found the old
+  `workspaceFile.materializedMavenInstallRepos()` call path before deletion.
+
+### Change
+
+- Pinner parity now uses `workspaceRenderPlan.materializedRepoNames` to filter the
+  temporary legacy `WorkspaceDependencies` view.
+- Deleted `File.materializedMavenInstallRepos()`.
+- Renamed the legacy helper test to avoid implying generated WORKSPACE output is
+  still the source of truth.
+
+### Verification
+
+- Structural search found no `materializedMavenInstallRepos` helper/call after the
+  change.
+- `./gradlew :grazel-gradle-plugin:test --tests "com.grab.grazel.migrate.dependencies.DefaultArtifactPinnerTest" --console=plain`
+  passed.
+- `./gradlew verifyGrazelGoldenBaseline -Pgrazel.internal.planParity=true --console=plain`
+  passed in 17s with clean generated-file diff.
+
+### PAX verification
+
+- `./gradlew migrateToBazel -Pgrazel.internal.planParity=true --no-daemon --console=plain --stacktrace`
+  passed in 10m34s. This exercised `pinMavenArtifacts` with the render-plan
+  materialized repo filter.
+- `git diff --check` passed in `/Users/arun.sampathkumar/work/pax-android`.
+- Generated tag-prefix audit found zero bucket Maven labels inside `tags`
+  arrays.
+- `./bazel.sh build //app:app-gps-pax-debug.apk //app:app-gps-pax-debug-android-test.apk --verbose_failures`
+  passed in about 280s with 117 total actions.
+- Resource notes: disk dipped to about 12 GiB during migrate and was about
+  13 GiB before the Bazel gate. No cache cleanup was run.
