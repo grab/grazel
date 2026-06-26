@@ -23,12 +23,16 @@ import com.grab.grazel.gradle.DefaultGradleProjectInfo
 import com.grab.grazel.gradle.GradleProjectInfo
 import com.grab.grazel.gradle.MigrationChecker
 import com.grab.grazel.gradle.dependencies.DefaultDependencyResolutionService
+import com.grab.grazel.gradle.dependencies.WorkspaceRenderPlanBuilder
+import com.grab.grazel.gradle.dependencies.model.WorkspacePlan
+import com.grab.grazel.gradle.dependencies.model.WorkspaceRenderPlan
 import com.grab.grazel.migrate.internal.RootBazelFileBuilder
 import com.grab.grazel.migrate.internal.WorkspaceBuilder
 import com.grab.grazel.util.BUILD_BAZEL
 import com.grab.grazel.util.BUILD_BAZEL_IGNORE
 import com.grab.grazel.util.WORKSPACE
 import com.grab.grazel.util.ansiGreen
+import com.grab.grazel.util.fromJson
 import com.grab.grazel.util.logHeap
 import dagger.Lazy
 import org.gradle.api.DefaultTask
@@ -38,6 +42,7 @@ import org.gradle.api.file.ProjectLayout
 import org.gradle.api.file.RegularFileProperty
 import org.gradle.api.model.ObjectFactory
 import org.gradle.api.provider.Property
+import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.InputFile
 import org.gradle.api.tasks.InputFiles
 import org.gradle.api.tasks.Internal
@@ -65,9 +70,20 @@ constructor(
     @get:InputFile
     val workspaceDependencies: RegularFileProperty = project.objects.fileProperty()
 
+    @get:InputFile
+    @get:PathSensitive(PathSensitivity.RELATIVE)
+    val workspacePlan: RegularFileProperty = project.objects.fileProperty()
+
+    @get:InputFile
+    @get:PathSensitive(PathSensitivity.RELATIVE)
+    val workspaceRenderPlan: RegularFileProperty = project.objects.fileProperty()
+
     @get:InputFiles
     @get:PathSensitive(PathSensitivity.RELATIVE)
     val generatedProjectMavenRepoManifests: ConfigurableFileCollection = objectFactory.fileCollection()
+
+    @get:Input
+    val planParity: Property<Boolean> = project.objects.property<Boolean>()
 
     @get:OutputFile
     val workspaceFile: RegularFileProperty = objectFactory
@@ -93,18 +109,26 @@ constructor(
         val workspaceDependencies = dependencyResolutionService
             .get()
             .init(workspaceDependencies.get().asFile)
+        val workspaceRenderPlan = fromJson<WorkspaceRenderPlan>(workspaceRenderPlan.get())
+        val assertPlanParity = planParity.getOrElse(false)
 
         val gradleProjectInfo: GradleProjectInfo = gradleProjectInfoFactory.get()
             .create(workspaceDependencies)
-        val referencedMavenRepos = GeneratedBuildMavenRepos.fromFiles(
-            generatedProjectMavenRepoManifests.files
-        )
+        if (assertPlanParity) {
+            assertRootGenerationPlanParity(
+                workspacePlan = fromJson<WorkspacePlan>(workspacePlan.get()),
+                workspaceRenderPlan = workspaceRenderPlan,
+                legacyReferencedRepoNames = GeneratedBuildMavenRepos.fromFiles(
+                    generatedProjectMavenRepoManifests.files
+                )
+            )
+        }
 
         workspaceBuilderFactory.get().create(
             projectsToMigrate = projectsToMigrate,
             gradleProjectInfo = gradleProjectInfo,
             workspaceDependencies = workspaceDependencies,
-            referencedMavenRepos = referencedMavenRepos,
+            materializedMavenRepos = workspaceRenderPlan.materializedRepoNames,
         ).build().writeToFile(workspaceFile.get().asFile)
         logger.quiet("Generated WORKSPACE".ansiGreen)
         logger.logHeap("GenerateRootBazelScripts:workspace-done")
@@ -119,6 +143,37 @@ constructor(
         if (rootBuildBazelContents.isNotEmpty()) {
             rootBuildBazelContents.writeToFile(buildBazel.get().asFile)
             logger.quiet("Generated $BUILD_BAZEL".ansiGreen)
+        }
+    }
+
+    private fun assertRootGenerationPlanParity(
+        workspacePlan: WorkspacePlan,
+        workspaceRenderPlan: WorkspaceRenderPlan,
+        legacyReferencedRepoNames: Set<String>
+    ) {
+        val legacyRenderPlan = WorkspaceRenderPlanBuilder().build(
+            workspacePlan = workspacePlan,
+            referencedRepoNames = legacyReferencedRepoNames
+        )
+        val mismatches = buildList {
+            if (legacyReferencedRepoNames != workspaceRenderPlan.referencedRepoNames) {
+                add(
+                    "referenced repo names differ: legacy=${legacyReferencedRepoNames.sorted()} " +
+                        "plan=${workspaceRenderPlan.referencedRepoNames.sorted()}"
+                )
+            }
+            if (legacyRenderPlan.materializedRepoNames != workspaceRenderPlan.materializedRepoNames) {
+                add(
+                    "materialized repo names differ: legacy=${legacyRenderPlan.materializedRepoNames.sorted()} " +
+                        "plan=${workspaceRenderPlan.materializedRepoNames.sorted()}"
+                )
+            }
+        }
+        check(mismatches.isEmpty()) {
+            buildString {
+                appendLine("Root generation WorkspacePlan parity mismatch.")
+                mismatches.forEach { appendLine("- $it") }
+            }
         }
     }
 
@@ -141,6 +196,11 @@ constructor(
             configure {
                 group = GRAZEL_TASK_GROUP
                 description = "Generate $BUILD_BAZEL for root project"
+                planParity.convention(
+                    rootProject.providers.gradleProperty("grazel.internal.planParity")
+                        .map { value -> value.toBoolean() }
+                        .orElse(false)
+                )
                 action(this)
             }
         }

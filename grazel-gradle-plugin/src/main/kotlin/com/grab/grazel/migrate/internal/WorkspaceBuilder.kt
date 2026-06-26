@@ -59,7 +59,7 @@ internal class WorkspaceBuilder(
     private val gradleProjectInfo: GradleProjectInfo,
     private val workspaceDependencies: WorkspaceDependencies,
     private val mavenInstallArtifactsCalculator: MavenInstallArtifactsCalculator,
-    private val referencedMavenRepos: Set<String>
+    private val materializedMavenRepos: Set<String>?
 ) : BazelFileBuilder {
     @Singleton
     class Factory
@@ -74,7 +74,7 @@ internal class WorkspaceBuilder(
             projectsToMigrate: List<Project>,
             gradleProjectInfo: GradleProjectInfo,
             workspaceDependencies: WorkspaceDependencies = WorkspaceDependencies(emptyMap()),
-            referencedMavenRepos: Set<String> = emptySet(),
+            materializedMavenRepos: Set<String>? = null,
         ) = WorkspaceBuilder(
             rootProject,
             projectsToMigrate,
@@ -82,7 +82,7 @@ internal class WorkspaceBuilder(
             gradleProjectInfoFactory.create(workspaceDependencies),
             workspaceDependencies,
             mavenInstallArtifactsCalculator,
-            referencedMavenRepos
+            materializedMavenRepos
         )
     }
 
@@ -131,7 +131,7 @@ internal class WorkspaceBuilder(
             workspaceDependencies,
             externalArtifacts.toSortedSet(),
             externalRepositories.toSortedSet(),
-            referencedMavenRepos,
+            materializedMavenRepos = materializedMavenRepos,
         ).forEach { mavenInstallData ->
             mavenInstall(
                 name = mavenInstallData.name,

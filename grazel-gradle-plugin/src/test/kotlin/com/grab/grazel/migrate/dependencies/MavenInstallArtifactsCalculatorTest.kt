@@ -1488,6 +1488,45 @@ class MavenInstallArtifactsCalculatorTest {
     }
 
     @Test
+    fun `render plan materialized maven repos are used as exact repo selection`() {
+        setup()
+
+        val repository = "MavenRepo"
+        val defaultDependency = ResolvedDependency.fromId(
+            "com.example:default:1.0.0",
+            repository
+        )
+        val debugDependency = ResolvedDependency.fromId(
+            "com.example:debug:1.0.0",
+            repository
+        )
+        val processorDependency = ResolvedDependency.fromId(
+            "com.example:processor:1.0.0",
+            repository
+        )
+        val workspaceDependencies = WorkspaceDependencies(
+            variantDeps = mapOf(
+                DEFAULT_VARIANT to listOf(defaultDependency),
+                "debug" to listOf(debugDependency)
+            ),
+            aggregatedRepos = mapOf("ksp_maven" to listOf(processorDependency))
+        )
+
+        val result = mavenInstallArtifactsCalculator.get(
+            layout = rootProject.layout,
+            workspaceDependencies = workspaceDependencies,
+            externalArtifacts = emptySet(),
+            externalRepositories = emptySet(),
+            materializedMavenRepos = setOf("debug_maven")
+        )
+
+        assertEquals(
+            setOf("debug_maven"),
+            result.map(MavenInstallData::name).toSet()
+        )
+    }
+
+    @Test
     fun `referenced maven install keeps repos required by override targets`() {
         setup()
 
