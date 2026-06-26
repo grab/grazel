@@ -124,3 +124,145 @@ This item log keeps the detailed evidence for Item 1. Keep
   - `git diff --check master...HEAD` passed.
 - Remaining Item 1 work:
   - Run PAX migrate/build/audit and record `reports/specs/PAX-BOUNDED-AUDIT-BASELINE.md`.
+
+## 2026-06-26 06:20 +08 - PAX migrateToBazel Baseline
+
+- PAX root: `/Users/arun.sampathkumar/work/pax-android`.
+- Grazel baseline commit before PAX run: `42d64c2` (`Record Item 1 local baseline status`).
+- Local PAX compatibility edits were required and must not be committed:
+  - `build-logic/project/src/main/kotlin/grazel/Performance.kt` now tolerates the new
+    `ResolveWorkspaceDependenciesTask` class while still tolerating the removed
+    `ResolveVariantDependenciesTask`.
+  - `build-logic/project/src/main/kotlin/grazel/Constants.kt` and `Grazel.kt` now wire
+    `syncPatches` before root `resolveWorkspaceDependencies` instead of removed
+    `:app:defaultResolveDependencies`.
+- Command:
+  - `./gradlew migrateToBazel --no-daemon --console=plain --stacktrace`
+- Result:
+  - `BUILD SUCCESSFUL in 18m 38s`.
+  - `4748 actionable tasks: 4609 executed, 118 from cache, 21 up-to-date`.
+- Notes:
+  - Pinning remained very verbose and slow, especially for bucket maven repos. This is
+    accepted as Item 1 baseline evidence, not accepted as final optimization state.
+- Remaining Item 1 work:
+  - Record PAX bounded audit.
+  - Run PAX APK and android-test APK Bazel build.
+  - Run PAX diff checks and app test target query.
+
+## 2026-06-26 06:35 +08 - PAX Bounded Audit Baseline
+
+- Command:
+  - `PAX_ROOT=/Users/arun.sampathkumar/work/pax-android reports/scripts/audit-pax-bounded-baseline.sh reports/specs/PAX-BOUNDED-AUDIT-BASELINE.md`
+- Result:
+  - Passed and wrote `reports/specs/PAX-BOUNDED-AUDIT-BASELINE.md`.
+- Audit script correction:
+  - The first version incorrectly assumed `android_binary(name = "app-gps-pax-debug")`
+    owns compile-filter tags. PAX HEAD and current output both have no `tags` attr on
+    that binary wrapper.
+  - The script now records tag shape separately: `@maven` Maven compile-filter tags,
+    legacy `@direct` project tags, and `@self`. It enforces that Maven-shaped tags are
+    normalized to `@maven//:` and that no bucket-prefixed Maven labels appear in `tags`.
+  - It resolves output paths before `cd` into PAX and appends all sections to the audit
+    artifact.
+- Baseline facts:
+  - `//app:app-gps-pax-debug`: 1452 deps, 0 tags, 6 `@debug_maven` deps.
+  - `//app:app-gps-pax-debug-android-test`: 1511 deps, 1957 tags, 616 `@maven` tags,
+    1340 `@direct` tags, 1 `@self` tag, 1 `@debug_maven` dep, 12 `@android_test_maven`
+    deps.
+  - `bug-report-kit-implementation/BUILD.bazel` is still present; strict reachability
+    cleanup remains a later item.
+- Remaining Item 1 work:
+  - Run PAX APK and android-test APK Bazel build.
+  - Run PAX diff checks and app test target query.
+
+## 2026-06-26 07:27 +08 - PAX Bazel Gate Hit Disk Exhaustion
+
+- Command:
+  - `cd /Users/arun.sampathkumar/work/pax-android && ./bazel.sh build //app:app-gps-pax-debug.apk //app:app-gps-pax-debug-android-test.apk --verbose_failures`
+- Result:
+  - Failed after ~40m49s at final android-test deploy-jar output copy/action-log write.
+  - Root cause is infrastructure: `No space left on device`, followed by Bazel sandbox-base crash.
+- Positive compile signals before disk failure:
+  - `//app:lib_app-gps-pax-debug_kt` compiled.
+  - Prior `snp/snp-ui-tests` classpath failure did not recur; it compiled with warnings.
+  - Android-test support modules compiled.
+  - Main `//app:app-gps-pax-debug-android-test_lib_kt` KAPT and Kotlin compile completed.
+- System state:
+  - Disk after failure: `/System/Volumes/Data` at 99%, ~7.3 GiB available.
+- Next action:
+  - Free PAX Bazel storage with `bazelisk clean --expunge`; remove `bazel-cache` only if still genuinely low.
+  - Rerun the same PAX Bazel gate. Do not treat the disk-full crash as a dependency/code failure.
+
+## 2026-06-26 08:50 +08 - PAX Bazel Gate Reached Android-Test Dex Merge
+
+- Cleanup before rerun:
+  - `cd /Users/arun.sampathkumar/work/pax-android && bazelisk clean --expunge`
+  - `cd /Users/arun.sampathkumar/work/pax-android && rm -rf bazel-cache`
+  - Stopped idle Grazel Gradle daemon and idle Grazel Bazel server during the run.
+- Command:
+  - `cd /Users/arun.sampathkumar/work/pax-android && ./bazel.sh build //app:app-gps-pax-debug.apk //app:app-gps-pax-debug-android-test.apk --verbose_failures`
+- Result:
+  - Failed after 2282.175s at `DexMerger app/dexfiles/app-gps-pax-debug-android-test/5.shard.zip`.
+  - Disk dropped to ~2.9 GiB free during final packaging. While the failure did not print an explicit
+    `No space left on device` line in captured output, disk pressure is the leading suspect.
+- Positive correctness signals:
+  - Main app KSP/KAPT/Kotlin compile completed.
+  - Android-test support modules compiled.
+  - `snp/snp-ui-tests` compiled; the previous missing-class/classpath failure did not recur.
+  - Main `//app:app-gps-pax-debug-android-test_lib_kt` compile completed and reached deploy-jar,
+    zip filtering, dex assembly, and dex merge.
+- Storage recovery:
+  - Removed `/Users/arun.sampathkumar/.gradle/caches` after disk dropped to ~2.9 GiB.
+  - Disk recovered to ~31 GiB free after cleanup.
+- Next action:
+  - Rerun the same PAX Bazel gate with recovered disk. A pass completes the APK/android-test build gate;
+    a repeat DexMerger failure with healthy disk should be treated as a real dex/content failure.
+
+## 2026-06-26 09:00 +08 - PAX Bazel Gate Passed After Disk Recovery
+
+- Command:
+  - `cd /Users/arun.sampathkumar/work/pax-android && ./bazel.sh build //app:app-gps-pax-debug.apk //app:app-gps-pax-debug-android-test.apk --verbose_failures`
+- Result:
+  - Passed.
+  - `INFO: Build completed successfully, 9 total actions`
+  - Elapsed: 275.753s; critical path: 12.58s.
+- Conclusion:
+  - The prior `DexMerger app-gps-pax-debug-android-test/5.shard.zip` failure was infrastructure/disk pressure,
+    not a dependency or dex-content correctness failure.
+  - Item 1 APK/android-test APK Bazel build gate is green.
+- Storage:
+  - Disk after pass: ~30 GiB free on `/System/Volumes/Data`.
+- Remaining Item 1 work:
+  - Run PAX `git diff --check`.
+  - Run PAX app test target query.
+  - Record current Grazel/PAX status and commit Grazel-only Item 1 artifacts if checks pass.
+
+## 2026-06-26 09:05 +08 - PAX Diff And App Test Query Checks
+
+- Commands:
+  - `cd /Users/arun.sampathkumar/work/pax-android && git diff --check`
+  - `cd /Users/arun.sampathkumar/work/pax-android && tools/bazel query 'kind(".*test rule", //app:*)'`
+  - `cd /Users/arun.sampathkumar/work/grazel && git diff --check`
+- Results:
+  - PAX `git diff --check`: passed.
+  - Grazel `git diff --check`: passed.
+  - PAX app test query returned only lint test targets:
+    - `//app:app-gps-moveit-debug.lint_test`
+    - `//app:app-gps-ovo-debug.lint_test`
+    - `//app:app-gps-pax-debug.lint_test`
+    - `//app:app-hms-moveit-debug.lint_test`
+    - `//app:app-hms-ovo-debug.lint_test`
+    - `//app:app-hms-pax-debug.lint_test`
+- PAX working tree:
+  - Large generated `BUILD.bazel` / `WORKSPACE` / Maven JSON diff exists from `migrateToBazel`.
+  - Local PAX build-logic compatibility edits remain in:
+    - `build-logic/project/src/main/kotlin/grazel/Constants.kt`
+    - `build-logic/project/src/main/kotlin/grazel/Grazel.kt`
+    - `build-logic/project/src/main/kotlin/grazel/Performance.kt`
+  - Do not commit PAX changes.
+- Item 1 baseline status:
+  - PAX migrate passed.
+  - PAX bounded audit passed.
+  - PAX app APK and android-test APK build passed.
+  - PAX/Grazel diff checks passed.
+  - App test query recorded.
