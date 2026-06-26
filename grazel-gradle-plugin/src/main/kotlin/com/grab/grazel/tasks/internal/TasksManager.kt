@@ -154,11 +154,6 @@ constructor(
             project to generateBazelScriptsTask
         }
 
-        val planParityEnabled = rootProject.providers
-            .gradleProperty("grazel.internal.planParity")
-            .map { value -> value.toBoolean() }
-            .getOrElse(false)
-
         // Root bazel file generation materializes Maven repos from the finalized render plan.
         val rootGenerateBazelScriptsTasks = GenerateRootBazelScriptsTask.register(
             rootProject,
@@ -168,14 +163,6 @@ constructor(
             workspacePlan.set(computeWorkspacePlanTask.flatMap { it.workspacePlan })
             workspaceRenderPlan.set(finalizeWorkspacePlanTask.flatMap { it.workspaceRenderPlan })
             dependencyResolutionService.set(grazelComponent.dependencyResolutionService())
-            if (planParityEnabled) {
-                generatedProjectMavenRepoManifests.from(
-                    projectGenerateBazelScriptsTasks.map { (_, generateTask) ->
-                        generateTask.flatMap { it.referencedMavenRepos }
-                    }
-                )
-                dependsOn(projectGenerateBazelScriptsTasks.map { (_, generateTask) -> generateTask })
-            }
             dependsOn(finalizeWorkspacePlanTask)
         }
 

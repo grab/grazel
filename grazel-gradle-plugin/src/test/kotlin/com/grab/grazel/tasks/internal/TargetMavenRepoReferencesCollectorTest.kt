@@ -23,17 +23,12 @@ import com.grab.grazel.bazel.starlark.StatementsBuilder
 import com.grab.grazel.migrate.BazelBuildTarget
 import com.grab.grazel.migrate.BazelPluginTarget
 import org.junit.Assert.assertEquals
-import org.junit.Rule
 import org.junit.Test
-import org.junit.rules.TemporaryFolder
 
-class GeneratedBuildMavenReposTest {
-
-    @get:Rule
-    val temporaryFolder = TemporaryFolder()
+class TargetMavenRepoReferencesCollectorTest {
 
     @Test
-    fun `collects Maven repos from generated targets`() {
+    fun `collects Maven repos from target models`() {
         val targets = listOf(
             fakeTarget(
                 deps = listOf(
@@ -61,26 +56,7 @@ class GeneratedBuildMavenReposTest {
 
         assertEquals(
             setOf("debug_maven", "ksp_maven", "lint_maven", "maven"),
-            GeneratedBuildMavenRepos.fromTargets(targets)
-        )
-    }
-
-    @Test
-    fun `reads stable referenced repo manifests`() {
-        val manifest = temporaryFolder.newFile("referenced-maven-repos.txt")
-
-        GeneratedBuildMavenRepos.writeManifest(
-            file = manifest,
-            repos = setOf("maven", "debug_maven")
-        )
-
-        assertEquals(
-            "debug_maven\nmaven\n",
-            manifest.readText()
-        )
-        assertEquals(
-            setOf("debug_maven", "maven"),
-            GeneratedBuildMavenRepos.fromFiles(listOf(manifest))
+            TargetMavenRepoReferencesCollector.fromTargets(targets)
         )
     }
 

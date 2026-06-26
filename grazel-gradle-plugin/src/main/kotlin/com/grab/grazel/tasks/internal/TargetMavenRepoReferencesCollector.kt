@@ -20,27 +20,9 @@ import com.grab.grazel.bazel.starlark.BazelDependency.MavenDependency
 import com.grab.grazel.migrate.BazelBuildTarget
 import com.grab.grazel.migrate.BazelPluginTarget
 import com.grab.grazel.migrate.BazelTarget
-import java.io.File
 
-internal object GeneratedBuildMavenRepos {
+internal object TargetMavenRepoReferencesCollector {
     private val tagLabelPattern = Regex("""^@([A-Za-z0-9_]+_maven|maven)//:""")
-
-    fun fromFiles(files: Iterable<File>): Set<String> {
-        val repos = sortedSetOf<String>()
-        files
-            .asSequence()
-            .filter(File::isFile)
-            .forEach { file ->
-                file.useLines { lines ->
-                    lines.forEach { line ->
-                        line.trim()
-                            .takeUnless(String::isBlank)
-                            ?.let(repos::add)
-                    }
-                }
-            }
-        return repos
-    }
 
     fun fromTargets(targets: Iterable<BazelTarget>): Set<String> {
         return targets
@@ -67,15 +49,6 @@ internal object GeneratedBuildMavenRepos {
                 ).flatten()
             }
             .toSortedSet()
-    }
-
-    fun writeManifest(file: File, repos: Set<String>) {
-        file.parentFile.mkdirs()
-        file.writeText(
-            repos
-                .toSortedSet()
-                .joinToString(separator = "\n", postfix = if (repos.isEmpty()) "" else "\n")
-        )
     }
 
     private fun String.mavenRepoFromTag(): String? =

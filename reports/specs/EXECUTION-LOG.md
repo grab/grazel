@@ -33,7 +33,7 @@ evidence in item-specific logs so context compaction can recover state quickly.
     labels inside `tags` arrays.
   - PAX working tree remains dirty from generated output; do not commit PAX changes.
 - Current detailed log:
-  - `reports/specs/execution-log/item3-consumer-cutover.md`
+  - `reports/specs/execution-log/item4-remove-feedback-paths.md`
 
 ## Item Logs
 
@@ -57,5 +57,4 @@ evidence in item-specific logs so context compaction can recover state quickly.
 - Start Item 4. Delete generated-output feedback paths in the spec order:
   manifest/task-graph decouple, pinner WORKSPACE-regex discovery, extractor-side tag
   derivation, then parity code last.
-- Create `reports/specs/execution-log/item4-remove-feedback-paths.md` when Item 4 starts.
 - Continue Items 4-6 in order.

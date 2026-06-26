@@ -90,7 +90,7 @@ constructor(
             .filter { subproject -> migrationChecker.get().canMigrate(subproject) }
             .flatMap { subproject ->
                 val targets = bazelFileBuilder.get().create(subproject).targets()
-                GeneratedBuildMavenRepos.fromTargets(targets).asSequence()
+                TargetMavenRepoReferencesCollector.fromTargets(targets).asSequence()
             }
             .toSortedSet()
 

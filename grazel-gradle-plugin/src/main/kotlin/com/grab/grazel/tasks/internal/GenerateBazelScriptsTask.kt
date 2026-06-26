@@ -79,16 +79,10 @@ constructor(
         set(layout.buildDirectory.file("grazel/$BUILD_BAZEL_IGNORE"))
     }
 
-    @get:OutputFile
-    val referencedMavenRepos: RegularFileProperty = objectFactory.fileProperty().apply {
-        set(layout.buildDirectory.file("grazel/referenced-maven-repos.txt"))
-    }
-
     @TaskAction
     fun action() {
         logger.logHeap("GeneratebazelScripts:${project.path}:start")
         val buildBazelFile = buildBazel.get().asFile
-        val referencedMavenReposFile = referencedMavenRepos.get().asFile
         val bazelIgnoreFile = project.file(BUILD_BAZEL_IGNORE)
 
         dependencyResolutionService.get()
@@ -103,14 +97,9 @@ constructor(
             val targets = projectBazelFileBuilder.targets()
             val content = projectBazelFileBuilder.build(targets)
             content.writeToFile(buildBazelFile)
-            GeneratedBuildMavenRepos.writeManifest(
-                file = referencedMavenReposFile,
-                repos = GeneratedBuildMavenRepos.fromTargets(targets)
-            )
             val generatedMessage = "Generated ${rootProject.relativePath(buildBazelFile)}"
             logger.quiet(generatedMessage.ansiGreen)
         } else {
-            GeneratedBuildMavenRepos.writeManifest(referencedMavenReposFile, emptySet())
             // If not migrateable but was already migrated, rename build.bazel to build.bazelignore if it exists
             bazelIgnoreFile.delete()
             if (project.isMigrated) {
