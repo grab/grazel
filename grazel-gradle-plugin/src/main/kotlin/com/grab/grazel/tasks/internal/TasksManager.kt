@@ -68,12 +68,45 @@ constructor(
             computeTask = computeWorkspaceDependenciesTask
         )
 
+        val computeWorkspacePlanTask = ComputeWorkspacePlanTask.register(
+            rootProject = rootProject,
+            workspacePlanService = grazelComponent.workspacePlanService()
+        ) {
+            workspaceDependencies.set(computeWorkspaceDependenciesTask.flatMap { it.workspaceDependencies })
+            configuredOverrideTargets.set(
+                grazelComponent.extension().rules.mavenInstall.overrideTargetLabels
+            )
+        }
+
         // Analyze variant compression opportunities in topological order
         val analyzeVariantCompressionTask = AnalyzeVariantCompressionTask.register(
             rootProject = rootProject,
             grazelComponent = grazelComponent
         ) {
             workspaceDependencies.set(computeWorkspaceDependenciesTask.flatMap { it.workspaceDependencies })
+            dependsOn(computeWorkspacePlanTask)
+        }
+
+        val collectTargetMavenRepoReferencesTask = CollectTargetMavenRepoReferencesTask.register(
+            rootProject = rootProject,
+            grazelComponent = grazelComponent
+        ) {
+            workspaceDependencies.set(computeWorkspaceDependenciesTask.flatMap { it.workspaceDependencies })
+            compressionResults.set(analyzeVariantCompressionTask.flatMap { it.compressionResultsFile })
+            dependencyResolutionService.set(grazelComponent.dependencyResolutionService())
+            dependsOn(analyzeVariantCompressionTask)
+        }
+
+        val finalizeWorkspacePlanTask = FinalizeWorkspacePlanTask.register(
+            rootProject = rootProject,
+            workspacePlanService = grazelComponent.workspacePlanService()
+        ) {
+            workspacePlan.set(computeWorkspacePlanTask.flatMap { it.workspacePlan })
+            compressionResults.set(analyzeVariantCompressionTask.flatMap { it.compressionResultsFile })
+            targetMavenRepoReferences.set(
+                collectTargetMavenRepoReferencesTask.flatMap { it.targetMavenRepoReferences }
+            )
+            dependsOn(collectTargetMavenRepoReferencesTask)
         }
 
         val dataBindingMetaDataTask = AndroidDatabindingMetaDataTask.register(
@@ -99,6 +132,7 @@ constructor(
                 dependencyResolutionService.set(grazelComponent.dependencyResolutionService())
                 workspaceDependencies.set(computeWorkspaceDependenciesTask.flatMap { it.workspaceDependencies })
                 variantCompressionResults.set(analyzeVariantCompressionTask.flatMap { it.compressionResultsFile })
+                dependsOn(finalizeWorkspacePlanTask)
             }
 
             // Post script generate task must run after project level tasks are generated
@@ -121,6 +155,7 @@ constructor(
                 }
             )
             dependsOn(analyzeVariantCompressionTask)
+            dependsOn(finalizeWorkspacePlanTask)
             dependsOn(projectGenerateBazelScriptsTasks.map { (_, generateTask) -> generateTask })
         }
 

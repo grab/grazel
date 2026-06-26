@@ -22,8 +22,8 @@ import com.grab.grazel.bazel.rules.MavenInstallArtifact.DetailedArtifact
 import com.grab.grazel.bazel.rules.MavenInstallArtifact.Exclusion.SimpleExclusion
 import com.grab.grazel.bazel.rules.MavenInstallArtifact.SimpleArtifact
 import com.grab.grazel.bazel.rules.MavenRepository.DefaultMavenRepository
-import com.grab.grazel.bazel.starlark.BazelDependency.MavenDependency
 import com.grab.grazel.gradle.RepositoryDataSource
+import com.grab.grazel.gradle.dependencies.calculateMavenInstallOverrideTargets
 import com.grab.grazel.gradle.dependencies.DefaultJetifierExclusions
 import com.grab.grazel.gradle.dependencies.model.ExcludeRule
 import com.grab.grazel.gradle.dependencies.model.ResolvedDependency
@@ -236,31 +236,11 @@ constructor(
     private fun calculateOverrideTargets(
         artifacts: List<ResolvedDependency>,
         owningMavenRepoName: String
-    ): Map<String, String> {
-        val artifactsShortIdMap = artifacts.groupBy { it.shortId }
-        val overridesFromExtension = mavenInstallExtension.overrideTargetLabels
-            .get()
-            .toList()
-            .filter { (shortId, _) -> shortId in artifactsShortIdMap }
-        val overridesFromArtifacts = artifacts
-            .asSequence()
-            .mapNotNull(ResolvedDependency::overrideTarget)
-            .map { it.artifactShortId to it.label.toString() }
-        return (overridesFromArtifacts + overridesFromExtension)
-            .filterNot { (shortId, label) -> label.isExactSelfOverride(shortId, owningMavenRepoName) }
-            .sortedBy { it.toString() }
-            .toMap()
-    }
-
-    private fun String.isExactSelfOverride(shortId: String, owningMavenRepoName: String): Boolean {
-        val (group, name) = shortId.split(":")
-        val ownLabel = MavenDependency(
-            repo = owningMavenRepoName,
-            group = group,
-            name = name
-        ).toString()
-        return this == ownLabel
-    }
+    ): Map<String, String> = calculateMavenInstallOverrideTargets(
+        artifacts = artifacts,
+        owningMavenRepoName = owningMavenRepoName,
+        configuredOverrideTargets = mavenInstallExtension.overrideTargetLabels.get()
+    )
 
     private fun toMavenInstallArtifact(
         dependency: ResolvedDependency,
