@@ -110,3 +110,109 @@ split by sub-step so new baselines can be traced to one cause.
 - Clean PAX Bazel output to restore disk headroom.
 - Start 5b provenance/variant-scoped artifact selection; do not mix it into the
   5a commit.
+
+## Step 5b - Variant-scoped root artifact provenance
+
+### Target
+
+- Stop selecting non-default Maven install root artifacts through a global
+  `shortId` winner.
+- Rehydrate reachable transitive artifacts from the current variant's resolved
+  artifact first, then default, then deterministic fallback for cross-bucket
+  carriers.
+- Preserve the existing global transitive-deps store for target tags; tag closure
+  still needs the direct-Maven transitive fallback and is not the repo-root
+  selection path.
+
+### 2026-06-26 14:55 SGT
+
+- Red test added in `WorkspacePlanBuilderTest`:
+  - default has `com.example:shared:2.0.0`;
+  - debug's resolved closure has `com.example:shared:1.0.0`;
+  - `debug_maven` must pin `1.0.0`, not the global shortId winner.
+- Red test failed as expected before production change.
+- Implemented local green:
+  - `MavenInstallRootArtifacts` now uses `VariantScopedArtifacts` instead of
+    `selectedArtifactByShortId` / `mergeSelected`.
+  - Removed version-based global shortId merge from repo root selection.
+  - Renamed identity predicates to resolved/provenance terms.
+- Verification:
+  - `WorkspacePlanBuilderTest` passed.
+  - `WorkspacePlanBuilderTest`, `MavenInstallArtifactsCalculatorTest`,
+    `AggregatedDependencyResolverTest`, and `ComputeWorkspaceDependenciesTest`
+    passed together.
+
+### Next
+
+- Run local generated-output gates for 5b.
+- Classify sample generated drift.
+- Run PAX migrate/build acceptance if local gates are clean or drift is
+  explained.
+
+### 2026-06-26 15:05 SGT
+
+- Local 5b follow-up:
+  - Found sample Bazel failure after first variant-scoped implementation:
+    `debug_maven` carried default-owned AndroidX roots without redirects, so
+    resource linking saw both `@maven` and `@debug_maven` copies.
+  - Added/updated tests so default-owned artifacts carried as non-default
+    Coursier roots must redirect Bazel labels back to `@maven`.
+  - Generalized the old databinding-only default-owner redirect to all
+    default-owned rehydrated roots. This preserves the artifact closure for
+    Coursier pinning while avoiding duplicate Bazel labels/resources.
+- Verification:
+  - Focused tests passed:
+    `WorkspacePlanBuilderTest`, `MavenInstallArtifactsCalculatorTest`,
+    `AggregatedDependencyResolverTest`, `ComputeWorkspaceDependenciesTest`.
+  - `git diff --check`, `reports/scripts/verify-default-task-graph.sh`, and
+    `reports/scripts/verify-sample-bucket-labels.sh` passed.
+  - `./gradlew verifyGrazelGoldenBaseline --console=plain --no-daemon`
+    regenerated output and failed only on expected generated drift.
+  - `bazelisk build //sample-android:sample-android-full-paid-debug` fails
+    locally with a missing crashlytics symlinked manifest when Bazel does not
+    download all outputs. Aquery shows the producer exists; running with
+    `--remote_download_outputs=all` passes. Treat this as a local Bazel output
+    materialization caveat, not a dependency graph failure.
+
+### Next
+
+- Run PAX 5b acceptance from the cleanly generated Grazel state:
+  `migrateToBazel`, `git diff --check`, tag-prefix audit, and debug APK +
+  android-test APK build.
+
+### 2026-06-26 15:59 SGT
+
+- PAX 5b acceptance passed after low-disk recovery.
+- Commands/results:
+  - `./gradlew migrateToBazel --no-daemon --console=plain --stacktrace`
+    passed in PAX in 11m15s.
+  - PAX `git diff --check` passed.
+  - PAX tag-prefix audit over changed `*.bazel` files returned `0`; generated
+    `tags` still use `@maven` labels, not bucket Maven repos.
+  - First PAX Bazel build attempt reached app resource extraction but failed
+    with `No space left on device`; this was an environment failure after disk
+    dropped below 1 GiB, not a generated-script correctness failure.
+  - Low-disk recovery: removed Gradle caches, removed PAX `bazel-cache`, then
+    ran `bazelisk clean --expunge` in PAX.
+  - Retry passed:
+    `./bazel.sh build //app:app-gps-pax-debug.apk //app:app-gps-pax-debug-android-test.apk --verbose_failures`
+    completed successfully in 2169.372s.
+  - PAX post-build `git diff --check` passed.
+  - PAX post-build tag-prefix audit returned `0`.
+  - Grazel `git diff --check` passed.
+- Generated-output shape:
+  - PAX workspace/json drift is still large, but this slice removes the global
+    shortId root-artifact winner and keeps default-owned transitive roots
+    redirected to `@maven` while preserving Coursier pinning roots.
+  - Remaining size/dedupe work should be treated as a later bucket/workspace
+    optimization item, not mixed into this verified correctness slice.
+- Resource note:
+  - The successful retry left PAX disk at ~4.8 GiB free.
+  - `bazelisk clean --expunge` restored disk to ~27 GiB free.
+  - PAX `bazel-cache` is currently ~13 GiB and was left in place after expunge
+    because disk was no longer critical and immediate reruns may benefit.
+
+### Next
+
+- Review and commit the verified 5b Grazel changes without pushing.
+- Then continue with the next optimization item from the specs.

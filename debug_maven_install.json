@@ -35,7 +35,7 @@
     "androidx.test.espresso:espresso-contrib": 1406236047,
     "androidx.tracing:tracing": 1862641990,
     "androidx.versionedparcelable:versionedparcelable": -1998161528,
-    "com.google.guava:listenablefuture": -66810587,
+    "com.google.guava:listenablefuture": 50807205,
     "org.jetbrains.kotlin:kotlin-stdlib": -1472865074,
     "org.jetbrains.kotlin:kotlin-stdlib-common": -1299075776,
     "org.jetbrains.kotlin:kotlin-stdlib-jdk7": -686042634,
@@ -54,10 +54,10 @@
     "androidx.arch.core:core-runtime:aar": -1799110727,
     "androidx.collection:collection": 1414517065,
     "androidx.collection:collection-jvm": -335692051,
-    "androidx.concurrent:concurrent-futures": 1547594612,
-    "androidx.core:core-ktx:aar": -1258789472,
-    "androidx.core:core:aar": 82002951,
-    "androidx.customview:customview:aar": 1540459470,
+    "androidx.concurrent:concurrent-futures": 503638589,
+    "androidx.core:core-ktx:aar": 663529231,
+    "androidx.core:core:aar": -189481424,
+    "androidx.customview:customview:aar": 819616447,
     "androidx.interpolator:interpolator:aar": 631110265,
     "androidx.lifecycle:lifecycle-common": -479492550,
     "androidx.lifecycle:lifecycle-common-jvm": 1291267347,
@@ -65,22 +65,22 @@
     "androidx.lifecycle:lifecycle-livedata-core:aar": 713393549,
     "androidx.lifecycle:lifecycle-livedata-ktx:aar": 451547039,
     "androidx.lifecycle:lifecycle-livedata:aar": -1717666553,
-    "androidx.lifecycle:lifecycle-runtime-android:aar": 1591830108,
-    "androidx.lifecycle:lifecycle-runtime-ktx-android:aar": 1795484285,
-    "androidx.lifecycle:lifecycle-runtime-ktx:aar": -984817988,
-    "androidx.lifecycle:lifecycle-runtime:aar": 608313209,
+    "androidx.lifecycle:lifecycle-runtime-android:aar": -1440757369,
+    "androidx.lifecycle:lifecycle-runtime-ktx-android:aar": 550606777,
+    "androidx.lifecycle:lifecycle-runtime-ktx:aar": 430889416,
+    "androidx.lifecycle:lifecycle-runtime:aar": 1741352698,
     "androidx.lifecycle:lifecycle-viewmodel-android:aar": -2071057009,
     "androidx.lifecycle:lifecycle-viewmodel-ktx:aar": 1461347346,
     "androidx.lifecycle:lifecycle-viewmodel:aar": 605960027,
     "androidx.paging:paging-common": -333624354,
     "androidx.paging:paging-common-ktx": -514369570,
-    "androidx.paging:paging-runtime:aar": 1763892787,
-    "androidx.profileinstaller:profileinstaller:aar": 2012821717,
-    "androidx.recyclerview:recyclerview:aar": 165327666,
+    "androidx.paging:paging-runtime:aar": -1096273316,
+    "androidx.profileinstaller:profileinstaller:aar": 1789113815,
+    "androidx.recyclerview:recyclerview:aar": 1531820558,
     "androidx.startup:startup-runtime:aar": 834529699,
     "androidx.tracing:tracing:aar": 297483845,
     "androidx.versionedparcelable:versionedparcelable:aar": 1395374301,
-    "com.google.guava:listenablefuture": 1588902908,
+    "com.google.guava:listenablefuture": -534320814,
     "org.jetbrains.kotlin:kotlin-stdlib": -1265738693,
     "org.jetbrains.kotlin:kotlin-stdlib-common": 114607868,
     "org.jetbrains.kotlin:kotlin-stdlib-jdk7": 857728597,
@@ -293,9 +293,9 @@
     },
     "com.google.guava:listenablefuture": {
       "shasums": {
-        "jar": "b372a037d4230aa57fbeffdef30fd6123f9c0c2db85d0aced00c91b974f33f99"
+        "jar": "e4ad7607e5c0477c6f890ef26a49cb8d1bb4dffb650bab4502afee64644e3069"
       },
-      "version": "9999.0-empty-to-avoid-conflict-with-guava"
+      "version": "1.0"
     },
     "org.jetbrains.kotlin:kotlin-stdlib": {
       "shasums": {
@@ -586,6 +586,9 @@
     "androidx.paging:paging-common": [
       "androidx.paging",
       "androidx.paging.multicast"
+    ],
+    "com.google.guava:listenablefuture": [
+      "com.google.common.util.concurrent"
     ],
     "org.jetbrains.kotlin:kotlin-stdlib": [
       "kotlin",

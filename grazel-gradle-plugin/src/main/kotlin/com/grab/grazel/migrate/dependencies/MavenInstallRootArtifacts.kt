@@ -4,14 +4,13 @@ import com.grab.grazel.gradle.dependencies.mavenOverrideTarget
 import com.grab.grazel.gradle.dependencies.model.OverrideTarget
 import com.grab.grazel.gradle.dependencies.model.ResolvedDependency
 import com.grab.grazel.gradle.dependencies.model.WorkspaceDependencies
-import com.grab.grazel.gradle.dependencies.model.merge
-import com.grab.grazel.gradle.dependencies.model.versionInfo
+import com.grab.grazel.gradle.dependencies.model.hasSameResolvedArtifactIdentityAs
 import com.grab.grazel.gradle.variant.DEFAULT_VARIANT
 import com.grab.grazel.gradle.variant.LINT_VARIANT
 import java.util.ArrayDeque
 
 internal fun WorkspaceDependencies.mavenInstallRootArtifactsByVariant(): Map<String, List<ResolvedDependency>> {
-    val workspaceArtifactByShortId = variantDeps.selectedArtifactByShortId()
+    val workspaceArtifacts = variantDeps.toVariantScopedArtifacts()
     return variantDeps.mapValues { (variantName, artifacts) ->
         val scopedTransitiveClasspath = variantTransitiveClasspath[variantName]
         val fallbackTransitiveClasspath = when {
@@ -21,7 +20,7 @@ internal fun WorkspaceDependencies.mavenInstallRootArtifactsByVariant(): Map<Str
         }
         artifacts.mavenInstallRootArtifacts(
             variantName = variantName,
-            workspaceArtifactByShortId = workspaceArtifactByShortId,
+            workspaceArtifacts = workspaceArtifacts,
             transitiveClasspath = scopedTransitiveClasspath ?: when (variantName) {
                 DEFAULT_VARIANT -> transitiveClasspath
                 else -> emptyMap()
@@ -43,7 +42,7 @@ internal fun List<ResolvedDependency>.mavenInstallRootArtifacts(
 ): List<ResolvedDependency> {
     return mavenInstallRootArtifacts(
         variantName = variantName,
-        workspaceArtifactByShortId = workspaceArtifactsByVariant.selectedArtifactByShortId(),
+        workspaceArtifacts = workspaceArtifactsByVariant.toVariantScopedArtifacts(),
         transitiveClasspath = transitiveClasspath,
         workspaceTransitiveClasspath = workspaceTransitiveClasspath,
         promotedTransitiveClasspath = workspaceTransitiveClasspath
@@ -52,7 +51,7 @@ internal fun List<ResolvedDependency>.mavenInstallRootArtifacts(
 
 private fun List<ResolvedDependency>.mavenInstallRootArtifacts(
     variantName: String,
-    workspaceArtifactByShortId: Map<String, OwnedResolvedDependency>,
+    workspaceArtifacts: VariantScopedArtifacts,
     transitiveClasspath: Map<String, Set<String>> = emptyMap(),
     workspaceTransitiveClasspath: Map<String, Set<String>> = emptyMap(),
     promotedTransitiveClasspath: Map<String, Set<String>> = emptyMap(),
@@ -73,7 +72,7 @@ private fun List<ResolvedDependency>.mavenInstallRootArtifacts(
                 rootShortIds = rootShortIds,
                 workspaceTransitiveClasspath = promotedTransitiveClasspath
             ) +
-            rootArtifacts.reachableDependencyShortIds(workspaceArtifactByShortId)
+            rootArtifacts.reachableDependencyShortIds(variantName, workspaceArtifacts)
         )
         .filterNot(rootShortIds::contains)
         .toSortedSet()
@@ -84,7 +83,7 @@ private fun List<ResolvedDependency>.mavenInstallRootArtifacts(
     }
     return (rootArtifacts.asSequence() + reachableShortIds
         .asSequence()
-        .mapNotNull(workspaceArtifactByShortId::get)
+        .mapNotNull { shortId -> workspaceArtifacts.ownerFor(variantName, shortId) }
         .map(transform))
         .distinctBy(ResolvedDependency::shortId)
         .sortedBy(ResolvedDependency::id)
@@ -111,7 +110,8 @@ private fun Map<String, Set<String>>.reachablePromotedRootTransitiveShortIds(
     .toSet()
 
 private fun List<ResolvedDependency>.reachableDependencyShortIds(
-    artifactByShortId: Map<String, OwnedResolvedDependency>
+    variantName: String,
+    workspaceArtifacts: VariantScopedArtifacts
 ): Set<String> {
     val queue = ArrayDeque<String>()
     val visited = sortedSetOf<String>()
@@ -125,7 +125,7 @@ private fun List<ResolvedDependency>.reachableDependencyShortIds(
         val shortId = queue.removeFirst()
         if (!visited.add(shortId)) continue
 
-        artifactByShortId[shortId]
+        workspaceArtifacts.ownerFor(variantName, shortId)
             ?.dependency
             ?.dependencies
             .orEmpty()
@@ -145,35 +145,38 @@ private data class OwnedResolvedDependency(
     val dependency: ResolvedDependency
 )
 
-private fun Map<String, List<ResolvedDependency>>.selectedArtifactByShortId(): Map<String, OwnedResolvedDependency> =
-    entries
-        .asSequence()
-        .flatMap { (variantName, dependencies) ->
-            dependencies.asSequence().map { dependency ->
-                OwnedResolvedDependency(variantName, dependency)
-            }
+private class VariantScopedArtifacts(
+    private val artifactsByVariant: Map<String, Map<String, OwnedResolvedDependency>>
+) {
+    fun ownerFor(variantName: String, shortId: String): OwnedResolvedDependency? {
+        val currentOwner = artifactsByVariant[variantName]?.get(shortId)
+        val defaultOwner = artifactsByVariant[DEFAULT_VARIANT]?.get(shortId)
+        if (
+            currentOwner != null &&
+            defaultOwner != null &&
+            currentOwner.dependency.hasSameResolvedArtifactIdentityAs(defaultOwner.dependency)
+        ) {
+            return defaultOwner
         }
-        .groupBy { ownedDependency -> ownedDependency.dependency.shortId }
-        .mapValues { (_, artifacts) ->
-            artifacts.reduce { selected, candidate ->
-                selected.mergeSelected(candidate)
-            }
-        }
-
-private fun OwnedResolvedDependency.mergeSelected(
-    other: OwnedResolvedDependency
-): OwnedResolvedDependency {
-    val winner = when {
-        dependency.versionInfo > other.dependency.versionInfo -> this
-        other.dependency.versionInfo > dependency.versionInfo -> other
-        variantName == DEFAULT_VARIANT -> this
-        other.variantName == DEFAULT_VARIANT -> other
-        variantName <= other.variantName -> this
-        else -> other
+        return currentOwner
+            ?: defaultOwner
+            ?: artifactsByVariant
+                .toSortedMap()
+                .values
+                .asSequence()
+                .mapNotNull { artifacts -> artifacts[shortId] }
+                .firstOrNull()
     }
-    val loser = if (winner === this) other else this
-    return winner.copy(dependency = winner.dependency.merge(loser.dependency))
 }
+
+private fun Map<String, List<ResolvedDependency>>.toVariantScopedArtifacts(): VariantScopedArtifacts =
+    VariantScopedArtifacts(
+        mapValues { (variantName, dependencies) ->
+            dependencies
+                .map { dependency -> OwnedResolvedDependency(variantName, dependency) }
+                .associateBy { ownedDependency -> ownedDependency.dependency.shortId }
+        }
+    )
 
 private fun OwnedResolvedDependency.asOwnerOverride(): ResolvedDependency {
     return dependency.copy(
@@ -186,8 +189,5 @@ private fun OwnedResolvedDependency.asOwnerOverride(): ResolvedDependency {
 }
 
 private fun ResolvedDependency.defaultOwnerOverrideTarget(): OverrideTarget? {
-    return when {
-        shortId.startsWith("androidx.databinding:") -> mavenOverrideTarget(shortId, DEFAULT_VARIANT)
-        else -> null
-    }
+    return mavenOverrideTarget(shortId, DEFAULT_VARIANT)
 }

@@ -686,7 +686,7 @@ class MavenInstallArtifactsCalculatorTest {
     }
 
     @Test
-    fun `variant maven install roots same version default owned selected closure without synthetic default overrides`() {
+    fun `variant maven install redirects same version default owned selected closure`() {
         setup()
 
         val repository = "MavenRepo"
@@ -758,6 +758,9 @@ class MavenInstallArtifactsCalculatorTest {
         )
         assertEquals(
             mapOf(
+                "androidx.lifecycle:lifecycle-common" to "@maven//:androidx_lifecycle_lifecycle_common",
+                "androidx.lifecycle:lifecycle-common-java8" to
+                    "@maven//:androidx_lifecycle_lifecycle_common_java8",
                 "androidx.lifecycle:lifecycle-common-jvm" to "@maven//:androidx_lifecycle_lifecycle_common_jvm"
             ),
             debugAndroidTestRepo.overrideTargets
@@ -765,7 +768,7 @@ class MavenInstallArtifactsCalculatorTest {
     }
 
     @Test
-    fun `variant maven install roots default closure for existing bucket artifacts without synthetic default overrides`() {
+    fun `variant maven install redirects default closure for existing bucket artifacts`() {
         setup()
 
         val repository = "MavenRepo"
@@ -844,6 +847,9 @@ class MavenInstallArtifactsCalculatorTest {
         )
         assertEquals(
             mapOf(
+                "androidx.lifecycle:lifecycle-common" to "@maven//:androidx_lifecycle_lifecycle_common",
+                "androidx.lifecycle:lifecycle-common-java8" to
+                    "@maven//:androidx_lifecycle_lifecycle_common_java8",
                 "androidx.lifecycle:lifecycle-runtime" to "@maven//:androidx_lifecycle_lifecycle_runtime"
             ),
             debugAndroidTestRepo.overrideTargets
@@ -900,7 +906,7 @@ class MavenInstallArtifactsCalculatorTest {
     }
 
     @Test
-    fun `variant maven install roots same resolved default owned transitive without synthetic default override`() {
+    fun `variant maven install redirects same resolved default owned transitive`() {
         setup()
 
         val repository = "MavenRepo"
@@ -940,7 +946,7 @@ class MavenInstallArtifactsCalculatorTest {
             androidTestRepo.artifacts.map { it.id }.toSet()
         )
         assertEquals(
-            emptyMap<String, String>(),
+            mapOf("com.example:shared" to "@maven//:com_example_shared"),
             androidTestRepo.overrideTargets.filterKeys { it == "com.example:shared" }
         )
         assertFalse(
@@ -995,7 +1001,7 @@ class MavenInstallArtifactsCalculatorTest {
             androidTestRepo.artifacts.map { it.id }.toSet()
         )
         assertEquals(
-            emptyMap<String, String>(),
+            mapOf("com.example:reachable-shared" to "@maven//:com_example_reachable_shared"),
             androidTestRepo.overrideTargets
         )
     }
@@ -1039,7 +1045,7 @@ class MavenInstallArtifactsCalculatorTest {
             debugRepo.artifacts.map { it.id }.toSet()
         )
         assertEquals(
-            emptyMap<String, String>(),
+            mapOf("androidx.test:monitor" to "@maven//:androidx_test_monitor"),
             debugRepo.overrideTargets.filterKeys { it == "androidx.test:monitor" }
         )
         assertFalse(
@@ -1094,7 +1100,7 @@ class MavenInstallArtifactsCalculatorTest {
             debugRepo.artifacts.map { it.id }.toSet()
         )
         assertEquals(
-            emptyMap<String, String>(),
+            mapOf("androidx.test:monitor" to "@maven//:androidx_test_monitor"),
             debugRepo.overrideTargets.filterKeys { it == "androidx.test:monitor" }
         )
         assertFalse(
@@ -1231,7 +1237,7 @@ class MavenInstallArtifactsCalculatorTest {
             result.single { it.name == "debug_maven" }.artifacts.map { it.id }.toSet()
         )
         assertEquals(
-            emptyMap<String, String>(),
+            mapOf("androidx.test:monitor" to "@maven//:androidx_test_monitor"),
             result.single { it.name == "debug_maven" }
                 .overrideTargets
                 .filterKeys { it == "androidx.test:monitor" }
@@ -1328,7 +1334,7 @@ class MavenInstallArtifactsCalculatorTest {
     }
 
     @Test
-    fun `variant maven install uses default closure artifacts without synthetic default overrides`() {
+    fun `variant maven install redirects default closure artifacts`() {
         setup()
 
         val repository = "MavenRepo"
@@ -1365,7 +1371,10 @@ class MavenInstallArtifactsCalculatorTest {
             ),
             debugRepo.artifacts.map { it.id }.toSet()
         )
-        assertEquals(emptyMap<String, String>(), debugRepo.overrideTargets)
+        assertEquals(
+            mapOf("com.example:shared-transitive" to "@maven//:com_example_shared_transitive"),
+            debugRepo.overrideTargets
+        )
     }
 
     @Test

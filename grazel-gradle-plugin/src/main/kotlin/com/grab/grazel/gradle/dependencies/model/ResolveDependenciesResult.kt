@@ -124,7 +124,7 @@ internal fun Set<ExcludeRule>.intersectWith(other: Set<ExcludeRule>): Set<Exclud
         else -> intersect(other).toSortedSet(compareBy(ExcludeRule::toString))
     }
 
-internal fun ResolvedDependency.hasSameEffectiveIdentityAs(other: ResolvedDependency): Boolean {
+internal fun ResolvedDependency.hasSameResolvedArtifactIdentityAs(other: ResolvedDependency): Boolean {
     return shortId == other.shortId &&
         version == other.version &&
         dependencies == other.dependencies &&
@@ -134,7 +134,7 @@ internal fun ResolvedDependency.hasSameEffectiveIdentityAs(other: ResolvedDepend
         jetifierSource == other.jetifierSource
 }
 
-internal fun ResolvedDependency.hasSameBucketOwnerAs(other: ResolvedDependency): Boolean {
+internal fun ResolvedDependency.hasSameResolvedOwnerIdentityAs(other: ResolvedDependency): Boolean {
     return shortId == other.shortId &&
         version == other.version &&
         excludeRules == other.excludeRules &&

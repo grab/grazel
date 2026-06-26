@@ -22,8 +22,8 @@ import com.grab.grazel.gradle.dependencies.model.ResolveDependenciesResult
 import com.grab.grazel.gradle.dependencies.model.ResolveDependenciesResult.Companion.Scope.COMPILE
 import com.grab.grazel.gradle.dependencies.model.ResolveDependenciesResult.Companion.Scope.KSP
 import com.grab.grazel.gradle.dependencies.model.ResolvedDependency
-import com.grab.grazel.gradle.dependencies.model.hasSameBucketOwnerAs
-import com.grab.grazel.gradle.dependencies.model.hasSameEffectiveIdentityAs
+import com.grab.grazel.gradle.dependencies.model.hasSameResolvedArtifactIdentityAs
+import com.grab.grazel.gradle.dependencies.model.hasSameResolvedOwnerIdentityAs
 import com.grab.grazel.gradle.dependencies.model.intersectWith
 import com.grab.grazel.gradle.dependencies.model.versionInfo
 import com.grab.grazel.gradle.variant.ANDROID_TEST_VARIANT
@@ -1049,7 +1049,7 @@ private fun Map<String, ResolvedDependency>.withoutDependenciesCoveredBy(
             .orEmpty()
             .filter { covered -> covered.canCover(dependency) }
         val exactCoveredDependency = coveringDependencies.firstOrNull { covered ->
-            covered.dependency.hasSameEffectiveIdentityAs(dependency)
+            covered.dependency.hasSameResolvedArtifactIdentityAs(dependency)
         }
         val supersetClosureCoveredDependency = coveringDependencies.firstOrNull { covered ->
             covered.rootsSupersetClosureOf(dependency)
@@ -1073,7 +1073,7 @@ private fun Map<String, ResolvedDependency>.withoutDependenciesCoveredBy(
 }
 
 private fun CoveredDependency.canCover(dependency: ResolvedDependency): Boolean {
-    return this.dependency.hasSameBucketOwnerAs(dependency) &&
+    return this.dependency.hasSameResolvedOwnerIdentityAs(dependency) &&
         (!dependency.direct || this.dependency.direct)
 }
 
@@ -1092,10 +1092,10 @@ internal fun Map<String, ResolvedDependency>.withoutDependenciesOwnedByNonDefaul
         val hasSameNonDefaultOwner = nonDefaultByShortId[dependency.shortId]
             .orEmpty()
             .any { nonDefaultDependency ->
-                nonDefaultDependency.hasSameBucketOwnerAs(dependency)
+                nonDefaultDependency.hasSameResolvedOwnerIdentityAs(dependency)
             }
         !hasSameNonDefaultOwner ||
-            hierarchyDefaultDeps[dependency.shortId]?.hasSameBucketOwnerAs(dependency) == true
+            hierarchyDefaultDeps[dependency.shortId]?.hasSameResolvedOwnerIdentityAs(dependency) == true
     }
 }
 
@@ -1110,7 +1110,7 @@ internal fun intersectByBucketOwner(
     val firstClosure = closureList.first()
     return intersectionIds.mapNotNull { id ->
         val candidate = firstClosure[id]!!
-        if (closureList.all { closure -> closure[id]?.hasSameBucketOwnerAs(candidate) == true }) {
+        if (closureList.all { closure -> closure[id]?.hasSameResolvedOwnerIdentityAs(candidate) == true }) {
             id to candidate
         } else {
             null

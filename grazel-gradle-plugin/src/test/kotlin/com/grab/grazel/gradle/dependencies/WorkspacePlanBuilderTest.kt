@@ -55,7 +55,10 @@ class WorkspacePlanBuilderTest {
             listOf("com.example:debug-root:1.0.0", "com.example:shared-transitive:2.0.0"),
             debugRepo.pinInputs.map(ResolvedDependency::id)
         )
-        assertEquals(emptyMap<String, String>(), debugRepo.overrideTargets)
+        assertEquals(
+            mapOf("com.example:shared-transitive" to "@maven//:com_example_shared_transitive"),
+            debugRepo.overrideTargets
+        )
         assertEquals(
             listOf("com.example:debug-root:1.0.0"),
             debugRepo.variantArtifacts.getValue("debug").map(ResolvedDependency::id)
@@ -87,6 +90,72 @@ class WorkspacePlanBuilderTest {
         assertEquals(
             mapOf("com.example:debug-carrier" to "@debug_maven//:com_example_debug_carrier"),
             freeRepo.overrideTargets
+        )
+    }
+
+    @Test
+    fun `repo plan rehydrates transitive artifacts from owning variant instead of global short id winner`() {
+        val defaultShared = dependency("com.example:shared:2.0.0")
+            .copy(direct = false)
+        val debugRoot = dependency("com.example:debug-root:1.0.0")
+        val debugShared = dependency("com.example:shared:1.0.0")
+            .copy(direct = false)
+        val workspaceDependencies = WorkspaceDependencies(
+            variantDeps = mapOf(
+                DEFAULT_VARIANT to listOf(defaultShared),
+                "debug" to listOf(debugRoot, debugShared)
+            ),
+            variantTransitiveClasspath = mapOf(
+                "debug" to mapOf(debugRoot.shortId to setOf(debugShared.shortId))
+            )
+        )
+
+        val plan = WorkspacePlanBuilder().build(workspaceDependencies)
+
+        val debugRepo = plan.repoPlan.getValue("debug_maven")
+        assertEquals(
+            listOf("com.example:debug-root:1.0.0", "com.example:shared:1.0.0"),
+            debugRepo.rootArtifacts.map(ResolvedDependency::id)
+        )
+        assertEquals(emptyMap<String, String>(), debugRepo.overrideTargets)
+    }
+
+    @Test
+    fun `repo plan redirects identical default-owned transitive roots to default repo`() {
+        val defaultShared = dependency("com.example:shared:1.0.0")
+            .copy(direct = false)
+        val debugRoot = dependency("com.example:debug-root:1.0.0")
+        val debugShared = dependency("com.example:shared:1.0.0")
+            .copy(direct = false)
+        val workspaceDependencies = WorkspaceDependencies(
+            variantDeps = mapOf(
+                DEFAULT_VARIANT to listOf(defaultShared),
+                "debug" to listOf(debugRoot, debugShared)
+            ),
+            variantTransitiveClasspath = mapOf(
+                "debug" to mapOf(debugRoot.shortId to setOf(debugShared.shortId))
+            )
+        )
+
+        val plan = WorkspacePlanBuilder().build(workspaceDependencies)
+
+        val debugRepo = plan.repoPlan.getValue("debug_maven")
+        val debugSharedRoot = debugRepo.rootArtifacts
+            .single { artifact -> artifact.shortId == "com.example:shared" }
+        assertEquals(
+            "Default-owned artifacts carried for Coursier should redirect Bazel labels to @maven",
+            OverrideTarget(
+                artifactShortId = "com.example:shared",
+                label = MavenDependency(
+                    group = "com.example",
+                    name = "shared"
+                )
+            ),
+            debugSharedRoot.overrideTarget
+        )
+        assertEquals(
+            mapOf("com.example:shared" to "@maven//:com_example_shared"),
+            debugRepo.overrideTargets
         )
     }
 
