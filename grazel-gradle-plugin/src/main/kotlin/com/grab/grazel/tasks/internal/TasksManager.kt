@@ -191,7 +191,6 @@ constructor(
             workspaceFile.set(rootFormattingTasks.workspace.flatMap { it.outputFile })
             workspacePlan.set(computeWorkspacePlanTask.flatMap { it.workspacePlan })
             workspaceRenderPlan.set(finalizeWorkspacePlanTask.flatMap { it.workspaceRenderPlan })
-            workspaceDependencies.set(computeWorkspaceDependenciesTask.flatMap { it.workspaceDependencies })
         }
 
         // Project level Bazel file formatting tasks

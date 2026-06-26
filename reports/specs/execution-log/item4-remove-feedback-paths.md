@@ -140,3 +140,45 @@ This log tracks deletion of old feedback paths after Item 3 moved consumers onto
   passed in 267.777s with 117 total actions.
 - Resource notes: disk was about 14 GiB before and after this gate. No cache
   cleanup was run.
+
+## Step 4 - Parity assertion cleanup
+
+### Target
+
+- Remove the temporary `grazel.internal.planParity` property and all compute-both
+  pinner parity code.
+- Keep normal pinner behavior sourced from `WorkspacePlan` and `WorkspaceRenderPlan`.
+- Remove the now-unneeded `workspaceDependencies` input from `pinMavenArtifacts`.
+
+### Change
+
+- Deleted `PinMavenArtifactsTask.planParity` and the optional
+  `workspaceDependencies` input.
+- Removed pinner legacy `WorkspaceDependencies` comparison and its helper/tests.
+- Removed `pinMavenArtifacts` task wiring to `computeWorkspaceDependencies`.
+- Updated `verify-default-task-graph.sh` to run without the parity flag.
+
+### Verification
+
+- Focused pinner tests passed:
+  `./gradlew :grazel-gradle-plugin:test --tests "com.grab.grazel.migrate.dependencies.DefaultArtifactPinnerTest" --console=plain`.
+- Live-code structural search found no remaining `planParity`,
+  `grazel.internal.planParity`, `assertPinnableRepoParity`, or
+  `legacyWorkspaceDependencies` references under main/test code or scripts.
+- `git diff --check`, `reports/scripts/verify-default-task-graph.sh`, and
+  `reports/scripts/verify-sample-bucket-labels.sh` passed.
+- `./gradlew verifyGrazelGoldenBaseline --console=plain` passed in 17s with
+  clean generated-file diff.
+
+### PAX verification
+
+- `./gradlew migrateToBazel --no-daemon --console=plain --stacktrace` passed in
+  10m57s. `pinMavenArtifacts` used plan/render-plan inputs and skipped pinning
+  as up-to-date.
+- `git diff --check` passed in `/Users/arun.sampathkumar/work/pax-android`.
+- Generated tag-prefix audit found zero bucket Maven labels inside `tags`
+  arrays.
+- `./bazel.sh build //app:app-gps-pax-debug.apk //app:app-gps-pax-debug-android-test.apk --verbose_failures`
+  passed in 256.374s with 1 total action.
+- Resource notes: disk was about 12 GiB during the PAX gate. No cache cleanup was
+  run; the Bazel server was active during the long quiet period.

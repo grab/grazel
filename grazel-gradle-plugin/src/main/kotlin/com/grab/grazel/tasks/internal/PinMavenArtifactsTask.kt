@@ -18,7 +18,6 @@ package com.grab.grazel.tasks.internal
 
 import com.grab.grazel.di.GradleServices
 import com.grab.grazel.di.GrazelComponent
-import com.grab.grazel.gradle.dependencies.model.WorkspaceDependencies
 import com.grab.grazel.gradle.dependencies.model.WorkspacePlan
 import com.grab.grazel.gradle.dependencies.model.WorkspaceRenderPlan
 import com.grab.grazel.migrate.dependencies.ArtifactPinner
@@ -27,15 +26,11 @@ import dagger.Lazy
 import org.gradle.api.DefaultTask
 import org.gradle.api.Project
 import org.gradle.api.file.RegularFileProperty
-import org.gradle.api.provider.Property
-import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.InputFile
-import org.gradle.api.tasks.Optional
 import org.gradle.api.tasks.PathSensitive
 import org.gradle.api.tasks.PathSensitivity
 import org.gradle.api.tasks.TaskAction
 import org.gradle.api.tasks.UntrackedTask
-import org.gradle.kotlin.dsl.property
 import org.gradle.kotlin.dsl.register
 import javax.inject.Inject
 
@@ -64,29 +59,14 @@ constructor(
     @PathSensitive(PathSensitivity.RELATIVE)
     val workspaceRenderPlan: RegularFileProperty = gradleServices.objectFactory.fileProperty()
 
-    @get:InputFile
-    @get:Optional
-    @PathSensitive(PathSensitivity.RELATIVE)
-    val workspaceDependencies: RegularFileProperty = gradleServices.objectFactory.fileProperty()
-
-    @get:Input
-    val planParity: Property<Boolean> = gradleServices.objectFactory.property()
-
     @TaskAction
     fun action() {
-        val assertPlanParity = planParity.getOrElse(false)
         artifactPinner.get().pinArtifacts(
             workspaceFile = workspaceFile.get().asFile,
             workspacePlan = fromJson<WorkspacePlan>(workspacePlan.get()),
             workspaceRenderPlan = fromJson<WorkspaceRenderPlan>(workspaceRenderPlan.get()),
             gradleServices = gradleServices,
             logger = logger,
-            legacyWorkspaceDependencies = if (assertPlanParity) {
-                fromJson<WorkspaceDependencies>(workspaceDependencies.get())
-            } else {
-                null
-            },
-            assertPlanParity = assertPlanParity
         )
     }
 
@@ -103,11 +83,6 @@ constructor(
             GradleServices.from(rootProject)
         ).apply {
             configure {
-                planParity.convention(
-                    rootProject.providers.gradleProperty("grazel.internal.planParity")
-                        .map { value -> value.toBoolean() }
-                        .orElse(false)
-                )
                 configureTask()
             }
         }

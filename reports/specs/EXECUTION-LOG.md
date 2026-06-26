@@ -5,7 +5,7 @@ evidence in item-specific logs so context compaction can recover state quickly.
 
 ## Active State
 
-- Active item: Item 4 - Remove Generated-Output Feedback Paths.
+- Active item: Item 5 - Provenance and exclude correctness.
 - Item 1 baseline/safety-net checkpoint commit: `368a21f`
   (`Record PAX baseline safety gate`).
 - Item 2 structured-planning checkpoint commit: `6393de1`
@@ -16,21 +16,29 @@ evidence in item-specific logs so context compaction can recover state quickly.
   (`Cut root generation over to workspace render plan`).
 - Item 3 Step 3 tag-producer cutover checkpoint commit: `8e22c01`
   (`Move target tag planning into workspace plan`).
+- Item 4 Step 1 manifest/task-graph decouple checkpoint commit: `e00d404`
+  (`Remove generated Maven repo manifests`).
+- Item 4 Step 2 pinner regex-discovery deletion checkpoint commit: `a70de87`
+  (`Remove pinner workspace repo discovery`).
+- Item 4 Step 3 extractor fallback deletion checkpoint commit: `40c6bcd`
+  (`Remove extractor Maven tag fallbacks`).
+- Item 4 Step 4 parity cleanup checkpoint commit: `HEAD`
+  (`Remove workspace plan parity flag`).
 - Latest passed local gate:
-  - Focused plan/task/collector/extractor tests for Item 3 Step 3.
+  - Focused pinner tests for Item 4 Step 4.
   - `reports/scripts/verify-default-task-graph.sh`
   - `reports/scripts/verify-sample-bucket-labels.sh`
-  - `./gradlew verifyGrazelGoldenBaseline -Pgrazel.internal.planParity=true --console=plain`
+  - `./gradlew verifyGrazelGoldenBaseline --console=plain`
   - Grazel `git diff --check`
+  - Structural search found no live parity references in main/test code or scripts.
   - Result: all passed; generated sample diff stayed clean.
 - Latest passed PAX gate:
-  - `./gradlew migrateToBazel -Pgrazel.internal.planParity=true --no-daemon --console=plain --stacktrace`
-  - Result: passed in about 11m01s.
+  - `./gradlew migrateToBazel --no-daemon --console=plain --stacktrace`
+  - Result: passed in 10m57s.
   - `./bazel.sh build //app:app-gps-pax-debug.apk //app:app-gps-pax-debug-android-test.apk --verbose_failures`
-  - Result: passed in about 5m00s with 41 actions after cache checking.
+  - Result: passed in 256.374s with 1 total action after cache checking.
   - PAX `git diff --check`: passed.
-  - Tag-prefix audit: scanned 2208 changed Bazel files and found zero bucket Maven
-    labels inside `tags` arrays.
+  - Tag-prefix audit: found zero bucket Maven labels inside `tags` arrays.
   - PAX working tree remains dirty from generated output; do not commit PAX changes.
 - Current detailed log:
   - `reports/specs/execution-log/item4-remove-feedback-paths.md`
@@ -54,7 +62,6 @@ evidence in item-specific logs so context compaction can recover state quickly.
 
 ## Current Remaining Work
 
-- Start Item 4. Delete generated-output feedback paths in the spec order:
-  manifest/task-graph decouple, pinner WORKSPACE-regex discovery, extractor-side tag
-  derivation, then parity code last.
-- Continue Items 4-6 in order.
+- Item 4 is complete. Continue Item 5 from
+  `reports/specs/2026-06-26-item5-provenance-and-exclude-correctness-design.md`.
+- Continue Items 5-6 in order.

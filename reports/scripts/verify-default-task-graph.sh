@@ -20,7 +20,7 @@ grep -q ':computeWorkspaceDependencies SKIPPED' "$output_file"
 root_output_file="$(mktemp)"
 trap 'rm -f "$output_file" "$root_output_file"' EXIT
 
-./gradlew generateRootBazelScripts --dry-run -Pgrazel.internal.planParity=true --console=plain >"$root_output_file"
+./gradlew generateRootBazelScripts --dry-run --console=plain >"$root_output_file"
 
 if grep -q ':.*:generateBazelScripts SKIPPED' "$root_output_file"; then
   echo "generateRootBazelScripts still depends on project generateBazelScripts tasks." >&2

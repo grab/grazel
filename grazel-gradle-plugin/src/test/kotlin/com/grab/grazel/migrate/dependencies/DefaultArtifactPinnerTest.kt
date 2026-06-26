@@ -12,10 +12,8 @@ import com.grab.grazel.gradle.dependencies.model.CandidateMavenRepo
 import com.grab.grazel.gradle.dependencies.model.CandidateMavenRepoKind
 import com.grab.grazel.gradle.dependencies.model.OverrideTarget
 import com.grab.grazel.gradle.dependencies.model.ResolvedDependency
-import com.grab.grazel.gradle.dependencies.model.WorkspaceDependencies
 import com.grab.grazel.gradle.dependencies.model.WorkspacePlan
 import com.grab.grazel.gradle.dependencies.model.WorkspaceRenderPlan
-import com.grab.grazel.gradle.variant.DEFAULT_VARIANT
 import com.grab.grazel.util.BUILD_BAZEL
 import com.grab.grazel.util.NoOpProgressLogger
 import com.grab.grazel.util.ROOT_PATH
@@ -35,7 +33,6 @@ import org.junit.rules.TemporaryFolder
 import java.io.File
 import kotlin.io.path.copyTo
 import kotlin.test.assertEquals
-import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 
 class DefaultArtifactPinnerTest {
@@ -155,8 +152,6 @@ class DefaultArtifactPinnerTest {
                 workspaceRenderPlan = WorkspaceRenderPlan(materializedRepoNames = setOf("maven")),
                 gradleServices = gradleServices,
                 logger = rootProject.logger,
-                legacyWorkspaceDependencies = null,
-                assertPlanParity = false
             )
         }
     }
@@ -199,44 +194,6 @@ class DefaultArtifactPinnerTest {
     }
 
     @Test
-    fun `legacy pinnable repos include resolved root artifacts by Maven repo`() {
-        val debugDirect = ResolvedDependency.fromId("com.example:debug-only:1.0.0", "MavenRepo")
-        val fullPaidDirect = ResolvedDependency.fromId("com.example:full-paid-only:1.0.0", "MavenRepo")
-        val transitiveOnly = ResolvedDependency.fromId("com.example:transitive-only:1.0.0", "MavenRepo")
-            .copy(direct = false)
-        val overrideCarrier = ResolvedDependency.fromId("com.example:covered:1.0.0", "MavenRepo")
-            .copy(
-                direct = false,
-                overrideTarget = OverrideTarget(
-                    artifactShortId = "com.example:covered",
-                    label = MavenDependency(group = "com.example", name = "covered")
-                )
-            )
-        val kspProcessor = ResolvedDependency.fromId("com.example:processor:1.0.0", "MavenRepo")
-
-        val repos = WorkspaceDependencies(
-            variantDeps = mapOf(
-                DEFAULT_VARIANT to listOf(transitiveOnly),
-                "debug" to listOf(transitiveOnly, debugDirect),
-                "fullPaidDebug" to listOf(transitiveOnly, fullPaidDirect, overrideCarrier)
-            ),
-            aggregatedRepos = mapOf(
-                "ksp_maven" to listOf(kspProcessor),
-                "empty_maven" to emptyList()
-            ),
-            transitiveClasspath = mapOf(
-                fullPaidDirect.shortId to setOf(overrideCarrier.shortId)
-            )
-        ).pinnableMavenInstallRepos()
-
-        assertEquals(setOf("maven", "debug_maven", "full_paid_debug_maven", "ksp_maven"), repos.keys)
-        assertEquals(listOf(transitiveOnly), repos.getValue("maven"))
-        assertEquals(setOf(debugDirect), repos.getValue("debug_maven").toSet())
-        assertEquals(setOf(overrideCarrier, fullPaidDirect), repos.getValue("full_paid_debug_maven").toSet())
-        assertEquals(listOf(kspProcessor), repos.getValue("ksp_maven"))
-    }
-
-    @Test
     fun `pinnable repos are filtered to materialized render plan repos`() {
         val defaultDirect = ResolvedDependency.fromId("com.example:default-only:1.0.0", "MavenRepo")
         val debugDirect = ResolvedDependency.fromId("com.example:debug-only:1.0.0", "MavenRepo")
@@ -252,40 +209,6 @@ class DefaultArtifactPinnerTest {
         )
 
         assertEquals(setOf("maven", "debug_maven"), repos.keys)
-    }
-
-    @Test
-    fun `pinner plan parity accepts exact legacy match`() {
-        val defaultDirect = ResolvedDependency.fromId("com.example:default-only:1.0.0", "MavenRepo")
-        val debugDirect = ResolvedDependency.fromId("com.example:debug-only:1.0.0", "MavenRepo")
-
-        assertNoThrow("Matching pinner plan and legacy repos are accepted") {
-            assertPinnableRepoParity(
-                planRepos = mapOf(
-                    "maven" to listOf(defaultDirect),
-                    "debug_maven" to listOf(debugDirect)
-                ),
-                legacyRepos = mapOf(
-                    "maven" to listOf(defaultDirect),
-                    "debug_maven" to listOf(debugDirect)
-                )
-            )
-        }
-    }
-
-    @Test
-    fun `pinner plan parity fails on repo content mismatch`() {
-        val defaultDirect = ResolvedDependency.fromId("com.example:default-only:1.0.0", "MavenRepo")
-        val debugDirect = ResolvedDependency.fromId("com.example:debug-only:1.0.0", "MavenRepo")
-
-        val error = assertFailsWith<IllegalStateException> {
-            assertPinnableRepoParity(
-                planRepos = mapOf("maven" to listOf(defaultDirect)),
-                legacyRepos = mapOf("maven" to listOf(debugDirect))
-            )
-        }
-
-        assertTrue(error.message.orEmpty().contains("Pinner WorkspacePlan parity mismatch"))
     }
 
     @Test
@@ -330,8 +253,6 @@ class DefaultArtifactPinnerTest {
                 workspaceRenderPlan = WorkspaceRenderPlan(materializedRepoNames = emptySet()),
                 gradleServices = gradleServices,
                 logger = rootProject.logger,
-                legacyWorkspaceDependencies = null,
-                assertPlanParity = false
             )
         }
     }

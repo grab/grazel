@@ -20,10 +20,9 @@ import com.grab.grazel.GrazelExtension
 import com.grab.grazel.bazel.exec.bazelCommand
 import com.grab.grazel.bazel.starlark.BazelDependency.MavenDependency
 import com.grab.grazel.di.GradleServices
+import com.grab.grazel.gradle.dependencies.model.ResolvedDependency
 import com.grab.grazel.gradle.dependencies.model.WorkspacePlan
 import com.grab.grazel.gradle.dependencies.model.WorkspaceRenderPlan
-import com.grab.grazel.gradle.dependencies.model.ResolvedDependency
-import com.grab.grazel.gradle.dependencies.model.WorkspaceDependencies
 import com.grab.grazel.util.NoOpProgressLogger
 import com.grab.grazel.util.WORKSPACE
 import com.grab.grazel.util.ansiCyan
@@ -52,8 +51,6 @@ internal interface ArtifactPinner {
         workspaceRenderPlan: WorkspaceRenderPlan,
         gradleServices: GradleServices,
         logger: Logger,
-        legacyWorkspaceDependencies: WorkspaceDependencies? = null,
-        assertPlanParity: Boolean = false
     ): Boolean
 
     /**
@@ -212,24 +209,11 @@ constructor(
         workspaceRenderPlan: WorkspaceRenderPlan,
         gradleServices: GradleServices,
         logger: Logger,
-        legacyWorkspaceDependencies: WorkspaceDependencies?,
-        assertPlanParity: Boolean
     ): Boolean {
         val progressLoggerFactory = gradleServices.progressLoggerFactory
 
         val progressLogger = progressLoggerFactory.startOperation("Pin maven artifacts")
         val allRepos = workspacePlan.pinnableMavenInstallRepos(workspaceRenderPlan)
-        if (assertPlanParity) {
-            requireNotNull(legacyWorkspaceDependencies) {
-                "Workspace dependency parity input is required when grazel.internal.planParity=true"
-            }
-            assertPinnableRepoParity(
-                planRepos = allRepos,
-                legacyRepos = legacyWorkspaceDependencies.pinnableMavenInstallRepos(
-                    workspaceRenderPlan.materializedRepoNames
-                )
-            )
-        }
         cleanupStaleMavenInstallJsons(gradleServices.layout, allRepos.keys)
 
         val shouldRun = shouldRunPinning(
@@ -336,53 +320,6 @@ internal fun WorkspacePlan.pinnableMavenInstallRepos(
         }
         .filter { (_, pinInputs) -> pinInputs.isNotEmpty() }
         .toMap()
-
-internal fun assertPinnableRepoParity(
-    planRepos: Map<String, List<ResolvedDependency>>,
-    legacyRepos: Map<String, List<ResolvedDependency>>
-) {
-    val planIds = planRepos.mapValues { (_, deps) -> deps.map(ResolvedDependency::id) }
-    val legacyIds = legacyRepos.mapValues { (_, deps) -> deps.map(ResolvedDependency::id) }
-    check(planIds == legacyIds) {
-        buildString {
-            appendLine("Pinner WorkspacePlan parity mismatch.")
-            appendLine("Plan-only repos: ${(planIds.keys - legacyIds.keys).sorted()}")
-            appendLine("Legacy-only repos: ${(legacyIds.keys - planIds.keys).sorted()}")
-            (planIds.keys intersect legacyIds.keys).sorted().forEach { repoName ->
-                val planValues = planIds.getValue(repoName)
-                val legacyValues = legacyIds.getValue(repoName)
-                if (planValues != legacyValues) {
-                    appendLine("$repoName plan=$planValues legacy=$legacyValues")
-                }
-            }
-        }
-    }
-}
-
-internal fun WorkspaceDependencies.pinnableMavenInstallRepos(
-    materializedMavenRepos: Set<String> = emptySet()
-): Map<String, List<ResolvedDependency>> =
-    buildMap {
-        val rootArtifactsByVariant = mavenInstallRootArtifactsByVariant()
-        variantDeps.forEach { (variantName, _) ->
-            val mavenRepoName = variantName.toMavenRepoName()
-            if (materializedMavenRepos.isNotEmpty() && mavenRepoName !in materializedMavenRepos) {
-                return@forEach
-            }
-            val rootArtifacts = rootArtifactsByVariant.getValue(variantName)
-            if (rootArtifacts.isNotEmpty()) {
-                put(mavenRepoName, rootArtifacts)
-            }
-        }
-        aggregatedRepos.forEach { (repoName, deps) ->
-            if (materializedMavenRepos.isNotEmpty() && repoName !in materializedMavenRepos) {
-                return@forEach
-            }
-            if (deps.isNotEmpty()) {
-                put(repoName, deps)
-            }
-        }
-    }
 
 internal fun List<ResolvedDependency>.pinStatusProbeArtifact(): ResolvedDependency =
     firstOrNull { it.direct && it.overrideTarget == null }
