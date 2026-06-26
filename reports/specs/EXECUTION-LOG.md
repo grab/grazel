@@ -5,7 +5,7 @@ evidence in item-specific logs so context compaction can recover state quickly.
 
 ## Active State
 
-- Active item: Item 5 - Provenance and exclude correctness.
+- Active item: Item 6 - Simplify, adversarial review, and final verification.
 - Item 1 baseline/safety-net checkpoint commit: `368a21f`
   (`Record PAX baseline safety gate`).
 - Item 2 structured-planning checkpoint commit: `6393de1`
@@ -22,33 +22,39 @@ evidence in item-specific logs so context compaction can recover state quickly.
   (`Remove pinner workspace repo discovery`).
 - Item 4 Step 3 extractor fallback deletion checkpoint commit: `40c6bcd`
   (`Remove extractor Maven tag fallbacks`).
-- Item 4 Step 4 parity cleanup checkpoint commit: `HEAD`
+- Item 4 Step 4 parity cleanup checkpoint commit: `72bcc0f`
   (`Remove workspace plan parity flag`).
+- Item 5 Step 5a exclude-intersection checkpoint commit: `afa62bc`
+  (`Intersect dependency exclude metadata`).
+- Item 5 Step 5b variant-provenance checkpoint commit: `e707bf4`
+  (`Select Maven roots per variant provenance`).
 - Latest passed local gate:
-  - Focused pinner tests for Item 4 Step 4.
-  - `reports/scripts/verify-default-task-graph.sh`
-  - `reports/scripts/verify-sample-bucket-labels.sh`
-  - `./gradlew verifyGrazelGoldenBaseline --console=plain`
+  - Item 6 behavior-preserving `resolve()` extraction focused tests:
+    `AggregatedDependencyResolverTest`, `DependencyBucketPlacementEngineTest`,
+    `BucketHierarchyGraphTest`, `ComputeWorkspaceDependenciesTest`,
+    `WorkspacePlanBuilderTest`, and `MavenInstallArtifactsCalculatorTest`.
+  - `./gradlew verifyGrazelGoldenBaseline --console=plain --no-daemon`
   - Grazel `git diff --check`
-  - Structural search found no live parity references in main/test code or scripts.
-  - Result: all passed; generated sample diff stayed clean.
+  - Result: all passed; generated sample diff stayed clean against the Item 5
+    baseline.
 - Latest passed PAX gate:
   - `./gradlew migrateToBazel --no-daemon --console=plain --stacktrace`
-  - Result: passed in 10m57s.
+  - Result: passed in 11m15s for Item 5b.
   - `./bazel.sh build //app:app-gps-pax-debug.apk //app:app-gps-pax-debug-android-test.apk --verbose_failures`
-  - Result: passed in 256.374s with 1 total action after cache checking.
+  - Result: passed on retry in 2169.372s after the first attempt failed from
+    `No space left on device`.
   - PAX `git diff --check`: passed.
   - Tag-prefix audit: found zero bucket Maven labels inside `tags` arrays.
   - PAX working tree remains dirty from generated output; do not commit PAX changes.
 - Current detailed log:
-  - `reports/specs/execution-log/item4-remove-feedback-paths.md`
+  - `reports/specs/execution-log/item6-simplify-review-verification.md`
 
 ## Item Logs
 
 - Item 1: `reports/specs/execution-log/item1-baseline.md`
 - Item 2: `reports/specs/execution-log/item2-structured-planning.md`
 - Item 3: `reports/specs/execution-log/item3-consumer-cutover.md`
-- Items 4-6: create `reports/specs/execution-log/itemN-*.md` when each item starts.
+- Item 6: `reports/specs/execution-log/item6-simplify-review-verification.md`
 
 ## Standing Constraints
 
@@ -62,6 +68,8 @@ evidence in item-specific logs so context compaction can recover state quickly.
 
 ## Current Remaining Work
 
-- Item 4 is complete. Continue Item 5 from
-  `reports/specs/2026-06-26-item5-provenance-and-exclude-correctness-design.md`.
-- Continue Items 5-6 in order.
+- Item 5 is complete at local commit `e707bf4`; do not push without explicit
+  instruction.
+- Continue Item 6 from
+  `reports/specs/2026-06-26-item6-simplify-review-verification-design.md`.
+- Keep Item 6 execution notes itemized; do not append long essays to this file.
