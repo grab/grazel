@@ -26,7 +26,6 @@ import com.grab.grazel.gradle.dependencies.DependenciesDataSource
 import com.grab.grazel.gradle.dependencies.DependencyGraphs
 import com.grab.grazel.gradle.dependencies.GradleDependencyToBazelDependency
 import com.grab.grazel.gradle.dependencies.TargetTagKinds
-import com.grab.grazel.gradle.dependencies.model.tagsFor
 import com.grab.grazel.gradle.variant.VariantGraphKey
 import com.grab.grazel.gradle.variant.VariantType
 import com.grab.grazel.gradle.hasCompose
@@ -149,8 +148,7 @@ internal class DefaultAndroidInstrumentationBinaryDataExtractor
             )
             val mavenTags = workspacePlanService
                 .get()
-                .getPlan()
-                ?.tagsFor(
+                .tagsFor(
                     variantId = variantKey.variantId,
                     variantType = variantKey.variantType.toString(),
                     targetKind = TargetTagKinds.ANDROID_INSTRUMENTATION

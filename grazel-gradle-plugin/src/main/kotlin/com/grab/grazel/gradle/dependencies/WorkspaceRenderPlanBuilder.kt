@@ -46,38 +46,30 @@ internal class WorkspaceRenderPlanBuilder(
             .keys
             .toSortedSet()
         val alwaysMaterializedRepoNames = workspacePlan.repoPlan
-            .filterValues { candidate ->
+            .filter { (repoName, candidate) ->
                 candidate.hasPinInputs() &&
-                    (candidate.repoName in alwaysMaterializedVariantRepos || candidate.kind == AGGREGATED)
+                    (repoName in alwaysMaterializedVariantRepos || candidate.kind == AGGREGATED)
             }
             .keys
             .toSortedSet()
 
         val materializedRepoNames = (referencedRepoNames + alwaysMaterializedRepoNames)
             .filterTo(sortedSetOf()) { repoName -> repoName in availableRepos }
-        val overrideTargetRepoNames = sortedSetOf<String>()
-
-        var changed: Boolean
-        do {
-            changed = false
-            materializedRepoNames
-                .toList()
-                .mapNotNull(workspacePlan.repoPlan::get)
-                .flatMap { candidate -> candidate.overrideTargets.values }
+        val reposToScan = ArrayDeque(materializedRepoNames)
+        while (reposToScan.isNotEmpty()) {
+            val candidate = workspacePlan.repoPlan[reposToScan.removeFirst()] ?: continue
+            candidate.overrideTargets.values
+                .asSequence()
                 .mapNotNull { label -> label.referencedMavenRepo(availableRepos) }
                 .forEach { repoName ->
                     if (materializedRepoNames.add(repoName)) {
-                        overrideTargetRepoNames.add(repoName)
-                        changed = true
+                        reposToScan.add(repoName)
                     }
                 }
-        } while (changed)
+        }
 
         return WorkspaceRenderPlan(
-            materializedRepoNames = materializedRepoNames.toSortedSet(),
-            referencedRepoNames = referencedRepoNames.toSortedSet(),
-            overrideTargetRepoNames = overrideTargetRepoNames,
-            alwaysMaterializedRepoNames = alwaysMaterializedRepoNames
+            materializedRepoNames = materializedRepoNames.toSortedSet()
         )
     }
 

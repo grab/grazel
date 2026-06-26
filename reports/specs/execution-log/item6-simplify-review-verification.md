@@ -66,3 +66,42 @@
   stays clean.
 - Continue Item 6 with simplify/review cleanup; do not run PAX until local
   cleanup goldens remain clean.
+
+## 2026-06-26 16:40 SGT - Simplify Pass
+
+- Ran the simplify-pass review with four read-only subagents:
+  reuse, simplification, efficiency, and altitude.
+- Applied behavior-preserving fixes:
+  - removed an unreachable `sawBinaryRoot` guard in `AggregatedDependencyResolver`;
+  - removed duplicated `CandidateMavenRepo.repoName`; repo identity now comes
+    from the `WorkspacePlan.repoPlan` key;
+  - removed unused serialized `WorkspaceRenderPlan` detail fields and kept only
+    `materializedRepoNames`;
+  - changed `WorkspaceRenderPlanBuilder` override-target closure expansion from
+    repeated full rescans to a queue of newly materialized repos;
+  - added cached tag lookup in `WorkspacePlanService` and switched extractors to
+    `WorkspacePlanService.tagsFor(...)`;
+  - precomputed fallback owners in `VariantScopedArtifacts`;
+  - cached built variants during one `WorkspaceTargetTagPlanCollector.collect`
+    pass;
+  - loaded the workspace plan in `FinalizeWorkspacePlanTask` through
+    `WorkspacePlanService.initPlan(...)`.
+- Deferred simplify findings that are larger architecture/data-flow slices:
+  - rendering `MavenInstallData` directly from `WorkspacePlan.repoPlan` instead
+    of recalculating from `WorkspaceDependencies`;
+  - replacing the target-model pre-generation repo-reference pass with a shared
+    structured target planning model;
+  - replacing override-target string parsing with structured referenced-repo
+    data in the plan model;
+  - extracting common target-tag merge helper and larger test fixture cleanup.
+- Verification:
+  - Focused test loop passed, including resolver, bucket placement, workspace
+    plan/tag collector, pinner, and workspace task tests.
+  - `./gradlew verifyGrazelGoldenBaseline --console=plain --no-daemon` passed in
+    16s with a clean generated-file diff.
+  - Grazel `git diff --check` passed.
+
+## Next
+
+- Commit the simplify-pass cleanup checkpoint.
+- Start adversarial correctness review over the full branch diff.

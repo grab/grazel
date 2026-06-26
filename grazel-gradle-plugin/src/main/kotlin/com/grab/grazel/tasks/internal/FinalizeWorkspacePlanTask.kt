@@ -19,7 +19,6 @@ package com.grab.grazel.tasks.internal
 import com.grab.grazel.gradle.dependencies.DefaultWorkspacePlanService
 import com.grab.grazel.gradle.dependencies.WorkspaceRenderPlanBuilder
 import com.grab.grazel.gradle.dependencies.model.TargetMavenRepoReferences
-import com.grab.grazel.gradle.dependencies.model.WorkspacePlan
 import com.grab.grazel.util.GradleProvider
 import com.grab.grazel.util.fromJson
 import com.grab.grazel.util.logHeap
@@ -70,7 +69,7 @@ internal abstract class FinalizeWorkspacePlanTask : DefaultTask() {
         // Read the compression summary as an input gate; target references are collected after
         // compression so repo materialization matches generated target models.
         compressionResults.get().asFile.readText()
-        val plan = fromJson<WorkspacePlan>(workspacePlan.get())
+        val plan = workspacePlanService.get().initPlan(workspacePlan.get().asFile)
         val targetReferences = fromJson<TargetMavenRepoReferences>(targetMavenRepoReferences.get())
         val renderPlan = WorkspaceRenderPlanBuilder().build(
             workspacePlan = plan,

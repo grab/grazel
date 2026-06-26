@@ -26,7 +26,6 @@ internal data class WorkspacePlan(
 
 @Serializable
 internal data class CandidateMavenRepo(
-    val repoName: String,
     val variantName: String? = null,
     val kind: CandidateMavenRepoKind,
     val rootArtifacts: List<ResolvedDependency> = emptyList(),
@@ -70,10 +69,7 @@ internal fun WorkspacePlan.tagsFor(
 
 @Serializable
 internal data class WorkspaceRenderPlan(
-    val materializedRepoNames: Set<String> = emptySet(),
-    val referencedRepoNames: Set<String> = emptySet(),
-    val overrideTargetRepoNames: Set<String> = emptySet(),
-    val alwaysMaterializedRepoNames: Set<String> = emptySet()
+    val materializedRepoNames: Set<String> = emptySet()
 )
 
 @Serializable

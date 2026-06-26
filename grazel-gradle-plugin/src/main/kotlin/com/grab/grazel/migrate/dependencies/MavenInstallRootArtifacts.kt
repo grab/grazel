@@ -148,6 +148,17 @@ private data class OwnedResolvedDependency(
 private class VariantScopedArtifacts(
     private val artifactsByVariant: Map<String, Map<String, OwnedResolvedDependency>>
 ) {
+    private val fallbackOwnersByShortId = linkedMapOf<String, OwnedResolvedDependency>().also { ownersByShortId ->
+        artifactsByVariant
+            .toSortedMap()
+            .values
+            .forEach { artifacts ->
+                artifacts.forEach { (shortId, owner) ->
+                    ownersByShortId.putIfAbsent(shortId, owner)
+                }
+            }
+    }
+
     fun ownerFor(variantName: String, shortId: String): OwnedResolvedDependency? {
         val currentOwner = artifactsByVariant[variantName]?.get(shortId)
         val defaultOwner = artifactsByVariant[DEFAULT_VARIANT]?.get(shortId)
@@ -160,12 +171,7 @@ private class VariantScopedArtifacts(
         }
         return currentOwner
             ?: defaultOwner
-            ?: artifactsByVariant
-                .toSortedMap()
-                .values
-                .asSequence()
-                .mapNotNull { artifacts -> artifacts[shortId] }
-                .firstOrNull()
+            ?: fallbackOwnersByShortId[shortId]
     }
 }
 

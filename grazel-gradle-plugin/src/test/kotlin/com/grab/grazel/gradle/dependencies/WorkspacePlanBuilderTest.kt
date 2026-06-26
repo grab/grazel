@@ -213,7 +213,6 @@ class WorkspacePlanBuilderTest {
             setOf("debug_maven", "free_maven"),
             renderPlan.materializedRepoNames
         )
-        assertEquals(setOf("debug_maven"), renderPlan.overrideTargetRepoNames)
     }
 
     @Test

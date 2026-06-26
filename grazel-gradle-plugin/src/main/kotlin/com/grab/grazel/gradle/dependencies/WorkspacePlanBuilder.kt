@@ -43,7 +43,6 @@ internal class WorkspacePlanBuilder(
                     .getValue(variantName)
                     .sortedBy(ResolvedDependency::id)
                 repoName to CandidateMavenRepo(
-                    repoName = repoName,
                     variantName = variantName,
                     kind = VARIANT,
                     rootArtifacts = rootArtifacts,
@@ -63,10 +62,9 @@ internal class WorkspacePlanBuilder(
             }
         val aggregatedRepos = workspaceDependencies.aggregatedRepos
             .toSortedMap()
-            .mapValues { (repoName, artifacts) ->
+            .mapValues { (_, artifacts) ->
                 val sortedArtifacts = artifacts.sortedBy(ResolvedDependency::id)
                 CandidateMavenRepo(
-                    repoName = repoName,
                     kind = AGGREGATED,
                     rootArtifacts = sortedArtifacts,
                     pinInputs = sortedArtifacts

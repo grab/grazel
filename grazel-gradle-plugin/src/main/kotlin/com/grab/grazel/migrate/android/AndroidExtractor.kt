@@ -27,7 +27,6 @@ import com.grab.grazel.gradle.dependencies.DependenciesDataSource
 import com.grab.grazel.gradle.dependencies.DependencyGraphs
 import com.grab.grazel.gradle.dependencies.GradleDependencyToBazelDependency
 import com.grab.grazel.gradle.dependencies.TargetTagKinds
-import com.grab.grazel.gradle.dependencies.model.tagsFor
 import com.grab.grazel.gradle.hasCompose
 import com.grab.grazel.gradle.hasCrashlytics
 import com.grab.grazel.gradle.hasDatabinding
@@ -143,8 +142,7 @@ constructor(
             )
             val mavenTags = workspacePlanService
                 .get()
-                .getPlan()
-                ?.tagsFor(
+                .tagsFor(
                     variantId = variantKey.variantId,
                     variantType = variantKey.variantType.toString(),
                     targetKind = TargetTagKinds.ANDROID_LIBRARY

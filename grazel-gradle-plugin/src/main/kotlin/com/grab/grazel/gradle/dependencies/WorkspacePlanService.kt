@@ -18,6 +18,7 @@ package com.grab.grazel.gradle.dependencies
 
 import com.grab.grazel.di.qualifiers.RootProject
 import com.grab.grazel.gradle.dependencies.WorkspacePlanService.Companion.SERVICE_NAME
+import com.grab.grazel.gradle.dependencies.model.TargetTagKey
 import com.grab.grazel.gradle.dependencies.model.WorkspacePlan
 import com.grab.grazel.gradle.dependencies.model.WorkspaceRenderPlan
 import com.grab.grazel.util.fromJson
@@ -40,6 +41,12 @@ internal interface WorkspacePlanService : BuildService<WorkspacePlanService.Para
 
     fun getRenderPlan(): WorkspaceRenderPlan?
 
+    fun tagsFor(
+        variantId: String,
+        variantType: String,
+        targetKind: String
+    ): List<String>?
+
     companion object {
         internal const val SERVICE_NAME = "WorkspacePlanService"
 
@@ -55,9 +62,11 @@ internal interface WorkspacePlanService : BuildService<WorkspacePlanService.Para
 internal abstract class DefaultWorkspacePlanService : WorkspacePlanService {
     private var workspacePlan: WorkspacePlan? = null
     private var workspaceRenderPlan: WorkspaceRenderPlan? = null
+    private var targetTagsByKey: Map<TargetTagKey, List<String>>? = null
 
     override fun populatePlan(workspacePlan: WorkspacePlan) {
         this.workspacePlan = workspacePlan
+        targetTagsByKey = null
     }
 
     override fun populateRenderPlan(workspaceRenderPlan: WorkspaceRenderPlan) {
@@ -82,8 +91,30 @@ internal abstract class DefaultWorkspacePlanService : WorkspacePlanService {
 
     override fun getRenderPlan(): WorkspaceRenderPlan? = workspaceRenderPlan
 
+    override fun tagsFor(
+        variantId: String,
+        variantType: String,
+        targetKind: String
+    ): List<String>? {
+        return tagsByKey()[TargetTagKey(
+            variantId = variantId,
+            variantType = variantType,
+            targetKind = targetKind
+        )]
+    }
+
     override fun close() {
         workspacePlan = null
         workspaceRenderPlan = null
+        targetTagsByKey = null
+    }
+
+    private fun tagsByKey(): Map<TargetTagKey, List<String>> {
+        targetTagsByKey?.let { tags -> return tags }
+        return workspacePlan
+            ?.tagPlan
+            .orEmpty()
+            .associate { tagPlan -> tagPlan.key to tagPlan.tags }
+            .also { tags -> targetTagsByKey = tags }
     }
 }

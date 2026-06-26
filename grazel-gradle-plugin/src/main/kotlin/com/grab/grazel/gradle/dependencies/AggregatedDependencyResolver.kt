@@ -110,9 +110,6 @@ internal class AggregatedDependencyResolver(
             val declaredTestDependenciesByBucket = addDeclaredMetadataClosures()
             if (!hasResolvedClosures()) {
                 logger.warn("Grazel: No leaf variant runtime classpaths resolved")
-                if (!sawBinaryRoot) {
-                    return emptyList()
-                }
             }
 
             val mainBuckets = planMainBuckets()

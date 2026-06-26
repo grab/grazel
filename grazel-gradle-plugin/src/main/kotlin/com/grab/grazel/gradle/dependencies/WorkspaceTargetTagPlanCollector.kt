@@ -65,20 +65,26 @@ constructor(
 
     private val transitiveMavenDepsCache =
         ConcurrentHashMap<MavenTagClosureKey, Set<MavenDependency>>()
+    private val variantsByProjectPath = mutableMapOf<String, Set<Variant<*>>>()
 
     override fun collect(rootProject: Project): List<TargetTagPlan> {
-        return rootProject.subprojects
-            .asSequence()
-            .sortedBy(Project::getPath)
-            .filter { project -> migrationChecker.get().canMigrate(project) }
-            .flatMap { project -> project.targetTagPlans() }
-            .filter { tagPlan -> tagPlan.tags.isNotEmpty() }
-            .sortedWith(
-                compareBy<TargetTagPlan> { it.key.variantId }
-                    .thenBy { it.key.variantType }
-                    .thenBy { it.key.targetKind }
-            )
-            .toList()
+        variantsByProjectPath.clear()
+        return try {
+            rootProject.subprojects
+                .asSequence()
+                .sortedBy(Project::getPath)
+                .filter { project -> migrationChecker.get().canMigrate(project) }
+                .flatMap { project -> project.targetTagPlans() }
+                .filter { tagPlan -> tagPlan.tags.isNotEmpty() }
+                .sortedWith(
+                    compareBy<TargetTagPlan> { it.key.variantId }
+                        .thenBy { it.key.variantType }
+                        .thenBy { it.key.targetKind }
+                )
+                .toList()
+        } finally {
+            variantsByProjectPath.clear()
+        }
     }
 
     private fun Project.targetTagPlans(): Sequence<TargetTagPlan> = sequence {
@@ -201,7 +207,6 @@ constructor(
     }
 
     private fun Project.bestVariantKeyForTagClosure(matchedVariant: MatchedVariant): VariantGraphKey? {
-        val variants = variantBuilder.build(this)
         val variantType = if (isAndroid) VariantType.AndroidBuild else VariantType.JvmBuild
         val preferredNames = if (isAndroid) {
             listOf(matchedVariant.variantName, matchedVariant.buildType, DEFAULT_VARIANT)
@@ -212,7 +217,7 @@ constructor(
             .asSequence()
             .distinct()
             .mapNotNull { preferredName ->
-                variants.firstOrNull { variant ->
+                builtVariants().firstOrNull { variant ->
                     variant.variantType == variantType && variant.name == preferredName
                 }
             }
@@ -222,6 +227,9 @@ constructor(
 
     private fun Variant<*>.toVariantGraphKey(): VariantGraphKey =
         VariantGraphKey(project.path + ":" + id, variantType)
+
+    private fun Project.builtVariants(): Set<Variant<*>> =
+        variantsByProjectPath.getOrPut(path) { variantBuilder.build(this) }
 
     private data class MavenTagClosureKey(
         val projectPath: String,
