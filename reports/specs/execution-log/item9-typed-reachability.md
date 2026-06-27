@@ -7,7 +7,7 @@
   collapse into false project-level cycles, and add the `com.android.test -> target app`
   ordering edge.
 - Baseline before this slice: Item 10 committed at `9f363e0`.
-- Checkpoint commit: `afbc63b` (`Add typed dependency reachability graph`).
+- Checkpoint commit: `d84f3db` (`Add typed dependency reachability graph`).
 
 ## Decisions
 

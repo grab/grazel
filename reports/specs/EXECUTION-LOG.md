@@ -7,15 +7,15 @@ evidence in item-specific logs so context compaction can recover state quickly.
 
 - 2026-06-28 +08 current goal pass:
   - Current anchor: `reports/specs/CURRENT-GOAL-ANCHOR.md`.
-  - Current item: Item 9 - typed reachability graph nodes and
-    `com.android.test -> target app` ordering.
-  - Current detailed log: `reports/specs/execution-log/item9-typed-reachability.md`.
+  - Current item: Item 11 - eliminate false SCCs and keep SCC only as a typed
+    diagnostic fallback.
+  - Current detailed log: `reports/specs/execution-log/item11-contain-scc.md`.
   - Item 10 PAX size guard checkpoint is committed at `9f363e0`
     (`Add PAX Maven size guard`).
-  - Item 9 typed reachability checkpoint is committed at `afbc63b`
+  - Item 9 typed reachability checkpoint is committed at `d84f3db`
     (`Add typed dependency reachability graph`).
-  - Item 9 current worktree changes are limited to dependency graph/reachability
-    model files and focused tests.
+  - Item 9 current work is committed and established the post-Item-9 baseline
+    for Item 11.
   - Passed so far in this item: focused graph/API tests, full
     `:grazel-gradle-plugin:test`, Grazel `migrateToBazel`, local
     `git diff --check`, local task-graph check, PAX `migrateToBazel`, PAX
@@ -46,7 +46,8 @@ evidence in item-specific logs so context compaction can recover state quickly.
   - PAX Bazel workers were shut down after the heavy gates. Current disk
     remains tight at about `21GiB` free; avoid more heavy PAX work before
     deliberate cleanup.
-  - Remaining before advancing to Item 11: update active item/log pointer.
+  - Next: Item 11 typed-SCC audit/diagnostic work. It must be preserving against
+    the post-Item-9 baseline unless a genuine typed SCC is proven and documented.
   - Resource note: after PAX APK + unit-test gates, disk was about `21GiB` free
     on the data volume. Avoid more heavy PAX work before cleaning deliberately.
 - Active item: Item 7 - Pin-size reduction via bucket ownership.
