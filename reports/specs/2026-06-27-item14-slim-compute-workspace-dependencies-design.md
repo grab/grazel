@@ -7,7 +7,7 @@
 > `reports/specs/2026-06-26-item1-baseline-and-safety-net-design.md`.
 > **Index:** `ALTITUDE-LAYERING-ROADMAP.md`. **Depends on:** Item 12 (planner), Item 13.
 
-> **⚠️ Execution note — delegate to subagents (Opus); protect the main context.**
+> **⚠️ Execution note — delegate to subagents; protect the main context.**
 
 ---
 
@@ -42,20 +42,29 @@ algorithm change. The override-target *values* emitted must be byte-identical (o
 labels are output-affecting). If a move would change an override label or a dedup decision,
 that's a bug in the move, not an intended change.
 
+Care point: `variantTransitiveClasspath` is computed from the reduced classpath after
+default-bucket duplicate collapse. Moving duplicate collapse out of CWD is allowed only if
+the new owner emits the exact same reduced shape back to CWD or to the downstream plan. If
+target transitive-tag facts change, this item is no longer preserving and must stop.
+
 ## Safety mechanism
 
 - **Sample golden EMPTY-diff.**
-- **Flag-gated parity** (`-Pgrazel.internal.cwdParity`): keep the old CWD path; run both and
+- **Flag-gated parity** (`-Pgrazel.internal.parity=cwd`): keep the old CWD path; run both and
   assert identical `WorkspaceDependencies` (and identical override targets / materialized
-  repos downstream); remove the old path after parity green on PAX + sample.
+  repos / variant transitive classpath facts downstream); remove this parity mode and the old
+  path after parity green on PAX + sample.
 - **Size guard (Item 10):** no increase (expected: no change).
+
+Item 14's empty-diff and size guard are measured against the post-Item-13 re-baselined PAX
+state, not the original frozen baseline. Re-read the baseline numbers after Item 13.
 
 ## Acceptance criteria
 
 - CWD retains only value-holder responsibilities (flatten / max-version / transitive /
   reachability / KSP); dedup-vs-default and override-synthesis live in Layer 3/4.
 - Sample golden empty-diff; PAX parity green; size guard no-increase; PAX builds green.
-- Old CWD path + parity flag removed after parity confirmed.
+- Old CWD path + CWD parity mode removed after parity confirmed.
 
 ## Out of scope / Non-goal
 

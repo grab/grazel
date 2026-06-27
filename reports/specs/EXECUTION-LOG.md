@@ -729,3 +729,24 @@ evidence in item-specific logs so context compaction can recover state quickly.
   - Grazel `git diff --check` and `git diff --check master...HEAD` passed.
   - `reports/scripts/verify-sample-bucket-labels.sh` still fails only on the
     known one-sided appcompat/constraintlayout exclude-union waiver.
+
+## 2026-06-28 Altitude Layering Goal Start
+
+- Active goal: finish the altitude-layering dependency refactor to review-ready
+  state using `CURRENT-GOAL-ANCHOR.md`, `ALTITUDE-LAYERING-ROADMAP.md`, and
+  item specs `10 -> 9 -> 11 -> 12 -> 13 -> 14 -> 15 -> 16`.
+- Starting Grazel commit before the new execution slice:
+  `de0417fb40ca4bfd1f9345a38ce41ede4ec393c4`.
+- Starting worktree contained only the uncommitted spec-planning edits from the
+  previous discussion: current-goal anchor, altitude roadmap amendments, Item
+  9/10/11/12/13/14/15 spec updates, new Item 16 spec, and the superseded
+  altitude input doc. No production-code changes were present at goal start.
+- Current active item: Item 10, frozen PAX baseline and automated size guard.
+- PAX baseline source for this goal:
+  `/Users/arun.sampathkumar/work/pax-android` branch `arun/grazel-refactor`,
+  commit `05d2b4801530726ab722133c2ba32cbba9afeb67`. PAX changes must never be
+  committed.
+- Resource check before Item 10 work: data volume had about `77GiB` free; no
+  obvious stale Gradle/Bazel/Coursier or high-RAM `python3.12` process appeared
+  in the top memory list. Avoid unnecessary cache deletion.
+- `git diff --check` passed for the spec-planning diff before starting Item 10.

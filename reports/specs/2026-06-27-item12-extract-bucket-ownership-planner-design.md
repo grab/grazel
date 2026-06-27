@@ -7,7 +7,7 @@
 > `reports/specs/2026-06-26-item1-baseline-and-safety-net-design.md`.
 > **Index:** `ALTITUDE-LAYERING-ROADMAP.md`. **Depends on:** Item 10 (size guard exists).
 
-> **⚠️ Execution note — delegate to subagents (Opus); protect the main context.**
+> **⚠️ Execution note — delegate to subagents; protect the main context.**
 
 ---
 
@@ -87,10 +87,11 @@ clean handoff, not an untangling.
 ## Safety mechanism
 
 - **Sample golden EMPTY-diff** — the move must not change generated output.
-- **Flag-gated parity** (`-Pgrazel.internal.ownershipParity=true`): keep the old in-resolver
+- **Flag-gated parity** (`-Pgrazel.internal.parity=ownership`): keep the old in-resolver
   path temporarily; run both and assert the new planner's `List<ResolveDependenciesResult>`
   is identical to the old path's. Codex enables it for PAX (exact check where no content
-  golden exists); remove the old path once parity is green on PAX + sample.
+  golden exists); remove this parity mode and the old path once parity is green on PAX +
+  sample.
 - **Size guard (Item 10)** must show no increase (it won't — empty-diff).
 
 ## Win
