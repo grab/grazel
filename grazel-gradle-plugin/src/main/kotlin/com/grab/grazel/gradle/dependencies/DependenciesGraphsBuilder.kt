@@ -16,12 +16,14 @@
 
 package com.grab.grazel.gradle.dependencies
 
+import com.android.build.gradle.TestExtension
 import com.google.common.graph.ImmutableValueGraph
 import com.google.common.graph.MutableValueGraph
 import com.google.common.graph.ValueGraphBuilder
 import com.grab.grazel.di.qualifiers.RootProject
 import com.grab.grazel.gradle.ConfigurationDataSource
 import com.grab.grazel.gradle.isAndroid
+import com.grab.grazel.gradle.isAndroidTest
 import com.grab.grazel.gradle.isJava
 import com.grab.grazel.gradle.isKotlinJvm
 import com.grab.grazel.gradle.variant.AndroidVariantDataSource
@@ -31,7 +33,7 @@ import com.grab.grazel.gradle.variant.jvmVariantName
 import com.grab.grazel.gradle.variant.toJvmVariantType
 import com.grab.grazel.gradle.variant.toVariantType
 import org.gradle.api.Project
-import org.gradle.api.artifacts.Configuration
+import org.gradle.kotlin.dsl.findByType
 import javax.inject.Inject
 
 internal class DependenciesGraphsBuilder
@@ -44,7 +46,7 @@ constructor(
 ) {
 
     fun build(): DependencyGraphs {
-        val variantGraphs: MutableMap<VariantGraphKey, MutableValueGraph<Project, Configuration>> =
+        val variantGraphs: MutableMap<VariantGraphKey, MutableValueGraph<Project, DependencyGraphEdge>> =
             mutableMapOf()
         listOf(
             VariantType.AndroidBuild,
@@ -79,13 +81,14 @@ constructor(
                                     variantKey,
                                     sourceProject,
                                     projectDependency.dependencyProject,
-                                    configuration
+                                    ConfigurationEdge(configuration)
                                 )
                             }
                         }
                     }
             }
         }
+        addAndroidTestTargetProjectEdges(variantGraphs)
 
         val immutableVariantGraphs = variantGraphs
             .withDefault { buildGraph(0) }
@@ -101,7 +104,7 @@ constructor(
     private fun addEdges(
         project: Project,
         variantType: VariantType,
-        variantGraph: MutableMap<VariantGraphKey, MutableValueGraph<Project, Configuration>>,
+        variantGraph: MutableMap<VariantGraphKey, MutableValueGraph<Project, DependencyGraphEdge>>,
     ) {
         dependenciesDataSource.projectDependencies(project, variantType)
             .forEach { (configuration, projectDependency) ->
@@ -121,7 +124,7 @@ constructor(
                                 variantKey,
                                 project,
                                 projectDependency.dependencyProject,
-                                configuration
+                                ConfigurationEdge(configuration)
                             )
                         }
                     }
@@ -136,7 +139,7 @@ constructor(
                         variantKey,
                         project,
                         projectDependency.dependencyProject,
-                        configuration
+                        ConfigurationEdge(configuration)
                     )
                 }
             }
@@ -145,7 +148,7 @@ constructor(
     private fun addProjectAsNodeToAllOfItsVariantsGraphs(
         sourceProject: Project,
         variantType: VariantType,
-        variantGraphs: MutableMap<VariantGraphKey, MutableValueGraph<Project, Configuration>>
+        variantGraphs: MutableMap<VariantGraphKey, MutableValueGraph<Project, DependencyGraphEdge>>
     ) {
         if (sourceProject.isAndroid) {
             androidVariantDataSource.getMigratableVariants(sourceProject, variantType)
@@ -172,21 +175,51 @@ constructor(
             rootProject.logger.info("${sourceProject.name} is a simple directory")
         }
     }
+
+    private fun addAndroidTestTargetProjectEdges(
+        variantGraphs: MutableMap<VariantGraphKey, MutableValueGraph<Project, DependencyGraphEdge>>
+    ) {
+        rootProject.subprojects
+            .filter(Project::isAndroidTest)
+            .forEach { testProject ->
+                val targetProjectPath = testProject.extensions
+                    .findByType<TestExtension>()
+                    ?.targetProjectPath
+                    ?: return@forEach
+                val targetProject = rootProject.findProject(targetProjectPath)
+                    ?: return@forEach
+
+                androidVariantDataSource.getMigratableVariants(testProject, VariantType.AndroidBuild)
+                    .forEach { variant ->
+                        val variantKey = VariantGraphKey.from(
+                            testProject,
+                            variant.name,
+                            variant.toVariantType()
+                        )
+                        variantGraphs.putEdgeValue(
+                            variantKey,
+                            testProject,
+                            targetProject,
+                            AndroidTestTargetProjectEdge(targetProjectPath)
+                        )
+                    }
+            }
+    }
 }
 
-private fun MutableMap<VariantGraphKey, MutableValueGraph<Project, Configuration>>.putEdgeValue(
+private fun MutableMap<VariantGraphKey, MutableValueGraph<Project, DependencyGraphEdge>>.putEdgeValue(
     variantKey: VariantGraphKey,
     sourceProject: Project,
     dependencyProject: Project,
-    configuration: Configuration
+    edge: DependencyGraphEdge
 ) {
     computeIfAbsent(variantKey) {
         buildGraph(sourceProject.subprojects.size)
     }
-    get(variantKey)!!.putEdgeValue(sourceProject, dependencyProject, configuration)
+    get(variantKey)!!.putEdgeValue(sourceProject, dependencyProject, edge)
 }
 
-private fun MutableMap<VariantGraphKey, MutableValueGraph<Project, Configuration>>.addNode(
+private fun MutableMap<VariantGraphKey, MutableValueGraph<Project, DependencyGraphEdge>>.addNode(
     variantKey: VariantGraphKey,
     sourceProject: Project
 ) {
@@ -196,7 +229,7 @@ private fun MutableMap<VariantGraphKey, MutableValueGraph<Project, Configuration
     get(variantKey)!!.addNode(sourceProject)
 }
 
-fun buildGraph(size: Int): MutableValueGraph<Project, Configuration> {
+internal fun buildGraph(size: Int): MutableValueGraph<Project, DependencyGraphEdge> {
     return ValueGraphBuilder
         .directed()
         .allowsSelfLoops(false)

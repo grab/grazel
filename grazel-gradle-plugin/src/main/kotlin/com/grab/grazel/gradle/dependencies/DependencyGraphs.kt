@@ -18,17 +18,38 @@ package com.grab.grazel.gradle.dependencies
 
 import com.google.common.graph.Graphs
 import com.google.common.graph.ImmutableValueGraph
+import com.grab.grazel.gradle.isAndroidTest
 import com.grab.grazel.gradle.variant.VariantGraphKey
 import com.grab.grazel.gradle.variant.VariantType
 import org.gradle.api.Project
 import org.gradle.api.artifacts.Configuration
 
+internal sealed interface DependencyGraphEdge
+
+internal data class ConfigurationEdge(
+    val configuration: Configuration
+) : DependencyGraphEdge
+
+internal data class AndroidTestTargetProjectEdge(
+    val targetProjectPath: String
+) : DependencyGraphEdge
+
+internal enum class DependencyGraphSourceSet {
+    Main,
+    Test,
+    AndroidTest
+}
+
+internal data class DependencyGraphNode(
+    val project: Project,
+    val sourceSet: DependencyGraphSourceSet
+)
 
 internal interface DependencyGraphs {
     /**
      * Graph keyed by [VariantGraphKey]. Maps variant IDs to their corresponding dependency graphs.
      */
-    val variantGraphs: Map<VariantGraphKey, ImmutableValueGraph<Project, Configuration>>
+    val variantGraphs: Map<VariantGraphKey, ImmutableValueGraph<Project, DependencyGraphEdge>>
 
     /**
      * Returns all project nodes from graphs matching the given variant keys. If no keys are
@@ -62,10 +83,18 @@ internal interface DependencyGraphs {
     fun mergeToProjectGraph(
         variantTypeFilter: (VariantType) -> Boolean = { it.isBuildGraph }
     ): Map<Project, Set<Project>>
+
+    /**
+     * Returns a reachability graph that preserves source-set identity until ordering completes.
+     * Edges still point to project production output unless a typed edge says otherwise.
+     */
+    fun reachabilityGraph(
+        variantTypeFilter: (VariantType) -> Boolean = { true }
+    ): Map<DependencyGraphNode, Set<DependencyGraphNode>>
 }
 
 internal class DefaultDependencyGraphs(
-    override val variantGraphs: Map<VariantGraphKey, ImmutableValueGraph<Project, Configuration>>
+    override val variantGraphs: Map<VariantGraphKey, ImmutableValueGraph<Project, DependencyGraphEdge>>
 ) : DependencyGraphs {
 
     override fun nodesByVariant(vararg variantKey: VariantGraphKey): Set<Project> {
@@ -123,5 +152,67 @@ internal class DefaultDependencyGraphs(
                 } else emptySet()
             }.toSet()
         }
+    }
+
+    override fun reachabilityGraph(
+        variantTypeFilter: (VariantType) -> Boolean
+    ): Map<DependencyGraphNode, Set<DependencyGraphNode>> {
+        val typedGraph = sortedMapOf<DependencyGraphNode, MutableSet<DependencyGraphNode>>(
+            compareBy<DependencyGraphNode> { it.project.path }
+                .thenBy { it.sourceSet.ordinal }
+        )
+        variantGraphs
+            .filterKeys { key -> variantTypeFilter(key.variantType) }
+            .forEach { (variantKey, graph) ->
+                graph.nodes().forEach { project ->
+                    if (graph.successors(project).isNotEmpty() || graph.adjacentNodes(project).isEmpty()) {
+                        val source = project.sourceNode(variantKey)
+                        typedGraph.getOrPut(source) {
+                            sortedSetOf(dependencyGraphNodeComparator)
+                        }
+                        source.mainNodeIfInherited()?.let { mainNode ->
+                            typedGraph.getValue(source).add(mainNode)
+                            typedGraph.getOrPut(mainNode) {
+                                sortedSetOf(dependencyGraphNodeComparator)
+                            }
+                        }
+                    }
+                }
+                graph.edges().forEach { edge ->
+                    val source = edge.nodeU().sourceNode(variantKey)
+                    val target = DependencyGraphNode(edge.nodeV(), DependencyGraphSourceSet.Main)
+                    typedGraph.getOrPut(source) {
+                        sortedSetOf(dependencyGraphNodeComparator)
+                    }.add(target)
+                    typedGraph.getOrPut(target) {
+                        sortedSetOf(dependencyGraphNodeComparator)
+                    }
+                }
+            }
+        return typedGraph.mapValues { (_, dependencies) -> dependencies.toSet() }
+    }
+
+    private fun Project.sourceNode(variantKey: VariantGraphKey): DependencyGraphNode =
+        DependencyGraphNode(
+            project = this,
+            sourceSet = when {
+                variantKey.variantType == VariantType.Test -> DependencyGraphSourceSet.Test
+                variantKey.variantType == VariantType.AndroidTest -> DependencyGraphSourceSet.AndroidTest
+                isAndroidTest -> DependencyGraphSourceSet.AndroidTest
+                else -> DependencyGraphSourceSet.Main
+            }
+        )
+
+    private fun DependencyGraphNode.mainNodeIfInherited(): DependencyGraphNode? =
+        when (sourceSet) {
+            DependencyGraphSourceSet.Main -> null
+            DependencyGraphSourceSet.Test,
+            DependencyGraphSourceSet.AndroidTest -> copy(sourceSet = DependencyGraphSourceSet.Main)
+        }
+
+    private companion object {
+        val dependencyGraphNodeComparator: Comparator<DependencyGraphNode> =
+            compareBy<DependencyGraphNode> { it.project.path }
+                .thenBy { it.sourceSet.ordinal }
     }
 }

@@ -18,10 +18,10 @@ package com.grab.grazel.gradle.dependencies
 
 import com.grab.grazel.fake.FakeDependencyGraphs
 import com.grab.grazel.fake.FakeProject
-import org.gradle.api.Project
 import org.junit.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class TopologicalSorterTest {
@@ -405,5 +405,74 @@ class TopologicalSorterTest {
         assertEquals(projects.first(), groups.first().projects.single())
         assertEquals(projects.last(), groups.last().projects.single())
         assertTrue(groups.none(ProjectReachabilityGroup::cyclic))
+    }
+
+    @Test
+    fun `reachability groups do not fabricate cycle when test source set depends on a build dependency`() {
+        val projectA = FakeProject("a")
+        val projectB = FakeProject("b")
+        val graphs = FakeDependencyGraphs(
+            typedReachabilityGraph = mapOf(
+                DependencyGraphNode(projectA, DependencyGraphSourceSet.Test) to setOf(
+                    DependencyGraphNode(projectB, DependencyGraphSourceSet.Main)
+                ),
+                DependencyGraphNode(projectB, DependencyGraphSourceSet.Main) to setOf(
+                    DependencyGraphNode(projectA, DependencyGraphSourceSet.Main)
+                ),
+                DependencyGraphNode(projectA, DependencyGraphSourceSet.Main) to emptySet()
+            )
+        )
+
+        val groups = ProjectReachabilityOrder.consumersFirstGroups(graphs)
+
+        assertFalse(groups.any(ProjectReachabilityGroup::cyclic))
+        assertEquals(listOf(projectA, projectB), groups.flatMap(ProjectReachabilityGroup::projects))
+    }
+
+    @Test
+    fun `reachability groups keep genuine main source set cycles cyclic`() {
+        val projectA = FakeProject("a")
+        val projectB = FakeProject("b")
+        val nodeA = DependencyGraphNode(projectA, DependencyGraphSourceSet.Main)
+        val nodeB = DependencyGraphNode(projectB, DependencyGraphSourceSet.Main)
+        val graphs = FakeDependencyGraphs(
+            typedReachabilityGraph = mapOf(
+                nodeA to setOf(nodeB),
+                nodeB to setOf(nodeA)
+            )
+        )
+
+        val groups = ProjectReachabilityOrder.consumersFirstGroups(graphs)
+
+        assertEquals(
+            listOf(ProjectReachabilityGroup(listOf(projectA, projectB), cyclic = true)),
+            groups
+        )
+    }
+
+    @Test
+    fun `reachability groups keep full genuine cycle even when project appeared as test source first`() {
+        val projectA = FakeProject("a")
+        val projectB = FakeProject("b")
+        val nodeATest = DependencyGraphNode(projectA, DependencyGraphSourceSet.Test)
+        val nodeAMain = DependencyGraphNode(projectA, DependencyGraphSourceSet.Main)
+        val nodeBMain = DependencyGraphNode(projectB, DependencyGraphSourceSet.Main)
+        val graphs = FakeDependencyGraphs(
+            typedReachabilityGraph = mapOf(
+                nodeATest to setOf(nodeBMain),
+                nodeAMain to setOf(nodeBMain),
+                nodeBMain to setOf(nodeAMain)
+            )
+        )
+
+        val groups = ProjectReachabilityOrder.consumersFirstGroups(graphs)
+
+        assertEquals(
+            listOf(
+                ProjectReachabilityGroup(listOf(projectA), cyclic = false),
+                ProjectReachabilityGroup(listOf(projectA, projectB), cyclic = true)
+            ),
+            groups
+        )
     }
 }

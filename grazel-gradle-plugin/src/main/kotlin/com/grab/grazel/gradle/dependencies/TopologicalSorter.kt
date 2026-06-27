@@ -175,60 +175,75 @@ internal object ProjectReachabilityOrder {
         graphs: DependencyGraphs,
         variantTypeFilter: (VariantType) -> Boolean = { true }
     ): List<ProjectReachabilityGroup> {
-        val graph = graphs.mergeToProjectGraph(variantTypeFilter).normalized()
+        val graph = graphs.reachabilityGraph(variantTypeFilter).normalized(
+            comparator = dependencyGraphNodeComparator
+        )
         if (graph.isEmpty()) return emptyList()
 
-        val components = stronglyConnectedComponents(graph)
-        val componentIndexByProject = components
-            .flatMapIndexed { index, projects -> projects.map { project -> project to index } }
+        val components = stronglyConnectedComponents(graph, dependencyGraphNodeComparator)
+        val componentIndexByNode = components
+            .flatMapIndexed { index, nodes -> nodes.map { node -> node to index } }
             .toMap()
         val componentDependencies = components.indices.associateWithTo(mutableMapOf()) { mutableSetOf<Int>() }
-        graph.forEach { (project, dependencies) ->
-            val from = componentIndexByProject.getValue(project)
+        graph.forEach { (node, dependencies) ->
+            val from = componentIndexByNode.getValue(node)
             dependencies.forEach { dependency ->
-                val to = componentIndexByProject.getValue(dependency)
+                val to = componentIndexByNode.getValue(dependency)
                 if (from != to) {
                     componentDependencies.getValue(from).add(to)
                 }
             }
         }
 
+        val seenProjects = mutableSetOf<Project>()
         return sortComponentIndexes(
             componentDependencies,
-            compareBy { componentIndex -> components[componentIndex].first().path }
+            compareBy { componentIndex -> components[componentIndex].first().project.path }
         )
             .asReversed()
-            .map { componentIndex ->
-                val projects = components[componentIndex]
-                ProjectReachabilityGroup(
-                    projects = projects,
-                    cyclic = projects.size > 1 || projects.any { project -> project in graph.getValue(project) }
-                )
+            .mapNotNull { componentIndex ->
+                val nodes = components[componentIndex]
+                val cyclic = nodes.size > 1 || nodes.any { node -> node in graph.getValue(node) }
+                val projects = nodes
+                    .map(DependencyGraphNode::project)
+                    .distinctBy(Project::getPath)
+                    .filter { project ->
+                        cyclic || seenProjects.add(project)
+                    }
+                if (projects.isEmpty()) {
+                    null
+                } else {
+                    ProjectReachabilityGroup(
+                        projects = projects.sortedBy(Project::getPath),
+                        cyclic = cyclic
+                    )
+                }
             }
     }
 
-    private fun Map<Project, Set<Project>>.normalized(): Map<Project, Set<Project>> {
-        val projects = (keys + values.flatten()).toSortedSet(compareBy(Project::getPath))
-        return projects.associateWith { project ->
-            get(project).orEmpty().filterTo(sortedSetOf(compareBy(Project::getPath))) { dependency ->
-                dependency in projects
+    private fun <T> Map<T, Set<T>>.normalized(comparator: Comparator<T>): Map<T, Set<T>> {
+        val nodes = (keys + values.flatten()).toSortedSet(comparator)
+        return nodes.associateWith { node ->
+            get(node).orEmpty().filterTo(sortedSetOf(comparator)) { dependency ->
+                dependency in nodes
             }
         }
     }
 
-    private fun stronglyConnectedComponents(
-        graph: Map<Project, Set<Project>>
-    ): List<List<Project>> {
-        val finishOrder = finishOrder(graph)
-        val reversedGraph = reverseGraph(graph)
-        val assigned = mutableSetOf<Project>()
-        val components = mutableListOf<List<Project>>()
+    private fun <T> stronglyConnectedComponents(
+        graph: Map<T, Set<T>>,
+        comparator: Comparator<T>
+    ): List<List<T>> {
+        val finishOrder = finishOrder(graph, comparator)
+        val reversedGraph = reverseGraph(graph, comparator)
+        val assigned = mutableSetOf<T>()
+        val components = mutableListOf<List<T>>()
 
         finishOrder.asReversed().forEach { start ->
             if (start in assigned) return@forEach
 
-            val component = mutableListOf<Project>()
-            val stack = ArrayDeque<Project>()
+            val component = mutableListOf<T>()
+            val stack = ArrayDeque<T>()
             stack.addLast(start)
             assigned += start
 
@@ -242,20 +257,20 @@ internal object ProjectReachabilityOrder {
                 }
             }
 
-            components += component.sortedBy(Project::getPath)
+            components += component.sortedWith(comparator)
         }
 
         return components
     }
 
-    private fun finishOrder(graph: Map<Project, Set<Project>>): List<Project> {
-        val visited = mutableSetOf<Project>()
-        val ordered = mutableListOf<Project>()
+    private fun <T> finishOrder(graph: Map<T, Set<T>>, comparator: Comparator<T>): List<T> {
+        val visited = mutableSetOf<T>()
+        val ordered = mutableListOf<T>()
 
-        graph.keys.sortedBy(Project::getPath).forEach { start ->
+        graph.keys.sortedWith(comparator).forEach { start ->
             if (!visited.add(start)) return@forEach
 
-            val stack = ArrayDeque<Pair<Project, Iterator<Project>>>()
+            val stack = ArrayDeque<Pair<T, Iterator<T>>>()
             stack.addLast(start to graph.getValue(start).iterator())
 
             while (stack.isNotEmpty()) {
@@ -275,9 +290,9 @@ internal object ProjectReachabilityOrder {
         return ordered
     }
 
-    private fun reverseGraph(graph: Map<Project, Set<Project>>): Map<Project, Set<Project>> {
-        val reversed = graph.keys.associateWithTo(mutableMapOf<Project, MutableSet<Project>>()) {
-            sortedSetOf(compareBy(Project::getPath))
+    private fun <T> reverseGraph(graph: Map<T, Set<T>>, comparator: Comparator<T>): Map<T, Set<T>> {
+        val reversed = graph.keys.associateWithTo(mutableMapOf<T, MutableSet<T>>()) {
+            sortedSetOf(comparator)
         }
         graph.forEach { (project, dependencies) ->
             dependencies.forEach { dependency ->
@@ -297,4 +312,8 @@ internal object ProjectReachabilityOrder {
         }
         return ordered
     }
+
+    private val dependencyGraphNodeComparator: Comparator<DependencyGraphNode> =
+        compareBy<DependencyGraphNode> { it.project.path }
+            .thenBy { it.sourceSet.ordinal }
 }

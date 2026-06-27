@@ -5,6 +5,50 @@ evidence in item-specific logs so context compaction can recover state quickly.
 
 ## Active State
 
+- 2026-06-28 +08 current goal pass:
+  - Current anchor: `reports/specs/CURRENT-GOAL-ANCHOR.md`.
+  - Current item: Item 9 - typed reachability graph nodes and
+    `com.android.test -> target app` ordering.
+  - Current detailed log: `reports/specs/execution-log/item9-typed-reachability.md`.
+  - Item 10 PAX size guard checkpoint is committed at `9f363e0`
+    (`Add PAX Maven size guard`).
+  - Item 9 typed reachability checkpoint is committed at `afbc63b`
+    (`Add typed dependency reachability graph`).
+  - Item 9 current worktree changes are limited to dependency graph/reachability
+    model files and focused tests.
+  - Passed so far in this item: focused graph/API tests, full
+    `:grazel-gradle-plugin:test`, Grazel `migrateToBazel`, local
+    `git diff --check`, local task-graph check, PAX `migrateToBazel`, PAX
+    `git diff --check`, PAX size guard, and PAX debug APK + android-test APK
+    Bazel build.
+  - PAX APK/android-test command passed:
+    `/Users/arun.sampathkumar/work/pax-android ./bazel.sh build
+    --verbose_failures //app:app-gps-pax-debug.apk
+    //app:app-gps-pax-debug-android-test.apk`.
+    Result: build completed successfully in `2140.633s`, `54526` total actions.
+  - PAX selected Bazel unit-test command passed:
+    `/Users/arun.sampathkumar/work/pax-android ./bazel.sh test
+    --test_output=errors //app-utils:app-utils-gps-pax-debug-test
+    //app-test:app-test-gps-pax-debug-test
+    //application-initializer:application-initializer-gps-pax-debug-test`.
+    Result: 3 of 3 tests passed in `374.828s`.
+  - PAX post-test `git diff --check` passed. PAX size guard remains unchanged:
+    11 buckets, 11 pinfiles, 2015 total artifact roots.
+  - Fresh post-compaction local pre-commit checks passed:
+    `git diff --check`, `git diff --check master...HEAD`,
+    `./gradlew :grazel-gradle-plugin:test --console=plain --no-daemon`,
+    `./gradlew migrateToBazel --console=plain --no-daemon`,
+    `reports/scripts/verify-default-task-graph.sh`,
+    `reports/scripts/verify-pax-size-guard.sh --mode preserving`, and generated
+    BUILD/WORKSPACE/json diff check.
+    `reports/scripts/verify-sample-bucket-labels.sh` still has the known
+    one-sided appcompat/constraintlayout exclude-union waiver.
+  - PAX Bazel workers were shut down after the heavy gates. Current disk
+    remains tight at about `21GiB` free; avoid more heavy PAX work before
+    deliberate cleanup.
+  - Remaining before advancing to Item 11: update active item/log pointer.
+  - Resource note: after PAX APK + unit-test gates, disk was about `21GiB` free
+    on the data volume. Avoid more heavy PAX work before cleaning deliberately.
 - Active item: Item 7 - Pin-size reduction via bucket ownership.
 - Item 7/8 follow-up start commit: `9730083`
   (`Document Maven pin-size optimization constraints`).

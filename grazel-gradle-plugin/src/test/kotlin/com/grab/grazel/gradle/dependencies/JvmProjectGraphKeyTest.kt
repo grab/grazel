@@ -23,7 +23,6 @@ import com.grab.grazel.fake.FakeProject
 import com.grab.grazel.gradle.variant.VariantGraphKey
 import com.grab.grazel.gradle.variant.VariantType
 import org.gradle.api.Project
-import org.gradle.api.artifacts.Configuration
 import org.junit.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotEquals
@@ -75,15 +74,15 @@ class JvmProjectGraphKeyTest {
         // Given: Two JVM projects with different dependencies
         val libAGraph = ValueGraphBuilder.directed()
             .allowsSelfLoops(false)
-            .build<Project, Configuration>().apply {
-                putEdgeValue(kotlinLibA, depProject, FakeConfiguration())
+            .build<Project, DependencyGraphEdge>().apply {
+                putEdgeValue(kotlinLibA, depProject, ConfigurationEdge(FakeConfiguration()))
             }.let { ImmutableValueGraph.copyOf(it) }
 
         val libBGraph = ValueGraphBuilder.directed()
             .allowsSelfLoops(false)
-            .build<Project, Configuration>().apply {
+            .build<Project, DependencyGraphEdge>().apply {
                 // libB has only one dependency (different from libA's dep)
-                putEdgeValue(kotlinLibB, kotlinLibA, FakeConfiguration())
+                putEdgeValue(kotlinLibB, kotlinLibA, ConfigurationEdge(FakeConfiguration()))
             }.let { ImmutableValueGraph.copyOf(it) }
 
         val graphs = DefaultDependencyGraphs(

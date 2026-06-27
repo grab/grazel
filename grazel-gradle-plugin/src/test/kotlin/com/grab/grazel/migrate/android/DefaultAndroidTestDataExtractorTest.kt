@@ -7,7 +7,13 @@ import com.grab.grazel.buildProject
 import com.grab.grazel.gradle.ANDROID_APPLICATION_PLUGIN
 import com.grab.grazel.gradle.ANDROID_TEST_PLUGIN
 import com.grab.grazel.gradle.KOTLIN_ANDROID_PLUGIN
+import com.grab.grazel.gradle.dependencies.AndroidTestTargetProjectEdge
+import com.grab.grazel.gradle.dependencies.DependencyGraphNode
+import com.grab.grazel.gradle.dependencies.DependencyGraphSourceSet
+import com.grab.grazel.gradle.dependencies.DependencyGraphs
 import com.grab.grazel.gradle.variant.MatchedVariant
+import com.grab.grazel.gradle.variant.VariantGraphKey
+import com.grab.grazel.gradle.variant.VariantType
 import com.grab.grazel.bazel.starlark.BazelDependency.ProjectDependency
 import com.grab.grazel.util.addGrazelExtension
 import com.grab.grazel.util.createGrazelComponent
@@ -32,6 +38,7 @@ class DefaultAndroidTestDataExtractorTest : GrazelPluginTest() {
     private lateinit var androidTestDataExtractor: AndroidTestDataExtractor
     private lateinit var androidLibraryDataExtractor: AndroidLibraryDataExtractor
     private lateinit var androidBinaryDataExtractor: AndroidBinaryDataExtractor
+    private lateinit var dependencyGraphs: DependencyGraphs
 
     @get:Rule
     val temporaryFolder = TemporaryFolder()
@@ -125,6 +132,7 @@ class DefaultAndroidTestDataExtractorTest : GrazelPluginTest() {
         // Get extractors from GrazelComponent
         val grazelComponent = rootProject.createGrazelComponent()
         grazelComponent.initDependencyGraphsForTest(rootProject)
+        dependencyGraphs = grazelComponent.dependencyGraphsService().get().get()
         androidLibraryDataExtractor = grazelComponent.androidLibraryDataExtractor().get()
         androidBinaryDataExtractor = grazelComponent.androidBinaryDataExtractor().get()
         androidTestDataExtractor = grazelComponent.androidTestDataExtractor().get()
@@ -149,6 +157,26 @@ class DefaultAndroidTestDataExtractorTest : GrazelPluginTest() {
         assertEquals("com.test.app.tests", testData.customPackage)
         assertEquals("com.test.app", testData.targetPackage)
         assertEquals("androidx.test.runner.AndroidJUnitRunner", testData.testInstrumentationRunner)
+    }
+
+    @Test
+    fun `dependency graph records android test target project edge`() {
+        val variant = debugVariant()
+        val variantKey = VariantGraphKey.from(testProject, variant, VariantType.AndroidBuild)
+        val graph = dependencyGraphs.variantGraphs.getValue(variantKey)
+
+        val edge = graph.edgeValueOrDefault(testProject, appProject, null)
+        assertTrue(edge is AndroidTestTargetProjectEdge)
+        assertEquals(":app", edge.targetProjectPath)
+
+        assertEquals(
+            setOf(
+                DependencyGraphNode(testProject, DependencyGraphSourceSet.Main),
+                DependencyGraphNode(appProject, DependencyGraphSourceSet.Main)
+            ),
+            dependencyGraphs.reachabilityGraph()
+                .getValue(DependencyGraphNode(testProject, DependencyGraphSourceSet.AndroidTest))
+        )
     }
 
     @Test

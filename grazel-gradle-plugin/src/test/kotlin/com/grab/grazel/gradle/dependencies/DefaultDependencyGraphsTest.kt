@@ -23,7 +23,6 @@ import com.grab.grazel.fake.FakeProject
 import com.grab.grazel.gradle.variant.VariantGraphKey
 import com.grab.grazel.gradle.variant.VariantType
 import org.gradle.api.Project
-import org.gradle.api.artifacts.Configuration
 import org.junit.Test
 import kotlin.test.assertEquals
 
@@ -140,27 +139,77 @@ class DefaultDependencyGraphsTest {
         )
     }
 
-    private fun buildBuildGraphs(): ImmutableValueGraph<Project, Configuration> =
+    @Test
+    fun `reachabilityGraph maps test source set dependencies to main targets`() {
+        val testGraph = ValueGraphBuilder.directed()
+            .allowsSelfLoops(false)
+            .build<Project, DependencyGraphEdge>().apply {
+                putEdgeValue(projectA, projectB, ConfigurationEdge(FakeConfiguration()))
+            }.run { ImmutableValueGraph.copyOf(this) }
+        val graphs = DefaultDependencyGraphs(
+            variantGraphs = mapOf(
+                VariantGraphKey(":A:debugUnitTestTest", VariantType.Test) to testGraph
+            )
+        )
+
+        assertEquals(
+            mapOf(
+                DependencyGraphNode(projectA, DependencyGraphSourceSet.Main) to emptySet(),
+                DependencyGraphNode(projectA, DependencyGraphSourceSet.Test) to setOf(
+                    DependencyGraphNode(projectA, DependencyGraphSourceSet.Main),
+                    DependencyGraphNode(projectB, DependencyGraphSourceSet.Main)
+                ),
+                DependencyGraphNode(projectB, DependencyGraphSourceSet.Main) to emptySet()
+            ),
+            graphs.reachabilityGraph()
+        )
+    }
+
+    @Test
+    fun `reachabilityGraph adds source-set inheritance edge from test to main`() {
+        val testGraph = ValueGraphBuilder.directed()
+            .allowsSelfLoops(false)
+            .build<Project, DependencyGraphEdge>().apply {
+                putEdgeValue(projectA, projectB, ConfigurationEdge(FakeConfiguration()))
+            }.run { ImmutableValueGraph.copyOf(this) }
+        val graphs = DefaultDependencyGraphs(
+            variantGraphs = mapOf(
+                VariantGraphKey(":A:debugUnitTestTest", VariantType.Test) to testGraph
+            )
+        )
+
+        assertEquals(
+            setOf(
+                DependencyGraphNode(projectA, DependencyGraphSourceSet.Main),
+                DependencyGraphNode(projectB, DependencyGraphSourceSet.Main)
+            ),
+            graphs.reachabilityGraph().getValue(
+                DependencyGraphNode(projectA, DependencyGraphSourceSet.Test)
+            )
+        )
+    }
+
+    private fun buildBuildGraphs(): ImmutableValueGraph<Project, DependencyGraphEdge> =
         ValueGraphBuilder.directed()
             .allowsSelfLoops(false)
             .expectedNodeCount(6)
-            .build<Project, Configuration>().apply {
-                putEdgeValue(projectA, projectB, FakeConfiguration())
-                putEdgeValue(projectA, projectC, FakeConfiguration())
-                putEdgeValue(projectB, projectC, FakeConfiguration())
+            .build<Project, DependencyGraphEdge>().apply {
+                putEdgeValue(projectA, projectB, ConfigurationEdge(FakeConfiguration()))
+                putEdgeValue(projectA, projectC, ConfigurationEdge(FakeConfiguration()))
+                putEdgeValue(projectB, projectC, ConfigurationEdge(FakeConfiguration()))
             }.run { ImmutableValueGraph.copyOf(this) }
 
-    private fun buildTestGraphs(): ImmutableValueGraph<Project, Configuration> =
+    private fun buildTestGraphs(): ImmutableValueGraph<Project, DependencyGraphEdge> =
         ValueGraphBuilder.directed()
             .allowsSelfLoops(false)
             .expectedNodeCount(6)
-            .build<Project, Configuration>().apply {
-                putEdgeValue(projectA, projectB, FakeConfiguration())
-                putEdgeValue(projectA, projectC, FakeConfiguration())
-                putEdgeValue(projectB, projectC, FakeConfiguration())
-                putEdgeValue(projectC, projectD, FakeConfiguration())
-                putEdgeValue(projectB, projectE, FakeConfiguration())
-                putEdgeValue(projectA, projectE, FakeConfiguration())
+            .build<Project, DependencyGraphEdge>().apply {
+                putEdgeValue(projectA, projectB, ConfigurationEdge(FakeConfiguration()))
+                putEdgeValue(projectA, projectC, ConfigurationEdge(FakeConfiguration()))
+                putEdgeValue(projectB, projectC, ConfigurationEdge(FakeConfiguration()))
+                putEdgeValue(projectC, projectD, ConfigurationEdge(FakeConfiguration()))
+                putEdgeValue(projectB, projectE, ConfigurationEdge(FakeConfiguration()))
+                putEdgeValue(projectA, projectE, ConfigurationEdge(FakeConfiguration()))
             }.run { ImmutableValueGraph.copyOf(this) }
 
     @Test
@@ -172,15 +221,15 @@ class DefaultDependencyGraphsTest {
         // Build graph: X -> Y
         val buildGraph = ValueGraphBuilder.directed()
             .allowsSelfLoops(false)
-            .build<Project, Configuration>().apply {
-                putEdgeValue(projectX, projectY, FakeConfiguration())
+            .build<Project, DependencyGraphEdge>().apply {
+                putEdgeValue(projectX, projectY, ConfigurationEdge(FakeConfiguration()))
             }.run { ImmutableValueGraph.copyOf(this) }
 
         // Test graph: Y -> X (would create cycle if merged)
         val testGraph = ValueGraphBuilder.directed()
             .allowsSelfLoops(false)
-            .build<Project, Configuration>().apply {
-                putEdgeValue(projectY, projectX, FakeConfiguration())
+            .build<Project, DependencyGraphEdge>().apply {
+                putEdgeValue(projectY, projectX, ConfigurationEdge(FakeConfiguration()))
             }.run { ImmutableValueGraph.copyOf(this) }
 
         val graphs = DefaultDependencyGraphs(
@@ -205,14 +254,14 @@ class DefaultDependencyGraphsTest {
 
         val buildGraph = ValueGraphBuilder.directed()
             .allowsSelfLoops(false)
-            .build<Project, Configuration>().apply {
-                putEdgeValue(projectX, projectY, FakeConfiguration())
+            .build<Project, DependencyGraphEdge>().apply {
+                putEdgeValue(projectX, projectY, ConfigurationEdge(FakeConfiguration()))
             }.run { ImmutableValueGraph.copyOf(this) }
 
         val testGraph = ValueGraphBuilder.directed()
             .allowsSelfLoops(false)
-            .build<Project, Configuration>().apply {
-                putEdgeValue(projectY, projectX, FakeConfiguration())
+            .build<Project, DependencyGraphEdge>().apply {
+                putEdgeValue(projectY, projectX, ConfigurationEdge(FakeConfiguration()))
             }.run { ImmutableValueGraph.copyOf(this) }
 
         val graphs = DefaultDependencyGraphs(
@@ -239,29 +288,29 @@ class DefaultDependencyGraphsTest {
         // AndroidBuild graph: X -> Y
         val androidBuildGraph = ValueGraphBuilder.directed()
             .allowsSelfLoops(false)
-            .build<Project, Configuration>().apply {
-                putEdgeValue(projectX, projectY, FakeConfiguration())
+            .build<Project, DependencyGraphEdge>().apply {
+                putEdgeValue(projectX, projectY, ConfigurationEdge(FakeConfiguration()))
             }.run { ImmutableValueGraph.copyOf(this) }
 
         // JvmBuild graph: Y -> Z
         val jvmBuildGraph = ValueGraphBuilder.directed()
             .allowsSelfLoops(false)
-            .build<Project, Configuration>().apply {
-                putEdgeValue(projectY, projectZ, FakeConfiguration())
+            .build<Project, DependencyGraphEdge>().apply {
+                putEdgeValue(projectY, projectZ, ConfigurationEdge(FakeConfiguration()))
             }.run { ImmutableValueGraph.copyOf(this) }
 
         // Test graph: Z -> X (would create cycle)
         val testGraph = ValueGraphBuilder.directed()
             .allowsSelfLoops(false)
-            .build<Project, Configuration>().apply {
-                putEdgeValue(projectZ, projectX, FakeConfiguration())
+            .build<Project, DependencyGraphEdge>().apply {
+                putEdgeValue(projectZ, projectX, ConfigurationEdge(FakeConfiguration()))
             }.run { ImmutableValueGraph.copyOf(this) }
 
         // AndroidTest graph: also excluded
         val androidTestGraph = ValueGraphBuilder.directed()
             .allowsSelfLoops(false)
-            .build<Project, Configuration>().apply {
-                putEdgeValue(projectZ, projectY, FakeConfiguration())
+            .build<Project, DependencyGraphEdge>().apply {
+                putEdgeValue(projectZ, projectY, ConfigurationEdge(FakeConfiguration()))
             }.run { ImmutableValueGraph.copyOf(this) }
 
         val graphs = DefaultDependencyGraphs(
@@ -282,4 +331,3 @@ class DefaultDependencyGraphsTest {
         assertEquals(emptySet(), merged[projectZ]) // No test edges included
     }
 }
-

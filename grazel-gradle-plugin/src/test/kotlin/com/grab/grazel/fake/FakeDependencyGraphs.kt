@@ -17,18 +17,21 @@
 package com.grab.grazel.fake
 
 import com.google.common.graph.ImmutableValueGraph
+import com.grab.grazel.gradle.dependencies.DependencyGraphEdge
+import com.grab.grazel.gradle.dependencies.DependencyGraphNode
+import com.grab.grazel.gradle.dependencies.DependencyGraphSourceSet
 import com.grab.grazel.gradle.dependencies.DependencyGraphs
 import com.grab.grazel.gradle.variant.VariantGraphKey
 import com.grab.grazel.gradle.variant.VariantType
 import org.gradle.api.Project
-import org.gradle.api.artifacts.Configuration
 
 internal class FakeDependencyGraphs(
     private val directDeps: Set<Project> = emptySet(),
     private val dependenciesSubGraph: Set<Project> = emptySet(),
     private val nodes: Set<Project> = emptySet(),
-    override val variantGraphs: Map<VariantGraphKey, ImmutableValueGraph<Project, Configuration>> = emptyMap(),
-    private val projectGraph: Map<Project, Set<Project>> = emptyMap()
+    override val variantGraphs: Map<VariantGraphKey, ImmutableValueGraph<Project, DependencyGraphEdge>> = emptyMap(),
+    private val projectGraph: Map<Project, Set<Project>> = emptyMap(),
+    private val typedReachabilityGraph: Map<DependencyGraphNode, Set<DependencyGraphNode>>? = null
 ) : DependencyGraphs {
 
     override fun nodesByVariant(vararg variantKey: VariantGraphKey): Set<Project> = nodes
@@ -46,4 +49,16 @@ internal class FakeDependencyGraphs(
     override fun mergeToProjectGraph(
         variantTypeFilter: (VariantType) -> Boolean
     ): Map<Project, Set<Project>> = projectGraph
+
+    override fun reachabilityGraph(
+        variantTypeFilter: (VariantType) -> Boolean
+    ): Map<DependencyGraphNode, Set<DependencyGraphNode>> = typedReachabilityGraph
+        ?: projectGraph.mapKeys { (project, _) ->
+            DependencyGraphNode(project, DependencyGraphSourceSet.Main)
+        }.mapValues { (_, dependencies) ->
+            dependencies.mapTo(sortedSetOf(compareBy<DependencyGraphNode> { it.project.path }
+                .thenBy { it.sourceSet.ordinal })) { dependency ->
+                DependencyGraphNode(dependency, DependencyGraphSourceSet.Main)
+            }
+        }
 }
