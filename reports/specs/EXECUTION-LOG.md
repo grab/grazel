@@ -750,3 +750,45 @@ evidence in item-specific logs so context compaction can recover state quickly.
   obvious stale Gradle/Bazel/Coursier or high-RAM `python3.12` process appeared
   in the top memory list. Avoid unnecessary cache deletion.
 - `git diff --check` passed for the spec-planning diff before starting Item 10.
+
+## 2026-06-28 Item 10 PAX Size Guard
+
+- Committed the docs-only altitude goal plan locally as `08263b4` before Item
+  10 implementation.
+- Added `reports/scripts/verify-pax-size-guard.sh` and
+  `reports/specs/pax-size-baseline.json`.
+- Corrected the baseline identity source before accepting the guard: raw
+  `WORKSPACE` artifact strings undercount because PAX uses `maven.artifact(...)`
+  and list concatenation such as `DAGGER_ARTIFACTS + [...]`. The guard now
+  records active pin JSON `__INPUT_ARTIFACTS_HASH` entries as sorted
+  `artifact=hash` strings.
+- Subagent independently confirmed PAX branch/SHA
+  `arun/grazel-refactor` / `05d2b4801530726ab722133c2ba32cbba9afeb67`, dirty
+  generated baseline state, and counts.
+- Frozen PAX size baseline:
+  - active `maven_install` repos: `11`
+  - active pin JSON files: `11`
+  - total materialized artifact roots: `2015`
+  - per-repo root counts: `android_test_maven=449`, `debug_maven=212`,
+    `gps_maven=113`, `gps_moveit_debug_maven=48`,
+    `gps_ovo_debug_maven=48`, `hms_maven=123`, `ksp_maven=5`,
+    `lint_maven=65`, `maven=674`, `pax_maven=48`, `test_maven=230`.
+- Updated `reports/specs/PAX-BOUNDED-AUDIT-BASELINE.md`; corrected its
+  `maven_install` count to count active `maven_install(` blocks only, not
+  pinned helper calls.
+- Verification:
+  - `reports/scripts/verify-pax-size-guard.sh --mode preserving` passed.
+  - `reports/scripts/verify-pax-size-guard.sh --mode item13` passed.
+  - Negative smoke check with a temporary too-small baseline failed as expected.
+  - `bash -n reports/scripts/verify-pax-size-guard.sh
+    reports/scripts/audit-pax-bounded-baseline.sh` passed.
+  - `reports/scripts/audit-pax-bounded-baseline.sh` passed.
+  - `./gradlew migrateToBazel --console=plain --no-daemon` passed and left no
+    generated-output diff.
+  - `reports/scripts/verify-default-task-graph.sh` passed.
+  - `reports/scripts/verify-sample-bucket-labels.sh` still fails only on the
+    known one-sided appcompat/constraintlayout exclude-union waiver.
+  - Grazel `git diff --check` and `git diff --check master...HEAD` passed.
+  - PAX `git diff --check` passed. PAX files remain uncommitted.
+- Detailed Item 10 continuation notes are in
+  `reports/specs/execution-log/item10-pax-size-guard.md`.

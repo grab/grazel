@@ -169,7 +169,7 @@ audit_target "app-gps-pax-debug-android-test"
   echo "## Workspace Shape"
   echo
   echo "- WORKSPACE lines: $(wc -l <"$workspace_file" | tr -d ' ')"
-  echo "- maven_install entries: $(grep -c 'maven_install(' "$workspace_file" || true)"
+  echo "- maven_install entries: $(grep -Ec '^[[:space:]]*maven_install\(' "$workspace_file" || true)"
 } >>"$audit_tmp"
 
 if [[ -n "$output_file" ]]; then

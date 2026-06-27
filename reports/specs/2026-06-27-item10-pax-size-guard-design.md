@@ -75,8 +75,11 @@ per-bucket ceiling would block legitimate consolidation. Instead:
    }
    ```
 
-   `artifactIds` are the normalized strings from the active repo's `artifacts` list, sorted
-   deterministically. Measured from the current verified PAX migrated output at
+   `artifactIds` are deterministic materialized root identity strings from the active repo's
+   pin JSON `__INPUT_ARTIFACTS_HASH` entries, encoded as `artifact=hash` and sorted. The hash
+   preserves the input signature that raw `WORKSPACE` strings can lose, including
+   `maven.artifact(...)` exclusions and list-concatenated artifacts such as
+   `DAGGER_ARTIFACTS + [...]`. Measured from the current verified PAX migrated output at
    `/Users/arun.sampathkumar/work/pax-android`. This committed snapshot is the frozen
    baseline. PAX generated files themselves are not committed to the Grazel branch.
 2. **Fresh migrate requirement.** PAX verification must use `./gradlew migrateToBazel
@@ -87,7 +90,8 @@ per-bucket ceiling would block legitimate consolidation. Instead:
 3. **Guard script.** Add `reports/scripts/verify-pax-size-guard.sh` that, after PAX
    `migrateToBazel`:
    - reads the machine-readable baseline and fails if required baseline fields are missing;
-   - recomputes the three totals from the PAX generated `WORKSPACE` + `*_install.json`;
+   - recomputes the three totals from active PAX generated `maven_install` repos in
+     `WORKSPACE` plus their corresponding `*_install.json` input signatures;
    - parses active repos from `WORKSPACE` and counts only the corresponding pin JSON files;
    - **hard-fails** if any total exceeds the baseline;
    - exact-matches per-repo artifact identity for preserving-item mode;

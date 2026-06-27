@@ -155,5 +155,9 @@ Keep `reports/specs/EXECUTION-LOG.md` current after major milestones/failures:
 - failures/root causes,
 - remaining risk.
 
+Also maintain concise item-specific logs under `reports/specs/execution-log/` for the active
+item. On context compaction, reload the current anchor, roadmap, active item spec, and the
+active item execution-log file before touching code.
+
 Use subagents deliberately for wide reads, historical master/PAX comparisons, audit scripts,
 and final adversarial review. Spot-check important claims.
