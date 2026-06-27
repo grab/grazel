@@ -45,6 +45,12 @@ internal data class DependencyGraphNode(
     val sourceSet: DependencyGraphSourceSet
 )
 
+internal data class DependencyGraphDiagnosticEdge(
+    val source: DependencyGraphNode,
+    val target: DependencyGraphNode,
+    val label: String
+)
+
 internal interface DependencyGraphs {
     /**
      * Graph keyed by [VariantGraphKey]. Maps variant IDs to their corresponding dependency graphs.
@@ -91,6 +97,14 @@ internal interface DependencyGraphs {
     fun reachabilityGraph(
         variantTypeFilter: (VariantType) -> Boolean = { true }
     ): Map<DependencyGraphNode, Set<DependencyGraphNode>>
+
+    /**
+     * Returns typed reachability edges with diagnostic labels. This is intentionally separate
+     * from ordering so normal code does not infer policy from edge labels.
+     */
+    fun reachabilityDiagnosticEdges(
+        variantTypeFilter: (VariantType) -> Boolean = { true }
+    ): List<DependencyGraphDiagnosticEdge>
 }
 
 internal class DefaultDependencyGraphs(
@@ -156,11 +170,22 @@ internal class DefaultDependencyGraphs(
 
     override fun reachabilityGraph(
         variantTypeFilter: (VariantType) -> Boolean
-    ): Map<DependencyGraphNode, Set<DependencyGraphNode>> {
+    ): Map<DependencyGraphNode, Set<DependencyGraphNode>> =
+        reachabilityProjection(variantTypeFilter).graph
+
+    override fun reachabilityDiagnosticEdges(
+        variantTypeFilter: (VariantType) -> Boolean
+    ): List<DependencyGraphDiagnosticEdge> =
+        reachabilityProjection(variantTypeFilter).diagnosticEdges
+
+    private fun reachabilityProjection(
+        variantTypeFilter: (VariantType) -> Boolean
+    ): ReachabilityProjection {
         val typedGraph = sortedMapOf<DependencyGraphNode, MutableSet<DependencyGraphNode>>(
             compareBy<DependencyGraphNode> { it.project.path }
                 .thenBy { it.sourceSet.ordinal }
         )
+        val diagnosticEdges = mutableListOf<DependencyGraphDiagnosticEdge>()
         variantGraphs
             .filterKeys { key -> variantTypeFilter(key.variantType) }
             .forEach { (variantKey, graph) ->
@@ -172,6 +197,11 @@ internal class DefaultDependencyGraphs(
                         }
                         source.mainNodeIfInherited()?.let { mainNode ->
                             typedGraph.getValue(source).add(mainNode)
+                            diagnosticEdges += DependencyGraphDiagnosticEdge(
+                                source = source,
+                                target = mainNode,
+                                label = "SourceSetInheritanceEdge(${source.sourceSet}->Main)"
+                            )
                             typedGraph.getOrPut(mainNode) {
                                 sortedSetOf(dependencyGraphNodeComparator)
                             }
@@ -181,15 +211,24 @@ internal class DefaultDependencyGraphs(
                 graph.edges().forEach { edge ->
                     val source = edge.nodeU().sourceNode(variantKey)
                     val target = DependencyGraphNode(edge.nodeV(), DependencyGraphSourceSet.Main)
+                    val edgeValue = graph.edgeValue(edge.nodeU(), edge.nodeV()).orElse(null)
                     typedGraph.getOrPut(source) {
                         sortedSetOf(dependencyGraphNodeComparator)
                     }.add(target)
+                    diagnosticEdges += DependencyGraphDiagnosticEdge(
+                        source = source,
+                        target = target,
+                        label = edgeValue.diagnosticLabel()
+                    )
                     typedGraph.getOrPut(target) {
                         sortedSetOf(dependencyGraphNodeComparator)
                     }
                 }
             }
-        return typedGraph.mapValues { (_, dependencies) -> dependencies.toSet() }
+        return ReachabilityProjection(
+            graph = typedGraph.mapValues { (_, dependencies) -> dependencies.toSet() },
+            diagnosticEdges = diagnosticEdges
+        )
     }
 
     private fun Project.sourceNode(variantKey: VariantGraphKey): DependencyGraphNode =
@@ -209,6 +248,18 @@ internal class DefaultDependencyGraphs(
             DependencyGraphSourceSet.Test,
             DependencyGraphSourceSet.AndroidTest -> copy(sourceSet = DependencyGraphSourceSet.Main)
         }
+
+    private fun DependencyGraphEdge?.diagnosticLabel(): String =
+        when (this) {
+            is AndroidTestTargetProjectEdge -> "AndroidTestTargetProjectEdge($targetProjectPath)"
+            is ConfigurationEdge -> "ConfigurationEdge(${configuration.name})"
+            null -> "UnknownDependencyGraphEdge"
+        }
+
+    private data class ReachabilityProjection(
+        val graph: Map<DependencyGraphNode, Set<DependencyGraphNode>>,
+        val diagnosticEdges: List<DependencyGraphDiagnosticEdge>
+    )
 
     private companion object {
         val dependencyGraphNodeComparator: Comparator<DependencyGraphNode> =

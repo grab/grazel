@@ -14,42 +14,44 @@ evidence in item-specific logs so context compaction can recover state quickly.
     (`Add PAX Maven size guard`).
   - Item 9 typed reachability checkpoint is committed at `d84f3db`
     (`Add typed dependency reachability graph`).
-  - Item 9 current work is committed and established the post-Item-9 baseline
-    for Item 11.
-  - Passed so far in this item: focused graph/API tests, full
-    `:grazel-gradle-plugin:test`, Grazel `migrateToBazel`, local
-    `git diff --check`, local task-graph check, PAX `migrateToBazel`, PAX
-    `git diff --check`, PAX size guard, and PAX debug APK + android-test APK
-    Bazel build.
-  - PAX APK/android-test command passed:
-    `/Users/arun.sampathkumar/work/pax-android ./bazel.sh build
-    --verbose_failures //app:app-gps-pax-debug.apk
-    //app:app-gps-pax-debug-android-test.apk`.
-    Result: build completed successfully in `2140.633s`, `54526` total actions.
-  - PAX selected Bazel unit-test command passed:
-    `/Users/arun.sampathkumar/work/pax-android ./bazel.sh test
-    --test_output=errors //app-utils:app-utils-gps-pax-debug-test
-    //app-test:app-test-gps-pax-debug-test
-    //application-initializer:application-initializer-gps-pax-debug-test`.
-    Result: 3 of 3 tests passed in `374.828s`.
-  - PAX post-test `git diff --check` passed. PAX size guard remains unchanged:
-    11 buckets, 11 pinfiles, 2015 total artifact roots.
-  - Fresh post-compaction local pre-commit checks passed:
-    `git diff --check`, `git diff --check master...HEAD`,
+  - Item 11 implementation state: typed reachability SCCs now fail closed in
+    the graph layer with typed nodes and diagnostic edge labels. The old
+    `CollectTargetMavenRepoReferencesTask` local cyclic-group fixpoint was
+    removed. Bucket ownership and Maven materialization were intentionally not
+    changed in this item.
+  - Item 11 regression coverage added for genuine typed SCC diagnostics, the
+    known PAX `deliveries-model-food:test -> food-testkit:main ->
+    deliveries-model-food:main` false-cycle shape, and collector rejection of
+    synthetic cyclic groups.
+  - Fresh local checks passed: focused graph/task tests, full
     `./gradlew :grazel-gradle-plugin:test --console=plain --no-daemon`,
     `./gradlew migrateToBazel --console=plain --no-daemon`,
-    `reports/scripts/verify-default-task-graph.sh`,
-    `reports/scripts/verify-pax-size-guard.sh --mode preserving`, and generated
-    BUILD/WORKSPACE/json diff check.
-    `reports/scripts/verify-sample-bucket-labels.sh` still has the known
-    one-sided appcompat/constraintlayout exclude-union waiver.
-  - PAX Bazel workers were shut down after the heavy gates. Current disk
-    remains tight at about `21GiB` free; avoid more heavy PAX work before
-    deliberate cleanup.
-  - Next: Item 11 typed-SCC audit/diagnostic work. It must be preserving against
-    the post-Item-9 baseline unless a genuine typed SCC is proven and documented.
-  - Resource note: after PAX APK + unit-test gates, disk was about `21GiB` free
-    on the data volume. Avoid more heavy PAX work before cleaning deliberately.
+    `git diff --check`, `git diff --check master...HEAD`,
+    `reports/scripts/verify-default-task-graph.sh`, generated
+    BUILD/WORKSPACE/json diff check, and
+    `reports/scripts/verify-pax-size-guard.sh --mode preserving`.
+  - Known unchanged waiver:
+    `reports/scripts/verify-sample-bucket-labels.sh` fails on the pre-existing
+    one-sided appcompat/constraintlayout exclude-union case.
+  - Fresh PAX checks passed on `/Users/arun.sampathkumar/work/pax-android`
+    branch `arun/grazel-refactor` at `05d2b4801530`:
+    `./gradlew migrateToBazel --no-daemon --console=plain --stacktrace
+    --rerun-tasks` passed in `8m34s`;
+    `./bazel.sh build --verbose_failures //app:app-gps-pax-debug.apk
+    //app:app-gps-pax-debug-android-test.apk` passed in `224.788s`;
+    `./bazel.sh test --test_output=errors
+    //app-utils:app-utils-gps-pax-debug-test
+    //app-test:app-test-gps-pax-debug-test
+    //application-initializer:application-initializer-gps-pax-debug-test`
+    passed with 3/3 tests in `18.600s`;
+    PAX `git diff --check` passed.
+  - PAX size guard remains unchanged after the PAX loop: 11 buckets, 11
+    pinfiles, 2015 total artifact roots, no per-repo artifact-root deltas.
+  - Resource note: current data-volume free space is about `34GiB`; avoid more
+    heavy PAX work without the normal disk/memory/process precheck.
+  - Next: commit Item 11 locally, then start Item 12
+    (`BucketOwnershipPlanner` extraction) only from a clean green Grazel
+    checkpoint.
 - Active item: Item 7 - Pin-size reduction via bucket ownership.
 - Item 7/8 follow-up start commit: `9730083`
   (`Document Maven pin-size optimization constraints`).

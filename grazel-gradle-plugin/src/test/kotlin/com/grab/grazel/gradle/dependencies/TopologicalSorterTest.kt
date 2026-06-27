@@ -16,8 +16,14 @@
 
 package com.grab.grazel.gradle.dependencies
 
+import com.google.common.graph.ValueGraphBuilder
+import com.grab.grazel.buildProject
 import com.grab.grazel.fake.FakeDependencyGraphs
+import com.grab.grazel.fake.FakeConfiguration
 import com.grab.grazel.fake.FakeProject
+import com.grab.grazel.gradle.variant.VariantGraphKey
+import com.grab.grazel.gradle.variant.VariantType
+import org.gradle.api.Project
 import org.junit.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -361,9 +367,8 @@ class TopologicalSorterTest {
     }
 
     @Test
-    fun `reachability groups return consumers first and condense cycles`() {
+    fun `reachability groups fail instead of condensing cycles`() {
         // Graph: :app -> :a -> :b -> :a, and :b -> :leaf
-        // Consumers-first SCC order should be :app, {:a, :b}, :leaf.
         val projectApp = FakeProject("app")
         val projectA = FakeProject("a")
         val projectB = FakeProject("b")
@@ -378,16 +383,14 @@ class TopologicalSorterTest {
             )
         )
 
-        val groups = ProjectReachabilityOrder.consumersFirstGroups(graphs)
+        val exception = assertFailsWith<IllegalStateException> {
+            ProjectReachabilityOrder.consumersFirstGroups(graphs)
+        }
 
-        assertEquals(
-            listOf(
-                ProjectReachabilityGroup(listOf(projectApp), cyclic = false),
-                ProjectReachabilityGroup(listOf(projectA, projectB), cyclic = true),
-                ProjectReachabilityGroup(listOf(projectLeaf), cyclic = false)
-            ),
-            groups
-        )
+        val message = exception.message.orEmpty()
+        assertTrue(message.contains("Typed dependency cycle detected"), message)
+        assertTrue(message.contains(":a[Main]"), message)
+        assertTrue(message.contains(":b[Main]"), message)
     }
 
     @Test
@@ -430,28 +433,38 @@ class TopologicalSorterTest {
     }
 
     @Test
-    fun `reachability groups keep genuine main source set cycles cyclic`() {
-        val projectA = FakeProject("a")
-        val projectB = FakeProject("b")
-        val nodeA = DependencyGraphNode(projectA, DependencyGraphSourceSet.Main)
-        val nodeB = DependencyGraphNode(projectB, DependencyGraphSourceSet.Main)
-        val graphs = FakeDependencyGraphs(
-            typedReachabilityGraph = mapOf(
-                nodeA to setOf(nodeB),
-                nodeB to setOf(nodeA)
+    fun `reachability groups fail with typed diagnostic for genuine typed SCC`() {
+        val rootProject = buildProject("root")
+        val projectA = buildProject("a", rootProject)
+        val projectB = buildProject("b", rootProject)
+        val graph = ValueGraphBuilder
+            .directed()
+            .allowsSelfLoops(true)
+            .immutable<Project, DependencyGraphEdge>()
+            .putEdgeValue(projectA, projectB, ConfigurationEdge(FakeConfiguration("implementation")))
+            .putEdgeValue(projectB, projectA, ConfigurationEdge(FakeConfiguration("api")))
+            .build()
+        val graphs = DefaultDependencyGraphs(
+            variantGraphs = mapOf(
+                VariantGraphKey(":a:debugAndroidBuild", VariantType.AndroidBuild) to graph
             )
         )
 
-        val groups = ProjectReachabilityOrder.consumersFirstGroups(graphs)
+        val exception = assertFailsWith<IllegalStateException> {
+            ProjectReachabilityOrder.consumersFirstGroups(graphs)
+        }
 
-        assertEquals(
-            listOf(ProjectReachabilityGroup(listOf(projectA, projectB), cyclic = true)),
-            groups
-        )
+        val message = exception.message.orEmpty()
+        assertTrue(message.contains("Typed dependency cycle detected"), message)
+        assertTrue(message.contains(":a[Main]"), message)
+        assertTrue(message.contains(":b[Main]"), message)
+        assertTrue(message.contains("ConfigurationEdge"), message)
+        assertTrue(message.contains("implementation"), message)
+        assertTrue(message.contains("api"), message)
     }
 
     @Test
-    fun `reachability groups keep full genuine cycle even when project appeared as test source first`() {
+    fun `reachability groups fail even when genuine cycle project appeared as test source first`() {
         val projectA = FakeProject("a")
         val projectB = FakeProject("b")
         val nodeATest = DependencyGraphNode(projectA, DependencyGraphSourceSet.Test)
@@ -465,14 +478,13 @@ class TopologicalSorterTest {
             )
         )
 
-        val groups = ProjectReachabilityOrder.consumersFirstGroups(graphs)
+        val exception = assertFailsWith<IllegalStateException> {
+            ProjectReachabilityOrder.consumersFirstGroups(graphs)
+        }
 
-        assertEquals(
-            listOf(
-                ProjectReachabilityGroup(listOf(projectA), cyclic = false),
-                ProjectReachabilityGroup(listOf(projectA, projectB), cyclic = true)
-            ),
-            groups
-        )
+        val message = exception.message.orEmpty()
+        assertTrue(message.contains("Typed dependency cycle detected"), message)
+        assertTrue(message.contains(":a[Main]"), message)
+        assertTrue(message.contains(":b[Main]"), message)
     }
 }

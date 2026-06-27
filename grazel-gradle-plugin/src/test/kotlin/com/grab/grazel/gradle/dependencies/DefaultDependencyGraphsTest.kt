@@ -18,6 +18,7 @@ package com.grab.grazel.gradle.dependencies
 
 import com.google.common.graph.ImmutableValueGraph
 import com.google.common.graph.ValueGraphBuilder
+import com.grab.grazel.buildProject
 import com.grab.grazel.fake.FakeConfiguration
 import com.grab.grazel.fake.FakeProject
 import com.grab.grazel.gradle.variant.VariantGraphKey
@@ -25,6 +26,7 @@ import com.grab.grazel.gradle.variant.VariantType
 import org.gradle.api.Project
 import org.junit.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 
 
 class DefaultDependencyGraphsTest {
@@ -186,6 +188,45 @@ class DefaultDependencyGraphsTest {
             graphs.reachabilityGraph().getValue(
                 DependencyGraphNode(projectA, DependencyGraphSourceSet.Test)
             )
+        )
+    }
+
+    @Test
+    fun `reachabilityGraph keeps PAX testImplementation back edge acyclic as typed nodes`() {
+        val rootProject = buildProject("root")
+        val deliveriesModelFood = buildProject("deliveries-model-food", rootProject)
+        val foodTestkit = buildProject("food-testkit", rootProject)
+        val mainGraph = ValueGraphBuilder.directed()
+            .allowsSelfLoops(false)
+            .build<Project, DependencyGraphEdge>().apply {
+                putEdgeValue(foodTestkit, deliveriesModelFood, ConfigurationEdge(FakeConfiguration("implementation")))
+            }.run { ImmutableValueGraph.copyOf(this) }
+        val testGraph = ValueGraphBuilder.directed()
+            .allowsSelfLoops(false)
+            .build<Project, DependencyGraphEdge>().apply {
+                putEdgeValue(deliveriesModelFood, foodTestkit, ConfigurationEdge(FakeConfiguration("testImplementation")))
+            }.run { ImmutableValueGraph.copyOf(this) }
+        val graphs = DefaultDependencyGraphs(
+            variantGraphs = mapOf(
+                VariantGraphKey(":food-testkit:debugAndroidBuild", VariantType.AndroidBuild) to mainGraph,
+                VariantGraphKey(":deliveries-model-food:debugUnitTestTest", VariantType.Test) to testGraph
+            )
+        )
+
+        assertEquals(
+            setOf(
+                DependencyGraphNode(deliveriesModelFood, DependencyGraphSourceSet.Main),
+                DependencyGraphNode(foodTestkit, DependencyGraphSourceSet.Main)
+            ),
+            graphs.reachabilityGraph().getValue(
+                DependencyGraphNode(deliveriesModelFood, DependencyGraphSourceSet.Test)
+            )
+        )
+        val groups = ProjectReachabilityOrder.consumersFirstGroups(graphs)
+        assertFalse(groups.any(ProjectReachabilityGroup::cyclic))
+        assertEquals(
+            listOf(deliveriesModelFood, foodTestkit),
+            groups.flatMap(ProjectReachabilityGroup::projects)
         )
     }
 

@@ -79,16 +79,18 @@ equivalence, so moving tag decisions into the plan does not change compression d
 
 ## Target Reference Ordering
 
-`collectTargetMavenRepoReferences` now uses dependency-graph SCC ordering so acyclic
-projects are processed once and cyclic project groups use only a local fixpoint. This
-removes the expensive global fixpoint for the verified PAX slice.
+`collectTargetMavenRepoReferences` now uses typed dependency-graph reachability ordering so
+acyclic project groups are processed once. SCC is no longer a normal target-reference
+collection strategy: any genuine typed SCC fails in `ProjectReachabilityOrder` with typed
+nodes and diagnostic edge labels. The previously suspected PAX
+`deliveries-model-food:test -> food-testkit:main -> deliveries-model-food:main` shape is
+covered as an acyclic typed graph.
 
-The ordering graph is still derived from Gradle project dependency edges, not from a
-dedicated target-reference graph. Non-configuration references, such as an
-`com.android.test` target project relation, can therefore depend on fallback path order
-when no Gradle project dependency edge also represents that target relationship. PAX
-migrate, debug APK, android-test APK, focused unit tests, and the bounded tag/reachability
-audit pass with this shape.
+The ordering graph is still not a dedicated target-reference graph. Non-configuration
+references must be represented as typed dependency edges before ordering; otherwise the
+graph layer should fail with diagnostics rather than reintroducing a task-local fixpoint.
+PAX migrate, debug APK, android-test APK, focused unit tests, and the size guard pass with
+this fail-closed shape.
 
 Future work can make the altitude cleaner by modeling a first-class target-reference
 reachability graph in the dependency/variant layer, augmenting Gradle project edges with

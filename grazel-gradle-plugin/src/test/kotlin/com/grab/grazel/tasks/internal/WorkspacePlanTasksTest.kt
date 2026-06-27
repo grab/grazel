@@ -354,108 +354,30 @@ class WorkspacePlanTasksTest {
     }
 
     @Test
-    fun `collect target references fixes cyclic groups locally`() {
+    fun `collect target references rejects cyclic groups instead of running local fixpoint`() {
         val rootProject = buildProject("root")
-        val rootConsumerProject = buildProject("root-consumer", rootProject)
         val projectA = buildProject("a", rootProject)
         val projectB = buildProject("b", rootProject)
         val workspacePlanService = WorkspacePlanService.register(rootProject).get()
-        val callsByProject = mutableMapOf<String, Int>()
-
-        val references = collectTargetMavenRepoReferencesByGroup(
-            projectGroups = listOf(
-                ProjectReachabilityGroup(listOf(rootConsumerProject), cyclic = false),
-                ProjectReachabilityGroup(listOf(projectB, projectA), cyclic = true)
-            ),
-            canMigrate = { true },
-            targetsForProject = { project ->
-                callsByProject[project.path] = callsByProject.getOrDefault(project.path, 0) + 1
-                when (project.path) {
-                    ":root-consumer" -> listOf(
-                        fakeTarget(
-                            name = "root-consumer",
-                            deps = listOf(ProjectDependency(projectA, suffix = ""))
-                        )
-                    )
-                    ":a" -> if (workspacePlanService.isReferencedTarget(":a", "a")) {
-                        listOf(
-                            fakeTarget(
-                                name = "a",
-                                deps = listOf(ProjectDependency(projectB, suffix = ""))
-                            )
-                        )
-                    } else {
-                        emptyList()
-                    }
-                    ":b" -> if (workspacePlanService.isReferencedTarget(":b", "b")) {
-                        listOf(
-                            fakeTarget(
-                                name = "b",
-                                deps = listOf(
-                                    MavenDependency(
-                                        repo = "cycle_maven",
-                                        group = "com.example",
-                                        name = "cycle"
-                                    )
-                                )
-                            )
-                        )
-                    } else {
-                        emptyList()
-                    }
-                    else -> emptyList()
-                }
-            },
-            workspacePlanService = workspacePlanService
-        )
-
-        assertEquals(setOf("cycle_maven"), references.repoNames)
-        assertEquals(setOf(":a", ":b"), references.projectPaths)
-        assertEquals(
-            mapOf(
-                ":a" to setOf("a"),
-                ":b" to setOf("b")
-            ),
-            references.projectTargets
-        )
-        assertEquals(1, callsByProject.getValue(":root-consumer"))
-        assertEquals(3, callsByProject.getValue(":a"))
-        assertEquals(3, callsByProject.getValue(":b"))
-    }
-
-    @Test
-    fun `collect target references fails when cyclic group does not converge`() {
-        val rootProject = buildProject("root")
-        val projectA = buildProject("a", rootProject)
-        val workspacePlanService = WorkspacePlanService.register(rootProject).get()
-        var repoIndex = 0
+        var targetExtractionCount = 0
 
         val exception = assertFailsWith<IllegalStateException> {
             collectTargetMavenRepoReferencesByGroup(
-                projectGroups = listOf(ProjectReachabilityGroup(listOf(projectA), cyclic = true)),
+                projectGroups = listOf(ProjectReachabilityGroup(listOf(projectA, projectB), cyclic = true)),
                 canMigrate = { true },
                 targetsForProject = {
-                    repoIndex += 1
-                    listOf(
-                        fakeTarget(
-                            name = "a",
-                            deps = listOf(
-                                MavenDependency(
-                                    repo = "repo_$repoIndex",
-                                    group = "com.example",
-                                    name = "non-converging"
-                                )
-                            )
-                        )
-                    )
+                    targetExtractionCount += 1
+                    emptyList()
                 },
                 workspacePlanService = workspacePlanService
             )
         }
 
-        assertTrue(exception.message!!.contains("did not converge"))
-        assertTrue(exception.message!!.contains(":a"))
-        assertTrue(exception.message!!.contains("repo_2"))
+        val message = exception.message.orEmpty()
+        assertTrue(message.contains("cyclic project group"), message)
+        assertTrue(message.contains(":a"), message)
+        assertTrue(message.contains(":b"), message)
+        assertEquals(0, targetExtractionCount)
     }
 
     private fun fakeTarget(

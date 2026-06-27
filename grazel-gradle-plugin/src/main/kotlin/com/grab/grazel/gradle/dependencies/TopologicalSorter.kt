@@ -181,6 +181,16 @@ internal object ProjectReachabilityOrder {
         if (graph.isEmpty()) return emptyList()
 
         val components = stronglyConnectedComponents(graph, dependencyGraphNodeComparator)
+        val cyclicComponents = components.filter { nodes ->
+            nodes.size > 1 || nodes.any { node -> node in graph.getValue(node) }
+        }
+        check(cyclicComponents.isEmpty()) {
+            typedCycleDiagnostic(
+                cyclicComponents = cyclicComponents,
+                diagnosticEdges = graphs.reachabilityDiagnosticEdges(variantTypeFilter)
+            )
+        }
+
         val componentIndexByNode = components
             .flatMapIndexed { index, nodes -> nodes.map { node -> node to index } }
             .toMap()
@@ -203,23 +213,50 @@ internal object ProjectReachabilityOrder {
             .asReversed()
             .mapNotNull { componentIndex ->
                 val nodes = components[componentIndex]
-                val cyclic = nodes.size > 1 || nodes.any { node -> node in graph.getValue(node) }
                 val projects = nodes
                     .map(DependencyGraphNode::project)
                     .distinctBy(Project::getPath)
                     .filter { project ->
-                        cyclic || seenProjects.add(project)
+                        seenProjects.add(project)
                     }
                 if (projects.isEmpty()) {
                     null
                 } else {
                     ProjectReachabilityGroup(
                         projects = projects.sortedBy(Project::getPath),
-                        cyclic = cyclic
+                        cyclic = false
                     )
                 }
             }
     }
+
+    private fun typedCycleDiagnostic(
+        cyclicComponents: List<List<DependencyGraphNode>>,
+        diagnosticEdges: List<DependencyGraphDiagnosticEdge>
+    ): String = buildString {
+        appendLine("Typed dependency cycle detected in reachability graph.")
+        appendLine("SCC is not a modeling strategy; model missing typed edges instead of running a fixpoint.")
+        cyclicComponents.forEachIndexed { index, nodes ->
+            val nodeSet = nodes.toSet()
+            appendLine("Component ${index + 1}: ${nodes.joinToString(", ") { it.displayName() }}")
+            val componentEdges = diagnosticEdges
+                .filter { edge -> edge.source in nodeSet && edge.target in nodeSet }
+                .sortedWith(
+                    compareBy<DependencyGraphDiagnosticEdge> { it.source.displayName() }
+                        .thenBy { it.target.displayName() }
+                        .thenBy { it.label }
+                )
+            if (componentEdges.isEmpty()) {
+                appendLine("  edges: unavailable")
+            } else {
+                componentEdges.forEach { edge ->
+                    appendLine("  ${edge.source.displayName()} -> ${edge.target.displayName()} via ${edge.label}")
+                }
+            }
+        }
+    }
+
+    private fun DependencyGraphNode.displayName(): String = "${project.path}[$sourceSet]"
 
     private fun <T> Map<T, Set<T>>.normalized(comparator: Comparator<T>): Map<T, Set<T>> {
         val nodes = (keys + values.flatten()).toSortedSet(comparator)

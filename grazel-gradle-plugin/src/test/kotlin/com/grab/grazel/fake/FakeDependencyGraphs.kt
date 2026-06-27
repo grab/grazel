@@ -18,6 +18,7 @@ package com.grab.grazel.fake
 
 import com.google.common.graph.ImmutableValueGraph
 import com.grab.grazel.gradle.dependencies.DependencyGraphEdge
+import com.grab.grazel.gradle.dependencies.DependencyGraphDiagnosticEdge
 import com.grab.grazel.gradle.dependencies.DependencyGraphNode
 import com.grab.grazel.gradle.dependencies.DependencyGraphSourceSet
 import com.grab.grazel.gradle.dependencies.DependencyGraphs
@@ -61,4 +62,16 @@ internal class FakeDependencyGraphs(
                 DependencyGraphNode(dependency, DependencyGraphSourceSet.Main)
             }
         }
+
+    override fun reachabilityDiagnosticEdges(
+        variantTypeFilter: (VariantType) -> Boolean
+    ): List<DependencyGraphDiagnosticEdge> = reachabilityGraph(variantTypeFilter).flatMap { (source, targets) ->
+        targets.map { target ->
+            DependencyGraphDiagnosticEdge(
+                source = source,
+                target = target,
+                label = "FakeDependencyGraphEdge"
+            )
+        }
+    }
 }

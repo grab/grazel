@@ -185,67 +185,23 @@ private fun collectTargetMavenRepoReferencesSinglePass(
 ): TargetMavenRepoReferences {
     var accumulated = TargetMavenRepoReferences()
     projectGroups.forEach { group ->
-        accumulated = if (group.cyclic) {
-            collectCyclicProjectGroup(
-                accumulated = accumulated,
-                projects = group.projects,
+        check(!group.cyclic) {
+            "Cannot collect target Maven repo references for cyclic project group " +
+                group.projects.map(Project::getPath).sorted() +
+                ". ProjectReachabilityOrder must fail typed SCCs before target collection."
+        }
+        accumulated = group.projects.fold(accumulated) { current, project ->
+            collectProjectReferences(
+                accumulated = current,
+                project = project,
                 canMigrate = canMigrate,
                 targetsForProject = targetsForProject,
                 workspacePlanService = workspacePlanService
             )
-        } else {
-            group.projects.fold(accumulated) { current, project ->
-                collectProjectReferences(
-                    accumulated = current,
-                    project = project,
-                    canMigrate = canMigrate,
-                    targetsForProject = targetsForProject,
-                    workspacePlanService = workspacePlanService
-                )
-            }
         }
     }
 
     return accumulated.normalized()
-}
-
-private fun collectCyclicProjectGroup(
-    accumulated: TargetMavenRepoReferences,
-    projects: Iterable<Project>,
-    canMigrate: (Project) -> Boolean,
-    targetsForProject: (Project) -> List<BazelTarget>,
-    workspacePlanService: WorkspacePlanService
-): TargetMavenRepoReferences {
-    var groupAccumulated = TargetMavenRepoReferences()
-    val projectList = projects.filter(canMigrate).toList()
-    var lastDelta = TargetMavenRepoReferences()
-
-    repeat(projectList.size + 1) {
-        var next = groupAccumulated
-        projectList.forEach { project ->
-            workspacePlanService.populateRenderPlan(
-                mergeTargetMavenRepoReferences(accumulated, next).asRenderPlan()
-            )
-            next = mergeTargetMavenRepoReferences(
-                next,
-                TargetMavenRepoReferencesCollector.fromTargets(targetsForProject(project))
-            )
-        }
-        if (next == groupAccumulated) {
-            return mergeTargetMavenRepoReferences(accumulated, next).normalized()
-        }
-        lastDelta = subtractTargetMavenRepoReferences(next, groupAccumulated)
-        groupAccumulated = next
-    }
-
-    error(
-        buildString {
-            append("Target Maven repo reference fixpoint did not converge for cyclic project group ")
-            append(projectList.map(Project::getPath).sorted())
-            append(" after ${projectList.size + 1} passes. Last discovered delta: ")
-            append(lastDelta.toSummary())
-        }
-    )
 }
 
 private fun collectProjectReferences(
@@ -292,29 +248,6 @@ private fun mergeProjectTargets(
         }
         .toSortedMap()
 }
-
-private fun subtractTargetMavenRepoReferences(
-    left: TargetMavenRepoReferences,
-    right: TargetMavenRepoReferences
-): TargetMavenRepoReferences =
-    TargetMavenRepoReferences(
-        repoNames = left.repoNames - right.repoNames,
-        projectPaths = left.projectPaths - right.projectPaths,
-        projectTargets = subtractProjectTargets(left.projectTargets, right.projectTargets)
-    ).normalized()
-
-private fun subtractProjectTargets(
-    left: Map<String, Set<String>>,
-    right: Map<String, Set<String>>
-): Map<String, Set<String>> =
-    left.mapValues { (projectPath, targetNames) ->
-        targetNames - right.getOrDefault(projectPath, emptySet())
-    }
-        .filterValues(Set<String>::isNotEmpty)
-        .toSortedMap()
-
-private fun TargetMavenRepoReferences.toSummary(): String =
-    "repoNames=$repoNames, projectPaths=$projectPaths, projectTargets=$projectTargets"
 
 private fun TargetMavenRepoReferences.normalized(): TargetMavenRepoReferences =
     TargetMavenRepoReferences(
