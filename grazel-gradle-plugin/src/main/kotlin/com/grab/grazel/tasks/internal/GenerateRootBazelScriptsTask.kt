@@ -67,10 +67,6 @@ constructor(
 
     @get:InputFile
     @get:PathSensitive(PathSensitivity.RELATIVE)
-    val workspacePlan: RegularFileProperty = project.objects.fileProperty()
-
-    @get:InputFile
-    @get:PathSensitive(PathSensitivity.RELATIVE)
     val workspaceRenderPlan: RegularFileProperty = project.objects.fileProperty()
 
     @get:OutputFile

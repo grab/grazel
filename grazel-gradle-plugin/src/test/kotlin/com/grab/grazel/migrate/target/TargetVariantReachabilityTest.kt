@@ -28,8 +28,6 @@ internal class TargetVariantReachabilityTest {
         assertTrue {
             isReachableTargetVariant(
                 variantName = "gpsPaxRelease",
-                buildType = "release",
-                flavors = setOf("gps", "pax"),
                 isReachableBucket = null,
             )
         }
@@ -42,16 +40,12 @@ internal class TargetVariantReachabilityTest {
         assertTrue {
             isReachableTargetVariant(
                 variantName = "gpsPaxDebug",
-                buildType = "debug",
-                flavors = setOf("gps", "pax"),
                 isReachableBucket = reachableBuckets::contains,
             )
         }
         assertFalse {
             isReachableTargetVariant(
                 variantName = "gpsOvoDebug",
-                buildType = "debug",
-                flavors = setOf("gps", "ovo"),
                 isReachableBucket = reachableBuckets::contains,
             )
         }
@@ -64,24 +58,18 @@ internal class TargetVariantReachabilityTest {
         assertTrue {
             isReachableTargetVariant(
                 variantName = "gpsPaxDebugAndroidTest",
-                buildType = "debug",
-                flavors = setOf("gps", "pax"),
                 isReachableBucket = reachableBuckets::contains,
             )
         }
         assertTrue {
             isReachableTargetVariant(
                 variantName = "gpsPaxDebugUnitTest",
-                buildType = "debug",
-                flavors = setOf("gps", "pax"),
                 isReachableBucket = reachableBuckets::contains,
             )
         }
         assertFalse {
             isReachableTargetVariant(
                 variantName = "gpsOvoDebugAndroidTest",
-                buildType = "debug",
-                flavors = setOf("gps", "ovo"),
                 isReachableBucket = reachableBuckets::contains,
             )
         }
@@ -94,8 +82,6 @@ internal class TargetVariantReachabilityTest {
         assertFalse {
             isReachableTargetVariant(
                 variantName = "release",
-                buildType = "release",
-                flavors = emptySet(),
                 isReachableBucket = reachableBuckets::contains,
             )
         }
@@ -114,8 +100,6 @@ internal class TargetVariantReachabilityTest {
         assertFalse("app leaf is not itself a reachable library bucket") {
             isReachableTargetVariant(
                 variantName = matchedVariant.variantName,
-                buildType = matchedVariant.buildType,
-                flavors = matchedVariant.flavors,
                 isReachableBucket = reachableBuckets::contains,
             )
         }

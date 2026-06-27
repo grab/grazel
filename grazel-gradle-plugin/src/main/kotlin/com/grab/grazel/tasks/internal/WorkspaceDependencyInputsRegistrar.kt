@@ -22,6 +22,8 @@ import com.grab.grazel.gradle.MigrationChecker
 import com.grab.grazel.gradle.dependencies.AggregatedDependencyRootKind
 import com.grab.grazel.gradle.dependencies.AggregatedDependencyRootMetadata
 import com.grab.grazel.gradle.dependencies.extractExcludeRulesByShortId
+import com.grab.grazel.gradle.isAndroidApplication
+import com.grab.grazel.gradle.isAndroidTest
 import com.grab.grazel.gradle.variant.ANDROID_TEST_VARIANT
 import com.grab.grazel.gradle.variant.DEFAULT_VARIANT
 import com.grab.grazel.gradle.variant.TEST_VARIANT
@@ -102,12 +104,11 @@ internal object WorkspaceDependencyInputsRegistrar {
             }
         }
         val binaryProjects = migratableProjects.filter { project ->
-            project.plugins.hasPlugin("com.android.application") ||
-                project.plugins.hasPlugin("com.android.test")
+            project.isAndroidApplication || project.isAndroidTest
         }
 
         binaryProjects.forEach { project ->
-            val standaloneTestProject = project.plugins.hasPlugin("com.android.test")
+            val standaloneTestProject = project.isAndroidTest
             val variants = variantsByProject[project].orEmpty().sortedForWorkspaceDependencyInputs()
             variants
                 .filter { variant ->

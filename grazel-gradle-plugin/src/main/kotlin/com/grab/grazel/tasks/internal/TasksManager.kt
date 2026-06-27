@@ -160,7 +160,6 @@ constructor(
             grazelComponent
         ) {
             workspaceDependencies.set(computeWorkspaceDependenciesTask.flatMap { it.workspaceDependencies })
-            workspacePlan.set(computeWorkspacePlanTask.flatMap { it.workspacePlan })
             workspaceRenderPlan.set(finalizeWorkspacePlanTask.flatMap { it.workspaceRenderPlan })
             dependencyResolutionService.set(grazelComponent.dependencyResolutionService())
             dependsOn(finalizeWorkspacePlanTask)

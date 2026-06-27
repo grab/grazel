@@ -20,6 +20,8 @@ import com.android.build.gradle.api.BaseVariant
 import com.grab.grazel.gradle.dependencies.model.ExcludeRule
 import com.grab.grazel.gradle.dependencies.model.ResolvedDependency
 import com.grab.grazel.gradle.dependencies.model.intersectWith
+import com.grab.grazel.gradle.isAndroidApplication
+import com.grab.grazel.gradle.isAndroidTest
 import com.grab.grazel.gradle.variant.ANDROID_TEST_VARIANT
 import com.grab.grazel.gradle.variant.DEFAULT_VARIANT
 import com.grab.grazel.gradle.variant.TEST_VARIANT
@@ -54,9 +56,9 @@ internal class DeclaredDependencyMetadataCollector {
                 .associate { (project, variants) ->
                     project.path to ProjectDeclaredDependencyMetadata(
                         projectType = when {
-                            project.plugins.hasPlugin("com.android.application") ->
+                            project.isAndroidApplication ->
                                 DeclaredProjectType.ANDROID_APPLICATION
-                            project.plugins.hasPlugin("com.android.test") ->
+                            project.isAndroidTest ->
                                 DeclaredProjectType.ANDROID_TEST
                             else -> DeclaredProjectType.OTHER
                         },

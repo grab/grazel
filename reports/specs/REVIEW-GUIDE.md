@@ -61,13 +61,11 @@ Latest recorded PAX gates:
   `//app-test:app-test-gps-pax-debug-test`, and
   `//application-initializer:application-initializer-gps-pax-debug-test`.
 - PAX `git diff --check` passed after generation.
-- PAX bounded audit passed: no bucket-prefixed Maven labels in tags, strict
-  reachability spot-check for `bug-report-kit-implementation` passed, WORKSPACE had
-  4772 lines and 24 `maven_install` entries.
-- PAX pin-size shape after Item 7: materialized pinfiles decreased from 17 to 12 and
-  `maven_install` calls from 28 to 24; input artifact roots increased from 1784 to
-  2094 (+17.4%) because non-default test/lint repos retain complete Gradle-resolved
-  closure. This is accepted as correctness-first but remains size debt.
+- PAX bounded audit passed: no bucket-prefixed Maven labels in tags and strict
+  reachability spot-checks passed.
+- Current PAX size guard baseline is 11 buckets, 11 materialized pinfiles, and 1945
+  input artifact roots. This improved over the earlier Item 7 intermediate shape, but
+  non-default test/android-test/lint pinfiles remain the main size debt.
 
 Latest recorded Grazel gates:
 - `:grazel-gradle-plugin:test` passed.

@@ -21,14 +21,16 @@ changes.
 
 The PAX generated baseline is available on `/Users/arun.sampathkumar/work/pax-android`,
 branch `arun/grazel-refactor`, commit `05d2b4801530726ab722133c2ba32cbba9afeb67`, and the
-Grazel size guard from Item 10 owns the machine-readable baseline. PAX files are never
-committed from this repo.
+Grazel size guard from Item 10 owns the machine-readable size baseline. The accepted PAX
+generated-output state is an intentionally dirty worktree snapshot guarded by the stable
+diff/status hashes recorded in `EXECUTION-LOG.md`; PAX files are never committed from this
+repo.
 
 ## Sequence
 
 1. **Baseline sanity.** Confirm Item 10's `pax-size-baseline.json` exists, Item 13 reductions
-   were monotonically re-baselined if any occurred, and PAX `git diff` is clean before final
-   verification begins.
+   were monotonically re-baselined if any occurred, and PAX generated output still matches
+   the accepted diff/status hashes before final verification begins.
 2. **Simplify pass.** Run the available simplify-pass skill over the branch diff, focused on
    reuse, simplification, efficiency, and altitude only. This is not a correctness hunt.
    Apply only behavior-preserving improvements and rerun impacted checks after each batch.

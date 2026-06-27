@@ -27,11 +27,12 @@ current accepted behavior keeps the Gradle-resolved closure in
 `maven_install.artifacts` so rules_jvm_external/Coursier are constrained to the Gradle
 selected versions.
 
-After the Item 7 direct-root ownership pass, PAX materialized pinfiles decreased from 17
-to 12 and `maven_install` calls decreased from 28 to 24, but input artifact roots are
-still 2094 versus 1784 in PAX HEAD/master (+17.4%). The remaining growth is accepted only
-because PAX migrate, debug APK, android-test APK, selected unit tests, and tag/reachability
-audits pass while preserving complete Gradle-resolved closure.
+The current accepted PAX size baseline is 11 buckets, 11 materialized pinfiles, and 1945
+input artifact roots. This is an improvement over the earlier Item 7 intermediate state,
+but the non-default test/android-test/lint pin files are still considered size debt. The
+remaining size is accepted only because PAX migrate, debug APK, android-test APK, selected
+unit tests, and tag/reachability audits pass while preserving complete Gradle-resolved
+closure.
 
 The compact-root experiment was rejected because dropping closure artifacts removed that
 version-forcing behavior and caused PAX pinning to stall. Future size work should happen
@@ -97,12 +98,26 @@ reachability graph in the dependency/variant layer, augmenting Gradle project ed
 known non-configuration target edges before SCC ordering. The task should remain
 orchestration only.
 
-## Cacheability Caveat
+## Cacheability Boundary
 
 The refactor preserves the master-like approach of letting Gradle own resolution and
-passing resolved values into cacheable task boundaries where feasible. A future cleanup
-can revisit serialized resolved-component inputs versus live Gradle result objects, but
-that is not required for the current PAX acceptance path.
+passing resolved values into cacheable task boundaries where feasible.
+`ResolveWorkspaceDependenciesTask` and `CollectKspProcessorDependenciesTask` remain
+cacheable by design for this slice. The current cache key is not fully relocatable: it
+includes live Gradle `ResolvedComponentResult` inputs, and KSP also carries absolute
+artifact paths for processor-class extraction. This is accepted because the current goal
+prioritizes preserving the verified task shape and PAX behavior. A future cacheability
+hardening pass should serialize deterministic resolved-root models and use stable artifact
+identity plus classpath inputs while keeping absolute paths execution-local.
+
+## Renderer-Model References
+
+`TargetMavenRepoReferencesCollector` still derives referenced Maven repos and project
+targets from rendered target dependency/tag labels. This is not generated-file feedback and
+does not read final BUILD output, but it keeps label formatting as part of planning
+semantics. A future cleanup should expose typed Maven/project references from target
+builders or dependency models so render-plan materialization no longer depends on label
+string parsing.
 
 ## Verification Waivers
 

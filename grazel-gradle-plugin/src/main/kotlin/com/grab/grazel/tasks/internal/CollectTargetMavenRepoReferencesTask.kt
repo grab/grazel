@@ -108,16 +108,7 @@ constructor(
             workspacePlanService = workspacePlanService.get()
         )
 
-        writeJson(
-            TargetMavenRepoReferences(
-                repoNames = targetReferences.repoNames.toSortedSet(),
-                projectPaths = targetReferences.projectPaths.toSortedSet(),
-                projectTargets = targetReferences.projectTargets
-                    .mapValues { (_, targetNames) -> targetNames.toSortedSet() }
-                    .toSortedMap()
-            ),
-            targetMavenRepoReferences.get()
-        )
+        writeJson(targetReferences, targetMavenRepoReferences.get())
         logger.logHeap("CollectTargetMavenRepoReferences:done")
     }
 

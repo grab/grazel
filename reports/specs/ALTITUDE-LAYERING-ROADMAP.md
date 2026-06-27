@@ -31,12 +31,14 @@
    every difference is classified as intended scoped delta ownership, the size guard passes,
    and PAX builds pass.
 3. **Size guard = freeze current PAX as the accepted baseline.** The accepted PAX generated
-   state is committed on the PAX branch `arun/grazel-refactor`, giving future work a tight
-   `git diff` loop. Bucket count, pinfile count, and total artifact roots must **never
-   increase** from the frozen baseline. Further reductions are a win and may monotonically
-   lower the baseline after verification. Master is NOT the target (it over-bucketed).
-   Correctness gates (PAX builds) remain primary; any correctness-required increase needs an
-   explicit maintainer waiver, not a silent guard bypass.
+   state is recorded from branch `arun/grazel-refactor` as a machine-readable size baseline
+   plus stable dirty-worktree diff/status hashes, giving future work a tight impact check
+   without committing PAX generated files from this goal. Bucket count, pinfile count, and
+   total artifact roots must **never increase** from the frozen baseline. Further reductions
+   are a win and may monotonically lower the baseline after verification. Master is NOT the
+   target (it over-bucketed). Correctness gates (PAX builds) remain primary; any
+   correctness-required increase needs an explicit maintainer waiver, not a silent guard
+   bypass.
 4. **Complexity reduction is part of the goal.** Layering is not cosmetic. The verified PAX
    baseline gives the pass room to replace compensating machinery with better models: typed
    graph projections over SCC/fixpoint fallback, aggregated declared metadata over downstream

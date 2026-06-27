@@ -26,8 +26,6 @@ internal fun BaseVariant.isReachableTargetVariant(
     isReachableBucket: ((String) -> Boolean)?
 ): Boolean = isReachableTargetVariant(
     variantName = name,
-    buildType = buildType.name,
-    flavors = productFlavors.mapTo(mutableSetOf()) { it.name },
     isReachableBucket = isReachableBucket,
 )
 
@@ -35,11 +33,8 @@ internal fun MatchedVariant.isReachableProjectVariant(
     isReachableBucket: ((String) -> Boolean)?
 ): Boolean = variant.isReachableTargetVariant(isReachableBucket)
 
-@Suppress("UNUSED_PARAMETER")
 internal fun isReachableTargetVariant(
     variantName: String,
-    buildType: String,
-    flavors: Set<String>,
     isReachableBucket: ((String) -> Boolean)?
 ): Boolean {
     if (isReachableBucket == null) {
