@@ -1023,7 +1023,7 @@ evidence in item-specific logs so context compaction can recover state quickly.
   - `reports/scripts/verify-sample-bucket-labels.sh` still fails only on the
     known appcompat/constraintlayout one-sided exclude-union waiver.
   - `git diff --check master...HEAD` passed.
-- Item 13 local checkpoint commit:
-  `ddaacc41d25ea3546b2402cc329d7c9e51a44734`
+- Item 13 local implementation checkpoint commit:
+  `ef08b7c4f96942081961258d4b596680677af493`
   (`Implement test Android delta ownership`). PAX generated files remain
   uncommitted by design.
