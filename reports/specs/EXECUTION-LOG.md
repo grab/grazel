@@ -9,6 +9,28 @@ evidence in item-specific logs so context compaction can recover state quickly.
   - Current anchor: `reports/specs/CURRENT-GOAL-ANCHOR.md`.
   - Current item: Item 12 - extract `BucketOwnershipPlanner` as the Layer-3
     ownership boundary with no behavior change.
+  - 2026-06-28 +08 resume checkpoint: Grazel worktree clean at
+    `f667db5d237b7d8866cc705acd90b1436813c591`
+    (`Record bucket ownership planner handoff`), branch
+    `arun/dependencies-refactor` ahead of origin. Item 12 is active; no code
+    changes have been made for the planner extraction yet in this resumed
+    session.
+  - 2026-06-28 +08 Item 12 implementation progress: added pure
+    `BucketOwnershipPlanner` / `OwnershipPlannerInput`, routed
+    `AggregatedDependencyResolver` through the planner after
+    `addDeclaredMetadataClosures()`, removed the old in-session ownership path,
+    and passed focused planner/resolver/placement tests. Broader empty-diff,
+    size-guard, and PAX verification are still pending.
+  - 2026-06-28 +08 Item 12 verification checkpoint: full
+    `./gradlew :grazel-gradle-plugin:test --console=plain --no-daemon` passed;
+    local `./gradlew migrateToBazel --console=plain --no-daemon` passed with no
+    generated BUILD/WORKSPACE/json diff; `verify-default-task-graph.sh` passed;
+    `verify-sample-bucket-labels.sh` still fails only on the known pre-existing
+    appcompat/constraintlayout exclude-union waiver; Grazel and PAX
+    `git diff --check` passed; PAX `migrateToBazel` passed in 11m31s; PAX size
+    guard passed unchanged at 11 buckets / 11 pinfiles / 2015 roots; PAX debug
+    APK + android-test APK build passed in 221.665s; focused PAX Bazel tests
+    passed 3/3 in 18.774s.
   - Current detailed log:
     `reports/specs/execution-log/item12-bucket-ownership-planner.md`.
   - Item 10 PAX size guard checkpoint is committed at `9f363e0`
