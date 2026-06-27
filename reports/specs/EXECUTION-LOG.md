@@ -1136,3 +1136,120 @@ evidence in item-specific logs so context compaction can recover state quickly.
     `/System/Volumes/Data`; no cache deletion was performed.
   - PAX `bazel-cache` stayed about 14G.
   - No high-RAM `python3.12` process was present.
+- Item 14 checkpoint commit:
+  `29ada0b083c3390de2ed3aa5eacd93fb2d6111fe`
+  (`Slim compute workspace dependencies`). Grazel worktree clean after commit.
+
+## 2026-06-28 Item 15 Rendering Purity + Hygiene Start
+
+- Active item: Item 15 - rendering purity and hygiene.
+- Start commit: `29ada0b083c3390de2ed3aa5eacd93fb2d6111fe`.
+- Spec: `reports/specs/2026-06-27-item15-rendering-purity-hygiene-design.md`.
+- Contract:
+  - behavior-preserving / golden empty-diff;
+  - wire or delete speculative `commonAncestorsOf` helpers;
+  - remove proven dead `readText()` and `materializedMavenRepos` fallback/defaults;
+  - add direct `WorkspaceRenderPlanBuilder` tests for materialized repos,
+    override-target closure, and only-direct-owned roots;
+  - document renderer purity without promising removal of in-task model feedback.
+- Subagents dispatched:
+  - rendering/dead-code audit for helper usage, `readText()`,
+    `materializedMavenRepos`, and renderer/pinner generated-file parsing;
+  - `WorkspaceRenderPlanBuilder` responsibility/test audit.
+- Subagent + spot-check findings:
+  - `commonAncestorsOf` / `closestCommonAncestorsOf` had no production callers;
+    they were speculative helpers covered only by tests.
+  - `CollectTargetMavenRepoReferencesTask` had a discarded
+    `compressionResults.get().asFile.readText()`; the file remains a declared
+    `@InputFile`, so the read was not needed for task inputs.
+  - `MavenInstallArtifactsCalculator` still had a nullable
+    `materializedMavenRepos` default plus an old `referencedMavenRepos` fallback;
+    production root generation already passes `WorkspaceRenderPlan.materializedRepoNames`
+    explicitly.
+  - `WorkspaceRenderPlanBuilder` owns materialized repo derivation and override
+    target BFS closure; existing coverage was indirect through
+    `WorkspacePlanBuilderTest`.
+- Implementation:
+  - Added direct `WorkspaceRenderPlanBuilderTest` coverage for always/reference/
+    aggregated materialization, transitive override-target closure, and
+    direct-owned variant repo filtering.
+  - Deleted unused `BucketHierarchyGraph.commonAncestorsOf` and
+    `closestCommonAncestorsOf` plus their speculative tests.
+  - Deleted the discarded `readText()` from
+    `CollectTargetMavenRepoReferencesTask`.
+  - Removed the calculator's `referencedMavenRepos` fallback and nullable
+    `materializedMavenRepos` defaults; `WorkspaceBuilder` and the calculator now
+    require an explicit render-plan materialized repo set.
+  - Updated tests to pass explicit materialized repos or use a named
+    test-local helper that materializes all repos for calculator-focused tests.
+- Focused verification:
+  `./gradlew :grazel-gradle-plugin:test --console=plain --no-daemon --tests
+  "com.grab.grazel.gradle.dependencies.WorkspaceRenderPlanBuilderTest" --tests
+  "com.grab.grazel.migrate.dependencies.MavenInstallArtifactsCalculatorTest"
+  --tests "com.grab.grazel.gradle.variant.BucketHierarchyGraphTest" --tests
+  "com.grab.grazel.migrate.AndroidWorkspaceRepositoriesTest" --tests
+  "com.grab.grazel.migrate.DaggerWorkspaceRuleTest" --tests
+  "com.grab.grazel.migrate.KotlinWorkspaceRulesTest"` passed in 17s.
+- Purity note:
+  - `ProjectBazelFileBuilder`, `RootBazelFileBuilder`, and `WorkspaceBuilder`
+    render from model/extension/task inputs and do not parse generated
+    `BUILD.bazel`, `WORKSPACE`, or pin JSON to infer Maven ownership.
+  - `ArtificatPinner` necessarily reads/edits generated `WORKSPACE` and lock
+    JSON for pin toggling/recovery, but repo ownership comes from
+    `WorkspacePlan` + `WorkspaceRenderPlan`, not generated file parsing.
+  - Existing target-model feedback through target builders /
+    `WorkspacePlanService` remains acknowledged and out of scope for this item.
+- Local Grazel verification:
+  - Full plugin tests passed:
+    `./gradlew :grazel-gradle-plugin:test --console=plain --no-daemon`
+    in 37s.
+  - Local migration passed:
+    `./gradlew migrateToBazel --console=plain --no-daemon` in 16s; no
+    generated files were added to the diff.
+  - `git diff --check` passed.
+  - `git diff --check master...HEAD` passed.
+  - `reports/scripts/verify-default-task-graph.sh` passed.
+  - `reports/scripts/verify-sample-bucket-labels.sh` still fails only on the
+    known appcompat/constraintlayout one-sided exclude-union waiver.
+  - `./gradlew verifyGrazelGoldenBaseline --console=plain --no-daemon` fails
+    only because it wraps that same sample-label waiver after successful local
+    generation.
+- PAX preservation loop:
+  - Pre-migrate PAX accepted baseline snapshot on
+    `/Users/arun.sampathkumar/work/pax-android`, branch `arun/grazel-refactor`
+    at `05d2b4801530726ab722133c2ba32cbba9afeb67`:
+    - diff hash:
+      `5f05c2380375f16b0c04c6fa5f14d3a1666cf94d6b36a5ce1e0814a1b6e43566`
+    - status hash:
+      `b9b38774443602baa0adf251daeb236e68cd181e1f4ccdf74ee412a30822c6d6`
+    - dirty entries: `2231`.
+  - PAX migration passed:
+    `./gradlew migrateToBazel --no-daemon --console=plain --stacktrace
+    --rerun-tasks` in 11m 11s; pinning stayed up-to-date.
+  - PAX generated state stayed byte-identical:
+    - diff hash unchanged:
+      `5f05c2380375f16b0c04c6fa5f14d3a1666cf94d6b36a5ce1e0814a1b6e43566`
+    - status hash unchanged:
+      `b9b38774443602baa0adf251daeb236e68cd181e1f4ccdf74ee412a30822c6d6`
+    - dirty entries unchanged: `2231`
+    - PAX `git diff --check` passed.
+  - PAX size guard passed:
+    `reports/scripts/verify-pax-size-guard.sh --mode preserving`; counts stayed
+    `bucketCount=11`, `pinfileCount=11`, `totalArtifactRoots=1945`, with no
+    per-repo deltas.
+  - PAX APK build gate passed:
+    `./bazel.sh build --verbose_failures //app:app-gps-pax-debug.apk
+    //app:app-gps-pax-debug-android-test.apk` in 225.416s.
+  - PAX focused test gate passed:
+    `./bazel.sh test --test_output=errors
+    //app-utils:app-utils-gps-pax-debug-test
+    //app-test:app-test-gps-pax-debug-test
+    //application-initializer:application-initializer-gps-pax-debug-test`;
+    3/3 targets passed in 18.446s.
+  - Final PAX diff hash/status hash/dirty count remained unchanged after build
+    and tests.
+- Resource notes:
+  - Disk stayed tight but usable, about 24-26Gi free on
+    `/System/Volumes/Data`; no cleanup was performed.
+  - PAX `bazel-cache` remained about 14G.
+  - No high-RAM `python3.12` process was present.

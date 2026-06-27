@@ -22,6 +22,7 @@ import com.grab.grazel.util.addGrazelExtension
 import com.grab.grazel.util.createGrazelComponent
 import com.grab.grazel.util.doEvaluate
 import org.gradle.api.Project
+import org.gradle.api.file.ProjectLayout
 import org.gradle.kotlin.dsl.repositories
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -83,7 +84,7 @@ class MavenInstallArtifactsCalculatorTest {
             )
         )
 
-        val result = mavenInstallArtifactsCalculator.get(
+        val result = calculateMavenInstallArtifacts(
             layout = rootProject.layout,
             workspaceDependencies = workspaceDependencies,
             externalArtifacts = emptySet(),
@@ -130,7 +131,7 @@ class MavenInstallArtifactsCalculatorTest {
             variantDeps = mapOf(DEFAULT_VARIANT to listOf(selectedDependency))
         )
 
-        val result = mavenInstallArtifactsCalculator.get(
+        val result = calculateMavenInstallArtifacts(
             layout = rootProject.layout,
             workspaceDependencies = workspaceDependencies,
             externalArtifacts = emptySet(),
@@ -192,7 +193,7 @@ class MavenInstallArtifactsCalculatorTest {
             )
         )
 
-        val result = mavenInstallArtifactsCalculator.get(
+        val result = calculateMavenInstallArtifacts(
             layout = rootProject.layout,
             workspaceDependencies = workspaceDependencies,
             externalArtifacts = emptySet(),
@@ -262,7 +263,7 @@ class MavenInstallArtifactsCalculatorTest {
             )
         )
 
-        val result = mavenInstallArtifactsCalculator.get(
+        val result = calculateMavenInstallArtifacts(
             layout = rootProject.layout,
             workspaceDependencies = workspaceDependencies,
             externalArtifacts = emptySet(),
@@ -308,7 +309,7 @@ class MavenInstallArtifactsCalculatorTest {
             )
         )
 
-        val result = mavenInstallArtifactsCalculator.get(
+        val result = calculateMavenInstallArtifacts(
             layout = rootProject.layout,
             workspaceDependencies = workspaceDependencies,
             externalArtifacts = emptySet(),
@@ -367,7 +368,7 @@ class MavenInstallArtifactsCalculatorTest {
             )
         )
 
-        val result = mavenInstallArtifactsCalculator.get(
+        val result = calculateMavenInstallArtifacts(
             layout = rootProject.layout,
             workspaceDependencies = workspaceDependencies,
             externalArtifacts = emptySet(),
@@ -414,7 +415,7 @@ class MavenInstallArtifactsCalculatorTest {
             )
         )
 
-        val result = mavenInstallArtifactsCalculator.get(
+        val result = calculateMavenInstallArtifacts(
             layout = rootProject.layout,
             workspaceDependencies = workspaceDependencies,
             externalArtifacts = emptySet(),
@@ -454,7 +455,7 @@ class MavenInstallArtifactsCalculatorTest {
             )
         )
 
-        val result = mavenInstallArtifactsCalculator.get(
+        val result = calculateMavenInstallArtifacts(
             layout = rootProject.layout,
             workspaceDependencies = workspaceDependencies,
             externalArtifacts = emptySet(),
@@ -507,7 +508,7 @@ class MavenInstallArtifactsCalculatorTest {
             )
         )
 
-        val result = mavenInstallArtifactsCalculator.get(
+        val result = calculateMavenInstallArtifacts(
             layout = rootProject.layout,
             workspaceDependencies = workspaceDependencies,
             externalArtifacts = emptySet(),
@@ -570,7 +571,7 @@ class MavenInstallArtifactsCalculatorTest {
             )
         )
 
-        val result = mavenInstallArtifactsCalculator.get(
+        val result = calculateMavenInstallArtifacts(
             layout = rootProject.layout,
             workspaceDependencies = workspaceDependencies,
             externalArtifacts = emptySet(),
@@ -666,7 +667,7 @@ class MavenInstallArtifactsCalculatorTest {
             )
         )
 
-        val result = mavenInstallArtifactsCalculator.get(
+        val result = calculateMavenInstallArtifacts(
             layout = rootProject.layout,
             workspaceDependencies = workspaceDependencies,
             externalArtifacts = emptySet(),
@@ -739,7 +740,7 @@ class MavenInstallArtifactsCalculatorTest {
             )
         )
 
-        val result = mavenInstallArtifactsCalculator.get(
+        val result = calculateMavenInstallArtifacts(
             layout = rootProject.layout,
             workspaceDependencies = workspaceDependencies,
             externalArtifacts = emptySet(),
@@ -828,7 +829,7 @@ class MavenInstallArtifactsCalculatorTest {
             )
         )
 
-        val result = mavenInstallArtifactsCalculator.get(
+        val result = calculateMavenInstallArtifacts(
             layout = rootProject.layout,
             workspaceDependencies = workspaceDependencies,
             externalArtifacts = emptySet(),
@@ -887,7 +888,7 @@ class MavenInstallArtifactsCalculatorTest {
             )
         )
 
-        val result = mavenInstallArtifactsCalculator.get(
+        val result = calculateMavenInstallArtifacts(
             layout = rootProject.layout,
             workspaceDependencies = workspaceDependencies,
             externalArtifacts = emptySet(),
@@ -930,7 +931,7 @@ class MavenInstallArtifactsCalculatorTest {
             )
         )
 
-        val result = mavenInstallArtifactsCalculator.get(
+        val result = calculateMavenInstallArtifacts(
             layout = rootProject.layout,
             workspaceDependencies = workspaceDependencies,
             externalArtifacts = emptySet(),
@@ -985,7 +986,7 @@ class MavenInstallArtifactsCalculatorTest {
             )
         )
 
-        val result = mavenInstallArtifactsCalculator.get(
+        val result = calculateMavenInstallArtifacts(
             layout = rootProject.layout,
             workspaceDependencies = workspaceDependencies,
             externalArtifacts = emptySet(),
@@ -1029,7 +1030,7 @@ class MavenInstallArtifactsCalculatorTest {
             )
         )
 
-        val result = mavenInstallArtifactsCalculator.get(
+        val result = calculateMavenInstallArtifacts(
             layout = rootProject.layout,
             workspaceDependencies = workspaceDependencies,
             externalArtifacts = emptySet(),
@@ -1084,7 +1085,7 @@ class MavenInstallArtifactsCalculatorTest {
             )
         )
 
-        val result = mavenInstallArtifactsCalculator.get(
+        val result = calculateMavenInstallArtifacts(
             layout = rootProject.layout,
             workspaceDependencies = workspaceDependencies,
             externalArtifacts = emptySet(),
@@ -1159,7 +1160,7 @@ class MavenInstallArtifactsCalculatorTest {
             )
         )
 
-        val result = mavenInstallArtifactsCalculator.get(
+        val result = calculateMavenInstallArtifacts(
             layout = rootProject.layout,
             workspaceDependencies = workspaceDependencies,
             externalArtifacts = emptySet(),
@@ -1220,7 +1221,7 @@ class MavenInstallArtifactsCalculatorTest {
             )
         )
 
-        val result = mavenInstallArtifactsCalculator.get(
+        val result = calculateMavenInstallArtifacts(
             layout = rootProject.layout,
             workspaceDependencies = workspaceDependencies,
             externalArtifacts = emptySet(),
@@ -1275,7 +1276,7 @@ class MavenInstallArtifactsCalculatorTest {
             )
         )
 
-        val result = mavenInstallArtifactsCalculator.get(
+        val result = calculateMavenInstallArtifacts(
             layout = rootProject.layout,
             workspaceDependencies = workspaceDependencies,
             externalArtifacts = emptySet(),
@@ -1315,7 +1316,7 @@ class MavenInstallArtifactsCalculatorTest {
             )
         )
 
-        val result = mavenInstallArtifactsCalculator.get(
+        val result = calculateMavenInstallArtifacts(
             layout = rootProject.layout,
             workspaceDependencies = workspaceDependencies,
             externalArtifacts = emptySet(),
@@ -1356,7 +1357,7 @@ class MavenInstallArtifactsCalculatorTest {
             )
         )
 
-        val result = mavenInstallArtifactsCalculator.get(
+        val result = calculateMavenInstallArtifacts(
             layout = rootProject.layout,
             workspaceDependencies = workspaceDependencies,
             externalArtifacts = emptySet(),
@@ -1400,7 +1401,7 @@ class MavenInstallArtifactsCalculatorTest {
             )
         )
 
-        val result = mavenInstallArtifactsCalculator.get(
+        val result = calculateMavenInstallArtifacts(
             layout = rootProject.layout,
             workspaceDependencies = workspaceDependencies,
             externalArtifacts = emptySet(),
@@ -1444,7 +1445,7 @@ class MavenInstallArtifactsCalculatorTest {
             )
         )
 
-        val result = mavenInstallArtifactsCalculator.get(
+        val result = calculateMavenInstallArtifacts(
             layout = rootProject.layout,
             workspaceDependencies = workspaceDependencies,
             externalArtifacts = emptySet(),
@@ -1458,7 +1459,7 @@ class MavenInstallArtifactsCalculatorTest {
     }
 
     @Test
-    fun `unreferenced candidate variant maven installs are not materialized`() {
+    fun `maven installs are filtered by render plan materialized repos`() {
         setup()
 
         val repository = "MavenRepo"
@@ -1482,12 +1483,12 @@ class MavenInstallArtifactsCalculatorTest {
             )
         )
 
-        val result = mavenInstallArtifactsCalculator.get(
+        val result = calculateMavenInstallArtifacts(
             layout = rootProject.layout,
             workspaceDependencies = workspaceDependencies,
             externalArtifacts = emptySet(),
             externalRepositories = emptySet(),
-            referencedMavenRepos = setOf("debug_maven")
+            materializedMavenRepos = setOf("debug_maven", "maven")
         )
 
         assertEquals(
@@ -1521,7 +1522,7 @@ class MavenInstallArtifactsCalculatorTest {
             aggregatedRepos = mapOf("ksp_maven" to listOf(processorDependency))
         )
 
-        val result = mavenInstallArtifactsCalculator.get(
+        val result = calculateMavenInstallArtifacts(
             layout = rootProject.layout,
             workspaceDependencies = workspaceDependencies,
             externalArtifacts = emptySet(),
@@ -1536,7 +1537,7 @@ class MavenInstallArtifactsCalculatorTest {
     }
 
     @Test
-    fun `referenced maven install keeps repos required by override targets`() {
+    fun `materialized maven install keeps repos required by override targets`() {
         setup()
 
         val repository = "MavenRepo"
@@ -1564,12 +1565,12 @@ class MavenInstallArtifactsCalculatorTest {
             )
         )
 
-        val result = mavenInstallArtifactsCalculator.get(
+        val result = calculateMavenInstallArtifacts(
             layout = rootProject.layout,
             workspaceDependencies = workspaceDependencies,
             externalArtifacts = emptySet(),
             externalRepositories = emptySet(),
-            referencedMavenRepos = setOf("free_maven")
+            materializedMavenRepos = setOf("debug_maven", "free_maven")
         )
 
         assertEquals(
@@ -1614,7 +1615,7 @@ class MavenInstallArtifactsCalculatorTest {
             )
         )
 
-        val result = mavenInstallArtifactsCalculator.get(
+        val result = calculateMavenInstallArtifacts(
             layout = rootProject.layout,
             workspaceDependencies = workspaceDependencies,
             externalArtifacts = emptySet(),
@@ -1665,7 +1666,7 @@ class MavenInstallArtifactsCalculatorTest {
             )
         )
 
-        val result = mavenInstallArtifactsCalculator.get(
+        val result = calculateMavenInstallArtifacts(
             layout = rootProject.layout,
             workspaceDependencies = workspaceDependencies,
             externalArtifacts = emptySet(),
@@ -1708,7 +1709,7 @@ class MavenInstallArtifactsCalculatorTest {
             )
         )
 
-        val result = mavenInstallArtifactsCalculator.get(
+        val result = calculateMavenInstallArtifacts(
             layout = rootProject.layout,
             workspaceDependencies = workspaceDependencies,
             externalArtifacts = emptySet(),
@@ -1725,6 +1726,23 @@ class MavenInstallArtifactsCalculatorTest {
             lintRepo.artifacts.map { it.id }.toSet()
         )
     }
+
+    private fun calculateMavenInstallArtifacts(
+        layout: ProjectLayout,
+        workspaceDependencies: WorkspaceDependencies,
+        externalArtifacts: Set<String>,
+        externalRepositories: Set<String>,
+        materializedMavenRepos: Set<String> = workspaceDependencies.allMavenRepoNames()
+    ): Set<MavenInstallData> = mavenInstallArtifactsCalculator.get(
+        layout = layout,
+        workspaceDependencies = workspaceDependencies,
+        externalArtifacts = externalArtifacts,
+        externalRepositories = externalRepositories,
+        materializedMavenRepos = materializedMavenRepos
+    )
+
+    private fun WorkspaceDependencies.allMavenRepoNames(): Set<String> =
+        (variantDeps.keys.map(String::toMavenRepoName) + aggregatedRepos.keys).toSet()
 
     private fun result(
         variantName: String,

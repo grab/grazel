@@ -28,10 +28,7 @@ import com.grab.grazel.gradle.dependencies.DefaultJetifierExclusions
 import com.grab.grazel.gradle.dependencies.model.ExcludeRule
 import com.grab.grazel.gradle.dependencies.model.ResolvedDependency
 import com.grab.grazel.gradle.dependencies.model.WorkspaceDependencies
-import com.grab.grazel.gradle.variant.ANDROID_TEST_VARIANT
 import com.grab.grazel.gradle.variant.DEFAULT_VARIANT
-import com.grab.grazel.gradle.variant.LINT_VARIANT
-import com.grab.grazel.gradle.variant.TEST_VARIANT
 import org.gradle.api.artifacts.repositories.PasswordCredentials
 import org.gradle.api.file.ProjectLayout
 import org.gradle.api.internal.artifacts.repositories.DefaultMavenArtifactRepository
@@ -56,13 +53,6 @@ constructor(
 
     private val includeCredentials get() = mavenInstallExtension.includeCredentials
 
-    private val alwaysMaterializedVariants = setOf(
-        DEFAULT_VARIANT,
-        TEST_VARIANT,
-        ANDROID_TEST_VARIANT,
-        LINT_VARIANT
-    )
-
     /** Map of user configured overrides for artifact versions. */
     private val overrideVersionsMap: Map< /*shortId*/ String, /*version*/ String> by lazy {
         grazelExtension
@@ -80,8 +70,7 @@ constructor(
         workspaceDependencies: WorkspaceDependencies,
         externalArtifacts: Set<String>,
         externalRepositories: Set<String>,
-        referencedMavenRepos: Set<String> = emptySet(),
-        materializedMavenRepos: Set<String>? = null,
+        materializedMavenRepos: Set<String>,
     ): Set<MavenInstallData> {
         val rootArtifactsByVariant = workspaceDependencies.mavenInstallRootArtifactsByVariant()
         val variantInputs = workspaceDependencies.variantDeps.map { (variantName, _) ->
@@ -97,16 +86,12 @@ constructor(
                 )
             )
         }
-        val selectedMavenRepos = materializedMavenRepos ?: variantInputs.materializedMavenRepos(referencedMavenRepos)
 
         val result = variantInputs
             .mapNotNullTo(TreeSet(compareBy(MavenInstallData::name))) { input ->
                 val variantName = input.variantName
                 val mavenInstallName = input.mavenInstallName
-                if (
-                    selectedMavenRepos != null &&
-                    mavenInstallName !in selectedMavenRepos
-                ) {
+                if (mavenInstallName !in materializedMavenRepos) {
                     return@mapNotNullTo null
                 }
                 val rootArtifacts = input.rootArtifacts
@@ -161,7 +146,7 @@ constructor(
 
         // Generate maven_install entries for aggregated repos (e.g. ksp_maven)
         workspaceDependencies.aggregatedRepos.forEach { (repoName, artifacts) ->
-            if (selectedMavenRepos != null && repoName !in selectedMavenRepos) return@forEach
+            if (repoName !in materializedMavenRepos) return@forEach
 
             val mavenInstallArtifacts = artifacts
                 .mapTo(TreeSet(compareBy(MavenInstallArtifact::id)), ::toMavenInstallArtifact)
@@ -202,38 +187,6 @@ constructor(
         val rootArtifacts: List<ResolvedDependency>,
         val overrideTargets: Map<String, String>
     )
-
-    private fun List<VariantMavenInstallInput>.materializedMavenRepos(
-        referencedMavenRepos: Set<String>
-    ): Set<String>? {
-        if (referencedMavenRepos.isEmpty()) return null
-
-        val availableRepos = mapTo(mutableSetOf(), VariantMavenInstallInput::mavenInstallName)
-        val materializedRepos = (
-            referencedMavenRepos +
-                alwaysMaterializedVariants.map(String::toMavenRepoName)
-            ).toMutableSet()
-
-        var changed: Boolean
-        do {
-            changed = false
-            filter { input -> input.mavenInstallName in materializedRepos }
-                .flatMap { input ->
-                    input.overrideTargets.values
-                        .mapNotNull { label -> label.referencedMavenRepo(availableRepos) }
-                }
-                .forEach { overrideTargetRepo ->
-                    changed = materializedRepos.add(overrideTargetRepo) || changed
-                }
-        } while (changed)
-
-        return materializedRepos
-    }
-
-    private fun String.referencedMavenRepo(availableRepos: Set<String>): String? =
-        removePrefix("@")
-            .substringBefore("//")
-            .takeIf(availableRepos::contains)
 
     private fun calculateOverrideTargets(
         artifacts: List<ResolvedDependency>,

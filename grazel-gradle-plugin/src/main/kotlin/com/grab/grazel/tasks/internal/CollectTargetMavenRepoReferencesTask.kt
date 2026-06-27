@@ -88,7 +88,6 @@ constructor(
         logger.logHeap("CollectTargetMavenRepoReferences:start")
         dependencyResolutionService.get().init(workspaceDependencies.get().asFile)
         workspacePlanService.get().initPlan(workspacePlan.get().asFile)
-        compressionResults.get().asFile.readText()
 
         val reachabilityGroups = ProjectReachabilityOrder
             .consumersFirstGroups(

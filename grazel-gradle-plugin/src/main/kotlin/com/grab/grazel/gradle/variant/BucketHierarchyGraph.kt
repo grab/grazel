@@ -106,23 +106,6 @@ internal class BucketHierarchyGraph private constructor(
         return ancestorsByNode[node].orEmpty()
     }
 
-    fun commonAncestorsOf(nodes: Collection<BucketHierarchyNode>): Set<BucketHierarchyNode> {
-        val knownNodes = nodes.filter(::contains)
-        if (knownNodes.isEmpty()) return emptySet()
-        return knownNodes
-            .map(::ancestorsOf)
-            .reduce { common, ancestors -> common.intersect(ancestors) }
-            .toSortedNodeSet()
-    }
-
-    fun closestCommonAncestorsOf(nodes: Collection<BucketHierarchyNode>): Set<BucketHierarchyNode> {
-        val commonAncestors = commonAncestorsOf(nodes)
-        val maxDepth = commonAncestors.maxOfOrNull(::depthOf) ?: return emptySet()
-        return commonAncestors
-            .filter { ancestor -> depthOf(ancestor) == maxDepth }
-            .toSortedNodeSet()
-    }
-
     private fun computeAncestorsOf(node: BucketHierarchyNode): Set<BucketHierarchyNode> {
         val visited = linkedSetOf<BucketHierarchyNode>()
 

@@ -45,6 +45,7 @@ class AndroidWorkspaceRepositoriesTest : GrazelPluginTest() {
             .create(
                 listOf(buildRootProject),
                 gradleProjectInfo.create(WorkspaceDependencies(emptyMap())),
+                materializedMavenRepos = emptySet(),
             )
 
         val generatedCode = statements {
@@ -69,6 +70,7 @@ class AndroidWorkspaceRepositoriesTest : GrazelPluginTest() {
             .create(
                 listOf(buildRootProject),
                 gradleProjectInfo.create(WorkspaceDependencies(emptyMap())),
+                materializedMavenRepos = emptySet(),
             )
         val generatedCode = statements {
             workspaceBuilder.addAndroidSdkRepositories(this)
@@ -94,6 +96,7 @@ class AndroidWorkspaceRepositoriesTest : GrazelPluginTest() {
             .create(
                 listOf(buildRootProject),
                 gradleProjectInfo.create(WorkspaceDependencies(emptyMap())),
+                materializedMavenRepos = emptySet(),
             )
         val generatedCode = statements {
             workspaceBuilder.addAndroidSdkRepositories(this)

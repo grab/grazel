@@ -109,7 +109,8 @@ class DaggerWorkspaceRuleTest {
                 .gradleProjectInfoFactory()
                 .get()
                 .create(workspaceDependencies),
-            workspaceDependencies = workspaceDependencies
+            workspaceDependencies = workspaceDependencies,
+            materializedMavenRepos = setOf("maven")
         ).build().asString()
 
         // Then

@@ -198,7 +198,8 @@ class KotlinWorkspaceRulesTest {
         .create(
             projectsToMigrate = listOf(rootProject, subProject),
             gradleProjectInfo = grazelComponent.gradleProjectInfoFactory().get()
-                .create(WorkspaceDependencies(emptyMap()))
+                .create(WorkspaceDependencies(emptyMap())),
+            materializedMavenRepos = emptySet()
         ).build()
         .asString()
 }
