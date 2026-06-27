@@ -7,13 +7,16 @@ evidence in item-specific logs so context compaction can recover state quickly.
 
 - 2026-06-28 +08 current goal pass:
   - Current anchor: `reports/specs/CURRENT-GOAL-ANCHOR.md`.
-  - Current item: Item 11 - eliminate false SCCs and keep SCC only as a typed
-    diagnostic fallback.
-  - Current detailed log: `reports/specs/execution-log/item11-contain-scc.md`.
+  - Current item: Item 12 - extract `BucketOwnershipPlanner` as the Layer-3
+    ownership boundary with no behavior change.
+  - Current detailed log:
+    `reports/specs/execution-log/item12-bucket-ownership-planner.md`.
   - Item 10 PAX size guard checkpoint is committed at `9f363e0`
     (`Add PAX Maven size guard`).
   - Item 9 typed reachability checkpoint is committed at `d84f3db`
     (`Add typed dependency reachability graph`).
+  - Item 11 checkpoint is committed at `2d159bd`
+    (`Fail closed on typed dependency cycles`).
   - Item 11 implementation state: typed reachability SCCs now fail closed in
     the graph layer with typed nodes and diagnostic edge labels. The old
     `CollectTargetMavenRepoReferencesTask` local cyclic-group fixpoint was
@@ -49,9 +52,9 @@ evidence in item-specific logs so context compaction can recover state quickly.
     pinfiles, 2015 total artifact roots, no per-repo artifact-root deltas.
   - Resource note: current data-volume free space is about `34GiB`; avoid more
     heavy PAX work without the normal disk/memory/process precheck.
-  - Next: commit Item 11 locally, then start Item 12
-    (`BucketOwnershipPlanner` extraction) only from a clean green Grazel
-    checkpoint.
+  - Next: start Item 12 from clean commit `2d159bd`. Before code changes,
+    audit the `AggregatedDependencyResolver` ownership/value boundary and keep
+    `addDeclaredMetadataClosures()` in Layer 2 exactly as specified.
 - Active item: Item 7 - Pin-size reduction via bucket ownership.
 - Item 7/8 follow-up start commit: `9730083`
   (`Document Maven pin-size optimization constraints`).
