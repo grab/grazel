@@ -7,14 +7,12 @@ evidence in item-specific logs so context compaction can recover state quickly.
 
 - 2026-06-28 +08 current goal pass:
   - Current anchor: `reports/specs/CURRENT-GOAL-ANCHOR.md`.
-  - Current item: Item 12 - extract `BucketOwnershipPlanner` as the Layer-3
-    ownership boundary with no behavior change.
+  - Current item: Item 13 - test/androidTest delta ownership, the only planned
+    output-changing slice in this pass.
   - 2026-06-28 +08 resume checkpoint: Grazel worktree clean at
     `f667db5d237b7d8866cc705acd90b1436813c591`
     (`Record bucket ownership planner handoff`), branch
-    `arun/dependencies-refactor` ahead of origin. Item 12 is active; no code
-    changes have been made for the planner extraction yet in this resumed
-    session.
+    `arun/dependencies-refactor` ahead of origin.
   - 2026-06-28 +08 Item 12 implementation progress: added pure
     `BucketOwnershipPlanner` / `OwnershipPlannerInput`, routed
     `AggregatedDependencyResolver` through the planner after
@@ -31,8 +29,35 @@ evidence in item-specific logs so context compaction can recover state quickly.
     guard passed unchanged at 11 buckets / 11 pinfiles / 2015 roots; PAX debug
     APK + android-test APK build passed in 221.665s; focused PAX Bazel tests
     passed 3/3 in 18.774s.
+  - Item 12 checkpoint committed locally at
+    `ad9b4cc280c8cf9de63a1cbc1bdbd136f677ae76`
+    (`Extract bucket ownership planner`). Grazel worktree was clean after this
+    commit; PAX remains dirty with accepted generated baseline and must not be
+    committed.
   - Current detailed log:
-    `reports/specs/execution-log/item12-bucket-ownership-planner.md`.
+    `reports/specs/execution-log/item13-test-android-delta-ownership.md`.
+  - 2026-06-28 +08 Item 13 PAX verification checkpoint:
+    `./gradlew migrateToBazel --no-daemon --console=plain --stacktrace
+    --rerun-tasks` passed in PAX in 18m; PAX `git diff --check` passed; size
+    guard in `item13` mode passed with 11 buckets / 11 pinfiles and total
+    artifact roots `2015 -> 1945` (`-70`). Scoped deltas were `test_maven`
+    `230 -> 159` (`-71`) and `android_test_maven` `449 -> 450` (`+1`, exactly
+    `androidx.compose.ui:ui-test-manifest=946598668`). All PAX BUILD tags were
+    scanned for bucket-prefixed Maven labels and none were found. PAX debug APK
+    + android-test APK build passed in `438.042s`; focused PAX Bazel tests
+    passed 3/3 in `32.438s`; PAX `git diff --check` passed.
+  - Item 13 spec/review reconciliation: runtime `-Pgrazel.internal.parity=delta`
+    was not added because Item 12 had already removed the pre-Item-13 path.
+    Specs now make the frozen Item 10 PAX baseline JSON + generated diff
+    classification the parity source when the old path no longer exists. Scoped
+    per-repo movement is allowed only when documented as typed ownership and
+    guarded totals/scoped aggregate stay flat or shrink.
+  - Item 13 review fix: added regression coverage for an androidTest direct root
+    whose visible main owner has the same short id/version but does not cover its
+    transitive closure; tightened test/androidTest subtraction so it preserves
+    that root. Also documented the typed output-bucket behavior for a shared
+    `debugUnitTest` bucket and pre-indexed covered dependencies by bucket to
+    avoid repeated aggregate scans.
   - Item 10 PAX size guard checkpoint is committed at `9f363e0`
     (`Add PAX Maven size guard`).
   - Item 9 typed reachability checkpoint is committed at `d84f3db`
@@ -74,9 +99,9 @@ evidence in item-specific logs so context compaction can recover state quickly.
     pinfiles, 2015 total artifact roots, no per-repo artifact-root deltas.
   - Resource note: current data-volume free space is about `34GiB`; avoid more
     heavy PAX work without the normal disk/memory/process precheck.
-  - Next: start Item 12 from clean commit `2d159bd`. Before code changes,
-    audit the `AggregatedDependencyResolver` ownership/value boundary and keep
-    `addDeclaredMetadataClosures()` in Layer 2 exactly as specified.
+  - Next: execute Item 13 from clean commit `ad9b4cc`. Keep main/lint placement
+    unchanged; test/androidTest may only move to resolved-identity delta
+    ownership with non-increasing PAX size and classified generated diffs.
 - Active item: Item 7 - Pin-size reduction via bucket ownership.
 - Item 7/8 follow-up start commit: `9730083`
   (`Document Maven pin-size optimization constraints`).
@@ -864,3 +889,141 @@ evidence in item-specific logs so context compaction can recover state quickly.
   - PAX `git diff --check` passed. PAX files remain uncommitted.
 - Detailed Item 10 continuation notes are in
   `reports/specs/execution-log/item10-pax-size-guard.md`.
+
+## 2026-06-28 Item 13 Test/androidTest Delta Ownership Checkpoint
+
+- Active item: Item 13, test/androidTest delta ownership. Starting checkpoint
+  for this slice was `ad9b4cc280c8cf9de63a1cbc1bdbd136f677ae76`.
+- Implementation summary:
+  - `DependencyBucketPlacementPlan` now exposes descendant leaf knowledge from
+    the bucket hierarchy graph.
+  - `BucketOwnershipPlanner` removes a broad test/androidTest dependency only
+    when every concrete scoped leaf can see a same-resolved-identity main/test
+    owner. Version-divergent scoped deps remain scoped-owned.
+  - Inherited parent outputs are normalized back to typed scoped buckets so
+    test/androidTest placement does not leak through the untyped parent name.
+- Grazel verification before PAX:
+  - Focused planner/resolver/placement tests passed.
+  - Full `./gradlew :grazel-gradle-plugin:test --console=plain --no-daemon`
+    passed.
+  - `./gradlew migrateToBazel --console=plain --no-daemon` passed and left no
+    generated BUILD/WORKSPACE/json diff.
+  - `reports/scripts/verify-default-task-graph.sh` passed.
+  - `reports/scripts/verify-sample-bucket-labels.sh` still fails only on the
+    known one-sided appcompat/constraintlayout exclude-union waiver.
+  - Grazel `git diff --check` and `git diff --check master...HEAD` passed.
+- PAX verification:
+  - `./gradlew migrateToBazel --no-daemon --console=plain --stacktrace
+    --rerun-tasks` passed in about 18 minutes; PAX `git diff --check` passed.
+  - `./bazel.sh build --verbose_failures //app:app-gps-pax-debug.apk
+    //app:app-gps-pax-debug-android-test.apk` passed in `438.042s`.
+  - `./bazel.sh test --test_output=errors //app-utils:app-utils-gps-pax-debug-test
+    //app-test:app-test-gps-pax-debug-test
+    //application-initializer:application-initializer-gps-pax-debug-test`
+    passed in `32.438s`; all 3 tests passed.
+- PAX size/diff classification:
+  - Before re-baselining, `verify-pax-size-guard.sh --mode item13` passed:
+    bucket count `11 -> 11`, pinfile count `11 -> 11`, total artifact roots
+    `2015 -> 1945` (`-70`).
+  - Scoped repo movement was classified as `test_maven -71` and
+    `android_test_maven +1`; the single android-test addition was
+    `androidx.compose.ui:ui-test-manifest=946598668`.
+  - All PAX `BUILD.bazel` files were scanned for bucket-prefixed Maven labels
+    inside `tags = [...]`; none were found.
+  - Accepted the reduction and rewrote
+    `reports/specs/pax-size-baseline.json` to the new PAX baseline
+    `bucketCount=11`, `pinfileCount=11`, `totalArtifactRoots=1945`.
+  - Re-ran `verify-pax-size-guard.sh --mode item13` after the rewrite; it
+    passed with no deltas.
+- PAX generated files remain uncommitted by design. The PAX working tree is
+  dirty from `migrateToBazel`; do not reset or commit it without explicit user
+  instruction.
+- Detailed Item 13 notes are in
+  `reports/specs/execution-log/item13-test-android-delta-ownership.md`.
+
+## 2026-06-28 Item 13 Scoped Sibling Closure Follow-Up
+
+- After review tightened test/androidTest inheritance to require root-local
+  closure coverage, PAX `migrateToBazel` passed but the Item 13 size guard
+  regressed from the accepted baseline: total roots `1945 -> 1959`, all from
+  `android_test_maven` `450 -> 464`.
+- Root cause: two android-test direct roots,
+  `com.google.android.libraries.ads.mobile.sdk:ads-mobile-sdk` and
+  `com.grab.identity:identity-ui`, have the same main/default resolved root
+  identity, but their androidTest root-local closure includes
+  `androidx.annotation:annotation-jvm`. That closure is already carried by a
+  different scoped androidTest root (`ovo.id.sdk:common`) in the accepted
+  baseline, so keeping the two duplicate direct roots was unnecessary bloat.
+- Decision: main may cover a scoped test/androidTest root when same resolved
+  root identity holds and closure not covered by main is carried by another
+  root in the same scoped bucket. The candidate root's own closure is excluded
+  from that calculation. This preserves Coursier's full closure while avoiding
+  duplicate direct ownership.
+- TDD/verification so far:
+  - Added red regression test:
+    `android test base bucket drops main root when scoped sibling carries extra
+    closure`.
+  - Implemented sibling-closure accounting in `BucketOwnershipPlanner`.
+  - Focused tests passed:
+    `android test base bucket drops main root when scoped sibling carries extra
+    closure`,
+    `android test base bucket keeps direct root when main owner does not cover
+    its closure`, and
+    `android test base bucket drops inherited root when only override target
+    differs`.
+- Next: rerun full local Grazel gates, then PAX migrate/size guard and PAX
+  build/test gates before accepting Item 13 again.
+
+## 2026-06-28 Item 13 Merged Base Scoped Sibling Recovery
+
+- Full local Grazel verification after the scoped sibling fix passed:
+  - `./gradlew :grazel-gradle-plugin:test --console=plain --no-daemon`
+  - `./gradlew migrateToBazel --console=plain --no-daemon`
+- PAX `migrateToBazel` was re-run with the latest local included-build Grazel
+  changes:
+  `cd /Users/arun.sampathkumar/work/pax-android && ./gradlew migrateToBazel
+  --no-daemon --console=plain --stacktrace --rerun-tasks`.
+  Result: passed in `13m 4s`, 4590 tasks executed, all 11 Maven repos pinned.
+- `reports/scripts/verify-pax-size-guard.sh --mode item13` passed against the
+  accepted Item 13 baseline:
+  - bucket count `11 -> 11`
+  - pinfile count `11 -> 11`
+  - total artifact roots `1945 -> 1945`
+  - no per-repo artifact root deltas.
+- Grazel `git diff --check` and PAX `git diff --check` both passed.
+- Root cause for the remaining `+3` before this fix: final
+  `android_test_maven` merges multiple projects into the same base repo, so
+  closure coverage for a direct androidTest root can be supplied by another
+  project's androidTest root after merging. The earlier sibling-closure fix was
+  still too project-local for this base-bucket case.
+- Decision: merged base `test`/`androidTest` cleanup may use inherited
+  default/test coverage at the final base repo level. Do not broaden this to
+  arbitrary leaf buckets yet: `CoveredDependency` is keyed by bucket name, not
+  project/leaf provenance, and global leaf cleanup could remove a root needed
+  by another project with the same artifact in one leaf.
+- Pre-build resource check: about 27 GiB free on the data volume, memory has
+  about 20 GiB unused, no high-RAM `python3.12` process observed. The broad
+  cache `du` was stopped because it was too slow; no cleanup was performed.
+- PAX APK build gate passed:
+  `./bazel.sh build --verbose_failures //app:app-gps-pax-debug.apk
+  //app:app-gps-pax-debug-android-test.apk`.
+  Result: build completed successfully in `224.076s`.
+- PAX focused Bazel test gate passed:
+  `./bazel.sh test --test_output=errors
+  //app-utils:app-utils-gps-pax-debug-test
+  //app-test:app-test-gps-pax-debug-test
+  //application-initializer:application-initializer-gps-pax-debug-test`.
+  Result: 3 of 3 test targets passed in `18.668s` from cache.
+- Final hygiene for this checkpoint:
+  - Grazel `git diff --check` passed.
+  - PAX `git diff --check` passed.
+  - `reports/scripts/verify-pax-size-guard.sh --mode item13` passed again with
+    no deltas.
+  - `reports/scripts/verify-default-task-graph.sh` passed.
+  - `reports/scripts/verify-sample-bucket-labels.sh` still fails only on the
+    known appcompat/constraintlayout one-sided exclude-union waiver.
+  - `git diff --check master...HEAD` passed.
+- Item 13 local checkpoint commit:
+  `ddaacc41d25ea3546b2402cc329d7c9e51a44734`
+  (`Implement test Android delta ownership`). PAX generated files remain
+  uncommitted by design.

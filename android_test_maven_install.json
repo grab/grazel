@@ -26,13 +26,16 @@
     "androidx.core:core": -196207747,
     "androidx.core:core-ktx": 438051419,
     "androidx.customview:customview-poolingcontainer": 1451517746,
+    "androidx.databinding:databinding-ktx": -219480430,
     "androidx.emoji2:emoji2": 428570715,
     "androidx.lifecycle:lifecycle-common": 1615454616,
     "androidx.lifecycle:lifecycle-common-jvm": -985910716,
+    "androidx.lifecycle:lifecycle-livedata": 1993422093,
     "androidx.lifecycle:lifecycle-livedata-core": 287882185,
     "androidx.lifecycle:lifecycle-process": 1750249264,
     "androidx.lifecycle:lifecycle-runtime": 854999719,
     "androidx.lifecycle:lifecycle-runtime-ktx": 669964933,
+    "androidx.lifecycle:lifecycle-service": -1132508630,
     "androidx.lifecycle:lifecycle-viewmodel": -1107972645,
     "androidx.lifecycle:lifecycle-viewmodel-ktx": 35490745,
     "androidx.lifecycle:lifecycle-viewmodel-savedstate": 1964509904,
@@ -113,18 +116,25 @@
     "androidx.core:core-ktx:aar": -1258789472,
     "androidx.core:core:aar": 82002951,
     "androidx.customview:customview-poolingcontainer:aar": -2084296635,
+    "androidx.databinding:databinding-common": -1173871688,
+    "androidx.databinding:databinding-ktx:aar": -462851987,
+    "androidx.databinding:databinding-runtime:aar": 1311373086,
+    "androidx.databinding:viewbinding:aar": -623878391,
     "androidx.emoji2:emoji2:aar": -1980862424,
     "androidx.graphics:graphics-path:aar": -2037586990,
     "androidx.interpolator:interpolator:aar": 631110265,
     "androidx.lifecycle:lifecycle-common": -479492550,
     "androidx.lifecycle:lifecycle-common-jvm": 1291267347,
+    "androidx.lifecycle:lifecycle-livedata-core-ktx:aar": 1916662712,
     "androidx.lifecycle:lifecycle-livedata-core:aar": 713393549,
+    "androidx.lifecycle:lifecycle-livedata:aar": -1717666553,
     "androidx.lifecycle:lifecycle-process:aar": -975912973,
     "androidx.lifecycle:lifecycle-runtime-android:aar": 1591830108,
     "androidx.lifecycle:lifecycle-runtime-compose-android:aar": -36174225,
     "androidx.lifecycle:lifecycle-runtime-ktx-android:aar": 1795484285,
     "androidx.lifecycle:lifecycle-runtime-ktx:aar": -984817988,
     "androidx.lifecycle:lifecycle-runtime:aar": 608313209,
+    "androidx.lifecycle:lifecycle-service:aar": -65578899,
     "androidx.lifecycle:lifecycle-viewmodel-android:aar": -2071057009,
     "androidx.lifecycle:lifecycle-viewmodel-ktx:aar": 1461347346,
     "androidx.lifecycle:lifecycle-viewmodel-savedstate:aar": 2147070860,
@@ -381,6 +391,30 @@
       },
       "version": "1.0.0"
     },
+    "androidx.databinding:databinding-common": {
+      "shasums": {
+        "jar": "66cab82639dac0f6c2433464c093b074d608c4bb887ec38a9b8bc4ac98126732"
+      },
+      "version": "8.6.1"
+    },
+    "androidx.databinding:databinding-ktx:aar": {
+      "shasums": {
+        "jar": "7903bdf9e8e4cafedc1e79ddf9c9429cf6ade0fc3e6250e31b1ceda492aa1218"
+      },
+      "version": "8.6.1"
+    },
+    "androidx.databinding:databinding-runtime:aar": {
+      "shasums": {
+        "jar": "03ac03e8373a30087bc50a242b9eabf7ff1960c91995677e768ac47afdce3916"
+      },
+      "version": "8.6.1"
+    },
+    "androidx.databinding:viewbinding:aar": {
+      "shasums": {
+        "jar": "5cf9086d41357dea5732ec9e6bc2c0767d2b67a13f526375f5ec5252ca9678c6"
+      },
+      "version": "8.6.1"
+    },
     "androidx.emoji2:emoji2:aar": {
       "shasums": {
         "jar": "2bf23818b23a996ddaa1b5fd5bb32129daff6bbb2dce15166e2fccdd2010b1a5"
@@ -411,9 +445,21 @@
       },
       "version": "2.8.3"
     },
+    "androidx.lifecycle:lifecycle-livedata-core-ktx:aar": {
+      "shasums": {
+        "jar": "d6bedec258e3bfc86d2cba27fea4c03d82872057bfca2a4342461e6defb2d35e"
+      },
+      "version": "2.8.3"
+    },
     "androidx.lifecycle:lifecycle-livedata-core:aar": {
       "shasums": {
         "jar": "01779694b1e822d2eeb9decec86f40dc2983806b985fb48ee116c860534e7ac5"
+      },
+      "version": "2.8.3"
+    },
+    "androidx.lifecycle:lifecycle-livedata:aar": {
+      "shasums": {
+        "jar": "fdbf70620b48550ab23fcf04d9ee59123bf8c31db26016ca74d3332a79444aee"
       },
       "version": "2.8.3"
     },
@@ -450,6 +496,12 @@
     "androidx.lifecycle:lifecycle-runtime:aar": {
       "shasums": {
         "jar": "d4ae4e8dc0ca6265b683d7b2333a102a3ee84ad97ccb9fbec4334f5cd0e3f54d"
+      },
+      "version": "2.8.3"
+    },
+    "androidx.lifecycle:lifecycle-service:aar": {
+      "shasums": {
+        "jar": "d41c7191f8ead311c7f7f26acccf308ba56b7cfbfebb253c43831750b19aa9c8"
       },
       "version": "2.8.3"
     },
@@ -963,6 +1015,25 @@
       "androidx.core:core-ktx:aar",
       "org.jetbrains.kotlin:kotlin-stdlib"
     ],
+    "androidx.databinding:databinding-ktx:aar": [
+      "androidx.databinding:databinding-runtime:aar",
+      "androidx.lifecycle:lifecycle-livedata:aar",
+      "androidx.lifecycle:lifecycle-process:aar",
+      "androidx.lifecycle:lifecycle-runtime-ktx:aar",
+      "androidx.lifecycle:lifecycle-service:aar",
+      "androidx.lifecycle:lifecycle-viewmodel:aar",
+      "org.jetbrains.kotlin:kotlin-stdlib-jdk8",
+      "org.jetbrains.kotlinx:kotlinx-coroutines-android"
+    ],
+    "androidx.databinding:databinding-runtime:aar": [
+      "androidx.collection:collection",
+      "androidx.databinding:databinding-common",
+      "androidx.databinding:viewbinding:aar",
+      "androidx.lifecycle:lifecycle-runtime:aar"
+    ],
+    "androidx.databinding:viewbinding:aar": [
+      "androidx.annotation:annotation"
+    ],
     "androidx.emoji2:emoji2:aar": [
       "androidx.annotation:annotation",
       "androidx.collection:collection",
@@ -989,11 +1060,23 @@
       "org.jetbrains.kotlin:kotlin-stdlib",
       "org.jetbrains.kotlinx:kotlinx-coroutines-core"
     ],
+    "androidx.lifecycle:lifecycle-livedata-core-ktx:aar": [
+      "androidx.lifecycle:lifecycle-livedata-core:aar",
+      "org.jetbrains.kotlin:kotlin-stdlib"
+    ],
     "androidx.lifecycle:lifecycle-livedata-core:aar": [
       "androidx.arch.core:core-common",
       "androidx.arch.core:core-runtime:aar",
       "androidx.lifecycle:lifecycle-common",
       "org.jetbrains.kotlin:kotlin-stdlib"
+    ],
+    "androidx.lifecycle:lifecycle-livedata:aar": [
+      "androidx.arch.core:core-common",
+      "androidx.arch.core:core-runtime:aar",
+      "androidx.lifecycle:lifecycle-livedata-core-ktx:aar",
+      "androidx.lifecycle:lifecycle-livedata-core:aar",
+      "org.jetbrains.kotlin:kotlin-stdlib",
+      "org.jetbrains.kotlinx:kotlinx-coroutines-core"
     ],
     "androidx.lifecycle:lifecycle-process:aar": [
       "androidx.annotation:annotation",
@@ -1033,6 +1116,10 @@
       "androidx.arch.core:core-common",
       "androidx.lifecycle:lifecycle-common",
       "androidx.lifecycle:lifecycle-runtime-android:aar",
+      "org.jetbrains.kotlin:kotlin-stdlib"
+    ],
+    "androidx.lifecycle:lifecycle-service:aar": [
+      "androidx.lifecycle:lifecycle-runtime:aar",
       "org.jetbrains.kotlin:kotlin-stdlib"
     ],
     "androidx.lifecycle:lifecycle-viewmodel-android:aar": [
@@ -1216,6 +1303,9 @@
     ],
     "androidx.concurrent:concurrent-futures": [
       "androidx.concurrent.futures"
+    ],
+    "androidx.databinding:databinding-common": [
+      "androidx.databinding"
     ],
     "androidx.lifecycle:lifecycle-common-jvm": [
       "androidx.lifecycle"
@@ -1431,18 +1521,25 @@
       "androidx.core:core-ktx:aar",
       "androidx.core:core:aar",
       "androidx.customview:customview-poolingcontainer:aar",
+      "androidx.databinding:databinding-common",
+      "androidx.databinding:databinding-ktx:aar",
+      "androidx.databinding:databinding-runtime:aar",
+      "androidx.databinding:viewbinding:aar",
       "androidx.emoji2:emoji2:aar",
       "androidx.graphics:graphics-path:aar",
       "androidx.interpolator:interpolator:aar",
       "androidx.lifecycle:lifecycle-common",
       "androidx.lifecycle:lifecycle-common-jvm",
+      "androidx.lifecycle:lifecycle-livedata-core-ktx:aar",
       "androidx.lifecycle:lifecycle-livedata-core:aar",
+      "androidx.lifecycle:lifecycle-livedata:aar",
       "androidx.lifecycle:lifecycle-process:aar",
       "androidx.lifecycle:lifecycle-runtime-android:aar",
       "androidx.lifecycle:lifecycle-runtime-compose-android:aar",
       "androidx.lifecycle:lifecycle-runtime-ktx-android:aar",
       "androidx.lifecycle:lifecycle-runtime-ktx:aar",
       "androidx.lifecycle:lifecycle-runtime:aar",
+      "androidx.lifecycle:lifecycle-service:aar",
       "androidx.lifecycle:lifecycle-viewmodel-android:aar",
       "androidx.lifecycle:lifecycle-viewmodel-ktx:aar",
       "androidx.lifecycle:lifecycle-viewmodel-savedstate:aar",
@@ -1524,18 +1621,25 @@
       "androidx.core:core-ktx:aar",
       "androidx.core:core:aar",
       "androidx.customview:customview-poolingcontainer:aar",
+      "androidx.databinding:databinding-common",
+      "androidx.databinding:databinding-ktx:aar",
+      "androidx.databinding:databinding-runtime:aar",
+      "androidx.databinding:viewbinding:aar",
       "androidx.emoji2:emoji2:aar",
       "androidx.graphics:graphics-path:aar",
       "androidx.interpolator:interpolator:aar",
       "androidx.lifecycle:lifecycle-common",
       "androidx.lifecycle:lifecycle-common-jvm",
+      "androidx.lifecycle:lifecycle-livedata-core-ktx:aar",
       "androidx.lifecycle:lifecycle-livedata-core:aar",
+      "androidx.lifecycle:lifecycle-livedata:aar",
       "androidx.lifecycle:lifecycle-process:aar",
       "androidx.lifecycle:lifecycle-runtime-android:aar",
       "androidx.lifecycle:lifecycle-runtime-compose-android:aar",
       "androidx.lifecycle:lifecycle-runtime-ktx-android:aar",
       "androidx.lifecycle:lifecycle-runtime-ktx:aar",
       "androidx.lifecycle:lifecycle-runtime:aar",
+      "androidx.lifecycle:lifecycle-service:aar",
       "androidx.lifecycle:lifecycle-viewmodel-android:aar",
       "androidx.lifecycle:lifecycle-viewmodel-ktx:aar",
       "androidx.lifecycle:lifecycle-viewmodel-savedstate:aar",

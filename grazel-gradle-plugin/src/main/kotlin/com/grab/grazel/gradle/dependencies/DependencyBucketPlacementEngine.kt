@@ -40,7 +40,8 @@ internal data class DependencyBucketPlacementPlan(
     val hierarchyBuckets: Map<String, Map<String, ResolvedDependency>>,
     val leafBuckets: Map<String, Map<String, ResolvedDependency>>,
     val bucketAncestors: Map<String, Set<String>>,
-    val leafAncestors: Map<String, Set<String>>
+    val leafAncestors: Map<String, Set<String>>,
+    val bucketDescendantLeaves: Map<String, Set<String>>
 ) {
     fun coveredDependencies(): List<CoveredDependency> {
         return buildList {
@@ -199,6 +200,9 @@ internal class DependencyBucketPlacementEngine {
         val bucketAncestors = graph.bucketNames.associateWith { bucketName ->
             graph.ancestorsOf(bucketName)
         }.toSortedMap()
+        val bucketDescendantLeaves = graph.bucketNames.associateWith { bucketName ->
+            graph.descendantLeafNames(bucketName, leafNames)
+        }.toSortedMap()
         val outputLeafNames = (leafNames + selectedLeafBuckets.keys).toSortedSet()
         val leafBuckets = outputLeafNames
             .mapNotNull { leafName ->
@@ -227,7 +231,8 @@ internal class DependencyBucketPlacementEngine {
             hierarchyBuckets = hierarchyBuckets,
             leafBuckets = leafBuckets,
             bucketAncestors = bucketAncestors,
-            leafAncestors = leafAncestors
+            leafAncestors = leafAncestors,
+            bucketDescendantLeaves = bucketDescendantLeaves
         )
     }
 

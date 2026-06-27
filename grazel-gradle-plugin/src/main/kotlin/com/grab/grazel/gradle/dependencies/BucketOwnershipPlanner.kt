@@ -345,6 +345,7 @@ internal class BucketOwnershipPlanner(
                 baseBucketName = baseBucketName
             )
         ).plannedTestBuckets(
+            baseBucketName = baseBucketName,
             mainCoveredDepsByProject = mainCoveredDepsByProject,
             aggregateMainCoveredDeps = aggregateMainCoveredDeps,
             declaredTestDependenciesByBucket = declaredTestDependenciesByBucket,
@@ -426,6 +427,7 @@ internal class BucketOwnershipPlanner(
     }
 
     private fun Map<String, DependencyBucketPlacementPlan>.plannedTestBuckets(
+        baseBucketName: String,
         mainCoveredDepsByProject: Map<String, List<CoveredDependency>>,
         aggregateMainCoveredDeps: List<CoveredDependency>,
         declaredTestDependenciesByBucket: Map<ProjectDependencyBucket, Map<String, ResolvedDependency>>,
@@ -435,7 +437,21 @@ internal class BucketOwnershipPlanner(
         val declaredMetadataByOutputBucket = linkedMapOf<String, Map<String, ResolvedDependency>>()
         toSortedMap().forEach { (projectPath, plan) ->
             val mainCoveredDeps = mainCoveredDepsByProject[projectPath].orEmpty()
+            val coveredDepsByBucket = (
+                mainCoveredDeps +
+                    aggregateMainCoveredDeps +
+                    inheritedTestCoveredDeps
+                )
+                .groupBy(CoveredDependency::bucketName)
             val plannedBuckets = linkedMapOf<String, Map<String, ResolvedDependency>>()
+
+            fun coveredDepsByShortIdFor(bucketNames: Set<String>): Map<String, List<CoveredDependency>> {
+                return bucketNames
+                    .asSequence()
+                    .flatMap { bucketName -> coveredDepsByBucket[bucketName].orEmpty().asSequence() }
+                    .toList()
+                    .groupByShortId()
+            }
 
             fun addPlannedBucket(bucketName: String, dependencies: Map<String, ResolvedDependency>) {
                 plannedBuckets[bucketName] = plannedBuckets[bucketName]
@@ -451,35 +467,52 @@ internal class BucketOwnershipPlanner(
                 addPlannedBucket(bucketName, dependencies)
             }
             plannedBuckets.forEach { (bucketName, dependencies) ->
+                val outputBucketName = plan.outputBucketNameForTestBucket(bucketName)
                 val testBucketNames = plan.testBucketNamesForTestBucket(
                     bucketName = bucketName
                 )
                 val visibleMainBucketNames = plan.visibleMainBucketNamesForTestBucket(
                     testBucketNames = testBucketNames
                 )
-                val visibleCoveredDepsByShortId = (
-                    (mainCoveredDeps + aggregateMainCoveredDeps)
-                        .filter { covered -> covered.bucketName in visibleMainBucketNames } +
-                        inheritedTestCoveredDeps.filter { covered -> covered.bucketName in testBucketNames }
-                    )
-                    .groupByShortId()
+                val visibleCoveredDepsByShortId = coveredDepsByShortIdFor(
+                    visibleMainBucketNames + testBucketNames
+                )
+                val leafCoveredDepsByShortId = plan
+                    .concreteTestLeafNamesFor(bucketName)
+                    .map { leafName ->
+                        val leafTestBucketNames = plan.testBucketNamesForTestBucket(
+                            bucketName = leafName
+                        )
+                        val leafVisibleMainBucketNames = plan.visibleMainBucketNamesForTestBucket(
+                            testBucketNames = leafTestBucketNames
+                        )
+                        coveredDepsByShortIdFor(
+                            leafVisibleMainBucketNames + leafTestBucketNames
+                        )
+                    }
                 val declaredTestDependencies = declaredTestDependenciesByBucket[
                     ProjectDependencyBucket(projectPath, bucketName)
+                ].orEmpty() + declaredTestDependenciesByBucket[
+                    ProjectDependencyBucket(projectPath, outputBucketName)
                 ].orEmpty()
                 val testOnlyDependencies = dependencies
                     .withoutTestDependenciesCoveredBy(
                         coveredByShortId = visibleCoveredDepsByShortId,
                         declaredTestDependencies = declaredTestDependencies
                     )
+                    .withoutTestDependenciesCoveredByEveryLeaf(
+                        leafCoveredDepsByShortId = leafCoveredDepsByShortId,
+                        declaredTestDependencies = declaredTestDependencies
+                    )
                     .toSortedMap()
                 if (testOnlyDependencies.isNotEmpty()) {
                     declaredMetadataByOutputBucket.addDeclaredOutputMetadata(
-                        bucketName = bucketName,
+                        bucketName = outputBucketName,
                         metadata = declaredTestDependencies.filterKeys { shortId ->
                             shortId in testOnlyDependencies
                         }
                     )
-                    buckets[bucketName] = buckets[bucketName]
+                    buckets[outputBucketName] = buckets[outputBucketName]
                         ?.let { existing -> unionDependencyMaps(existing, testOnlyDependencies) }
                         ?: testOnlyDependencies
                 }
@@ -487,6 +520,11 @@ internal class BucketOwnershipPlanner(
         }
         return buckets
             .toSortedMap()
+            .withoutMergedBaseTestDependenciesCoveredBy(
+                baseBucketName = baseBucketName,
+                aggregateMainCoveredDeps = aggregateMainCoveredDeps,
+                inheritedTestCoveredDeps = inheritedTestCoveredDeps
+            )
             .withDeclaredMetadataByBucket(declaredMetadataByOutputBucket)
     }
 
@@ -509,6 +547,38 @@ internal class BucketOwnershipPlanner(
                     add(testBucketName.removeSuffix(AndroidTest.testSuffix))
                 }
             }
+        }
+    }
+
+    private fun DependencyBucketPlacementPlan.concreteTestLeafNamesFor(
+        bucketName: String
+    ): Set<String> {
+        return bucketDescendantLeaves[bucketName]
+            .orEmpty()
+            .ifEmpty {
+                if (bucketName in leafAncestors) setOf(bucketName) else emptySet()
+            }
+    }
+
+    private fun DependencyBucketPlacementPlan.outputBucketNameForTestBucket(
+        bucketName: String
+    ): String {
+        if (bucketName == baseBucketName || bucketName.endsWith(testSuffixForBaseBucket())) {
+            return bucketName
+        }
+        val scopedBucketName = bucketName + testSuffixForBaseBucket()
+        return if (scopedBucketName in bucketAncestors || scopedBucketName in leafAncestors) {
+            scopedBucketName
+        } else {
+            baseBucketName
+        }
+    }
+
+    private fun DependencyBucketPlacementPlan.testSuffixForBaseBucket(): String {
+        return when (baseBucketName) {
+            TEST_VARIANT -> Test.testSuffix
+            ANDROID_TEST_VARIANT -> AndroidTest.testSuffix
+            else -> error("Unsupported test base bucket $baseBucketName")
         }
     }
 
@@ -582,19 +652,126 @@ private fun Map<String, ResolvedDependency>.withoutTestDependenciesCoveredBy(
     declaredTestDependencies: Map<String, ResolvedDependency>
 ): Map<String, ResolvedDependency> {
     val filtered = withoutDependenciesCoveredBy(coveredByShortId)
-    if (filtered.isEmpty()) return filtered
-    return filtered.filterNot { (shortId, dependency) ->
+    val scopedSiblingClosureDependenciesByShortId = scopedSiblingClosureDependenciesByShortId()
+    val restoredDependencies = filter { (shortId, dependency) ->
+        dependency.direct && shortId !in filtered && !coveredByShortId[shortId].orEmpty().any { covered ->
+            covered.canCoverTestDependency(
+                dependency = dependency,
+                declaredTestDependency = declaredTestDependencies[shortId],
+                scopedSiblingClosureDependencies = scopedSiblingClosureDependenciesByShortId[shortId].orEmpty()
+            )
+        }
+    }
+    return (filtered + restoredDependencies).filterNot { (shortId, dependency) ->
         val declaredTestDependency = declaredTestDependencies[shortId]
         coveredByShortId[dependency.shortId].orEmpty().any { covered ->
-            when {
-                dependency.isDeclaredMetadata() -> covered.canCoverDeclaredTestMetadata(dependency)
-                declaredTestDependency == null -> covered.canCoverInheritedTestRoot(dependency)
-                else -> covered.canCoverDeclaredTestRoot(
+            covered.canCoverTestDependency(
+                dependency = dependency,
+                declaredTestDependency = declaredTestDependency,
+                scopedSiblingClosureDependencies = scopedSiblingClosureDependenciesByShortId[shortId].orEmpty()
+            )
+        }
+    }
+}
+
+private fun Map<String, ResolvedDependency>.withoutTestDependenciesCoveredByEveryLeaf(
+    leafCoveredDepsByShortId: List<Map<String, List<CoveredDependency>>>,
+    declaredTestDependencies: Map<String, ResolvedDependency>
+): Map<String, ResolvedDependency> {
+    if (isEmpty() || leafCoveredDepsByShortId.isEmpty()) return this
+    val scopedSiblingClosureDependenciesByShortId = scopedSiblingClosureDependenciesByShortId()
+    return filterNot { (shortId, dependency) ->
+        val declaredTestDependency = declaredTestDependencies[shortId]
+        leafCoveredDepsByShortId.all { coveredByShortId ->
+            coveredByShortId[shortId].orEmpty().any { covered ->
+                covered.canCoverTestDependency(
                     dependency = dependency,
-                    declaredDependency = declaredTestDependency
+                    declaredTestDependency = declaredTestDependency,
+                    scopedSiblingClosureDependencies = scopedSiblingClosureDependenciesByShortId[shortId].orEmpty()
                 )
             }
         }
+    }
+}
+
+private fun Map<String, Map<String, ResolvedDependency>>.withoutMergedBaseTestDependenciesCoveredBy(
+    baseBucketName: String,
+    aggregateMainCoveredDeps: List<CoveredDependency>,
+    inheritedTestCoveredDeps: List<CoveredDependency>
+): Map<String, Map<String, ResolvedDependency>> {
+    val baseBucket = this[baseBucketName] ?: return this
+    val visibleCoveredBucketNames = buildSet {
+        add(DEFAULT_VARIANT)
+        if (baseBucketName == ANDROID_TEST_VARIANT) {
+            add(TEST_VARIANT)
+        }
+    }
+    val coveredByShortId = (aggregateMainCoveredDeps + inheritedTestCoveredDeps)
+        .filter { covered -> covered.bucketName in visibleCoveredBucketNames }
+        .groupByShortId()
+    if (coveredByShortId.isEmpty()) return this
+
+    val filteredBaseBucket = baseBucket
+        .withoutTestDependenciesCoveredBy(
+            coveredByShortId = coveredByShortId,
+            declaredTestDependencies = emptyMap()
+        )
+        .toSortedMap()
+    if (filteredBaseBucket == baseBucket) return this
+
+    return toMutableMap()
+        .apply {
+            if (filteredBaseBucket.isEmpty()) {
+                remove(baseBucketName)
+            } else {
+                this[baseBucketName] = filteredBaseBucket
+            }
+        }
+        .toSortedMap()
+}
+
+private fun Map<String, ResolvedDependency>.scopedSiblingClosureDependenciesByShortId(): Map<String, Set<String>> {
+    val closureDependencyCounts = values
+        .asSequence()
+        .flatMap { dependency ->
+            sequenceOf(dependency.toDependencyNotation()) + dependency.dependencies.asSequence()
+        }
+        .groupingBy { dependencyNotation -> dependencyNotation }
+        .eachCount()
+    if (closureDependencyCounts.isEmpty()) return emptyMap()
+
+    return mapValues { (_, dependency) ->
+        closureDependencyCounts
+            .asSequence()
+            .filter { (dependencyNotation, count) ->
+                val candidateContribution =
+                    if (dependencyNotation == dependency.toDependencyNotation()) 1 else 0
+                val candidateClosureContribution = if (dependencyNotation in dependency.dependencies) 1 else 0
+                count > candidateContribution + candidateClosureContribution
+            }
+            .mapTo(sortedSetOf()) { (dependencyNotation, _) -> dependencyNotation }
+    }
+}
+
+private fun ResolvedDependency.toDependencyNotation(): String =
+    "$id:$repository:$requiresJetifier:$jetifierSource"
+
+private fun CoveredDependency.canCoverTestDependency(
+    dependency: ResolvedDependency,
+    declaredTestDependency: ResolvedDependency?,
+    scopedSiblingClosureDependencies: Set<String> = emptySet()
+): Boolean {
+    return when {
+        dependency.isDeclaredMetadata() -> canCoverDeclaredTestMetadata(dependency)
+        declaredTestDependency == null -> canCoverInheritedTestRoot(
+            dependency = dependency,
+            scopedSiblingClosureDependencies = scopedSiblingClosureDependencies
+        )
+        else -> canCoverDeclaredTestRoot(
+            dependency = dependency,
+            declaredDependency = declaredTestDependency,
+            scopedSiblingClosureDependencies = scopedSiblingClosureDependencies
+        )
     }
 }
 
@@ -676,7 +853,10 @@ private fun CoveredDependency.canCoverDeclaredTestMetadata(dependency: ResolvedD
         (dependency.excludeRules.isEmpty() || dependency.excludeRules == this.dependency.excludeRules)
 }
 
-private fun CoveredDependency.canCoverInheritedTestRoot(dependency: ResolvedDependency): Boolean {
+private fun CoveredDependency.canCoverInheritedTestRoot(
+    dependency: ResolvedDependency,
+    scopedSiblingClosureDependencies: Set<String> = emptySet()
+): Boolean {
     return this.dependency.direct &&
         dependency.direct &&
         this.dependency.shortId == dependency.shortId &&
@@ -684,14 +864,19 @@ private fun CoveredDependency.canCoverInheritedTestRoot(dependency: ResolvedDepe
         this.dependency.repository == dependency.repository &&
         this.dependency.requiresJetifier == dependency.requiresJetifier &&
         this.dependency.jetifierSource == dependency.jetifierSource &&
+        (this.dependency.dependencies + scopedSiblingClosureDependencies).containsAll(dependency.dependencies) &&
         (dependency.excludeRules.isEmpty() || dependency.excludeRules == this.dependency.excludeRules)
 }
 
 private fun CoveredDependency.canCoverDeclaredTestRoot(
     dependency: ResolvedDependency,
-    declaredDependency: ResolvedDependency
+    declaredDependency: ResolvedDependency,
+    scopedSiblingClosureDependencies: Set<String> = emptySet()
 ): Boolean {
-    return canCoverInheritedTestRoot(dependency) &&
+    return canCoverInheritedTestRoot(
+        dependency = dependency,
+        scopedSiblingClosureDependencies = scopedSiblingClosureDependencies
+    ) &&
         (declaredDependency.excludeRules.isEmpty() || declaredDependency.excludeRules == this.dependency.excludeRules)
 }
 

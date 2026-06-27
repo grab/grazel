@@ -62,16 +62,17 @@ subtraction must drop a test dep ONLY when main provides the **same resolved ide
 would make the test target reference main's version → missing/incompatible class → build
 break. Preserve this guard when generalizing; add a regression test for it.
 
-## Transition safety (dual-run classification, multi-flavor)
+## Transition safety (diff classification, multi-flavor)
 
-- **Flag-gated dual-run diff classification** (`-Pgrazel.internal.parity=delta`): keep the
-  pre-Item-13 placement; run both and diff. Classify every difference as
-  intended-test/androidTest-reduction or regression. Lint differences are regressions in
-  this item.
-- **Run dual-run classification + the size guard on a representative MULTI-FLAVOR
+- **Classify against the frozen Item 10 machine baseline on a representative MULTI-FLAVOR
   application** (PAX), not just the sample modules — single-variant samples hide placement
-  effects.
-- Remove the old path once diffs are all classified as intended reductions, the size guard
+  effects. When the pre-Item-13 path is still locally available, a temporary
+  `-Pgrazel.internal.parity=delta` dual run is acceptable. After Item 12 removed the old
+  in-process path, the frozen baseline JSON + generated diff + size guard is the parity
+  source of truth.
+- Classify every difference as intended test/androidTest delta ownership or regression.
+  Lint differences are regressions in this item.
+- Remove any temporary old path or parity mode once diffs are classified, the size guard
   passes, and PAX builds pass.
 - If using any common-ancestor query for test placement, pin selection to
   `closestCommonAncestorsOf(...).first()` under the deterministic `bucketHierarchyNodeComparator`
@@ -87,8 +88,10 @@ break. Preserve this guard when generalizing; add a regression test for it.
   fails Item 13 with no internal waiver; a correctness-required increase means this delta
   approach is wrong and the item is abandoned or redesigned.
 - **Scope-aware diff classification:** non-test/non-androidTest repos exact-match. Lint repos
-  exact-match. Every changed scoped repo is documented as a delta reduction and must be
-  non-increasing.
+  exact-match. The scoped test/androidTest aggregate must be non-increasing. Individual
+  scoped repos may move roots between `test_maven` and `android_test_maven` only when the
+  move is documented as more precise typed ownership and the scoped aggregate still reduces
+  or stays flat.
 - **Regression tests:** (a) test bucket carries only deltas, not re-owning a main dep;
   (b) a test dep that resolves to a different version than main KEEPS its own copy (the
   version-equality guard).
@@ -101,9 +104,9 @@ break. Preserve this guard when generalizing; add a regression test for it.
 - Test/androidTest buckets own only their deltas; main placement unchanged (set-math). Lint
   exact-matches baseline.
 - Version-equality guard preserved + regression-tested (no under-collection).
-- PAX builds green; size guard shows no increase (expected reduction); diffs classified;
-  dual-run classification green on a multi-flavor app; delta parity mode + old path removed
-  after confirmation.
+- PAX builds green; size guard shows no guarded-total increase (expected reduction);
+  scope-aware diffs classified against the frozen PAX baseline or a temporary dual-run
+  parity mode; any temporary delta parity mode + old path removed after confirmation.
 
 ## Out of scope / Non-goal
 

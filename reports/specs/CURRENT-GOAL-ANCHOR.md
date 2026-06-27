@@ -94,19 +94,25 @@ unnecessary. If complexity stays or grows, document why it is still required.
 - Lint is out of scope for Item 13 and must exact-match.
 - Item 13 has no internal increase waiver. If it increases guarded totals, abandon/redesign
   the item.
+- Item 13 may move roots between `test_maven` and `android_test_maven` only when the move is
+  classified as more precise typed ownership and the scoped aggregate plus guarded totals
+  stay flat or shrink.
 - Accepted reductions monotonically lower the machine-readable PAX baseline.
 - SCC is not a modeling strategy. The known PAX `deliveries-model-food ↔ food-testkit` case
   is presumed false until typed graph projection proves a genuine same-projection cycle.
 
 ## Temporary Harness
 
-Use one temporary parity/diff property:
+Use the temporary parity/diff property while the old path for that item exists:
 
 ```text
--Pgrazel.internal.parity=ownership|delta|cwd
+-Pgrazel.internal.parity=ownership|cwd
 ```
 
-Remove each parity mode and old path before completing its item.
+For Item 13, `-Pgrazel.internal.parity=delta` is valid only if a pre-Item-13 path still
+exists. Otherwise use the frozen Item 10 PAX baseline JSON plus generated diff
+classification as the parity source. Remove each temporary parity mode and old path before
+completing its item.
 
 ## Verification Loop
 

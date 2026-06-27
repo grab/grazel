@@ -16,7 +16,9 @@
 
 package com.grab.grazel.gradle.dependencies
 
+import com.grab.grazel.bazel.starlark.BazelDependency.MavenDependency
 import com.grab.grazel.gradle.dependencies.model.ExcludeRule
+import com.grab.grazel.gradle.dependencies.model.OverrideTarget
 import com.grab.grazel.gradle.dependencies.model.ResolveDependenciesResult
 import com.grab.grazel.gradle.dependencies.model.ResolveDependenciesResult.Companion.Scope.COMPILE
 import com.grab.grazel.gradle.dependencies.model.ResolveDependenciesResult.Companion.Scope.KSP
@@ -26,6 +28,7 @@ import com.grab.grazel.gradle.variant.DEFAULT_VARIANT
 import com.grab.grazel.gradle.variant.TEST_VARIANT
 import com.grab.grazel.gradle.variant.VariantType
 import com.grab.grazel.gradle.variant.VariantType.AndroidBuild
+import com.grab.grazel.gradle.variant.VariantType.AndroidTest
 import com.grab.grazel.gradle.variant.VariantType.Test as TestVariantType
 import org.junit.Assert.assertEquals
 import org.junit.Test
@@ -152,6 +155,603 @@ class BucketOwnershipPlannerTest {
     }
 
     @Test
+    fun `unit test base bucket drops dependency inherited from each selected main leaf`() {
+        val sharedMainDependency = dependency("com.example:shared-main:1.0")
+        val unitTestOnlyDependency = dependency("com.example:unit-test-only:1.0")
+
+        val results: List<ResolveDependenciesResult> = planner(
+            metadata = metadata(
+                ":app" to listOf(
+                    declaredVariant(DEFAULT_VARIANT, AndroidBuild, leaf = false),
+                    declaredVariant(
+                        "freeDebug",
+                        AndroidBuild,
+                        leaf = true,
+                        buildType = "debug",
+                        extendsFrom = setOf(DEFAULT_VARIANT, "debug", "free")
+                    ),
+                    declaredVariant(
+                        "paidRelease",
+                        AndroidBuild,
+                        leaf = true,
+                        buildType = "release",
+                        extendsFrom = setOf(DEFAULT_VARIANT, "release", "paid")
+                    ),
+                    declaredVariant(TEST_VARIANT, TestVariantType, leaf = false),
+                    declaredVariant(
+                        "freeDebugUnitTest",
+                        TestVariantType,
+                        leaf = true,
+                        extendsFrom = setOf(TEST_VARIANT, "freeDebug")
+                    ),
+                    declaredVariant(
+                        "paidReleaseUnitTest",
+                        TestVariantType,
+                        leaf = true,
+                        extendsFrom = setOf(TEST_VARIANT, "paidRelease")
+                    )
+                )
+            )
+        ).plan(
+            input(
+                hierarchyBucketClosures = mapOf(
+                    bucket(":app", "freeDebug") to deps(sharedMainDependency),
+                    bucket(":app", "paidRelease") to deps(sharedMainDependency)
+                ),
+                leafClosures = mapOf(
+                    bucket(":app", "freeDebug") to deps(sharedMainDependency),
+                    bucket(":app", "paidRelease") to deps(sharedMainDependency)
+                ),
+                leafUnitTestClosures = mapOf(
+                    bucket(":app", "freeDebug") to deps(sharedMainDependency, unitTestOnlyDependency),
+                    bucket(":app", "paidRelease") to deps(sharedMainDependency, unitTestOnlyDependency)
+                )
+            )
+        )
+
+        assertEquals(
+            results.compileSummary(),
+            listOf("com.example:unit-test-only:1.0"),
+            compileIdsFor(results, TEST_VARIANT)
+        )
+    }
+
+    @Test
+    fun `android test base bucket drops dependency inherited from each selected main leaf`() {
+        val sharedMainDependency = dependency("com.example:shared-main:1.0")
+        val androidTestOnlyDependency = dependency("com.example:android-test-only:1.0")
+
+        val results: List<ResolveDependenciesResult> = planner(
+            metadata = metadata(
+                ":app" to listOf(
+                    declaredVariant(DEFAULT_VARIANT, AndroidBuild, leaf = false),
+                    declaredVariant(
+                        "freeDebug",
+                        AndroidBuild,
+                        leaf = true,
+                        buildType = "debug",
+                        extendsFrom = setOf(DEFAULT_VARIANT, "debug", "free")
+                    ),
+                    declaredVariant(
+                        "paidRelease",
+                        AndroidBuild,
+                        leaf = true,
+                        buildType = "release",
+                        extendsFrom = setOf(DEFAULT_VARIANT, "release", "paid")
+                    ),
+                    declaredVariant(
+                        ANDROID_TEST_VARIANT,
+                        AndroidTest,
+                        leaf = false,
+                        extendsFrom = setOf(DEFAULT_VARIANT, TEST_VARIANT)
+                    ),
+                    declaredVariant(
+                        "freeDebugAndroidTest",
+                        AndroidTest,
+                        leaf = true,
+                        extendsFrom = setOf(ANDROID_TEST_VARIANT, TEST_VARIANT, "freeDebug")
+                    ),
+                    declaredVariant(
+                        "paidReleaseAndroidTest",
+                        AndroidTest,
+                        leaf = true,
+                        extendsFrom = setOf(ANDROID_TEST_VARIANT, TEST_VARIANT, "paidRelease")
+                    )
+                )
+            )
+        ).plan(
+            input(
+                hierarchyBucketClosures = mapOf(
+                    bucket(":app", "freeDebug") to deps(sharedMainDependency),
+                    bucket(":app", "paidRelease") to deps(sharedMainDependency)
+                ),
+                leafClosures = mapOf(
+                    bucket(":app", "freeDebug") to deps(sharedMainDependency),
+                    bucket(":app", "paidRelease") to deps(sharedMainDependency)
+                ),
+                leafAndroidTestClosures = mapOf(
+                    bucket(":app", "freeDebug") to deps(sharedMainDependency, androidTestOnlyDependency),
+                    bucket(":app", "paidRelease") to deps(sharedMainDependency, androidTestOnlyDependency)
+                )
+            )
+        )
+
+        assertEquals(
+            results.compileSummary(),
+            listOf("com.example:android-test-only:1.0"),
+            compileIdsFor(results, ANDROID_TEST_VARIANT)
+        )
+    }
+
+    @Test
+    fun `android test base bucket keeps dependency when selected main leaves resolve different version`() {
+        val sharedMainDependency = dependency("com.example:shared:1.0")
+        val androidTestDependency = dependency("com.example:shared:2.0")
+
+        val results: List<ResolveDependenciesResult> = planner(
+            metadata = metadata(
+                ":app" to listOf(
+                    declaredVariant(DEFAULT_VARIANT, AndroidBuild, leaf = false),
+                    declaredVariant(
+                        "freeDebug",
+                        AndroidBuild,
+                        leaf = true,
+                        buildType = "debug",
+                        extendsFrom = setOf(DEFAULT_VARIANT, "debug", "free")
+                    ),
+                    declaredVariant(
+                        "paidRelease",
+                        AndroidBuild,
+                        leaf = true,
+                        buildType = "release",
+                        extendsFrom = setOf(DEFAULT_VARIANT, "release", "paid")
+                    ),
+                    declaredVariant(
+                        ANDROID_TEST_VARIANT,
+                        AndroidTest,
+                        leaf = false,
+                        extendsFrom = setOf(DEFAULT_VARIANT, TEST_VARIANT)
+                    ),
+                    declaredVariant(
+                        "freeDebugAndroidTest",
+                        AndroidTest,
+                        leaf = true,
+                        extendsFrom = setOf(ANDROID_TEST_VARIANT, TEST_VARIANT, "freeDebug")
+                    ),
+                    declaredVariant(
+                        "paidReleaseAndroidTest",
+                        AndroidTest,
+                        leaf = true,
+                        extendsFrom = setOf(ANDROID_TEST_VARIANT, TEST_VARIANT, "paidRelease")
+                    )
+                )
+            )
+        ).plan(
+            input(
+                hierarchyBucketClosures = mapOf(
+                    bucket(":app", "freeDebug") to deps(sharedMainDependency),
+                    bucket(":app", "paidRelease") to deps(sharedMainDependency)
+                ),
+                leafClosures = mapOf(
+                    bucket(":app", "freeDebug") to deps(sharedMainDependency),
+                    bucket(":app", "paidRelease") to deps(sharedMainDependency)
+                ),
+                leafAndroidTestClosures = mapOf(
+                    bucket(":app", "freeDebug") to deps(androidTestDependency),
+                    bucket(":app", "paidRelease") to deps(androidTestDependency)
+                )
+            )
+        )
+
+        assertEquals(
+            results.compileSummary(),
+            listOf("com.example:shared:2.0"),
+            compileIdsFor(results, ANDROID_TEST_VARIANT)
+        )
+    }
+
+    @Test
+    fun `android test base bucket keeps direct root when main owner does not cover its closure`() {
+        val sharedMainDependency = dependency("com.example:shared:1.0")
+        val androidTestDependency = dependency("com.example:shared:1.0").copy(
+            dependencies = setOf("com.example:android-test-child:1.0")
+        )
+
+        val results: List<ResolveDependenciesResult> = planner(
+            metadata = metadata(
+                ":app" to listOf(
+                    declaredVariant(DEFAULT_VARIANT, AndroidBuild, leaf = false),
+                    declaredVariant(
+                        "freeDebug",
+                        AndroidBuild,
+                        leaf = true,
+                        buildType = "debug",
+                        extendsFrom = setOf(DEFAULT_VARIANT, "debug", "free")
+                    ),
+                    declaredVariant(
+                        "paidRelease",
+                        AndroidBuild,
+                        leaf = true,
+                        buildType = "release",
+                        extendsFrom = setOf(DEFAULT_VARIANT, "release", "paid")
+                    ),
+                    declaredVariant(
+                        ANDROID_TEST_VARIANT,
+                        AndroidTest,
+                        leaf = false,
+                        extendsFrom = setOf(DEFAULT_VARIANT, TEST_VARIANT)
+                    ),
+                    declaredVariant(
+                        "freeDebugAndroidTest",
+                        AndroidTest,
+                        leaf = true,
+                        extendsFrom = setOf(ANDROID_TEST_VARIANT, TEST_VARIANT, "freeDebug")
+                    ),
+                    declaredVariant(
+                        "paidReleaseAndroidTest",
+                        AndroidTest,
+                        leaf = true,
+                        extendsFrom = setOf(ANDROID_TEST_VARIANT, TEST_VARIANT, "paidRelease")
+                    )
+                )
+            )
+        ).plan(
+            input(
+                hierarchyBucketClosures = mapOf(
+                    bucket(":app", "freeDebug") to deps(sharedMainDependency),
+                    bucket(":app", "paidRelease") to deps(sharedMainDependency)
+                ),
+                leafClosures = mapOf(
+                    bucket(":app", "freeDebug") to deps(sharedMainDependency),
+                    bucket(":app", "paidRelease") to deps(sharedMainDependency)
+                ),
+                leafAndroidTestClosures = mapOf(
+                    bucket(":app", "freeDebug") to deps(androidTestDependency),
+                    bucket(":app", "paidRelease") to deps(androidTestDependency)
+                )
+            )
+        )
+
+        val androidTestDeps = compileDepsFor(results, ANDROID_TEST_VARIANT)
+        assertEquals(
+            results.compileSummary(),
+            listOf("com.example:shared:1.0"),
+            androidTestDeps.map(ResolvedDependency::id)
+        )
+        assertEquals(
+            setOf("com.example:android-test-child:1.0"),
+            androidTestDeps.single().dependencies
+        )
+    }
+
+    @Test
+    fun `android test base bucket drops main root when scoped sibling carries extra closure`() {
+        val childDependencyId = "com.example:android-test-child:1.0"
+        val sharedMainDependency = dependency("com.example:shared:1.0")
+        val androidTestDependency = dependency("com.example:shared:1.0").copy(
+            dependencies = setOf(childDependencyId)
+        )
+        val androidTestCarrierDependency = dependency("com.example:android-test-carrier:1.0").copy(
+            dependencies = setOf(childDependencyId)
+        )
+
+        val results: List<ResolveDependenciesResult> = planner(
+            metadata = metadata(
+                ":app" to listOf(
+                    declaredVariant(DEFAULT_VARIANT, AndroidBuild, leaf = false),
+                    declaredVariant(
+                        "freeDebug",
+                        AndroidBuild,
+                        leaf = true,
+                        buildType = "debug",
+                        extendsFrom = setOf(DEFAULT_VARIANT, "debug", "free")
+                    ),
+                    declaredVariant(
+                        "paidRelease",
+                        AndroidBuild,
+                        leaf = true,
+                        buildType = "release",
+                        extendsFrom = setOf(DEFAULT_VARIANT, "release", "paid")
+                    ),
+                    declaredVariant(
+                        ANDROID_TEST_VARIANT,
+                        AndroidTest,
+                        leaf = false,
+                        extendsFrom = setOf(DEFAULT_VARIANT, TEST_VARIANT)
+                    ),
+                    declaredVariant(
+                        "freeDebugAndroidTest",
+                        AndroidTest,
+                        leaf = true,
+                        extendsFrom = setOf(ANDROID_TEST_VARIANT, TEST_VARIANT, "freeDebug")
+                    ),
+                    declaredVariant(
+                        "paidReleaseAndroidTest",
+                        AndroidTest,
+                        leaf = true,
+                        extendsFrom = setOf(ANDROID_TEST_VARIANT, TEST_VARIANT, "paidRelease")
+                    )
+                )
+            )
+        ).plan(
+            input(
+                hierarchyBucketClosures = mapOf(
+                    bucket(":app", "freeDebug") to deps(sharedMainDependency),
+                    bucket(":app", "paidRelease") to deps(sharedMainDependency)
+                ),
+                leafClosures = mapOf(
+                    bucket(":app", "freeDebug") to deps(sharedMainDependency),
+                    bucket(":app", "paidRelease") to deps(sharedMainDependency)
+                ),
+                leafAndroidTestClosures = mapOf(
+                    bucket(":app", "freeDebug") to deps(androidTestDependency, androidTestCarrierDependency),
+                    bucket(":app", "paidRelease") to deps(androidTestDependency, androidTestCarrierDependency)
+                )
+            )
+        )
+
+        val androidTestDeps = compileDepsFor(results, ANDROID_TEST_VARIANT)
+        assertEquals(
+            results.compileSummary(),
+            listOf("com.example:android-test-carrier:1.0"),
+            androidTestDeps.map(ResolvedDependency::id)
+        )
+        assertEquals(
+            setOf(childDependencyId),
+            androidTestDeps.single().dependencies
+        )
+    }
+
+    @Test
+    fun `android test base bucket drops main root when scoped sibling root carries extra closure`() {
+        val childDependencyNotation = "com.example:android-test-child:1.0:maven:false:null"
+        val sharedMainDependency = dependency("com.example:shared:1.0")
+        val androidTestDependency = dependency("com.example:shared:1.0").copy(
+            dependencies = setOf(childDependencyNotation)
+        )
+        val androidTestChildDependency = dependency("com.example:android-test-child:1.0")
+
+        val results: List<ResolveDependenciesResult> = planner(
+            metadata = metadata(
+                ":app" to listOf(
+                    declaredVariant(DEFAULT_VARIANT, AndroidBuild, leaf = false),
+                    declaredVariant(
+                        "freeDebug",
+                        AndroidBuild,
+                        leaf = true,
+                        buildType = "debug",
+                        extendsFrom = setOf(DEFAULT_VARIANT, "debug", "free")
+                    ),
+                    declaredVariant(
+                        "paidRelease",
+                        AndroidBuild,
+                        leaf = true,
+                        buildType = "release",
+                        extendsFrom = setOf(DEFAULT_VARIANT, "release", "paid")
+                    ),
+                    declaredVariant(
+                        ANDROID_TEST_VARIANT,
+                        AndroidTest,
+                        leaf = false,
+                        extendsFrom = setOf(DEFAULT_VARIANT, TEST_VARIANT)
+                    ),
+                    declaredVariant(
+                        "freeDebugAndroidTest",
+                        AndroidTest,
+                        leaf = true,
+                        extendsFrom = setOf(ANDROID_TEST_VARIANT, TEST_VARIANT, "freeDebug")
+                    ),
+                    declaredVariant(
+                        "paidReleaseAndroidTest",
+                        AndroidTest,
+                        leaf = true,
+                        extendsFrom = setOf(ANDROID_TEST_VARIANT, TEST_VARIANT, "paidRelease")
+                    )
+                )
+            )
+        ).plan(
+            input(
+                hierarchyBucketClosures = mapOf(
+                    bucket(":app", "freeDebug") to deps(sharedMainDependency),
+                    bucket(":app", "paidRelease") to deps(sharedMainDependency)
+                ),
+                leafClosures = mapOf(
+                    bucket(":app", "freeDebug") to deps(sharedMainDependency),
+                    bucket(":app", "paidRelease") to deps(sharedMainDependency)
+                ),
+                leafAndroidTestClosures = mapOf(
+                    bucket(":app", "freeDebug") to deps(androidTestDependency, androidTestChildDependency),
+                    bucket(":app", "paidRelease") to deps(androidTestDependency, androidTestChildDependency)
+                )
+            )
+        )
+
+        val androidTestDeps = compileDepsFor(results, ANDROID_TEST_VARIANT)
+        assertEquals(
+            results.compileSummary(),
+            listOf("com.example:android-test-child:1.0"),
+            androidTestDeps.map(ResolvedDependency::id)
+        )
+        assertEquals(
+            emptySet<String>(),
+            androidTestDeps.single().dependencies
+        )
+    }
+
+    @Test
+    fun `android test base bucket drops main root when merged scoped sibling root carries extra closure`() {
+        val childDependencyNotation = "com.example:android-test-child:1.0:maven:false:null"
+        val sharedMainDependency = dependency("com.example:shared:1.0")
+        val androidTestDependency = dependency("com.example:shared:1.0").copy(
+            dependencies = setOf(childDependencyNotation)
+        )
+        val androidTestChildDependency = dependency("com.example:android-test-child:1.0")
+
+        val results: List<ResolveDependenciesResult> = planner(
+            metadata = metadata(
+                ":app" to androidAndAndroidTestVariants(),
+                ":test-fixture" to androidAndAndroidTestVariants()
+            )
+        ).plan(
+            input(
+                hierarchyBucketClosures = mapOf(
+                    bucket(":app", DEFAULT_VARIANT) to deps(sharedMainDependency)
+                ),
+                leafAndroidTestClosures = mapOf(
+                    bucket(":app", "freeDebug") to deps(androidTestDependency),
+                    bucket(":app", "paidRelease") to deps(androidTestDependency),
+                    bucket(":test-fixture", "freeDebug") to deps(androidTestChildDependency),
+                    bucket(":test-fixture", "paidRelease") to deps(androidTestChildDependency)
+                )
+            )
+        )
+
+        val androidTestDeps = compileDepsFor(results, ANDROID_TEST_VARIANT)
+        assertEquals(
+            results.compileSummary(),
+            listOf("com.example:android-test-child:1.0"),
+            androidTestDeps.map(ResolvedDependency::id)
+        )
+        assertEquals(
+            emptySet<String>(),
+            androidTestDeps.single().dependencies
+        )
+    }
+
+    @Test
+    fun `android test base bucket drops inherited root when only override target differs`() {
+        val mainDependency = dependency("com.example:shared:1.0")
+        val androidTestDependency = dependency("com.example:shared:1.0").copy(
+            overrideTarget = OverrideTarget(
+                artifactShortId = "com.example:shared",
+                label = MavenDependency(
+                    group = "com.example",
+                    name = "shared"
+                )
+            )
+        )
+
+        val results: List<ResolveDependenciesResult> = planner(
+            metadata = metadata(
+                ":app" to listOf(
+                    declaredVariant(DEFAULT_VARIANT, AndroidBuild, leaf = false),
+                    declaredVariant(
+                        "freeDebug",
+                        AndroidBuild,
+                        leaf = true,
+                        buildType = "debug",
+                        extendsFrom = setOf(DEFAULT_VARIANT, "debug", "free")
+                    ),
+                    declaredVariant(
+                        "paidRelease",
+                        AndroidBuild,
+                        leaf = true,
+                        buildType = "release",
+                        extendsFrom = setOf(DEFAULT_VARIANT, "release", "paid")
+                    ),
+                    declaredVariant(
+                        ANDROID_TEST_VARIANT,
+                        AndroidTest,
+                        leaf = false,
+                        extendsFrom = setOf(DEFAULT_VARIANT, TEST_VARIANT)
+                    ),
+                    declaredVariant(
+                        "freeDebugAndroidTest",
+                        AndroidTest,
+                        leaf = true,
+                        extendsFrom = setOf(ANDROID_TEST_VARIANT, TEST_VARIANT, "freeDebug")
+                    ),
+                    declaredVariant(
+                        "paidReleaseAndroidTest",
+                        AndroidTest,
+                        leaf = true,
+                        extendsFrom = setOf(ANDROID_TEST_VARIANT, TEST_VARIANT, "paidRelease")
+                    )
+                )
+            )
+        ).plan(
+            input(
+                hierarchyBucketClosures = mapOf(
+                    bucket(":app", "freeDebug") to deps(mainDependency),
+                    bucket(":app", "paidRelease") to deps(mainDependency)
+                ),
+                leafClosures = mapOf(
+                    bucket(":app", "freeDebug") to deps(mainDependency),
+                    bucket(":app", "paidRelease") to deps(mainDependency)
+                ),
+                leafAndroidTestClosures = mapOf(
+                    bucket(":app", "freeDebug") to deps(androidTestDependency),
+                    bucket(":app", "paidRelease") to deps(androidTestDependency)
+                )
+            )
+        )
+
+        assertEquals(emptyList<String>(), compileIdsFor(results, ANDROID_TEST_VARIANT))
+    }
+
+    @Test
+    fun `unit test shared build type bucket emits typed output bucket`() {
+        val debugTestDependency = dependency("com.example:debug-test-only:1.0")
+
+        val results: List<ResolveDependenciesResult> = planner(
+            metadata = metadata(
+                ":app" to listOf(
+                    declaredVariant(DEFAULT_VARIANT, AndroidBuild, leaf = false),
+                    declaredVariant("debug", AndroidBuild, leaf = false, buildType = "debug"),
+                    declaredVariant(
+                        "freeDebug",
+                        AndroidBuild,
+                        leaf = true,
+                        buildType = "debug",
+                        extendsFrom = setOf(DEFAULT_VARIANT, "debug", "free")
+                    ),
+                    declaredVariant(
+                        "paidDebug",
+                        AndroidBuild,
+                        leaf = true,
+                        buildType = "debug",
+                        extendsFrom = setOf(DEFAULT_VARIANT, "debug", "paid")
+                    ),
+                    declaredVariant(TEST_VARIANT, TestVariantType, leaf = false),
+                    declaredVariant(
+                        "debugUnitTest",
+                        TestVariantType,
+                        leaf = false,
+                        extendsFrom = setOf(TEST_VARIANT, "debug")
+                    ),
+                    declaredVariant(
+                        "freeDebugUnitTest",
+                        TestVariantType,
+                        leaf = true,
+                        extendsFrom = setOf("debugUnitTest", "freeDebug")
+                    ),
+                    declaredVariant(
+                        "paidDebugUnitTest",
+                        TestVariantType,
+                        leaf = true,
+                        extendsFrom = setOf("debugUnitTest", "paidDebug")
+                    )
+                )
+            )
+        ).plan(
+            input(
+                leafUnitTestClosures = mapOf(
+                    bucket(":app", "freeDebug") to deps(debugTestDependency),
+                    bucket(":app", "paidDebug") to deps(debugTestDependency)
+                )
+            )
+        )
+
+        assertEquals(
+            results.compileSummary(),
+            listOf("com.example:debug-test-only:1.0"),
+            compileIdsFor(results, "debugUnitTest")
+        )
+        assertEquals(emptyList<String>(), compileIdsFor(results, TEST_VARIANT))
+        assertEquals(emptyList<String>(), compileIdsFor(results, "debug"))
+    }
+
+    @Test
     fun `result order keeps main buckets before test androidTest and lint`() {
         val defaultDependency = dependency("com.example:default-lib:1.0")
         val debugDependency = dependency("com.example:debug-lib:1.0")
@@ -204,6 +804,32 @@ class BucketOwnershipPlannerTest {
         )
     }
 
+    private fun compileIdsFor(
+        results: List<ResolveDependenciesResult>,
+        variantName: String
+    ): List<String> {
+        return compileDepsFor(results, variantName)
+            .map(ResolvedDependency::id)
+    }
+
+    private fun compileDepsFor(
+        results: List<ResolveDependenciesResult>,
+        variantName: String
+    ): List<ResolvedDependency> {
+        return results.singleOrNull { result -> result.variantName == variantName }
+            ?.dependencies
+            ?.getValue(COMPILE.name)
+            ?.toList()
+            .orEmpty()
+    }
+
+    private fun List<ResolveDependenciesResult>.compileSummary(): String {
+        return joinToString(separator = "; ") { result ->
+            "${result.variantName}=" +
+                result.dependencies.getValue(COMPILE.name).map(ResolvedDependency::id)
+        }
+    }
+
     private fun input(
         leafClosures: Map<ProjectDependencyBucket, Map<String, ResolvedDependency>> = emptyMap(),
         leafUnitTestClosures: Map<ProjectDependencyBucket, Map<String, ResolvedDependency>> = emptyMap(),
@@ -233,6 +859,44 @@ class BucketOwnershipPlannerTest {
             projects = projects.associate { (projectPath, variants) ->
                 projectPath to ProjectDeclaredDependencyMetadata(variants = variants)
             }
+        )
+    }
+
+    private fun androidAndAndroidTestVariants(): List<DeclaredVariantDependencyMetadata> {
+        return listOf(
+            declaredVariant(DEFAULT_VARIANT, AndroidBuild, leaf = false),
+            declaredVariant(
+                "freeDebug",
+                AndroidBuild,
+                leaf = true,
+                buildType = "debug",
+                extendsFrom = setOf(DEFAULT_VARIANT, "debug", "free")
+            ),
+            declaredVariant(
+                "paidRelease",
+                AndroidBuild,
+                leaf = true,
+                buildType = "release",
+                extendsFrom = setOf(DEFAULT_VARIANT, "release", "paid")
+            ),
+            declaredVariant(
+                ANDROID_TEST_VARIANT,
+                AndroidTest,
+                leaf = false,
+                extendsFrom = setOf(DEFAULT_VARIANT, TEST_VARIANT)
+            ),
+            declaredVariant(
+                "freeDebugAndroidTest",
+                AndroidTest,
+                leaf = true,
+                extendsFrom = setOf(ANDROID_TEST_VARIANT, TEST_VARIANT, "freeDebug")
+            ),
+            declaredVariant(
+                "paidReleaseAndroidTest",
+                AndroidTest,
+                leaf = true,
+                extendsFrom = setOf(ANDROID_TEST_VARIANT, TEST_VARIANT, "paidRelease")
+            )
         )
     }
 

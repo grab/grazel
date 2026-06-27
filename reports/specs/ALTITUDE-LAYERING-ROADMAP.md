@@ -24,10 +24,12 @@
      deferred to a separate item with its own tested inheritance model. Main
      undeclared-transitive placement keeps the current set-math unless a separate future
      experiment proves a reduction.
-2. **Transition safety for the improve step = dual-run diff classification.** Keep the old
-   planner temporarily; behind a flag, run both and diff bucket-by-bucket on PAX. Pass only
-   when every difference is classified as intended scoped reduction, the size guard passes,
-   and PAX builds pass; then remove the old path.
+2. **Transition safety for the improve step = baseline or dual-run diff classification.** If
+   the old planner path still exists, keep it temporarily behind a flag and diff
+   bucket-by-bucket on PAX. If the old path has already been removed by a prior preserving
+   slice, use the frozen Item 10 PAX machine baseline as the parity source. Pass only when
+   every difference is classified as intended scoped delta ownership, the size guard passes,
+   and PAX builds pass.
 3. **Size guard = freeze current PAX as the accepted baseline.** The accepted PAX generated
    state is committed on the PAX branch `arun/grazel-refactor`, giving future work a tight
    `git diff` loop. Bucket count, pinfile count, and total artifact roots must **never
@@ -89,7 +91,7 @@ intended output change).
 | **9** | Typed graph nodes/edges + test→app | specced (`item9`) | preserving after baseline | Preserve source-set/variant graph identity; add `DependencyGraphEdge` and `AndroidTestTargetProjectEdge`; avoid false SCCs | 10 |
 | **11** | Eliminate false SCCs; SCC diagnostic fallback | specced | preserving (verify+guard) | Prove known PAX false SCC disappears under typed projections; remove fallback or keep only with genuine typed-cycle proof; bucket ownership = DAG math only | 9 |
 | **12** | Extract `BucketOwnershipPlanner` (Layer 3) — RELOCATE | specced | **preserving (empty-diff)** | Move existing ownership logic as-is into a named Layer-3 model; proves the layer before any behaviour change (Step A) | 10 |
-| **13** | Test/androidTest delta ownership — IMPROVE | specced | **OUTPUT-CHANGING** | Make typed test buckets own only resolved-identity deltas; classify diffs; baseline may only stay flat or shrink | 12 |
+| **13** | Test/androidTest delta ownership — IMPROVE | specced | **OUTPUT-CHANGING** | Make typed test buckets own only resolved-identity deltas; classify diffs; guarded totals may only stay flat or shrink | 12 |
 | **14** | Slim `ComputeWorkspaceDependencies` to value-holder | specced | preserving | Move CWD's duplicate-collapse / override-synthesis into the planner/plan layer; CWD keeps flatten / max-version / transitive / KSP | 13 |
 | **15** | Rendering purity + hygiene | specced | preserving | Wire-or-remove `commonAncestorsOf`/`closestCommonAncestorsOf`; delete dead-code residues; add `WorkspaceRenderPlanBuilder` test; confirm no generated-file parsing feedback | 14 |
 | **16** | Simplify, adversarial review & final verification | specced | preserving | Run simplify pass, adversarial review, broad Grazel/PAX verification, docs/waiver cleanup; produce review-ready branch | 15 |
@@ -102,9 +104,11 @@ behavior changes. Permitted classified diffs are Item 13 (the intended output ch
 Item 9 Stage 2 only if the new target edge exposes a real correctness fix. Any other output
 diff is a stop-and-investigate event.
 
-**Dual-run mechanism:** Items 12, 13, and 14 use the same temporary parity/diff harness:
-`-Pgrazel.internal.parity=ownership|delta|cwd`. Each item removes its parity mode and old
-path before completion.
+**Parity/diff mechanism:** Items 12 and 14 use the temporary parity/diff harness
+`-Pgrazel.internal.parity=ownership|cwd` while their old paths exist. Item 13 may use
+`-Pgrazel.internal.parity=delta` only if a pre-Item-13 path is still present; otherwise the
+frozen Item 10 PAX size baseline plus generated diff classification is the parity source.
+Each item removes any temporary parity mode and old path before completion.
 
 ## Cross-checks before Codex executes
 
