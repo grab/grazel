@@ -1027,3 +1027,112 @@ evidence in item-specific logs so context compaction can recover state quickly.
   `ef08b7c4f96942081961258d4b596680677af493`
   (`Implement test Android delta ownership`). PAX generated files remain
   uncommitted by design.
+
+## 2026-06-28 Item 14 Slim CWD Start
+
+- Active item: Item 14 - slim `ComputeWorkspaceDependencies` to a value-holder.
+- Start commit: `a625c98c771ed47bbce2bc985bbb4489fd52e5fe`
+  (`Record Item 13 checkpoint`), with clean Grazel worktree.
+- Spec contract:
+  - behavior-preserving only;
+  - move default duplicate ownership decisions out of CWD only if output remains
+    byte-identical;
+  - move final override-target synthesis toward the plan/render layer only with
+    parity/empty-diff proof;
+  - CWD should retain value/index work: grouping, max-version arbitration,
+    flattening, transitive indices, reachable-main indices, and KSP aggregation.
+- Immediate approach: use read-only subagents for CWD responsibility and
+  verification/parity audits, then implement the smallest behavior-preserving
+  seam. If a relocation risks changing `variantTransitiveClasspath` or
+  override labels, stop and keep the current behavior until a safer seam is
+  identified.
+- Subagent audit result:
+  - default duplicate collapse can move out of CWD if copied exactly;
+  - final flattened default coverage / override-carrier synthesis should not
+    move solely to `WorkspaceRenderPlanBuilder` because
+    `DependencyResolutionService` still consumes `WorkspaceDependencies.variantDeps`
+    and their `overrideTarget`s;
+  - safest preserving seam is dedicated helpers called by CWD while keeping
+    serialized `WorkspaceDependencies` byte-identical.
+- TDD:
+  - Added failing seam tests for missing `DefaultBucketDependencyReducer` and
+    `DefaultOverrideCarrierPlanner`.
+  - Verified red via focused Gradle test compile failure: unresolved references
+    for both helper classes.
+  - Implemented helpers by moving the existing CWD default-dedup and
+    override-carrier predicates/logic unchanged.
+  - Focused green tests passed:
+    `./gradlew :grazel-gradle-plugin:test --console=plain --no-daemon --tests
+    "com.grab.grazel.gradle.dependencies.ComputeWorkspaceDependenciesTest"
+    --tests "com.grab.grazel.gradle.dependencies.DefaultBucketDependencyReducerTest"
+    --tests "com.grab.grazel.gradle.dependencies.DefaultOverrideCarrierPlannerTest"
+    --tests "com.grab.grazel.gradle.dependencies.BucketOwnershipPlannerTest"
+    --tests "com.grab.grazel.gradle.dependencies.WorkspacePlanBuilderTest"
+    --tests "com.grab.grazel.tasks.internal.WorkspacePlanTasksTest"`.
+    Result: passed in 8s.
+- Local Grazel gates:
+  - `./gradlew :grazel-gradle-plugin:test --console=plain --no-daemon`
+    passed in 37s.
+  - `./gradlew migrateToBazel --console=plain --no-daemon` passed in 16s;
+    generated outputs remained unchanged.
+  - `git diff --check` passed.
+  - `reports/scripts/verify-default-task-graph.sh` passed.
+  - `git diff --check master...HEAD` passed.
+  - `reports/scripts/verify-sample-bucket-labels.sh` still fails only on the
+    known appcompat/constraintlayout one-sided exclude-union waiver.
+  - `./gradlew verifyGrazelGoldenBaseline --console=plain --no-daemon` also
+    fails only because it wraps that same sample-label waiver after a successful
+    local generation.
+- Next: snapshot current PAX dirty diff hash, run PAX migrate, verify the PAX
+  diff hash remains unchanged, then run preserving size guard and PAX build/test
+  gates.
+
+## 2026-06-28 Item 14 PAX Preservation Gate
+
+- PAX pre-migrate baseline snapshot on `/Users/arun.sampathkumar/work/pax-android`
+  branch `arun/grazel-refactor` at
+  `05d2b4801530726ab722133c2ba32cbba9afeb67`:
+  - `git diff --binary | shasum -a 256`:
+    `5f05c2380375f16b0c04c6fa5f14d3a1666cf94d6b36a5ce1e0814a1b6e43566`
+  - `git status --short | shasum -a 256`:
+    `b9b38774443602baa0adf251daeb236e68cd181e1f4ccdf74ee412a30822c6d6`
+  - dirty entries: `2231`.
+- PAX migration passed:
+  `./gradlew migrateToBazel --no-daemon --console=plain --stacktrace --rerun-tasks`.
+  Result: build successful in 11m 39s; `computeWorkspaceDependencies` executed
+  through the extracted helper path, pinning was up-to-date.
+- PAX generated state after migration matched the accepted Item 13 baseline:
+  - diff hash unchanged:
+    `5f05c2380375f16b0c04c6fa5f14d3a1666cf94d6b36a5ce1e0814a1b6e43566`
+  - status hash unchanged:
+    `b9b38774443602baa0adf251daeb236e68cd181e1f4ccdf74ee412a30822c6d6`
+  - dirty entries unchanged: `2231`
+  - `git diff --check` passed.
+- PAX size guard passed in preserving mode:
+  `reports/scripts/verify-pax-size-guard.sh --mode preserving`.
+  Counts remained `bucketCount=11`, `pinfileCount=11`,
+  `totalArtifactRoots=1945`, with no per-repo deltas.
+- PAX APK build gate passed:
+  `./bazel.sh build --verbose_failures //app:app-gps-pax-debug.apk
+  //app:app-gps-pax-debug-android-test.apk`.
+  Result: build completed successfully in 226.264s.
+- PAX focused Bazel test gate passed:
+  `./bazel.sh test --test_output=errors
+  //app-utils:app-utils-gps-pax-debug-test
+  //app-test:app-test-gps-pax-debug-test
+  //application-initializer:application-initializer-gps-pax-debug-test`.
+  Result: 3 of 3 test targets passed in 19.423s.
+- Final PAX hygiene:
+  - `git diff --check` passed.
+  - diff hash/status hash/dirty count still matched the accepted baseline after
+    build and tests.
+- Parity note: Item 14 did not add a temporary
+  `-Pgrazel.internal.parity=cwd` switch. The preserving proof for this slice is
+  exact helper extraction with focused seam tests, unchanged local generated
+  output, unchanged PAX diff hash, unchanged PAX size guard, and passing PAX
+  build/test gates.
+- Resource notes:
+  - Disk stayed tight but usable at about 24Gi free on
+    `/System/Volumes/Data`; no cache deletion was performed.
+  - PAX `bazel-cache` stayed about 14G.
+  - No high-RAM `python3.12` process was present.
