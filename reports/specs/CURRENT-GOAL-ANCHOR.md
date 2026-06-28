@@ -50,7 +50,7 @@ PAX baseline source:
 ```text
 repo:   /Users/arun.sampathkumar/work/pax-android
 branch: arun/grazel-refactor
-sha:    05d2b4801530726ab722133c2ba32cbba9afeb67
+sha:    cfa1057ed58ccb2a795a5f679f072a8f604ff48e
 ```
 
 The maintainer may create a local PAX generated-output baseline commit before this goal so
