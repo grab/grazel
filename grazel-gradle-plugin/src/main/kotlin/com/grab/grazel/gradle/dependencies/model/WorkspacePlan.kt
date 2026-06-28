@@ -26,7 +26,6 @@ internal data class WorkspacePlan(
 
 @Serializable
 internal data class CandidateMavenRepo(
-    val variantName: String? = null,
     val kind: CandidateMavenRepoKind,
     val pinInputs: List<ResolvedDependency> = emptyList(),
     val overrideTargets: Map<String, String> = emptyMap()
@@ -54,13 +53,17 @@ internal data class TargetTagKey(
 @Serializable
 internal data class WorkspaceRenderPlan(
     val materializedRepoNames: Set<String> = emptySet(),
-    val referencedProjectPaths: Set<String> = emptySet(),
     val referencedProjectTargets: Map<String, Set<String>> = emptyMap()
-)
+) {
+    val referencedProjectPaths: Set<String>
+        get() = referencedProjectTargets.keys
+}
 
 @Serializable
 internal data class TargetReferenceFacts(
     val repoNames: Set<String> = emptySet(),
-    val projectPaths: Set<String> = emptySet(),
     val projectTargets: Map<String, Set<String>> = emptyMap()
-)
+) {
+    val projectPaths: Set<String>
+        get() = projectTargets.keys
+}

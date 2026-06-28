@@ -48,15 +48,15 @@ constructor(
     }
 
     @get:InputFile
-    @PathSensitive(PathSensitivity.RELATIVE)
+    @get:PathSensitive(PathSensitivity.RELATIVE)
     val workspaceFile: RegularFileProperty = gradleServices.objectFactory.fileProperty()
 
     @get:InputFile
-    @PathSensitive(PathSensitivity.RELATIVE)
+    @get:PathSensitive(PathSensitivity.RELATIVE)
     val workspacePlan: RegularFileProperty = gradleServices.objectFactory.fileProperty()
 
     @get:InputFile
-    @PathSensitive(PathSensitivity.RELATIVE)
+    @get:PathSensitive(PathSensitivity.RELATIVE)
     val workspaceRenderPlan: RegularFileProperty = gradleServices.objectFactory.fileProperty()
 
     @TaskAction

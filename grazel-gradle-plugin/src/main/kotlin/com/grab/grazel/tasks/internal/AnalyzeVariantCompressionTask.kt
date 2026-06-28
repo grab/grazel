@@ -20,7 +20,7 @@ import com.grab.grazel.bazel.starlark.BazelDependency.ProjectDependency
 import com.grab.grazel.di.GrazelComponent
 import com.grab.grazel.gradle.dependencies.DefaultDependencyGraphsService
 import com.grab.grazel.gradle.dependencies.DefaultDependencyResolutionService
-import com.grab.grazel.gradle.dependencies.DefaultWorkspacePlanService
+import com.grab.grazel.gradle.dependencies.WorkspacePlanService
 import com.grab.grazel.gradle.dependencies.TopologicalSorter
 import com.grab.grazel.gradle.isAndroidLibrary
 import com.grab.grazel.gradle.variant.DefaultVariantCompressionService
@@ -73,7 +73,7 @@ constructor(
     private val variantCompressor: Lazy<VariantCompressor>,
     private val dependencyGraphsService: GradleProvider<DefaultDependencyGraphsService>,
     private val variantCompressionService: GradleProvider<DefaultVariantCompressionService>,
-    private val workspacePlanService: GradleProvider<DefaultWorkspacePlanService>
+    private val workspacePlanService: GradleProvider<WorkspacePlanService>
 ) : DefaultTask() {
 
     @get:InputFile

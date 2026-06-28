@@ -17,7 +17,7 @@
 package com.grab.grazel.migrate.target
 
 import com.grab.grazel.gradle.dependencies.DefaultDependencyResolutionService
-import com.grab.grazel.gradle.dependencies.DefaultWorkspacePlanService
+import com.grab.grazel.gradle.dependencies.WorkspacePlanService
 import com.grab.grazel.gradle.variant.VariantType
 import com.grab.grazel.gradle.hasCrashlytics
 import com.grab.grazel.gradle.hasGooglePlayServicesPlugin
@@ -81,7 +81,7 @@ constructor(
     private val crashlyticsDataExtractor: CrashlyticsDataExtractor,
     private val variantMatcher: VariantMatcher,
     private val dependencyResolutionService: GradleProvider<DefaultDependencyResolutionService>,
-    private val workspacePlanService: GradleProvider<DefaultWorkspacePlanService>,
+    private val workspacePlanService: GradleProvider<WorkspacePlanService>,
 ) : TargetBuilder {
 
     override fun build(project: Project): List<BazelTarget> {

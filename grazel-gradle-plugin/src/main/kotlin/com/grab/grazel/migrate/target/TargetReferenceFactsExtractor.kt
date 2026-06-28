@@ -22,11 +22,10 @@ import com.grab.grazel.gradle.isAndroidApplication
 import com.grab.grazel.gradle.isAndroidTest
 import com.grab.grazel.gradle.isKotlin
 import com.grab.grazel.gradle.dependencies.DefaultDependencyResolutionService
-import com.grab.grazel.gradle.dependencies.DefaultWorkspacePlanService
+import com.grab.grazel.gradle.dependencies.WorkspacePlanService
 import com.grab.grazel.gradle.dependencies.TargetReferenceFactsCollector
 import com.grab.grazel.gradle.dependencies.merged
 import com.grab.grazel.gradle.dependencies.model.TargetReferenceFacts
-import com.grab.grazel.gradle.variant.DEFAULT_VARIANT
 import com.grab.grazel.gradle.variant.DefaultVariantCompressionService
 import com.grab.grazel.gradle.variant.MatchedVariant
 import com.grab.grazel.gradle.variant.VariantCompressionResult
@@ -69,7 +68,7 @@ constructor(
     private val variantMatcher: VariantMatcher,
     private val variantCompressionService: GradleProvider<DefaultVariantCompressionService>,
     private val dependencyResolutionService: GradleProvider<DefaultDependencyResolutionService>,
-    private val workspacePlanService: GradleProvider<DefaultWorkspacePlanService>
+    private val workspacePlanService: GradleProvider<WorkspacePlanService>
 ) {
 
     fun collect(project: Project): TargetReferenceFacts =
@@ -156,7 +155,9 @@ constructor(
     }
 
     private fun kotlinFacts(project: Project): TargetReferenceFacts {
-        if (!project.isReachableJvmProject()) return TargetReferenceFacts()
+        if (!project.isReachableJvmProject(dependencyResolutionService, workspacePlanService)) {
+            return TargetReferenceFacts()
+        }
         val projectData = kotlinProjectDataExtractor.extract(project)
         val testData = kotlinUnitTestDataExtractor.extract(project)
         return listOf(
@@ -217,13 +218,6 @@ constructor(
             .toSet()
     }
 
-    private fun Project.isReachableJvmProject(): Boolean {
-        val service = dependencyResolutionService.get()
-        return !service.hasMainBucketReachability() ||
-            service.isReachableMainBucket(path, DEFAULT_VARIANT) ||
-            workspacePlanService.get().isReferencedProjectPath(path)
-    }
-
     private fun VariantCompressionResult.reachableAndroidLibraryData(
         reachableVariantNames: Set<String>
     ): List<AndroidLibraryData> {
@@ -256,16 +250,19 @@ private fun androidBinaryReferenceFacts(
         lintChecks = androidLibraryData.lintConfigData.lintChecks.orEmpty()
     )
 
-private fun AndroidUnitTestData.referenceFacts(): TargetReferenceFacts =
+internal fun AndroidUnitTestData.referenceFacts(): TargetReferenceFacts =
     TargetReferenceFactsCollector.from(
         deps = deps,
-        tags = tags
+        tags = tags,
+        associates = associates
     )
 
-private fun AndroidInstrumentationBinaryData.referenceFacts(): TargetReferenceFacts =
+internal fun AndroidInstrumentationBinaryData.referenceFacts(): TargetReferenceFacts =
     TargetReferenceFactsCollector.from(
         deps = deps,
-        tags = tags
+        tags = tags,
+        associates = associates,
+        instruments = instruments
     )
 
 private fun AndroidInstrumentationBinaryData.hasSources(): Boolean = srcs.isNotEmpty()
@@ -287,8 +284,9 @@ private fun KotlinProjectData.referenceFacts(): TargetReferenceFacts =
         lintChecks = lintConfigData.lintChecks.orEmpty()
     )
 
-private fun UnitTestData.referenceFacts(): TargetReferenceFacts =
+internal fun UnitTestData.referenceFacts(): TargetReferenceFacts =
     TargetReferenceFactsCollector.from(
         deps = deps,
-        tags = tags
+        tags = tags,
+        associates = associates
     )

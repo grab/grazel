@@ -17,7 +17,6 @@
 package com.grab.grazel.gradle.dependencies
 
 import com.grab.grazel.di.qualifiers.RootProject
-import com.grab.grazel.gradle.dependencies.WorkspacePlanService.Companion.SERVICE_NAME
 import com.grab.grazel.gradle.dependencies.model.TargetTagKey
 import com.grab.grazel.gradle.dependencies.model.WorkspacePlan
 import com.grab.grazel.gradle.dependencies.model.WorkspaceRenderPlan
@@ -27,60 +26,26 @@ import org.gradle.api.services.BuildService
 import org.gradle.api.services.BuildServiceParameters
 import java.io.File
 
-internal interface WorkspacePlanService : BuildService<WorkspacePlanService.Params>,
-    AutoCloseable {
-    fun populatePlan(workspacePlan: WorkspacePlan)
-
-    fun populateRenderPlan(workspaceRenderPlan: WorkspaceRenderPlan)
-
-    fun initPlan(workspacePlanJson: File): WorkspacePlan
-
-    fun initRenderPlan(workspaceRenderPlanJson: File): WorkspaceRenderPlan
-
-    fun tagsFor(
-        variantId: String,
-        variantType: String,
-        targetKind: String
-    ): List<String>?
-
-    fun isReferencedProjectPath(projectPath: String): Boolean
-
-    fun referencedTargetNames(projectPath: String): Set<String>
-
-    fun isReferencedTarget(projectPath: String, targetName: String): Boolean
-
-    companion object {
-        internal const val SERVICE_NAME = "WorkspacePlanService"
-
-        internal fun register(@RootProject rootProject: Project) = rootProject
-            .gradle
-            .sharedServices
-            .registerIfAbsent(SERVICE_NAME, DefaultWorkspacePlanService::class.java) {}
-    }
-
-    interface Params : BuildServiceParameters
-}
-
-internal abstract class DefaultWorkspacePlanService : WorkspacePlanService {
+internal abstract class WorkspacePlanService : BuildService<BuildServiceParameters.None>, AutoCloseable {
     private val lock = Any()
     private var workspacePlan: WorkspacePlan? = null
     private var workspaceRenderPlan: WorkspaceRenderPlan? = null
     private var targetTagsByKey: Map<TargetTagKey, List<String>>? = null
 
-    override fun populatePlan(workspacePlan: WorkspacePlan) {
+    fun populatePlan(workspacePlan: WorkspacePlan) {
         synchronized(lock) {
             this.workspacePlan = workspacePlan
             targetTagsByKey = null
         }
     }
 
-    override fun populateRenderPlan(workspaceRenderPlan: WorkspaceRenderPlan) {
+    fun populateRenderPlan(workspaceRenderPlan: WorkspaceRenderPlan) {
         synchronized(lock) {
             this.workspaceRenderPlan = workspaceRenderPlan
         }
     }
 
-    override fun initPlan(workspacePlanJson: File): WorkspacePlan {
+    fun initPlan(workspacePlanJson: File): WorkspacePlan {
         return synchronized(lock) {
             if (workspacePlan == null) {
                 workspacePlan = fromJson(workspacePlanJson)
@@ -90,7 +55,7 @@ internal abstract class DefaultWorkspacePlanService : WorkspacePlanService {
         }
     }
 
-    override fun initRenderPlan(workspaceRenderPlanJson: File): WorkspaceRenderPlan {
+    fun initRenderPlan(workspaceRenderPlanJson: File): WorkspaceRenderPlan {
         return synchronized(lock) {
             if (workspaceRenderPlan == null) {
                 workspaceRenderPlan = fromJson(workspaceRenderPlanJson)
@@ -99,7 +64,7 @@ internal abstract class DefaultWorkspacePlanService : WorkspacePlanService {
         }
     }
 
-    override fun tagsFor(
+    fun tagsFor(
         variantId: String,
         variantType: String,
         targetKind: String
@@ -113,12 +78,12 @@ internal abstract class DefaultWorkspacePlanService : WorkspacePlanService {
         }
     }
 
-    override fun isReferencedProjectPath(projectPath: String): Boolean =
+    fun isReferencedProjectPath(projectPath: String): Boolean =
         synchronized(lock) {
             projectPath in workspaceRenderPlan?.referencedProjectPaths.orEmpty()
         }
 
-    override fun referencedTargetNames(projectPath: String): Set<String> =
+    fun referencedTargetNames(projectPath: String): Set<String> =
         synchronized(lock) {
             workspaceRenderPlan
                 ?.referencedProjectTargets
@@ -126,7 +91,7 @@ internal abstract class DefaultWorkspacePlanService : WorkspacePlanService {
                 .orEmpty()
         }
 
-    override fun isReferencedTarget(projectPath: String, targetName: String): Boolean =
+    fun isReferencedTarget(projectPath: String, targetName: String): Boolean =
         synchronized(lock) {
             targetName in workspaceRenderPlan
                 ?.referencedProjectTargets
@@ -140,6 +105,15 @@ internal abstract class DefaultWorkspacePlanService : WorkspacePlanService {
             workspaceRenderPlan = null
             targetTagsByKey = null
         }
+    }
+
+    companion object {
+        internal const val SERVICE_NAME = "WorkspacePlanService"
+
+        internal fun register(@RootProject rootProject: Project) = rootProject
+            .gradle
+            .sharedServices
+            .registerIfAbsent(SERVICE_NAME, WorkspacePlanService::class.java) {}
     }
 
     private fun tagsByKey(): Map<TargetTagKey, List<String>> {

@@ -43,13 +43,13 @@ class SourcePathTest : BaseGrazelPluginTest() {
     }
 
     @Test
-    @Ignore("Is flaky when run parallely but passes when run individually. Currently covered by FileUtilsKtTest")
+    @Ignore("Flaky when run in parallel; covered by dedicated source path unit coverage.")
     fun `assert common path is used in src attribute`() {
         val fixtureRoot = File("src/test/projects/kotlin-library")
         bazelClean(fixtureRoot)
         bazelBuild(fixtureRoot) {
             assertTrue(isMigrateToBazelSuccessful)
-            val buildBazelFile = File(fixtureRoot, "/lib/build.bazel").readText()
+            val buildBazelFile = File(fixtureRoot, "lib/build.bazel").readText()
             assertTrue(
                 buildBazelFile
                     .contains(""""src/main/kotlin/com/grab/grazel/kotlin/library/**/*.kt",""")

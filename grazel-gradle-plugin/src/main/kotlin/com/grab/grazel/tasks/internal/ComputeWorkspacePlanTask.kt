@@ -16,7 +16,7 @@
 
 package com.grab.grazel.tasks.internal
 
-import com.grab.grazel.gradle.dependencies.DefaultWorkspacePlanService
+import com.grab.grazel.gradle.dependencies.WorkspacePlanService
 import com.grab.grazel.gradle.dependencies.WorkspacePlanBuilder
 import com.grab.grazel.gradle.dependencies.model.TargetTagPlan
 import com.grab.grazel.gradle.dependencies.model.WorkspaceDependencies
@@ -58,7 +58,7 @@ internal abstract class ComputeWorkspacePlanTask : DefaultTask() {
     abstract val configuredOverrideTargets: MapProperty<String, String>
 
     @get:Internal
-    abstract val workspacePlanService: Property<DefaultWorkspacePlanService>
+    abstract val workspacePlanService: Property<WorkspacePlanService>
 
     @get:OutputFile
     abstract val workspacePlan: RegularFileProperty
@@ -93,7 +93,7 @@ internal abstract class ComputeWorkspacePlanTask : DefaultTask() {
 
         internal fun register(
             rootProject: Project,
-            workspacePlanService: GradleProvider<DefaultWorkspacePlanService>,
+            workspacePlanService: GradleProvider<WorkspacePlanService>,
             configureAction: ComputeWorkspacePlanTask.() -> Unit = {}
         ): TaskProvider<ComputeWorkspacePlanTask> {
             return rootProject.tasks.register<ComputeWorkspacePlanTask>(TASK_NAME) {

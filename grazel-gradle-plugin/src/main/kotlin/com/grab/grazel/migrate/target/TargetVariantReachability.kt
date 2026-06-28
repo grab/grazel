@@ -18,7 +18,9 @@ package com.grab.grazel.migrate.target
 
 import com.android.build.gradle.api.BaseVariant
 import com.grab.grazel.gradle.dependencies.DefaultDependencyResolutionService
+import com.grab.grazel.gradle.dependencies.WorkspacePlanService
 import com.grab.grazel.gradle.variant.MatchedVariant
+import com.grab.grazel.gradle.variant.DEFAULT_VARIANT
 import com.grab.grazel.util.GradleProvider
 import org.gradle.api.Project
 
@@ -67,9 +69,15 @@ internal fun reachableCompressedTargetSuffixes(
 internal fun isReferencedGeneratedTarget(
     targetName: String,
     referencedTargetNames: Set<String>
-): Boolean =
-    targetName in referencedTargetNames ||
-        "${targetName}_lib" in referencedTargetNames
+): Boolean {
+    val macroTargetNames = setOf(
+        targetName,
+        "${targetName}_lib",
+        "${targetName}_kt",
+        "lib_$targetName"
+    )
+    return macroTargetNames.any { candidate -> candidate in referencedTargetNames }
+}
 
 internal fun reachableBucketPredicate(
     project: Project,
@@ -81,4 +89,14 @@ internal fun reachableBucketPredicate(
     } else {
         null
     }
+}
+
+internal fun Project.isReachableJvmProject(
+    dependencyResolutionService: GradleProvider<DefaultDependencyResolutionService>,
+    workspacePlanService: GradleProvider<WorkspacePlanService>
+): Boolean {
+    val service = dependencyResolutionService.get()
+    return !service.hasMainBucketReachability() ||
+        service.isReachableMainBucket(path, DEFAULT_VARIANT) ||
+        workspacePlanService.get().isReferencedProjectPath(path)
 }

@@ -21,7 +21,7 @@ import com.android.build.gradle.api.AndroidSourceSet
 import com.grab.grazel.GrazelExtension
 import com.grab.grazel.bazel.starlark.BazelDependency
 import com.grab.grazel.gradle.dependencies.DefaultDependencyGraphsService
-import com.grab.grazel.gradle.dependencies.DefaultWorkspacePlanService
+import com.grab.grazel.gradle.dependencies.WorkspacePlanService
 import com.grab.grazel.gradle.dependencies.DependenciesDataSource
 import com.grab.grazel.gradle.dependencies.DependencyGraphs
 import com.grab.grazel.gradle.dependencies.GradleDependencyToBazelDependency
@@ -60,7 +60,7 @@ internal class DefaultAndroidInstrumentationBinaryDataExtractor
     private val manifestValuesBuilder: ManifestValuesBuilder,
     private val keyStoreExtractor: KeyStoreExtractor,
     private val grazelExtension: GrazelExtension,
-    private val workspacePlanService: GradleProvider<DefaultWorkspacePlanService>,
+    private val workspacePlanService: GradleProvider<WorkspacePlanService>,
 ) : AndroidInstrumentationBinaryDataExtractor {
     private val projectDependencyGraphs: DependencyGraphs get() = dependencyGraphsService.get().get()
 

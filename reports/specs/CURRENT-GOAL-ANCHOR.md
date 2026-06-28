@@ -169,3 +169,30 @@ execution-log file before touching code.
 
 Use subagents deliberately for wide reads, historical master/PAX comparisons, audit scripts,
 PAX diff/count checks, and final adversarial review. Spot-check important claims.
+
+## 2026-06-28 Current Continuation Addendum
+
+The active continuation goal has advanced beyond the original Items 17-22 anchor. Current hard
+execution order is:
+
+```text
+23 -> 26 -> 24 -> 27 -> 25
+```
+
+Item 25 remains last. Do not start the generate/format task-graph merge until Item 27 has passed
+its simplify/adversarial/post-fix review gates.
+
+Because Item 27 can add or reshape Kotlin code after the Item 24 source-shape pass, rerun an
+Item 24-style changed-file source-shape inventory after Item 27 fixes and before exiting the
+cleanup phase. The rerun must visit/reconcile every Kotlin file changed by the branch/current
+worktree, including new files added during adversarial fixes. Do not stop at broad tests alone;
+individual changed files must be accounted for.
+
+Do not mark the overall goal complete until Items 23, 26, 24, 27, and 25 all meet their
+acceptance criteria, generated output is empty-diff, PAX migrate/build/test gates pass, and logs
+record the evidence. Keep Grazel changes local only. Never push. Do not commit PAX.
+
+During long runs, regularly optimize the durable context files: keep current truth near the top,
+mark stale legacy checkpoints as historical/superseded, and condense noisy status into concise
+milestone evidence. Do this especially after commits, verification gates, failures, and context
+compaction so future continuations do not follow obsolete state.

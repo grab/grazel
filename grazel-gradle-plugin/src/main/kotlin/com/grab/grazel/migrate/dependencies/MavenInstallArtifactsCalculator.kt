@@ -23,11 +23,12 @@ import com.grab.grazel.bazel.rules.MavenInstallArtifact.Exclusion.SimpleExclusio
 import com.grab.grazel.bazel.rules.MavenInstallArtifact.SimpleArtifact
 import com.grab.grazel.bazel.rules.MavenRepository.DefaultMavenRepository
 import com.grab.grazel.gradle.RepositoryDataSource
-import com.grab.grazel.gradle.dependencies.calculateMavenInstallOverrideTargets
 import com.grab.grazel.gradle.dependencies.DefaultJetifierExclusions
+import com.grab.grazel.gradle.dependencies.model.CandidateMavenRepoKind.AGGREGATED
+import com.grab.grazel.gradle.dependencies.model.CandidateMavenRepoKind.VARIANT
 import com.grab.grazel.gradle.dependencies.model.ExcludeRule
 import com.grab.grazel.gradle.dependencies.model.ResolvedDependency
-import com.grab.grazel.gradle.dependencies.model.WorkspaceDependencies
+import com.grab.grazel.gradle.dependencies.model.WorkspacePlan
 import com.grab.grazel.gradle.variant.DEFAULT_VARIANT
 import org.gradle.api.artifacts.repositories.PasswordCredentials
 import org.gradle.api.file.ProjectLayout
@@ -36,8 +37,8 @@ import java.util.TreeSet
 import javax.inject.Inject
 
 /**
- * Utility class to convert [WorkspaceDependencies] to [MavenInstallData] accounting for various
- * user preferences provided via [grazelExtension]
+ * Utility class to convert planned Maven repositories to [MavenInstallData] while accounting for
+ * user preferences provided via [grazelExtension].
  */
 internal class MavenInstallArtifactsCalculator
 @Inject
@@ -67,24 +68,20 @@ constructor(
 
     fun get(
         layout: ProjectLayout,
-        workspaceDependencies: WorkspaceDependencies,
+        workspacePlan: WorkspacePlan,
         externalArtifacts: Set<String>,
         externalRepositories: Set<String>,
         materializedMavenRepos: Set<String>,
     ): Set<MavenInstallData> {
-        val rootArtifactsByVariant = workspaceDependencies.mavenInstallRootArtifactsByVariant()
-        val result = workspaceDependencies
-            .variantDeps
-            .mapNotNullTo(TreeSet(compareBy(MavenInstallData::name))) { (variantName, _) ->
-                val mavenInstallName = variantName.toMavenRepoName()
+        val result = workspacePlan
+            .repoPlan
+            .asSequence()
+            .filter { (_, candidateRepo) -> candidateRepo.kind == VARIANT }
+            .mapNotNullTo(TreeSet(compareBy(MavenInstallData::name))) { (mavenInstallName, candidateRepo) ->
                 if (mavenInstallName !in materializedMavenRepos) {
                     return@mapNotNullTo null
                 }
-                val rootArtifacts = rootArtifactsByVariant.getValue(variantName)
-                val overrideTargets = calculateOverrideTargets(
-                    artifacts = rootArtifacts,
-                    owningMavenRepoName = mavenInstallName
-                )
+                val rootArtifacts = candidateRepo.pinInputs
                 val allArtifacts = rootArtifacts + grazelExtension
                     .dependencies
                     .overrideArtifactVersions
@@ -115,16 +112,24 @@ constructor(
                 MavenInstallData(
                     name = mavenInstallName,
                     artifacts = mavenInstallArtifacts,
-                    externalArtifacts = if (variantName == DEFAULT_VARIANT) externalArtifacts else emptySet(),
+                    externalArtifacts = if (mavenInstallName == DEFAULT_VARIANT.toMavenRepoName()) {
+                        externalArtifacts
+                    } else {
+                        emptySet()
+                    },
                     repositories = repositories,
-                    externalRepositories = if (variantName == DEFAULT_VARIANT) externalRepositories else emptySet(),
+                    externalRepositories = if (mavenInstallName == DEFAULT_VARIANT.toMavenRepoName()) {
+                        externalRepositories
+                    } else {
+                        emptySet()
+                    },
                     jetifierConfig = JetifierConfig(
                         isEnabled = jetifierArtifacts.isNotEmpty(),
                         artifacts = jetifierArtifacts
                     ),
                     failOnMissingChecksum = false,
                     excludeArtifacts = mavenInstallExtension.excludeArtifacts.get().toSet(),
-                    overrideTargets = overrideTargets,
+                    overrideTargets = candidateRepo.overrideTargets,
                     resolveTimeout = mavenInstallExtension.resolveTimeout,
                     artifactPinning = mavenInstallExtension.artifactPinning.enabled.get(),
                     versionConflictPolicy = mavenInstallExtension.versionConflictPolicy,
@@ -135,10 +140,11 @@ constructor(
             }
 
         // Generate maven_install entries for aggregated repos (e.g. ksp_maven)
-        workspaceDependencies.aggregatedRepos.forEach { (repoName, artifacts) ->
+        workspacePlan.repoPlan.forEach { (repoName, candidateRepo) ->
+            if (candidateRepo.kind != AGGREGATED) return@forEach
             if (repoName !in materializedMavenRepos) return@forEach
 
-            val mavenInstallArtifacts = artifacts
+            val mavenInstallArtifacts = candidateRepo.pinInputs
                 .mapTo(TreeSet(compareBy(MavenInstallArtifact::id)), ::toMavenInstallArtifact)
             if (mavenInstallArtifacts.isEmpty()) return@forEach
 
@@ -170,15 +176,6 @@ constructor(
 
         return result
     }
-
-    private fun calculateOverrideTargets(
-        artifacts: List<ResolvedDependency>,
-        owningMavenRepoName: String
-    ): Map<String, String> = calculateMavenInstallOverrideTargets(
-        artifacts = artifacts,
-        owningMavenRepoName = owningMavenRepoName,
-        configuredOverrideTargets = mavenInstallExtension.overrideTargetLabels.get()
-    )
 
     private fun toMavenInstallArtifact(
         dependency: ResolvedDependency,

@@ -20,7 +20,7 @@ import com.grab.grazel.GrazelExtension
 import com.grab.grazel.bazel.starlark.BazelDependency
 import com.grab.grazel.extension.KotlinExtension
 import com.grab.grazel.gradle.dependencies.DefaultDependencyGraphsService
-import com.grab.grazel.gradle.dependencies.DefaultWorkspacePlanService
+import com.grab.grazel.gradle.dependencies.WorkspacePlanService
 import com.grab.grazel.gradle.dependencies.DependenciesDataSource
 import com.grab.grazel.gradle.dependencies.DependencyGraphs
 import com.grab.grazel.gradle.dependencies.GradleDependencyToBazelDependency
@@ -64,7 +64,7 @@ constructor(
     private val gradleDependencyToBazelDependency: GradleDependencyToBazelDependency,
     private val testSizeCalculator: TestSizeCalculator,
     private val variantCompressionService: GradleProvider<DefaultVariantCompressionService>,
-    private val workspacePlanService: GradleProvider<DefaultWorkspacePlanService>
+    private val workspacePlanService: GradleProvider<WorkspacePlanService>
 ) : AndroidUnitTestDataExtractor {
 
     private val projectDependencyGraphs: DependencyGraphs

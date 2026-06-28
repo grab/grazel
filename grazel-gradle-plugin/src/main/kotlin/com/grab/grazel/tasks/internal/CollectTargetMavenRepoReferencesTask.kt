@@ -21,7 +21,6 @@ import com.grab.grazel.di.qualifiers.RootProject
 import com.grab.grazel.gradle.MigrationChecker
 import com.grab.grazel.gradle.dependencies.DefaultDependencyGraphsService
 import com.grab.grazel.gradle.dependencies.DefaultDependencyResolutionService
-import com.grab.grazel.gradle.dependencies.DefaultWorkspacePlanService
 import com.grab.grazel.gradle.dependencies.ProjectReachabilityGroup
 import com.grab.grazel.gradle.dependencies.ProjectReachabilityOrder
 import com.grab.grazel.gradle.dependencies.WorkspacePlanService
@@ -58,7 +57,7 @@ constructor(
     private val migrationChecker: Lazy<MigrationChecker>,
     private val targetReferenceFactsExtractor: Lazy<TargetReferenceFactsExtractor>,
     private val dependencyGraphsService: GradleProvider<DefaultDependencyGraphsService>,
-    private val workspacePlanService: GradleProvider<DefaultWorkspacePlanService>,
+    private val workspacePlanService: GradleProvider<WorkspacePlanService>,
     objectFactory: ObjectFactory,
     layout: ProjectLayout
 ) : DefaultTask() {
@@ -133,19 +132,6 @@ constructor(
         }
     }
 }
-
-internal fun collectTargetMavenRepoReferences(
-    projects: Iterable<Project>,
-    canMigrate: (Project) -> Boolean,
-    factsForProject: (Project) -> TargetReferenceFacts,
-    workspacePlanService: WorkspacePlanService
-): TargetReferenceFacts =
-    collectTargetMavenRepoReferencesByGroup(
-        projectGroups = projects.map { project -> ProjectReachabilityGroup(listOf(project)) },
-        canMigrate = canMigrate,
-        factsForProject = factsForProject,
-        workspacePlanService = workspacePlanService
-    )
 
 internal fun collectTargetMavenRepoReferencesByGroup(
     projectGroups: Iterable<ProjectReachabilityGroup>,

@@ -20,7 +20,7 @@ import com.grab.grazel.bazel.starlark.writeToFile
 import com.grab.grazel.di.GrazelComponent
 import com.grab.grazel.gradle.MigrationChecker
 import com.grab.grazel.gradle.dependencies.DefaultDependencyResolutionService
-import com.grab.grazel.gradle.dependencies.DefaultWorkspacePlanService
+import com.grab.grazel.gradle.dependencies.WorkspacePlanService
 import com.grab.grazel.gradle.isAndroid
 import com.grab.grazel.gradle.isJava
 import com.grab.grazel.gradle.isKotlin
@@ -57,7 +57,7 @@ internal open class GenerateBazelScriptsTask
 constructor(
     private val migrationChecker: Lazy<MigrationChecker>,
     private val bazelFileBuilder: Lazy<ProjectBazelFileBuilder.Factory>,
-    private val workspacePlanService: GradleProvider<DefaultWorkspacePlanService>,
+    private val workspacePlanService: GradleProvider<WorkspacePlanService>,
     objectFactory: ObjectFactory,
     private val layout: ProjectLayout
 ) : DefaultTask() {
@@ -119,7 +119,7 @@ constructor(
             logger.quiet(generatedMessage.ansiGreen)
         } else {
             logger.info("Skipping ${project.path}; project is not migratable")
-            buildBazelFile.delete()
+            disableProjectBuildFile(buildBazelFile, bazelIgnoreFile)
         }
     }
 

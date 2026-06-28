@@ -211,8 +211,10 @@ class WorkspacePlanTasksTest {
                 """
                 {
                   "repoNames":["debug_maven"],
-                  "projectPaths":[":lint:custom-lint-rules"],
-                  "projectTargets":{":ui-tests":["ui-tests-gps-pax-debug_lib"]}
+                  "projectTargets":{
+                    ":lint:custom-lint-rules":["custom-lint-rules"],
+                    ":ui-tests":["ui-tests-gps-pax-debug_lib"]
+                  }
                 }
                 """.trimIndent()
             )
@@ -235,11 +237,14 @@ class WorkspacePlanTasksTest {
             writtenRenderPlan.materializedRepoNames
         )
         assertEquals(
-            setOf(":lint:custom-lint-rules"),
+            setOf(":lint:custom-lint-rules", ":ui-tests"),
             writtenRenderPlan.referencedProjectPaths
         )
         assertEquals(
-            mapOf(":ui-tests" to setOf("ui-tests-gps-pax-debug_lib")),
+            mapOf(
+                ":lint:custom-lint-rules" to setOf("custom-lint-rules"),
+                ":ui-tests" to setOf("ui-tests-gps-pax-debug_lib")
+            ),
             writtenRenderPlan.referencedProjectTargets
         )
         assertTrue(workspacePlanService.get().isReferencedProjectPath(":lint:custom-lint-rules"))
@@ -257,8 +262,10 @@ class WorkspacePlanTasksTest {
         val uiTestsProject = buildProject("ui-tests", rootProject)
         val workspacePlanService = WorkspacePlanService.register(rootProject).get()
 
-        val references: TargetReferenceFacts = collectTargetMavenRepoReferences(
-            projects = listOf(uiTestsProject, appProject),
+        val references: TargetReferenceFacts = collectTargetMavenRepoReferencesByGroup(
+            projectGroups = listOf(uiTestsProject, appProject).map { project ->
+                ProjectReachabilityGroup(listOf(project))
+            },
             canMigrate = { true },
             factsForProject = { project ->
                 when (project.path) {
@@ -299,8 +306,10 @@ class WorkspacePlanTasksTest {
         val workspacePlanService = WorkspacePlanService.register(rootProject).get()
         val callsByProject = mutableMapOf<String, Int>()
 
-        val references: TargetReferenceFacts = collectTargetMavenRepoReferences(
-            projects = listOf(uiTestsProject, appProject, libProject),
+        val references: TargetReferenceFacts = collectTargetMavenRepoReferencesByGroup(
+            projectGroups = listOf(uiTestsProject, appProject, libProject).map { project ->
+                ProjectReachabilityGroup(listOf(project))
+            },
             canMigrate = { true },
             factsForProject = { project ->
                 callsByProject[project.path] = callsByProject.getOrDefault(project.path, 0) + 1

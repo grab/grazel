@@ -49,7 +49,6 @@ class WorkspacePlanBuilderTest {
         val plan = WorkspacePlanBuilder().build(workspaceDependencies)
 
         val debugRepo = plan.repoPlan.getValue("debug_maven")
-        assertEquals("debug", debugRepo.variantName)
         assertEquals(
             listOf("com.example:debug-root:1.0.0", "com.example:shared-transitive:2.0.0"),
             debugRepo.pinInputs.map(ResolvedDependency::id)
@@ -247,7 +246,6 @@ class WorkspacePlanBuilderTest {
             workspacePlan = WorkspacePlan(
                 repoPlan = mapOf(
                     "debug_maven" to CandidateMavenRepo(
-                        variantName = "debug",
                         kind = VARIANT,
                         pinInputs = listOf(inheritedCarrier),
                         overrideTargets = mapOf("com.example:shared" to "@maven//:com_example_shared")

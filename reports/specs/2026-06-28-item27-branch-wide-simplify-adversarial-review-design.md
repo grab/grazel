@@ -62,6 +62,14 @@ The review must cover:
    - Re-run a scoped review after fixes to catch second-order issues.
    - The item cannot exit with unresolved confirmed findings.
 
+4. **Item 24-style changed-file source-shape rerun.**
+   - Because this item may add or reshape Kotlin code after Item 24, rerun a changed-file
+     inventory/reconciliation before exiting.
+   - Visit every Kotlin file changed by the branch/current worktree, including files added by
+     adversarial fixes.
+   - Treat confirmed source-shape issues as in-scope fixes unless they require an output-changing
+     behavior decision.
+
 ## Hard Gates
 
 - Generated Grazel output must be empty-diff.
@@ -102,6 +110,8 @@ Run additional focused tests for every fixed finding that has a reasonable local
   finding list.
 - Confirmed findings are fixed in this slice or rejected with concrete code evidence.
 - Post-fix re-review found no unresolved confirmed findings.
+- The Item 24-style changed-file source-shape rerun visited/reconciled every changed Kotlin file
+  after the final Item 27 fixes.
 - Generated Grazel output is empty-diff.
 - PAX migrate leaves the accepted baseline unchanged.
 - Size guard, Gradle verification, and diff checks pass.

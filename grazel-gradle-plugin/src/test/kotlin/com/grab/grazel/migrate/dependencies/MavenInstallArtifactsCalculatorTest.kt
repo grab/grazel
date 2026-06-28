@@ -8,6 +8,7 @@ import com.grab.grazel.bazel.starlark.BazelDependency.MavenDependency
 import com.grab.grazel.buildProject
 import com.grab.grazel.gradle.dependencies.ComputeWorkspaceDependencies
 import com.grab.grazel.gradle.dependencies.DECLARED_DEPENDENCY_REPOSITORY
+import com.grab.grazel.gradle.dependencies.WorkspacePlanBuilder
 import com.grab.grazel.gradle.dependencies.model.OverrideTarget
 import com.grab.grazel.gradle.dependencies.model.ResolveDependenciesResult
 import com.grab.grazel.gradle.dependencies.model.ResolveDependenciesResult.Companion.Scope.COMPILE
@@ -1733,13 +1734,24 @@ class MavenInstallArtifactsCalculatorTest {
         externalArtifacts: Set<String>,
         externalRepositories: Set<String>,
         materializedMavenRepos: Set<String> = workspaceDependencies.allMavenRepoNames()
-    ): Set<MavenInstallData> = mavenInstallArtifactsCalculator.get(
-        layout = layout,
-        workspaceDependencies = workspaceDependencies,
-        externalArtifacts = externalArtifacts,
-        externalRepositories = externalRepositories,
-        materializedMavenRepos = materializedMavenRepos
-    )
+    ): Set<MavenInstallData> {
+        val workspacePlan = WorkspacePlanBuilder(
+            configuredOverrideTargets = rootProject
+                .extensions
+                .getByType(GrazelExtension::class.java)
+                .rules
+                .mavenInstall
+                .overrideTargetLabels
+                .get()
+        ).build(workspaceDependencies)
+        return mavenInstallArtifactsCalculator.get(
+            layout = layout,
+            workspacePlan = workspacePlan,
+            externalArtifacts = externalArtifacts,
+            externalRepositories = externalRepositories,
+            materializedMavenRepos = materializedMavenRepos
+        )
+    }
 
     private fun WorkspaceDependencies.allMavenRepoNames(): Set<String> =
         (variantDeps.keys.map(String::toMavenRepoName) + aggregatedRepos.keys).toSet()

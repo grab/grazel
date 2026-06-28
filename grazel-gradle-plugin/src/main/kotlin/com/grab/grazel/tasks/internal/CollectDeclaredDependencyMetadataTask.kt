@@ -79,36 +79,43 @@ internal abstract class CollectDeclaredDependencyMetadataTask : DefaultTask() {
                     rootProject.layout.buildDirectory.file("grazel/declared-dependency-metadata.json")
                 )
                 dependencyDeclarationFiles.from(dependencyDeclarationFileTree(rootProject))
-            }
-
-            rootProject.gradle.projectsEvaluated {
-                taskProvider.configure {
-                    val migrationCheckerInstance = migrationChecker.get()
-                    val variantBuilder = variantBuilderProvider.get()
-                    val migratableProjects = rootProject.subprojects
-                        .filter { subproject -> migrationCheckerInstance.canMigrate(subproject) }
-                    val variantsByProject = migratableProjects.associateWith { subproject ->
-                        try {
-                            variantBuilder.build(subproject)
-                        } catch (e: Exception) {
-                            rootProject.logger.warn(
-                                "Grazel: Failed to enumerate variants for ${subproject.path}: ${e.message}"
-                            )
-                            emptyList()
-                        }
-                    }
-                    declaredDependencyMetadataJson.set(
-                        Json.encodeToString(
-                            DeclaredDependencyMetadataCollector().collect(
-                                variantsByProject = variantsByProject,
-                                projects = migratableProjects
-                            )
+                declaredDependencyMetadataJson.set(
+                    rootProject.provider {
+                        collectDeclaredDependencyMetadataJson(
+                            rootProject = rootProject,
+                            variantBuilder = variantBuilderProvider.get(),
+                            migrationChecker = migrationChecker.get()
                         )
-                    )
-                }
+                    }
+                )
             }
 
             return taskProvider
+        }
+
+        private fun collectDeclaredDependencyMetadataJson(
+            rootProject: Project,
+            variantBuilder: VariantBuilder,
+            migrationChecker: MigrationChecker
+        ): String {
+            val migratableProjects = rootProject.subprojects
+                .filter { subproject -> migrationChecker.canMigrate(subproject) }
+            val variantsByProject = migratableProjects.associateWith { subproject ->
+                try {
+                    variantBuilder.build(subproject)
+                } catch (e: Exception) {
+                    rootProject.logger.warn(
+                        "Grazel: Failed to enumerate variants for ${subproject.path}: ${e.message}"
+                    )
+                    emptyList()
+                }
+            }
+            return Json.encodeToString(
+                DeclaredDependencyMetadataCollector().collect(
+                    variantsByProject = variantsByProject,
+                    projects = migratableProjects
+                )
+            )
         }
 
         internal fun dependencyDeclarationFileTree(rootProject: Project): ConfigurableFileTree =

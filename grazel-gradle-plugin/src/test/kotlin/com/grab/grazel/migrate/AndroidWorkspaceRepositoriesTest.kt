@@ -25,6 +25,7 @@ import com.grab.grazel.bazel.starlark.asString
 import com.grab.grazel.bazel.starlark.statements
 import com.grab.grazel.buildProject
 import com.grab.grazel.gradle.ANDROID_APPLICATION_PLUGIN
+import com.grab.grazel.gradle.dependencies.WorkspacePlanBuilder
 import com.grab.grazel.gradle.dependencies.model.WorkspaceDependencies
 import com.grab.grazel.util.createGrazelComponent
 import com.grab.grazel.util.doEvaluate
@@ -45,6 +46,7 @@ class AndroidWorkspaceRepositoriesTest : GrazelPluginTest() {
             .create(
                 listOf(buildRootProject),
                 gradleProjectInfo.create(WorkspaceDependencies(emptyMap())),
+                workspacePlan = WorkspacePlanBuilder().build(WorkspaceDependencies(emptyMap())),
                 materializedMavenRepos = emptySet(),
             )
 
@@ -70,6 +72,7 @@ class AndroidWorkspaceRepositoriesTest : GrazelPluginTest() {
             .create(
                 listOf(buildRootProject),
                 gradleProjectInfo.create(WorkspaceDependencies(emptyMap())),
+                workspacePlan = WorkspacePlanBuilder().build(WorkspaceDependencies(emptyMap())),
                 materializedMavenRepos = emptySet(),
             )
         val generatedCode = statements {
@@ -96,6 +99,7 @@ class AndroidWorkspaceRepositoriesTest : GrazelPluginTest() {
             .create(
                 listOf(buildRootProject),
                 gradleProjectInfo.create(WorkspaceDependencies(emptyMap())),
+                workspacePlan = WorkspacePlanBuilder().build(WorkspaceDependencies(emptyMap())),
                 materializedMavenRepos = emptySet(),
             )
         val generatedCode = statements {

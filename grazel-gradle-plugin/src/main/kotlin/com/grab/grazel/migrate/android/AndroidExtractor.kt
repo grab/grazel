@@ -22,7 +22,7 @@ import com.grab.grazel.GrazelExtension
 import com.grab.grazel.bazel.rules.Multidex
 import com.grab.grazel.bazel.starlark.BazelDependency
 import com.grab.grazel.gradle.dependencies.DefaultDependencyGraphsService
-import com.grab.grazel.gradle.dependencies.DefaultWorkspacePlanService
+import com.grab.grazel.gradle.dependencies.WorkspacePlanService
 import com.grab.grazel.gradle.dependencies.DependenciesDataSource
 import com.grab.grazel.gradle.dependencies.DependencyGraphs
 import com.grab.grazel.gradle.dependencies.GradleDependencyToBazelDependency
@@ -63,7 +63,7 @@ constructor(
     private val grazelExtension: GrazelExtension,
     private val dependenciesDataSource: DependenciesDataSource,
     private val dependencyGraphsService: GradleProvider<DefaultDependencyGraphsService>,
-    private val workspacePlanService: GradleProvider<DefaultWorkspacePlanService>,
+    private val workspacePlanService: GradleProvider<WorkspacePlanService>,
     private val gradleDependencyToBazelDependency: GradleDependencyToBazelDependency,
 ) : AndroidLibraryDataExtractor {
 

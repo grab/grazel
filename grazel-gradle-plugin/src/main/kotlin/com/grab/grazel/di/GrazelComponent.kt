@@ -28,7 +28,7 @@ import com.grab.grazel.gradle.MigrationCriteriaModule
 import com.grab.grazel.gradle.RepositoryDataSource
 import com.grab.grazel.gradle.dependencies.DefaultDependencyGraphsService
 import com.grab.grazel.gradle.dependencies.DefaultDependencyResolutionService
-import com.grab.grazel.gradle.dependencies.DefaultWorkspacePlanService
+import com.grab.grazel.gradle.dependencies.WorkspacePlanService
 import com.grab.grazel.gradle.dependencies.DependenciesDataSource
 import com.grab.grazel.gradle.dependencies.DependenciesModule
 import com.grab.grazel.gradle.dependencies.WorkspaceTargetTagPlanCollector
@@ -104,7 +104,7 @@ internal interface GrazelComponent {
 
     fun dependencyResolutionService(): GradleProvider<DefaultDependencyResolutionService>
     fun dependencyGraphsService(): GradleProvider<DefaultDependencyGraphsService>
-    fun workspacePlanService(): GradleProvider<DefaultWorkspacePlanService>
+    fun workspacePlanService(): GradleProvider<WorkspacePlanService>
     fun variantCompressionService(): GradleProvider<DefaultVariantCompressionService>
     fun configurationDataSource(): Lazy<ConfigurationDataSource>
     fun repositoryDataSource(): Lazy<RepositoryDataSource>

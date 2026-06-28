@@ -202,7 +202,7 @@ internal object ProjectReachabilityOrder {
         diagnosticEdges: List<DependencyGraphDiagnosticEdge>
     ): String = buildString {
         appendLine("Typed dependency cycle detected in reachability graph.")
-        appendLine("SCC is not a modeling strategy; model missing typed edges instead of running a fixpoint.")
+        appendLine("Inspect the typed source-set edges below; this usually means an edge is missing or reversed.")
         val nodeSet = unprocessedNodes.toSortedSet(dependencyGraphNodeComparator)
         appendLine("Component 1: ${nodeSet.joinToString(", ") { it.displayName() }}")
         val componentEdges = diagnosticEdges

@@ -5,6 +5,40 @@ evidence in item-specific logs so context compaction can recover state quickly.
 
 ## Active State
 
+- 2026-06-28 +08 CURRENT TRUTH - Item 27 preserving gate:
+  - Grazel is on `arun/dependencies-refactor` at base checkpoint `6a4c40a`
+    with uncommitted Item 27 cleanup fixes. Do not push.
+  - PAX is the regression workspace at
+    `/Users/arun.sampathkumar/work/pax-android`, branch
+    `arun/grazel-refactor`, baseline commit
+    `cfa1057ed58ccb2a795a5f679f072a8f604ff48e`. Do not commit PAX.
+  - Local Grazel focused tests, full
+    `./gradlew :grazel-gradle-plugin:test --console=plain --no-daemon`,
+    and `./gradlew migrateToBazel --console=plain --no-daemon` passed after
+    the final preserving fix. `reports/scripts/verify-default-task-graph.sh`,
+    `reports/scripts/verify-pax-size-guard.sh --mode preserving`, and both
+    Grazel diff-check commands passed. `reports/scripts/verify-sample-bucket-labels.sh`
+    still fails only on the known pre-existing appcompat/constraintlayout
+    exclude assertion.
+  - PAX preserving drift root cause: Item 27 briefly made Android library and
+    instrumentation generation honor every `WorkspaceRenderPlan`
+    `referencedProjectTargets` entry. PAX has many existing `testImplementation
+    project(...)` references to test-helper Android modules; that widened a
+    preserving cleanup into active generation for helper modules outside the
+    accepted baseline. The fix keeps target-reference facts, but restores
+    Android library/instrumentation generation to bucket reachability only.
+    Android app and standalone android-test builders still keep their existing
+    referenced-target behavior from before Item 27.
+  - PAX rerun after the fix:
+    `./gradlew migrateToBazel --no-daemon --console=plain --stacktrace
+    --rerun-tasks` passed in `11m58s`; PAX working tree stayed clean and
+    `git diff --check` passed. Then
+    `./bazel.sh build --verbose_failures //app:app-gps-pax-debug.apk
+    //app:app-gps-pax-debug-android-test.apk` passed in `251.121s`; focused
+    `./bazel.sh test --test_output=errors //app-utils:app-utils-gps-pax-debug-test
+    //app-test:app-test-gps-pax-debug-test
+    //application-initializer:application-initializer-gps-pax-debug-test`
+    passed 3/3 in `24.115s`. Do not commit PAX.
 - 2026-06-28 +08 Item 24 start:
   - Local Item 26 checkpoint committed at `468dd5f`
     (`refactor: move workspace root inputs into variant layer`).
@@ -52,6 +86,40 @@ evidence in item-specific logs so context compaction can recover state quickly.
     PAX `bazel-cache` was preserved.
   - Item 24 locally committed
     (`refactor: tidy dependency refactor source shape`). Do not push.
+- 2026-06-28 +08 Item 27 start:
+  - Active item: Item 27 - branch-wide simplify + adversarial review before
+    formatting.
+  - Current detailed log:
+    `reports/specs/execution-log/item27-branch-wide-simplify-adversarial.md`.
+  - Start commit: `6a4c40a`
+    (`refactor: tidy dependency refactor source shape`).
+  - Maintainer constraints remain hard: keep Grazel changes local and never
+    push; keep PAX as the regression baseline and never commit PAX.
+  - `simplify-pass` skill was loaded and will run as four branch-diff review
+    agents: reuse, simplification, efficiency, and altitude. Adversarial
+    correctness review follows after simplify findings are fixed/rejected with
+    code evidence.
+  - 2026-06-28 +08 Item 27 simplify implementation checkpoint: fixed preserving
+    reuse/simplification/altitude findings around JVM reachability duplication,
+    render-plan mapping reuse, redundant workspace-plan fields, test-only
+    target-reference wrapper, single-implementation `WorkspacePlanService`,
+    lazy declared metadata collection, and Maven root artifact planning moving
+    to the dependency layer / `WorkspacePlan.repoPlan`. Focused touched-area
+    unit suite passed. Adversarial task/dependency/target-reference reviews are
+    running before broad verification.
+  - 2026-06-28 +08 continuation rule from maintainer: because Item 27
+    adversarial review is adding/reshaping Kotlin code after Item 24, rerun an
+    Item 24-style changed-file source-shape inventory/reconciliation after
+    Item 27 fixes and before Item 25. Do not exit cleanup or claim completion
+    until every changed Kotlin file is visited/accounted for and the full goal
+    gates remain green.
+  - Item 27 adversarial fix checkpoint: fixed KSP output parent creation,
+    stale active `BUILD.bazel` disabling for non-migratable projects,
+    `PinMavenArtifactsTask` getter annotations, test associate/instrument
+    reference facts, render-plan materialization for self-overrides and
+    override-target owner repos, and Android library referenced-target
+    generation/fact extraction. Focused adversarial-fix suite passed; narrow
+    post-fix review is running.
 - 2026-06-28 +08 Item 26 checkpoint:
   - Current branch rule reconfirmed by maintainer: keep Grazel changes local and
     never push; keep PAX as the regression baseline and never commit PAX.
@@ -1813,3 +1881,42 @@ evidence in item-specific logs so context compaction can recover state quickly.
   `./gradlew :grazel-gradle-plugin:test --tests "com.grab.grazel.gradle.variant.VariantTest" --tests "com.grab.grazel.gradle.variant.DefaultVariantBuilderTest" --tests "com.grab.grazel.gradle.dependencies.WorkspaceDependencyRootInputPlannerTest" --tests "com.grab.grazel.tasks.internal.ResolveWorkspaceDependenciesTaskTest" --tests "com.grab.grazel.tasks.internal.CollectKspProcessorDependenciesTaskTest" --console=plain --no-daemon`.
 - Remaining Item 26 gates: preserving Grazel generation/task/diff checks, PAX baseline loop,
   then local-only Grazel commit if green.
+
+## 2026-06-28 Current Truth: Item 27 Source-Shape Rerun
+
+- Current Grazel commit before Item 27 local commit: `6a4c40a`.
+- Active item: Item 27 branch-wide simplify/adversarial cleanup. Item 25 must remain last.
+- Context-hygiene rule is now part of `CURRENT-GOAL-ANCHOR.md`: keep current truth near the
+  top, mark stale legacy checkpoints historical/superseded, and condense noisy status after
+  commits, verification gates, failures, and compactions.
+- Item 27 source-shape rerun inventory covered 134 changed Kotlin files: 87 production,
+  45 unit-test, and 2 functional-test files. Four scoped review agents covered
+  dependencies/variant, migrate/bazel/DI, tasks/internal, and tests.
+- Fixed rerun findings:
+  - removed brittle source-text tests and added behavior coverage for KSP output parent
+    creation;
+  - fixed stale comments/KDoc and stale functional-test wording/path construction;
+  - kept compressed target-name reachability and instrumentation referenced-target fixes from
+    the adversarial pass.
+- Deferred explicitly, not silently: typed declared project metadata, duplicated declaration
+  bucket detection, KSP absolute-path cacheability, root-component `@Input` cacheability,
+  reusable per-project target models, pinner/render stringly boundaries, and the empty-target
+  non-concrete active `BUILD.bazel` disable policy. The latter caused sample generated-output
+  drift for tracked empty `flavors`/`lint` BUILD files, so it was backed out of Item 27. These
+  need separate model/cacheability/output-changing items and are not empty-diff Item 27 cleanup.
+- Focused source-shape rerun test passed:
+  `./gradlew :grazel-gradle-plugin:test --tests "com.grab.grazel.tasks.internal.CollectKspProcessorDependenciesTaskTest" --tests "com.grab.grazel.tasks.internal.ResolveWorkspaceDependenciesTaskTest" --tests "com.grab.grazel.migrate.target.TargetReferenceFactsDataMappingTest" --tests "com.grab.grazel.migrate.target.TargetVariantReachabilityTest" --tests "com.grab.grazel.gradle.dependencies.WorkspaceRenderPlanBuilderTest" --console=plain --no-daemon`.
+- Resource note before focused test: Data volume remained tight but usable at about 29 GiB free;
+  no cache deletion or process kill was needed.
+- Local Item 27 gates after rerun:
+  - `./gradlew :grazel-gradle-plugin:test --console=plain --no-daemon` passed.
+  - `./gradlew migrateToBazel --console=plain --no-daemon` passed and generated output stayed
+    empty-diff after backing out the empty-target non-concrete `BUILD.bazel` policy change.
+  - `reports/scripts/verify-default-task-graph.sh` passed.
+  - `reports/scripts/verify-sample-bucket-labels.sh` still fails on the documented one-sided
+    appcompat/constraintlayout exclude waiver.
+  - `reports/scripts/verify-pax-size-guard.sh --mode preserving` passed with unchanged counts:
+    bucket count `11`, pinfile count `11`, total artifact roots `1945`.
+  - `git diff --check` and `git diff --check master...HEAD` passed.
+- Next required gate: PAX migrate/build/test loop from `/Users/arun.sampathkumar/work/pax-android`;
+  PAX must stay baseline-only and must not be committed.

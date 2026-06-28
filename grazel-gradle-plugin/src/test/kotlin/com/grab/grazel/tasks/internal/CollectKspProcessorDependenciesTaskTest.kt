@@ -16,18 +16,23 @@
 
 package com.grab.grazel.tasks.internal
 
+import org.gradle.api.provider.SetProperty
 import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.Internal
 import org.gradle.api.tasks.PathSensitive
 import org.gradle.api.tasks.PathSensitivity
-import org.gradle.api.provider.SetProperty
-import org.junit.Assert.assertFalse
+import org.gradle.testfixtures.ProjectBuilder
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
+import org.junit.Rule
 import org.junit.Test
-import java.io.File
+import org.junit.rules.TemporaryFolder
 
 class CollectKspProcessorDependenciesTaskTest {
+
+    @get:Rule
+    val temporaryFolder = TemporaryFolder()
 
     @Test
     fun `ksp processor dependency task declares resolved roots and artifact mapping as inputs`() {
@@ -76,13 +81,22 @@ class CollectKspProcessorDependenciesTaskTest {
     }
 
     @Test
-    fun `ksp processor dependency task does not own ksp configuration name semantics`() {
-        val source = File(
-            "src/main/kotlin/com/grab/grazel/tasks/internal/CollectKspProcessorDependenciesTask.kt"
-        ).readText()
+    fun `ksp processor dependency task creates output parent directory`() {
+        val project = ProjectBuilder.builder()
+            .withProjectDir(temporaryFolder.newFolder("project"))
+            .build()
+        val task = project.tasks
+            .register("collectKspProcessorDependencies", CollectKspProcessorDependenciesTask::class.java)
+            .get()
+        val outputFile = project.layout.buildDirectory.file("nested/output/ksp-dependencies.json")
 
-        assertFalse(source.contains("startsWith(\"ksp\")"))
-        assertFalse(source.contains("\"classpath\" !in lowercase()"))
-        assertFalse(source.contains("grazelKspProcessorClasspath"))
+        task.kspRootComponents.set(emptyList())
+        task.kspDirectDependencies.set(emptySet())
+        task.kspArtifactMapping.set(emptyMap())
+        task.kspDependencies.set(outputFile)
+
+        task.action()
+
+        assertTrue(outputFile.get().asFile.exists())
     }
 }

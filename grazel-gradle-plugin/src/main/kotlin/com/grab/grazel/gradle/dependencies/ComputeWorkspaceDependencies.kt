@@ -24,9 +24,9 @@ internal class ComputeWorkspaceDependencies {
      *   [AggregatedDependencyResolver].
      */
     fun computeFromResults(results: List<ResolveDependenciesResult>): WorkspaceDependencies {
-        // Parse all jsons parallely and compute the classPaths among all variants.
-        // Maximum compatible version is picked using [maxVersionReducer] since different buckets
-        // can carry different resolved versions of the same dependency.
+        // Group already-resolved bucket results by classpath and short id.
+        // Maximum compatible version is picked using [maxVersionReducer] because different
+        // buckets can carry different resolved versions of the same dependency.
         val classPaths = results
             .parallelStream()
             .collect(

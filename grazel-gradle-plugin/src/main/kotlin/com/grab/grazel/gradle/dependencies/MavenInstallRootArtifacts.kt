@@ -1,6 +1,5 @@
-package com.grab.grazel.migrate.dependencies
+package com.grab.grazel.gradle.dependencies
 
-import com.grab.grazel.gradle.dependencies.mavenOverrideTarget
 import com.grab.grazel.gradle.dependencies.model.ResolvedDependency
 import com.grab.grazel.gradle.dependencies.model.WorkspaceDependencies
 import com.grab.grazel.gradle.dependencies.model.hasSameResolvedArtifactIdentityAs

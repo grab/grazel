@@ -23,7 +23,6 @@ import com.grab.grazel.gradle.dependencies.model.ResolvedDependency
 import com.grab.grazel.gradle.dependencies.model.TargetTagPlan
 import com.grab.grazel.gradle.dependencies.model.WorkspaceDependencies
 import com.grab.grazel.gradle.dependencies.model.WorkspacePlan
-import com.grab.grazel.migrate.dependencies.mavenInstallRootArtifactsByVariant
 import com.grab.grazel.migrate.dependencies.toMavenRepoName
 
 internal class WorkspacePlanBuilder(
@@ -43,7 +42,6 @@ internal class WorkspacePlanBuilder(
                     .getValue(variantName)
                     .sortedBy(ResolvedDependency::id)
                 repoName to CandidateMavenRepo(
-                    variantName = variantName,
                     kind = VARIANT,
                     pinInputs = rootArtifacts,
                     overrideTargets = calculateMavenInstallOverrideTargets(

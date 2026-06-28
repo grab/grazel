@@ -22,6 +22,7 @@ import com.grab.grazel.buildProject
 import com.grab.grazel.di.GrazelComponent
 import com.grab.grazel.gradle.ANDROID_LIBRARY_PLUGIN
 import com.grab.grazel.gradle.KOTLIN_ANDROID_PLUGIN
+import com.grab.grazel.gradle.dependencies.WorkspacePlanBuilder
 import com.grab.grazel.gradle.dependencies.model.WorkspaceDependencies
 import com.grab.grazel.migrate.internal.WorkspaceBuilder
 import com.grab.grazel.util.addGrazelExtension
@@ -199,6 +200,7 @@ class KotlinWorkspaceRulesTest {
             projectsToMigrate = listOf(rootProject, subProject),
             gradleProjectInfo = grazelComponent.gradleProjectInfoFactory().get()
                 .create(WorkspaceDependencies(emptyMap())),
+            workspacePlan = WorkspacePlanBuilder().build(WorkspaceDependencies(emptyMap())),
             materializedMavenRepos = emptySet()
         ).build()
         .asString()

@@ -144,4 +144,27 @@ internal class TargetVariantReachabilityTest {
             )
         }
     }
+
+    @Test
+    fun `assert generated target is reachable through emitted macro aliases`() {
+        val referencedTargetNames = setOf(
+            "feature-debug_kt",
+            "lib_feature-debug",
+            "feature-debug_lib"
+        )
+
+        assertTrue {
+            isReferencedGeneratedTarget(
+                targetName = "feature-debug",
+                referencedTargetNames = referencedTargetNames
+            )
+        }
+        assertFalse {
+            isReferencedGeneratedTarget(
+                targetName = "feature-release",
+                referencedTargetNames = referencedTargetNames
+            )
+        }
+    }
+
 }

@@ -41,8 +41,12 @@ internal class WorkspaceRenderPlanBuilder(
         workspacePlan: WorkspacePlan,
         referencedRepoNames: Set<String> = emptySet()
     ): WorkspaceRenderPlan {
-        val availableRepos = workspacePlan.repoPlan
+        val baseMaterializableRepos = workspacePlan.repoPlan
             .filterValues { candidate -> candidate.hasMaterializedRoot() }
+            .keys
+            .toSortedSet()
+        val overrideTargetRepos = workspacePlan.repoPlan
+            .filterValues { candidate -> candidate.hasPlannedArtifacts() }
             .keys
             .toSortedSet()
         val alwaysMaterializedRepoNames = workspacePlan.repoPlan
@@ -54,13 +58,13 @@ internal class WorkspaceRenderPlanBuilder(
             .toSortedSet()
 
         val materializedRepoNames = (referencedRepoNames + alwaysMaterializedRepoNames)
-            .filterTo(sortedSetOf()) { repoName -> repoName in availableRepos }
+            .filterTo(sortedSetOf()) { repoName -> repoName in baseMaterializableRepos }
         val reposToScan = ArrayDeque(materializedRepoNames)
         while (reposToScan.isNotEmpty()) {
             val candidate = workspacePlan.repoPlan[reposToScan.removeFirst()] ?: continue
             candidate.overrideTargets.values
                 .asSequence()
-                .mapNotNull { label -> label.referencedMavenRepo(availableRepos) }
+                .mapNotNull { label -> label.referencedMavenRepo(overrideTargetRepos) }
                 .forEach { repoName ->
                     if (materializedRepoNames.add(repoName)) {
                         reposToScan.add(repoName)
@@ -75,8 +79,11 @@ internal class WorkspaceRenderPlanBuilder(
 
     private fun CandidateMavenRepo.hasMaterializedRoot(): Boolean =
         kind == AGGREGATED || pinInputs.any { artifact ->
-            artifact.direct && artifact.overrideTarget == null
+            artifact.direct && artifact.shortId !in overrideTargets
         }
+
+    private fun CandidateMavenRepo.hasPlannedArtifacts(): Boolean =
+        kind == AGGREGATED || pinInputs.isNotEmpty()
 
     private fun String.referencedMavenRepo(availableRepos: Set<String>): String? =
         removePrefix("@")

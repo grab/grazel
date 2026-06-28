@@ -16,8 +16,9 @@
 
 package com.grab.grazel.tasks.internal
 
-import com.grab.grazel.gradle.dependencies.DefaultWorkspacePlanService
+import com.grab.grazel.gradle.dependencies.WorkspacePlanService
 import com.grab.grazel.gradle.dependencies.WorkspaceRenderPlanBuilder
+import com.grab.grazel.gradle.dependencies.asRenderPlan
 import com.grab.grazel.gradle.dependencies.model.TargetReferenceFacts
 import com.grab.grazel.util.GradleProvider
 import com.grab.grazel.util.fromJson
@@ -49,7 +50,7 @@ internal abstract class FinalizeWorkspacePlanTask : DefaultTask() {
     abstract val targetMavenRepoReferences: RegularFileProperty
 
     @get:Internal
-    abstract val workspacePlanService: Property<DefaultWorkspacePlanService>
+    abstract val workspacePlanService: Property<WorkspacePlanService>
 
     @get:OutputFile
     abstract val workspaceRenderPlan: RegularFileProperty
@@ -64,12 +65,12 @@ internal abstract class FinalizeWorkspacePlanTask : DefaultTask() {
         logger.logHeap("FinalizeWorkspacePlan:start")
         val plan = workspacePlanService.get().initPlan(workspacePlan.get().asFile)
         val targetReferences = fromJson<TargetReferenceFacts>(targetMavenRepoReferences.get())
+        val targetReferencesPlan = targetReferences.asRenderPlan()
         val renderPlan = WorkspaceRenderPlanBuilder().build(
             workspacePlan = plan,
             referencedRepoNames = targetReferences.repoNames
         ).copy(
-            referencedProjectPaths = targetReferences.projectPaths,
-            referencedProjectTargets = targetReferences.projectTargets
+            referencedProjectTargets = targetReferencesPlan.referencedProjectTargets
         )
         workspaceRenderPlan.get().asFile.parentFile.mkdirs()
         writeJson(renderPlan, workspaceRenderPlan.get())
@@ -82,7 +83,7 @@ internal abstract class FinalizeWorkspacePlanTask : DefaultTask() {
 
         internal fun register(
             rootProject: Project,
-            workspacePlanService: GradleProvider<DefaultWorkspacePlanService>,
+            workspacePlanService: GradleProvider<WorkspacePlanService>,
             configureAction: FinalizeWorkspacePlanTask.() -> Unit = {}
         ): TaskProvider<FinalizeWorkspacePlanTask> {
             return rootProject.tasks.register<FinalizeWorkspacePlanTask>(TASK_NAME) {

@@ -57,7 +57,7 @@ internal interface DependenciesModule {
         @Provides
         fun workspacePlanService(
             @RootProject rootProject: Project
-        ): GradleProvider<@JvmSuppressWildcards DefaultWorkspacePlanService> =
+        ): GradleProvider<@JvmSuppressWildcards WorkspacePlanService> =
             WorkspacePlanService.register(rootProject)
     }
 }

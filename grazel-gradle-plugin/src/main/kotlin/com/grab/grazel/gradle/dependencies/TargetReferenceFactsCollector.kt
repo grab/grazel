@@ -49,10 +49,6 @@ internal object TargetReferenceFactsCollector {
                     .map(MavenDependency::repo) +
                     tags.asSequence().mapNotNull { tag -> tag.mavenRepoFromTag() }
                 ).toSortedSet(),
-            projectPaths = dependencies
-                .asSequence()
-                .mapNotNull { dependency -> dependency.projectReference()?.first }
-                .toSortedSet(),
             projectTargets = dependencies
                 .asSequence()
                 .mapNotNull { dependency -> dependency.projectReference() }
@@ -95,7 +91,6 @@ internal fun Iterable<TargetReferenceFacts>.merged(): TargetReferenceFacts {
 
 internal fun TargetReferenceFacts.asRenderPlan(): WorkspaceRenderPlan =
     WorkspaceRenderPlan(
-        referencedProjectPaths = projectPaths,
         referencedProjectTargets = projectTargets
     )
 
@@ -105,14 +100,12 @@ internal fun mergeTargetReferenceFacts(
 ): TargetReferenceFacts =
     TargetReferenceFacts(
         repoNames = left.repoNames + right.repoNames,
-        projectPaths = left.projectPaths + right.projectPaths,
         projectTargets = mergeProjectTargets(left.projectTargets, right.projectTargets)
     )
 
 internal fun TargetReferenceFacts.normalized(): TargetReferenceFacts =
     TargetReferenceFacts(
         repoNames = repoNames.toSortedSet(),
-        projectPaths = projectPaths.toSortedSet(),
         projectTargets = projectTargets
             .mapValues { (_, targetNames) -> targetNames.toSortedSet() }
             .toSortedMap()

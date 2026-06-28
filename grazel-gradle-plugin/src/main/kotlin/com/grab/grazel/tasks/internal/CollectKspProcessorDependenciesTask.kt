@@ -113,6 +113,7 @@ internal abstract class CollectKspProcessorDependenciesTask : DefaultTask() {
             }
             .toSortedSet()
 
+        kspDependencies.get().asFile.parentFile.mkdirs()
         writeJson(
             ResolveDependenciesResult(
                 variantName = DEFAULT_VARIANT,

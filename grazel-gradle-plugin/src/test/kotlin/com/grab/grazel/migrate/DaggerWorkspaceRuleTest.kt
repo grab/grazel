@@ -23,6 +23,7 @@ import com.grab.grazel.buildProject
 import com.grab.grazel.di.GrazelComponent
 import com.grab.grazel.gradle.ANDROID_LIBRARY_PLUGIN
 import com.grab.grazel.gradle.KOTLIN_ANDROID_PLUGIN
+import com.grab.grazel.gradle.dependencies.WorkspacePlanBuilder
 import com.grab.grazel.gradle.dependencies.model.ResolvedDependency
 import com.grab.grazel.gradle.dependencies.model.WorkspaceDependencies
 import com.grab.grazel.migrate.internal.WorkspaceBuilder
@@ -109,7 +110,7 @@ class DaggerWorkspaceRuleTest {
                 .gradleProjectInfoFactory()
                 .get()
                 .create(workspaceDependencies),
-            workspaceDependencies = workspaceDependencies,
+            workspacePlan = WorkspacePlanBuilder().build(workspaceDependencies),
             materializedMavenRepos = setOf("maven")
         ).build().asString()
 

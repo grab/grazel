@@ -23,6 +23,7 @@ import com.grab.grazel.gradle.DefaultGradleProjectInfo
 import com.grab.grazel.gradle.GradleProjectInfo
 import com.grab.grazel.gradle.MigrationChecker
 import com.grab.grazel.gradle.dependencies.DefaultDependencyResolutionService
+import com.grab.grazel.gradle.dependencies.model.WorkspacePlan
 import com.grab.grazel.gradle.dependencies.model.WorkspaceRenderPlan
 import com.grab.grazel.migrate.internal.RootBazelFileBuilder
 import com.grab.grazel.migrate.internal.WorkspaceBuilder
@@ -67,6 +68,10 @@ constructor(
 
     @get:InputFile
     @get:PathSensitive(PathSensitivity.RELATIVE)
+    val workspacePlan: RegularFileProperty = project.objects.fileProperty()
+
+    @get:InputFile
+    @get:PathSensitive(PathSensitivity.RELATIVE)
     val workspaceRenderPlan: RegularFileProperty = project.objects.fileProperty()
 
     @get:OutputFile
@@ -93,6 +98,7 @@ constructor(
         val workspaceDependencies = dependencyResolutionService
             .get()
             .init(workspaceDependencies.get().asFile)
+        val workspacePlanModel = fromJson<WorkspacePlan>(workspacePlan.get())
         val workspaceRenderPlan = fromJson<WorkspaceRenderPlan>(workspaceRenderPlan.get())
 
         val gradleProjectInfo: GradleProjectInfo = gradleProjectInfoFactory.get()
@@ -101,7 +107,7 @@ constructor(
         workspaceBuilderFactory.get().create(
             projectsToMigrate = projectsToMigrate,
             gradleProjectInfo = gradleProjectInfo,
-            workspaceDependencies = workspaceDependencies,
+            workspacePlan = workspacePlanModel,
             materializedMavenRepos = workspaceRenderPlan.materializedRepoNames,
         ).build().writeToFile(workspaceFile.get().asFile)
         logger.quiet("Generated WORKSPACE".ansiGreen)

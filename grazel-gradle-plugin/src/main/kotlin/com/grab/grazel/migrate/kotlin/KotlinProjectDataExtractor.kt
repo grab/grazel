@@ -21,7 +21,7 @@ import com.grab.grazel.bazel.rules.KOTLIN_PARCELIZE_TARGET
 import com.grab.grazel.bazel.starlark.BazelDependency
 import com.grab.grazel.extension.KotlinExtension
 import com.grab.grazel.gradle.dependencies.DefaultDependencyGraphsService
-import com.grab.grazel.gradle.dependencies.DefaultWorkspacePlanService
+import com.grab.grazel.gradle.dependencies.WorkspacePlanService
 import com.grab.grazel.gradle.dependencies.DependenciesDataSource
 import com.grab.grazel.gradle.dependencies.DependencyGraphs
 import com.grab.grazel.gradle.variant.VariantGraphKey
@@ -59,7 +59,7 @@ internal class DefaultKotlinProjectDataExtractor
     private val dependencyGraphsService: GradleProvider<DefaultDependencyGraphsService>,
     private val grazelExtension: GrazelExtension,
     private val gradleDependencyToBazelDependency: GradleDependencyToBazelDependency,
-    private val workspacePlanService: GradleProvider<DefaultWorkspacePlanService>
+    private val workspacePlanService: GradleProvider<WorkspacePlanService>
 ) : KotlinProjectDataExtractor {
 
     private val kotlinExtension: KotlinExtension get() = grazelExtension.rules.kotlin
