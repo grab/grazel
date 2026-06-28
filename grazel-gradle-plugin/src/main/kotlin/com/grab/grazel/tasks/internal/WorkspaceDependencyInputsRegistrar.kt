@@ -16,13 +16,16 @@
 
 package com.grab.grazel.tasks.internal
 
+import com.grab.grazel.extension.DeclaredDependencyMetadataAggregationMode
 import com.grab.grazel.gradle.MigrationChecker
+import com.grab.grazel.gradle.dependencies.DeclaredProjectMetadataPlanner
 import com.grab.grazel.gradle.dependencies.WorkspaceDependencyRootInput
 import com.grab.grazel.gradle.dependencies.WorkspaceDependencyRootInputPlanner
 import com.grab.grazel.gradle.variant.Variant
 import com.grab.grazel.gradle.variant.VariantBuilder
 import dagger.Lazy
 import org.gradle.api.Project
+import org.gradle.api.provider.Provider
 import org.gradle.api.tasks.TaskProvider
 import java.util.concurrent.ConcurrentHashMap
 
@@ -31,12 +34,16 @@ internal object WorkspaceDependencyInputsRegistrar {
         rootProject: Project,
         variantBuilderProvider: Lazy<VariantBuilder>,
         migrationChecker: Lazy<MigrationChecker>,
+        declaredDependencyMetadataAggregationMode: Provider<DeclaredDependencyMetadataAggregationMode>,
         computeTask: TaskProvider<ComputeWorkspaceDependenciesTask>
     ) {
-        val declaredDependencyMetadataTask = CollectDeclaredDependencyMetadataTask.register(
+        val variantsByProject = collectVariantsByProject(
             rootProject = rootProject,
-            variantBuilderProvider = variantBuilderProvider,
-            migrationChecker = migrationChecker
+            variantBuilder = variantBuilderProvider.get()
+        )
+
+        val declaredDependencyMetadataTask = DeclaredDependencyMetadataTasks.register(
+            rootProject = rootProject
         )
         val kspProcessorDependenciesTask = CollectKspProcessorDependenciesTask.register(
             rootProject = rootProject,
@@ -46,16 +53,12 @@ internal object WorkspaceDependencyInputsRegistrar {
         val resolveWorkspaceDependenciesTask = ResolveWorkspaceDependenciesTask.register(rootProject)
 
         resolveWorkspaceDependenciesTask.configure {
-            declaredDependencyMetadata.set(
-                declaredDependencyMetadataTask.flatMap { it.declaredDependencyMetadata }
-            )
             kspDependencies.set(
                 kspProcessorDependenciesTask.flatMap { it.kspDependencies }
             )
             workspaceDependencyRootMetadata.set(
                 workspaceRootMetadataTask.flatMap { it.workspaceDependencyRootMetadata }
             )
-            dependsOn(declaredDependencyMetadataTask)
             dependsOn(kspProcessorDependenciesTask)
             dependsOn(workspaceRootMetadataTask)
         }
@@ -66,15 +69,17 @@ internal object WorkspaceDependencyInputsRegistrar {
             dependsOn(resolveWorkspaceDependenciesTask)
         }
 
-        val variantsByProject = collectVariantsByProject(
-            rootProject = rootProject,
-            variantBuilder = variantBuilderProvider.get()
-        )
-
         rootProject.gradle.projectsEvaluated {
-            val rootInputs = planRootInputs(
+            val migratableProjects = migratableProjects(
                 rootProject = rootProject,
-                migrationChecker = migrationChecker.get(),
+                migrationChecker = migrationChecker.get()
+            )
+            val rootInputs = planRootInputs(
+                migratableProjects = migratableProjects,
+                variantsByProject = variantsByProject
+            )
+            val declaredMetadataSources = DeclaredProjectMetadataPlanner.plan(
+                projects = migratableProjects,
                 variantsByProject = variantsByProject
             )
             resolveWorkspaceDependenciesTask.configure {
@@ -86,6 +91,19 @@ internal object WorkspaceDependencyInputsRegistrar {
                 rootInputs.forEach { rootInput ->
                     addRootMetadata(rootProject, rootInput)
                 }
+            }
+            val mode = declaredDependencyMetadataAggregationMode.get()
+            declaredDependencyMetadataTask.configureSingleTask(declaredMetadataSources)
+            if (mode == DeclaredDependencyMetadataAggregationMode.PROJECT_TASK_FANOUT) {
+                declaredDependencyMetadataTask.configureProjectTaskFanout(
+                    rootProject = rootProject,
+                    metadataSources = declaredMetadataSources
+                )
+            }
+            val declaredMetadataProducer = declaredDependencyMetadataTask.forMode(mode)
+            resolveWorkspaceDependenciesTask.configure {
+                declaredDependencyMetadata.set(declaredMetadataProducer.declaredDependencyMetadata)
+                dependsOn(declaredMetadataProducer.producerTask)
             }
         }
     }
@@ -111,14 +129,19 @@ internal object WorkspaceDependencyInputsRegistrar {
         return variantsByProject
     }
 
-    private fun planRootInputs(
+    private fun migratableProjects(
         rootProject: Project,
-        migrationChecker: MigrationChecker,
-        variantsByProject: Map<Project, Iterable<Variant<*>>>
-    ): List<WorkspaceDependencyRootInput> {
-        val migratableProjects = rootProject.subprojects
+        migrationChecker: MigrationChecker
+    ): List<Project> {
+        return rootProject.subprojects
             .filter { project -> migrationChecker.canMigrate(project) }
             .sortedBy { project -> project.path }
+    }
+
+    private fun planRootInputs(
+        migratableProjects: List<Project>,
+        variantsByProject: Map<Project, Iterable<Variant<*>>>
+    ): List<WorkspaceDependencyRootInput> {
         return WorkspaceDependencyRootInputPlanner
             .plan(
                 migratableProjects = migratableProjects,

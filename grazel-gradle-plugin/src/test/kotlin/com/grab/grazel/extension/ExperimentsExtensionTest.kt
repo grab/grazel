@@ -16,12 +16,33 @@
 
 package com.grab.grazel.extension
 
+import com.grab.grazel.extension.DeclaredDependencyMetadataAggregationMode.PROJECT_TASK_FANOUT
+import com.grab.grazel.extension.DeclaredDependencyMetadataAggregationMode.SINGLE_TASK
 import org.gradle.testfixtures.ProjectBuilder
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ExperimentsExtensionTest {
+    @Test
+    fun `declared dependency metadata aggregation mode defaults to single task`() {
+        val project = ProjectBuilder.builder().build()
+        val extension = ExperimentsExtension(project.objects)
+
+        assertEquals(SINGLE_TASK, extension.declaredDependencyMetadataAggregationMode.get())
+    }
+
+    @Test
+    fun `declared dependency metadata aggregation mode can be switched to project task fanout`() {
+        val project = ProjectBuilder.builder().build()
+        val extension = ExperimentsExtension(project.objects)
+
+        extension.declaredDependencyMetadataAggregationMode.set(PROJECT_TASK_FANOUT)
+
+        assertEquals(PROJECT_TASK_FANOUT, extension.declaredDependencyMetadataAggregationMode.get())
+    }
+
     @Test
     fun `limit dependency resolution parallelism remains as a compatibility no-op`() {
         val project = ProjectBuilder.builder().build()

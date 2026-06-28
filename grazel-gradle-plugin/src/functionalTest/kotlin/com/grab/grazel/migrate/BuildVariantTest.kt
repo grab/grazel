@@ -134,8 +134,9 @@ class BuildVariantTest : BaseGrazelPluginTest() {
             fixtureRoot
         )
         Assert.assertEquals(
-            "No-edit declared metadata collection should be up-to-date",
-            UP_TO_DATE,
+            "Default declared metadata collection is intentionally untracked because it reads " +
+                "the evaluated Gradle model directly.",
+            SUCCESS,
             secondResult.task(":collectDeclaredDependencyMetadata")?.outcome
         )
         Assert.assertEquals(
@@ -149,6 +150,63 @@ class BuildVariantTest : BaseGrazelPluginTest() {
             secondResult.task(":computeWorkspaceDependencies")?.outcome
         )
     }
+
+    @Test
+    fun projectTaskFanoutDeclaredMetadataModeProducesStableWorkspaceDependencies() {
+        val fixtureRoot = copyAndroidProjectFixture()
+        enableProjectTaskFanoutDeclaredMetadata(fixtureRoot)
+
+        val firstResult = runGradleBuild(
+            arrayOf("computeWorkspaceDependencies", "--console=plain"),
+            fixtureRoot
+        )
+        Assert.assertEquals(SUCCESS, firstResult.task(":mergeDeclaredDependencyMetadata")?.outcome)
+        Assert.assertEquals(SUCCESS, firstResult.task(":computeWorkspaceDependencies")?.outcome)
+        val firstDependencies = dependenciesJsonFor(fixtureRoot).readText()
+
+        val secondResult = runGradleBuild(
+            arrayOf("computeWorkspaceDependencies", "--console=plain"),
+            fixtureRoot
+        )
+
+        Assert.assertEquals(
+            "Fanout merge should be up-to-date when project shard inputs are unchanged",
+            UP_TO_DATE,
+            secondResult.task(":mergeDeclaredDependencyMetadata")?.outcome
+        )
+        Assert.assertEquals(
+            "Fanout mode should keep downstream workspace dependency computation stable",
+            UP_TO_DATE,
+            secondResult.task(":computeWorkspaceDependencies")?.outcome
+        )
+        Assert.assertEquals(firstDependencies, dependenciesJsonFor(fixtureRoot).readText())
+    }
+
+    @Test
+    fun declaredMetadataAggregationModesProduceSameAggregateJson() {
+        val fixtureRoot = copyAndroidProjectFixture()
+
+        val defaultResult = runGradleBuild(
+            arrayOf("computeWorkspaceDependencies", "--console=plain"),
+            fixtureRoot
+        )
+        Assert.assertEquals(SUCCESS, defaultResult.task(":collectDeclaredDependencyMetadata")?.outcome)
+        val defaultMetadata = declaredDependencyMetadataJsonFor(fixtureRoot).readText()
+
+        enableProjectTaskFanoutDeclaredMetadata(fixtureRoot)
+        val fanoutResult = runGradleBuild(
+            arrayOf("computeWorkspaceDependencies", "--console=plain", "--rerun-tasks"),
+            fixtureRoot
+        )
+        Assert.assertEquals(SUCCESS, fanoutResult.task(":mergeDeclaredDependencyMetadata")?.outcome)
+
+        Assert.assertEquals(
+            "SINGLE_TASK and PROJECT_TASK_FANOUT must feed the same aggregate declared metadata.",
+            defaultMetadata,
+            declaredDependencyMetadataJsonFor(fixtureRoot).readText()
+        )
+    }
+
 
     @Test
     fun computeWorkspaceDependenciesInvalidatesWhenProjectDependencyDeclarationsChange() {
@@ -376,6 +434,34 @@ dependencies {
         )
         return fixtureRoot
     }
+
+    private fun enableProjectTaskFanoutDeclaredMetadata(fixtureRoot: File) {
+        val fixtureBuildGradle = File(fixtureRoot, "build.gradle")
+        val original = fixtureBuildGradle.readText()
+        val updated = original.replace(
+            "        minSdkVersionWorkaround.set(true)",
+            """
+        minSdkVersionWorkaround.set(true)
+        declaredDependencyMetadataAggregationMode.set(
+                com.grab.grazel.extension.DeclaredDependencyMetadataAggregationMode.PROJECT_TASK_FANOUT
+        )
+            """.trimIndent()
+        )
+        Assert.assertNotEquals(
+            "Test fixture should enable the declared metadata fanout experiment",
+            original,
+            updated
+        )
+        fixtureBuildGradle.writeText(
+            updated
+        )
+    }
+
+    private fun dependenciesJsonFor(fixtureRoot: File): File =
+        File(fixtureRoot, "build/grazel/dependencies.json")
+
+    private fun declaredDependencyMetadataJsonFor(fixtureRoot: File): File =
+        File(fixtureRoot, "build/grazel/declared-dependency-metadata.json")
 
     private fun enableKspInFixture(fixtureRoot: File, moshiVersion: String) {
         val fixtureBuildGradle = File(fixtureRoot, "build.gradle")

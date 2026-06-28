@@ -16,95 +16,143 @@
 
 package com.grab.grazel.tasks.internal
 
-import org.gradle.api.tasks.Input
-import org.gradle.api.tasks.Internal
+import com.grab.grazel.gradle.dependencies.DeclaredDependencyMetadata
+import com.grab.grazel.gradle.dependencies.DeclaredProjectMetadataSource
+import com.grab.grazel.gradle.variant.Variant
+import com.grab.grazel.gradle.variant.VariantType
+import com.grab.grazel.util.fromJson
+import org.gradle.api.Project
+import org.gradle.api.artifacts.Configuration
+import org.gradle.api.tasks.CacheableTask
+import org.gradle.api.tasks.InputFiles
+import org.gradle.api.tasks.UntrackedTask
 import org.gradle.testfixtures.ProjectBuilder
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
-import org.junit.Rule
 import org.junit.Test
-import org.junit.rules.TemporaryFolder
 
 class CollectDeclaredDependencyMetadataTaskTest {
 
-    @get:Rule
-    val temporaryFolder = TemporaryFolder()
-
     @Test
-    fun `declared dependency metadata task consumes stable metadata json input`() {
+    fun `single task reads evaluated model directly and is explicitly untracked`() {
         val taskGetterNames = CollectDeclaredDependencyMetadataTask::class.java.methods
             .mapTo(mutableSetOf()) { method -> method.name }
-        val metadataJsonGetter = CollectDeclaredDependencyMetadataTask::class.java
-            .getMethod("getDeclaredDependencyMetadataJson")
 
         assertFalse(
-            "Declared metadata should be computed before the task action and supplied as a stable " +
-                "input, not through a hidden MigrationChecker service property.",
-            "getMigrationCheckerProvider" in taskGetterNames
-        )
-        assertFalse(
-            "Declared metadata should be computed before the task action and supplied as a stable " +
-                "input, not through a hidden VariantBuilder service property.",
-            "getVariantBuilderProvider" in taskGetterNames
+            "SINGLE_TASK reads evaluated Gradle/AGP model directly and must not claim cacheability.",
+            CollectDeclaredDependencyMetadataTask::class.java.isAnnotationPresent(CacheableTask::class.java)
         )
         assertTrue(
-            "Serialized declared metadata must participate in the task cache key.",
-            metadataJsonGetter.isAnnotationPresent(Input::class.java)
+            "SINGLE_TASK must be explicit about its untracked model-read boundary.",
+            CollectDeclaredDependencyMetadataTask::class.java.isAnnotationPresent(UntrackedTask::class.java)
         )
         assertFalse(
-            "Serialized declared metadata should not be hidden from Gradle caching.",
-            metadataJsonGetter.isAnnotationPresent(Internal::class.java)
+            "Declared metadata must not cross the task boundary as a JSON string input.",
+            "getDeclaredDependencyMetadataJson" in taskGetterNames
+        )
+        assertFalse(
+            "Build-file glob inputs are an imprecise proxy for evaluated declared metadata.",
+            "getDependencyDeclarationFiles" in taskGetterNames
         )
     }
 
     @Test
-    fun `dependency declaration inputs exclude generated output trees`() {
-        val projectDir = temporaryFolder.newFolder("project")
-        val rootBuildFile = projectDir.resolve("build.gradle").apply {
-            writeText("plugins {}")
-        }
-        val moduleBuildFile = projectDir.resolve("app/build.gradle.kts").apply {
-            parentFile.mkdirs()
-            writeText("plugins {}")
-        }
-        val versionCatalog = projectDir.resolve("gradle/libs.versions.toml").apply {
-            parentFile.mkdirs()
-            writeText("[versions]")
-        }
+    fun `build-file tracing helper is removed`() {
+        val companionMethods = CollectDeclaredDependencyMetadataTask.Companion::class.java.methods
+            .mapTo(mutableSetOf()) { method -> method.name }
 
-        projectDir.resolve(".gradle/generated.gradle").apply {
-            parentFile.mkdirs()
-            writeText("plugins {}")
-        }
-        projectDir.resolve("app/build/generated.gradle").apply {
-            parentFile.mkdirs()
-            writeText("plugins {}")
-        }
-        projectDir.resolve("bazel-grazel/external/test_maven/generated.gradle").apply {
-            parentFile.mkdirs()
-            writeText("plugins {}")
-        }
-
-        val project = ProjectBuilder.builder()
-            .withProjectDir(projectDir)
-            .build()
-        val canonicalProjectDir = projectDir.canonicalFile
-
-        val files = CollectDeclaredDependencyMetadataTask
-            .dependencyDeclarationFileTree(project)
-            .files
-            .mapTo(sortedSetOf()) { file ->
-                file.canonicalFile.relativeTo(canonicalProjectDir).invariantSeparatorsPath
-            }
-
-        assertEquals(
-            sortedSetOf(
-                rootBuildFile.canonicalFile.relativeTo(canonicalProjectDir).invariantSeparatorsPath,
-                moduleBuildFile.canonicalFile.relativeTo(canonicalProjectDir).invariantSeparatorsPath,
-                versionCatalog.canonicalFile.relativeTo(canonicalProjectDir).invariantSeparatorsPath
-            ),
-            files
+        assertFalse(
+            "Declared metadata invalidation must be based on semantic task inputs, not build file globs.",
+            "dependencyDeclarationFileTree" in companionMethods
         )
+    }
+
+    @Test
+    fun `fanout project shard task has no build-file or json-string payload inputs`() {
+        val shardTaskGetters = CollectProjectDeclaredDependencyMetadataTask::class.java.methods
+            .mapTo(mutableSetOf()) { method -> method.name }
+
+        assertFalse(
+            "PROJECT_TASK_FANOUT shard tasks read evaluated Gradle/AGP model directly and must not claim cacheability.",
+            CollectProjectDeclaredDependencyMetadataTask::class.java.isAnnotationPresent(CacheableTask::class.java)
+        )
+        assertTrue(
+            "PROJECT_TASK_FANOUT shard tasks must be explicit about their untracked model-read boundary.",
+            CollectProjectDeclaredDependencyMetadataTask::class.java.isAnnotationPresent(UntrackedTask::class.java)
+        )
+        assertFalse(
+            "Project shard tasks must not receive metadata through JSON string task inputs.",
+            "getDeclaredDependencyMetadataJson" in shardTaskGetters
+        )
+        assertFalse(
+            "Project shard tasks must not use broad build file inputs.",
+            "getDependencyDeclarationFiles" in shardTaskGetters
+        )
+        assertFalse(
+            "Project shard tasks must not have any @InputFiles build-script proxy getters.",
+            CollectProjectDeclaredDependencyMetadataTask::class.java.methods.any { method ->
+                method.isAnnotationPresent(InputFiles::class.java)
+            }
+        )
+    }
+
+    @Test
+    fun `fanout merge task is cacheable and file based`() {
+        val mergeTaskGetters = MergeDeclaredDependencyMetadataTask::class.java.methods
+            .mapTo(mutableSetOf()) { method -> method.name }
+
+        assertTrue(
+            "Fanout merge should be cacheable because it merges shard files deterministically.",
+            MergeDeclaredDependencyMetadataTask::class.java.isAnnotationPresent(CacheableTask::class.java)
+        )
+        assertTrue("getDeclaredDependencyMetadataShards" in mergeTaskGetters)
+        assertTrue("getDeclaredDependencyMetadata" in mergeTaskGetters)
+    }
+
+    @Test
+    fun `fanout shard input snapshots declared metadata after task registration`() {
+        val rootProject = ProjectBuilder.builder().withName("root").build()
+        val sourceProject = ProjectBuilder.builder().withName("library").withParent(rootProject).build()
+        val implementation = sourceProject.configurations.create("implementation")
+        val metadataSource = DeclaredProjectMetadataSource(
+            project = sourceProject,
+            variants = listOf(variant(project = sourceProject, configuration = implementation))
+        )
+        val task = CollectProjectDeclaredDependencyMetadataTask.register(
+            rootProject = rootProject,
+            metadataSource = metadataSource
+        ).get()
+
+        sourceProject.dependencies.add("implementation", "com.example:late-added:1.0")
+        task.action()
+
+        val metadata = fromJson<DeclaredDependencyMetadata>(task.declaredDependencyMetadataShard.get().asFile)
+        assertEquals(
+            setOf("com.example:late-added:1.0"),
+            metadata.projects.getValue(":library")
+                .variants
+                .single()
+                .declaredDependencies
+        )
+    }
+
+    private fun variant(
+        project: Project,
+        configuration: Configuration
+    ): Variant<Any> {
+        return object : Variant<Any> {
+            override val name: String = "default"
+            override val backingVariant: Any = Any()
+            override val project: Project = project
+            override val variantType: VariantType = VariantType.AndroidBuild
+            override val extendsFrom: Set<String> = emptySet()
+            override val variantConfigurations: Set<Configuration> = setOf(configuration)
+            override val compileConfiguration: Set<Configuration> = emptySet()
+            override val runtimeConfiguration: Set<Configuration> = emptySet()
+            override val annotationProcessorConfiguration: Set<Configuration> = emptySet()
+            override val kspConfiguration: Set<Configuration> = emptySet()
+            override val kotlinCompilerPluginConfiguration: Set<Configuration> = emptySet()
+        }
     }
 }

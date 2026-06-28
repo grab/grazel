@@ -47,63 +47,109 @@ internal class DeclaredDependencyMetadataCollector {
         projects: Collection<Project>
     ): DeclaredDependencyMetadata {
         val projectSet = projects.toSet()
-        return DeclaredDependencyMetadata(
-            projects = variantsByProject
+        val snapshotter = DeclaredProjectMetadataSnapshotter()
+        return DeclaredDependencyMetadataMerger.merge(
+            variantsByProject
                 .entries
                 .asSequence()
                 .filter { (project, _) -> project in projectSet }
-                .sortedBy { (project, _) -> project.path }
-                .associate { (project, variants) ->
-                    project.path to ProjectDeclaredDependencyMetadata(
-                        projectType = when {
-                            project.isAndroidApplication ->
-                                DeclaredProjectType.ANDROID_APPLICATION
-                            project.isAndroidTest ->
-                                DeclaredProjectType.ANDROID_TEST
-                            else -> DeclaredProjectType.OTHER
-                        },
-                        variants = variants
-                            .sortedWith(compareBy<Variant<*>> { variant -> variant.name }
-                                .thenBy { variant -> variant.variantType.name })
-                            .map { variant ->
-                                val backingBaseVariant = variant.backingVariant as? BaseVariant
-                                val declaredDependencyDeclarations =
-                                    variant.extractDeclaredExternalDependencyDeclarations()
-                                DeclaredVariantDependencyMetadata(
-                                    name = variant.name,
-                                    variantType = variant.variantType,
-                                    extendsFrom = variant.extendsFrom.toSortedSet(),
-                                    variantConfigurationNames = variant
-                                        .configurationNamesOf { variantConfigurations },
-                                    compileConfigurationNames = variant
-                                        .configurationNamesOf { compileConfiguration },
-                                    runtimeConfigurationNames = variant
-                                        .configurationNamesOf { runtimeConfiguration },
-                                    kspConfigurationNames = variant
-                                        .configurationNamesOf { kspConfiguration },
-                                    androidLeafVariant = backingBaseVariant != null,
-                                    buildType = backingBaseVariant?.buildType?.name,
-                                    productFlavors = backingBaseVariant
-                                        ?.productFlavors
-                                        ?.map { flavor -> flavor.name }
-                                        .orEmpty(),
-                                    declaredDependencies = declaredDependencyDeclarations
-                                        .mapTo(sortedSetOf(), DeclaredExternalDependency::id),
-                                    declaredDependencyDeclarations = declaredDependencyDeclarations,
-                                    declaredProjectDependencies = variant.extractDeclaredProjectDependencyIds(),
-                                    excludeRulesByShortId = variant
-                                        .variantConfigurations
-                                        .extractDeclaredExcludeRulesByShortId(),
-                                    compileOnlyBucketName = variant.compileOnlyBucketName,
-                                    compileOnlyDependenciesByShortId = variant
-                                        .extractCompileOnlyDependenciesByShortId()
-                                )
-                            }
+                .map { (project, variants) ->
+                    project.path to snapshotter.snapshot(project, variants)
+                }
+                .asIterable()
+        )
+    }
+
+}
+
+internal class DeclaredProjectMetadataSnapshotter {
+    fun snapshot(
+        project: Project,
+        variants: Collection<Variant<*>>
+    ): ProjectDeclaredDependencyMetadata {
+        return ProjectDeclaredDependencyMetadata(
+            projectType = when {
+                project.isAndroidApplication ->
+                    DeclaredProjectType.ANDROID_APPLICATION
+                project.isAndroidTest ->
+                    DeclaredProjectType.ANDROID_TEST
+                else -> DeclaredProjectType.OTHER
+            },
+            variants = variants
+                .sortedWith(compareBy<Variant<*>> { variant -> variant.name }
+                    .thenBy { variant -> variant.variantType.name })
+                .map { variant ->
+                    val backingBaseVariant = variant.backingVariant as? BaseVariant
+                    val declaredDependencyDeclarations =
+                        variant.extractDeclaredExternalDependencyDeclarations()
+                    DeclaredVariantDependencyMetadata(
+                        name = variant.name,
+                        variantType = variant.variantType,
+                        extendsFrom = variant.extendsFrom.toSortedSet(),
+                        variantConfigurationNames = variant.configurationNamesOf { variantConfigurations },
+                        compileConfigurationNames = variant.configurationNamesOf { compileConfiguration },
+                        runtimeConfigurationNames = variant.configurationNamesOf { runtimeConfiguration },
+                        kspConfigurationNames = variant.configurationNamesOf { kspConfiguration },
+                        androidLeafVariant = backingBaseVariant != null,
+                        buildType = backingBaseVariant?.buildType?.name,
+                        productFlavors = backingBaseVariant
+                            ?.productFlavors
+                            ?.map { flavor -> flavor.name }
+                            .orEmpty(),
+                        declaredDependencies = declaredDependencyDeclarations
+                            .mapTo(sortedSetOf(), DeclaredExternalDependency::id),
+                        declaredDependencyDeclarations = declaredDependencyDeclarations,
+                        declaredProjectDependencies = variant.extractDeclaredProjectDependencyIds(),
+                        excludeRulesByShortId = variant
+                            .variantConfigurations
+                            .extractDeclaredExcludeRulesByShortId(),
+                        compileOnlyBucketName = variant.compileOnlyBucketName,
+                        compileOnlyDependenciesByShortId = variant.extractCompileOnlyDependenciesByShortId()
                     )
                 }
         )
     }
+}
 
+internal data class DeclaredProjectMetadataSource(
+    val project: Project,
+    val variants: List<Variant<*>>
+)
+
+internal object DeclaredProjectMetadataPlanner {
+    fun plan(
+        projects: Collection<Project>,
+        variantsByProject: Map<Project, Iterable<Variant<*>>>
+    ): List<DeclaredProjectMetadataSource> {
+        return projects
+            .sortedBy { project -> project.path }
+            .map { project ->
+                DeclaredProjectMetadataSource(
+                    project = project,
+                    variants = variantsByProject[project]?.toList().orEmpty()
+                )
+            }
+    }
+}
+
+internal object DeclaredDependencyMetadataMerger {
+    fun merge(
+        projectMetadata: Iterable<Pair<String, ProjectDeclaredDependencyMetadata>>
+    ): DeclaredDependencyMetadata {
+        return DeclaredDependencyMetadata(
+            projects = projectMetadata
+                .sortedBy { (projectPath, _) -> projectPath }
+                .associate { (projectPath, metadata) -> projectPath to metadata }
+        )
+    }
+
+    fun mergeShards(shards: Iterable<DeclaredDependencyMetadata>): DeclaredDependencyMetadata {
+        return merge(
+            shards.flatMap { shard ->
+                shard.projects.map { (projectPath, metadata) -> projectPath to metadata }
+            }
+        )
+    }
 }
 
 @Serializable

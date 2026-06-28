@@ -114,11 +114,15 @@ Safety guard:
 
 ## Mode 2: `PROJECT_TASK_FANOUT`
 
-This is the preferred architecture path.
+This is the preferred architecture path, but PAX validation proved that the shard task itself must
+not be cacheable while it reads live Gradle/AGP model objects. The fanout win for this item is
+parallel task execution plus deterministic file merging, not cache reuse of per-project model
+snapshots. A future cacheability item may add a separate stable snapshot producer if it can prove
+the snapshot boundary is late and complete.
 
 Task shape:
 
-- Add a cacheable per-project task, for example
+- Add an explicitly untracked per-project task, for example
   `CollectProjectDeclaredDependencyMetadataTask`.
 - Each task owns one migratable project and writes one shard JSON through a deterministic
   `RegularFileProperty` output configured from `layout.buildDirectory.file(...)`, for example:
@@ -127,24 +131,22 @@ Task shape:
 build/grazel/declared-dependency-metadata/<safe-project-path>.json
 ```
 
-- Each task receives cacheable semantic inputs as typed Gradle task properties or Gradle file
-  properties. Do not pass per-project metadata as `Property<String>`, `Provider<String>`, or any
-  JSON payload string.
-- Project shard tasks must not declare `Project`, `Configuration`, `Variant`, `Dependency`, AGP
+- Each task keeps its assigned project/variant source as task-private implementation state and
+  snapshots it inside `@TaskAction`, matching `SINGLE_TASK`'s late model-read boundary.
+- Project shard tasks must not expose `Project`, `Configuration`, `Variant`, `Dependency`, AGP
   variant objects, or other live Gradle model objects as task inputs.
-- If a per-project snapshot must be serialized before the shard task, serialize it in a producer
-  task and pass the resulting file as `RegularFileProperty` / `Provider<RegularFile>` /
-  `@InputFile`.
-- Each task's action writes or copies its shard output from typed properties/files only.
+- Do not pass per-project metadata as `Property<String>`, `Provider<String>`, or any JSON payload
+  string. JSON crosses this boundary only as the shard output file.
+- A cacheable shard path is explicitly out of scope for this item unless a separate producer task
+  writes a stable snapshot file and PAX proves byte-for-byte parity under full `migrateToBazel`.
 - Add a cacheable root merge task that reads shard JSON files, sorts by project path, and writes the
   existing aggregate JSON output.
 - The aggregate output file remains the only input consumed by `ResolveWorkspaceDependenciesTask`.
 
 Cache model:
 
-- Project shard tasks may be `@CacheableTask` only if their inputs are typed scalar/list/map Gradle
-  properties and/or Gradle file inputs, not live Gradle objects, broad build-file globs, or JSON
-  strings pretending to be semantic inputs.
+- Project shard tasks are `@UntrackedTask` because they read evaluated Gradle/AGP model objects in
+  the action. They must not claim cacheability through provider-mapped live-model inputs.
 - The merge task may be `@CacheableTask` because its inputs are shard files and stable scalar
   properties.
 - If a needed Gradle fact cannot be represented as stable serialized metadata, add that fact to the
@@ -222,7 +224,8 @@ Add focused tests before broad PAX validation:
   order;
 - downstream resolver consumes the same aggregate file path in both modes;
 - fanout shard tasks do not use `Property<String>` / `Provider<String>` JSON payload inputs;
-- fanout shard tasks do not use live Gradle/AGP objects as task inputs;
+- fanout shard tasks are explicitly untracked and do not expose live Gradle/AGP objects as task
+  inputs;
 - switching modes does not change generated sample BUILD/WORKSPACE files.
 
 Where Gradle functional coverage is expensive, add unit tests around the snapshotter/merger and one
@@ -262,10 +265,10 @@ This item is not complete unless all are true:
 - The experiment mode exists and is covered by tests.
 - `SINGLE_TASK` is explicitly untracked/uncacheable and uses bounded coroutine fanout only within
   the approved DTO snapshot boundary.
-- `PROJECT_TASK_FANOUT` uses cacheable project shard tasks plus a cacheable deterministic merge
+- `PROJECT_TASK_FANOUT` uses untracked per-project shard tasks plus a cacheable deterministic merge
   task, without JSON payload string inputs.
-- fanout shard task inputs are typed Gradle scalar/list/map properties and/or Gradle file
-  properties, with no live Gradle/AGP model object task inputs.
+- fanout shard tasks snapshot live Gradle/AGP model objects only inside task actions and expose no
+  live Gradle/AGP model object task inputs.
 - merged `DeclaredDependencyMetadata.projects` ordering is deterministic and tested with shuffled
   shard input order.
 - Both modes write or feed the same aggregate metadata contract to downstream tasks.

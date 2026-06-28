@@ -2038,3 +2038,141 @@ evidence in item-specific logs so context compaction can recover state quickly.
   in `216.504s`, plus PAX `git diff --check`.
 - PAX status remained at the maintainer/local baseline dirty shape; no PAX commit was made.
 - Next active item: Item 29 declared metadata aggregation modes.
+
+## 2026-06-29 Item 29 Start: Declared Metadata Aggregation Modes
+
+- Starting Grazel commit: `f0bfa47` (`refactor: file-back workspace root metadata`).
+- Worktree was clean before Item 29.
+- Active item: Item 29 declared metadata aggregation modes.
+- Item 29 objective: remove build-file-glob cache proxies and JSON-string task input payloads from
+  declared dependency metadata collection, add experiment-controlled `SINGLE_TASK` and
+  `PROJECT_TASK_FANOUT` modes, and keep the downstream aggregate
+  `build/grazel/declared-dependency-metadata.json` contract unchanged.
+- TDD plan: first add failing tests for the forbidden task shape, experiment default/override,
+  deterministic fanout merge ordering, and mode task annotations; then implement the smallest
+  shared snapshot/merge boundary that keeps generated output empty-diff.
+- Provider API note from maintainer discussion: prefer provider-based late Gradle semantics where
+  safe, but do not map live Gradle/AGP model reads into task inputs unless a full PAX task graph
+  proves the snapshot boundary is late and complete. Item 29 proved that even memoized provider
+  shard inputs can be realized/fingerprinted too early under `migrateToBazel`, so the current
+  fanout implementation uses untracked per-project shard tasks that snapshot in `@TaskAction`.
+- Provider API reminder for later items: when Gradle live objects need to be read late, first
+  consider `Provider`/managed-property wiring instead of eager configuration-phase reads. The safe
+  shape is either single-realization/memoized provider use, or provider-produced serializable/file
+  task inputs. Do not spread an un-memoized live Gradle snapshot provider across many task
+  properties, because each realization can observe or create different Gradle/AGP state.
+- Item 29 focused implementation state:
+  - Added `DeclaredDependencyMetadataAggregationMode` with default `SINGLE_TASK` and alternate
+    `PROJECT_TASK_FANOUT`.
+  - Deleted the old build-file glob / JSON string declared metadata task input shape.
+  - `SINGLE_TASK` is explicitly untracked and writes the aggregate declared metadata JSON.
+  - `PROJECT_TASK_FANOUT` uses untracked per-project shard tasks plus cacheable merge task, all
+    feeding the same aggregate file contract.
+  - Local timing snapshot before the untracked-shard correction: root sample `SINGLE_TASK`
+    10 projects / 145281 bytes / about 482 ms; root sample fanout 10 shards / 145281 bytes /
+    merge about 18 ms after shard tasks. Rerun focused fanout timing after the correction before
+    using this as Item 31 evidence.
+  - Focused unit and functional tests plus JSON inventory passed. Details in
+    `reports/specs/execution-log/item29-declared-metadata-aggregation-modes.md`.
+- Item 29 PAX default-mode gate:
+  `./gradlew migrateToBazel --no-daemon --console=plain --stacktrace --rerun-tasks` passed in PAX
+  in `11m 6s`.
+  `collectDeclaredDependencyMetadata` reported `mode=SINGLE_TASK projects=2327
+  aggregateJsonBytes=35247531 elapsedMs=11524`.
+  PAX status remained at the accepted local baseline dirty set, and PAX `git diff --check` passed.
+  Temporary PAX fanout experiment edit will be reverted after the parity run; do not commit PAX.
+- Item 29 fanout parity investigation:
+  - PAX `PROJECT_TASK_FANOUT` migrate passed in `10m 46s` and generated output stayed at the
+    accepted local baseline; merge logged `projects=2327 shards=2327 aggregateJsonBytes=34839457
+    elapsedMs=442`.
+  - A default metadata-only rerun logged `projects=2327 aggregateJsonBytes=37082273
+    elapsedMs=9593`; saved aggregate comparison showed variant-list mismatch between modes.
+  - Root cause fixed in task shape: fanout eagerly copied a mutable `variantsByProject` callback
+    map at `projectsEvaluated`, while the single task read the same map later during task action.
+    Added `DeclaredProjectMetadataPlanner` so both modes consume one frozen sorted project/variant
+    source. Added a regression test proving the plan freezes mutable variant callback collections.
+  - A read-only subagent also flagged that `VariantBuilder.onVariants()` and `build()` are not
+    equivalent for flavored projects. Trying to route `onVariants()` through `build()` removed
+    synthetic hierarchy nodes and caused generated `BUILD.bazel`/`WORKSPACE` drift, so that cleanup
+    was backed out from Item 29 and must be handled as a separate preserving architecture item if
+    pursued. Current Item 29 keeps existing variant hierarchy behavior and fixes only the mode
+    parity boundary.
+  - Focused tests passed after the fix:
+    `./gradlew :grazel-gradle-plugin:test --tests "com.grab.grazel.extension.ExperimentsExtensionTest" --tests "com.grab.grazel.tasks.internal.CollectDeclaredDependencyMetadataTaskTest" --tests "com.grab.grazel.gradle.dependencies.DeclaredDependencyMetadataMergerTest" --tests "com.grab.grazel.gradle.variant.DefaultVariantBuilderTest" --console=plain --no-daemon`.
+    Functional mode checks passed:
+    `./gradlew :grazel-gradle-plugin:functionalTest --tests "com.grab.grazel.migrate.BuildVariantTest.computeWorkspaceDependenciesIsUpToDateWithoutInputChanges" --tests "com.grab.grazel.migrate.BuildVariantTest.projectTaskFanoutDeclaredMetadataModeProducesStableWorkspaceDependencies" --tests "com.grab.grazel.migrate.BuildVariantTest.declaredMetadataAggregationModesProduceSameAggregateJson" --console=plain --no-daemon`.
+  - Local `./gradlew migrateToBazel --console=plain --no-daemon` passed after backing out the
+    unsafe variant-builder cleanup; `generateRootBazelScripts` restored the transient
+    `WORKSPACE` ordering drift caused by the earlier temporary missing `debug_maven_install.json`.
+    `reports/scripts/verify-json-phase-inventory.sh` passed after updating Item 29 line numbers.
+- Item 29 PAX provider-timing fix:
+  - A second PAX fanout migrate passed in `10m 56s`, but aggregate parity still failed:
+    `SINGLE_TASK` bytes/hash `35247531` /
+    `81b33d01d3ead2fe4c55fa8a1f4d6214299619e3cbe26b55c7e17a8790c927c5`,
+    fanout bytes/hash `34839457` /
+    `75f3083ee0f4d224641af17e68dc73cbacffea4808cc445e75dc8939ea100c2f`.
+  - Structural compare found all 2327 projects in both modes; 1167 projects differed because eager
+    fanout shard snapshots missed late default-bucket declarations such as `api kotlin-stdlib`,
+    databinding artifacts, `androidx.annotation`, and some plugin-added implementation deps.
+  - First attempted fix wired `CollectProjectDeclaredDependencyMetadataTask` typed inputs from a
+    memoized provider per shard. This delayed the live model read enough for sample/direct checks,
+    but PAX full `migrateToBazel` still showed task-graph timing drift.
+  - Added regression coverage:
+    `CollectDeclaredDependencyMetadataTaskTest.fanout shard input snapshots declared metadata after task registration`.
+  - Focused task test and local functional fanout parity tests passed after the provider fix.
+- Item 29 task-graph timing correction:
+  - PAX fanout full `migrateToBazel` after the provider-timing fix passed in `11m 42s`, but
+    aggregate parity still failed. The full-migrate fanout aggregate was `34839727` bytes,
+    SHA-256 `b3ba6b39115acbcb4ace206ba32fc0b0e3b303a717231389f8786d3ca2b79e47`.
+  - Fresh direct PAX `collectDeclaredDependencyMetadata` produced `37082273` bytes,
+    SHA-256 `3b837d08a6055e363359bd7b0ca21ccfcbe013dc528a457efa0df6df74b5a5df`, with
+    `10031 ms` task-action time.
+  - Fresh direct PAX `mergeDeclaredDependencyMetadata --rerun-tasks` produced the exact same
+    bytes/hash with merge time `549 ms` and wall time `3m 1s`.
+  - Decision/fix: `CollectProjectDeclaredDependencyMetadataTask` is now an explicit
+    `@UntrackedTask` and snapshots its assigned project/variant source inside `@TaskAction`,
+    matching `SINGLE_TASK`. `MergeDeclaredDependencyMetadataTask` remains cacheable because it
+    reads only shard JSON files.
+  - Durable spec update: Item 29 and roadmap now say fanout shard tasks are untracked; cacheable
+    per-project shard snapshots are out of scope unless a future stable snapshot producer proves
+    full PAX parity.
+  - Focused verification after the correction:
+    `./gradlew :grazel-gradle-plugin:test --tests "com.grab.grazel.tasks.internal.CollectDeclaredDependencyMetadataTaskTest" --console=plain --no-daemon`
+    passed.
+  - Remaining: rerun full PAX fanout `migrateToBazel` after the untracked shard correction, compare
+    aggregate/generation baseline, then revert the temporary PAX experiment toggle before
+    continuing.
+- Item 29 full PAX fanout verification after untracked shard correction:
+  - PAX `PROJECT_TASK_FANOUT` full `migrateToBazel --rerun-tasks` passed in `12m 6s`.
+  - `mergeDeclaredDependencyMetadata` logged `projects=2327 shards=2327
+    aggregateJsonBytes=35247531 elapsedMs=622`.
+  - Saved aggregate
+    `/tmp/pax-fanout-declared-dependency-metadata-after-untracked-full-migrate.json`
+    matched the earlier full-migrate `SINGLE_TASK` aggregate byte-for-byte:
+    `35247531` bytes, SHA-256
+    `81b33d01d3ead2fe4c55fa8a1f4d6214299619e3cbe26b55c7e17a8790c927c5`.
+  - Important interpretation: direct metadata-only task runs still produce a larger
+    `37082273`-byte aggregate because their task graph scope differs. Item 29 parity is judged
+    full-migrate-to-full-migrate, since that is the actual generation path.
+  - PAX `git diff --check` passed. The temporary PAX `build.gradle` fanout experiment toggle was
+    reverted; PAX is back to the accepted local baseline dirty set and must not be committed.
+  - Remaining Item 29 gates: run/re-run default-mode PAX final gate if needed, then PAX Bazel APK
+    build/test gates, Grazel broad gates, and commit Grazel locally at a clean green checkpoint.
+- Item 29 final default/PAX build gates:
+  - Grazel `./gradlew :grazel-gradle-plugin:test --console=plain --no-daemon` passed in `45s`.
+  - Grazel `./gradlew migrateToBazel --console=plain --no-daemon` passed in `10s`.
+  - `reports/scripts/verify-default-task-graph.sh` passed.
+  - `reports/scripts/verify-json-phase-inventory.sh` passed after refreshing the Item 29 JSON call
+    line numbers.
+  - `reports/scripts/verify-sample-bucket-labels.sh` still fails with the known pre-existing
+    one-sided appcompat exclude waiver:
+    `WORKSPACE must not union one-sided appcompat exclude onto androidx.constraintlayout:constraintlayout`.
+  - `reports/scripts/verify-pax-size-guard.sh --mode preserving` passed: bucket count `11`,
+    pinfile count `11`, total artifact roots `1945`, no per-repo deltas.
+  - PAX default `./gradlew migrateToBazel --no-daemon --console=plain --stacktrace --rerun-tasks`
+    passed in `9m 36s`; `SINGLE_TASK` declared metadata stayed at `35247531` bytes.
+  - PAX `./bazel.sh build --verbose_failures //app:app-gps-pax-debug.apk
+    //app:app-gps-pax-debug-android-test.apk` passed in `243.304s`.
+  - PAX `git diff --check` passed and status remained the accepted local baseline dirty set only.
+  - Item 29 can be checkpoint-committed locally; PAX focused Bazel test targets remain a later
+    final-goal gate unless rerun before moving to the next item.

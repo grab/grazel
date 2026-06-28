@@ -65,6 +65,10 @@ constructor(
             rootProject = rootProject,
             variantBuilderProvider = grazelComponent.variantBuilder(),
             migrationChecker = grazelComponent.migrationChecker(),
+            declaredDependencyMetadataAggregationMode = grazelComponent
+                .extension()
+                .experiments
+                .declaredDependencyMetadataAggregationMode,
             computeTask = computeWorkspaceDependenciesTask
         )
 

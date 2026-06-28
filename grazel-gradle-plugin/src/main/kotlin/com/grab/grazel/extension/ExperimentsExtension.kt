@@ -20,6 +20,11 @@ import org.gradle.api.model.ObjectFactory
 import org.gradle.api.provider.Property
 import org.gradle.kotlin.dsl.property
 
+enum class DeclaredDependencyMetadataAggregationMode {
+    SINGLE_TASK,
+    PROJECT_TASK_FANOUT
+}
+
 /**
  * Additional experiments configuration
  */
@@ -58,5 +63,9 @@ data class ExperimentsExtension(private val objects: ObjectFactory) {
     val minSdkVersionWorkaround: Property<Boolean> = objects
         .property<Boolean>()
         .convention(false)
+
+    val declaredDependencyMetadataAggregationMode: Property<DeclaredDependencyMetadataAggregationMode> = objects
+        .property<DeclaredDependencyMetadataAggregationMode>()
+        .convention(DeclaredDependencyMetadataAggregationMode.SINGLE_TASK)
 
 }
