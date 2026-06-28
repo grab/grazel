@@ -102,6 +102,9 @@ intended output change).
 | **19** | Target reference facts; remove target-builder execution from reference collection | draft final-review | **preserving (empty-diff)** | Replace `BazelTarget`/`TargetBuilder`-based reference discovery with structured facts; keep consumer-first `WorkspacePlanService` mutation; target builders run only during generation | 17, 18 |
 | **21** | Simplify pass — dead code, duplication & indirection | specced | **preserving (empty-diff)** | Whole-branch cleanup from the 4-agent simplify audit: delete zero-caller dead code (`tagsFor` ext, `rootArtifacts`/`variantArtifacts` fields, dead overloads/interface methods, unread input), de-dup `hasSameDefaultOwnerIdentityAs`, inline one-caller wrappers, filter-before-override in maven calc. Keeps `TasksManager` dependsOn + `@InputFiles` (deferred) | 10 |
 | **22** | Set-math ownership reduction — EXPERIMENT | completed: Outcome B | proven-essential doc | Measured set-subtraction ownership on sample/PAX; active residual paths proved the current set-math problem-essential, so no Phase 2 reshape was attempted | 12, 13, 17 |
+| **23** | Target reference model hygiene | proposed | **preserving (empty-diff)** | Remove dead `BazelTarget` compatibility collector and collapse duplicate target-reference data models; do not broaden into typed-label/regex cleanup | 19 |
+| **24** | Branch-diff source shape hygiene | proposed | **preserving (empty-diff)** | Inventory Kotlin files changed by this branch; use scripts plus scoped subagents to remove policy-heavy generic extensions, clarify helper model naming/placement, remove test-only production seams/reflection escapes, and justify any retained complexity | 23 |
+| **25** | Merge generate + format into one task per scope | specced | **preserving (empty-diff)** | Collapse the per-project and root generate/format task pairs into one `@UntrackedTask` each; extract a shared `formatWithBuildifier` helper; delete `FormatBazelFileTask`; rewire post/pin/migrate edges. Accepts losing format `@CacheableTask` (~6s/run on PAX; generate already untracked) | 10 |
 
 **Recommended next execution order:** 17 → 18 → 19 → 21, then optionally 22 as the stretch
 goal. Item 21 is mostly independent and may run earlier only for clearly disjoint cleanup, but
@@ -112,6 +115,18 @@ maintainer explicitly pulls it forward after Item 17. For Item 22, Phase 1 measu
 required stretch deliverable; Phase 2 reshape is allowed only if the Item 22 exit rubric proves
 shadow parity and a real complexity reduction. Item 20 (task cacheability after
 target-reference facts) remains discussion-only.
+
+**Post-Item-19 cleanup:** Item 23 is a small preserving cleanup discovered after the Item 19
+cutover. It removes the old `BazelTarget` reference collector from production source and collapses
+the duplicate `TargetReferenceFacts`/`TargetMavenRepoReferences` model shape. It deliberately does
+not attempt the larger typed-label rewrite needed to eliminate all regex/string-shaped reference
+parsing.
+
+**Post-Item-23 source-shape cleanup:** Item 24 is a branch-diff-scoped hygiene pass. Its inventory
+starts from Kotlin files changed by this branch, but justified fan-out edits are allowed for
+renames, interfaces, call-site cleanup, and type-boundary improvements. It uses deterministic
+inventory plus scoped subagents because scripts catch shapes while agents catch altitude and naming
+intent. Generated output and the PAX baseline must remain unchanged.
 
 **Post-16 follow-up pass (2026-06-28 audit).** Review agents ground-truthed the branch
 after Item 16. Finding: the altitude work landed *more* completely than the executor's
