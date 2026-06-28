@@ -21,9 +21,7 @@ import com.grab.grazel.gradle.dependencies.WorkspaceDependencyRootInput
 import com.grab.grazel.gradle.dependencies.WorkspaceDependencyRootInputPlanner
 import com.grab.grazel.gradle.variant.Variant
 import com.grab.grazel.gradle.variant.VariantBuilder
-import com.grab.grazel.util.Json
 import dagger.Lazy
-import kotlinx.serialization.encodeToString
 import org.gradle.api.Project
 import org.gradle.api.tasks.TaskProvider
 import java.util.concurrent.ConcurrentHashMap
@@ -44,6 +42,7 @@ internal object WorkspaceDependencyInputsRegistrar {
             rootProject = rootProject,
             migrationChecker = migrationChecker
         )
+        val workspaceRootMetadataTask = CollectWorkspaceDependencyRootMetadataTask.register(rootProject)
         val resolveWorkspaceDependenciesTask = ResolveWorkspaceDependenciesTask.register(rootProject)
 
         resolveWorkspaceDependenciesTask.configure {
@@ -53,8 +52,12 @@ internal object WorkspaceDependencyInputsRegistrar {
             kspDependencies.set(
                 kspProcessorDependenciesTask.flatMap { it.kspDependencies }
             )
+            workspaceDependencyRootMetadata.set(
+                workspaceRootMetadataTask.flatMap { it.workspaceDependencyRootMetadata }
+            )
             dependsOn(declaredDependencyMetadataTask)
             dependsOn(kspProcessorDependenciesTask)
+            dependsOn(workspaceRootMetadataTask)
         }
         computeTask.configure {
             workspaceDependencyResults.set(
@@ -69,12 +72,20 @@ internal object WorkspaceDependencyInputsRegistrar {
         )
 
         rootProject.gradle.projectsEvaluated {
+            val rootInputs = planRootInputs(
+                rootProject = rootProject,
+                migrationChecker = migrationChecker.get(),
+                variantsByProject = variantsByProject
+            )
             resolveWorkspaceDependenciesTask.configure {
-                wireRootComponents(
-                    rootProject = rootProject,
-                    migrationChecker = migrationChecker.get(),
-                    variantsByProject = variantsByProject
-                )
+                rootInputs.forEach { rootInput ->
+                    addRootComponent(rootInput)
+                }
+            }
+            workspaceRootMetadataTask.configure {
+                rootInputs.forEach { rootInput ->
+                    addRootMetadata(rootProject, rootInput)
+                }
             }
         }
     }
@@ -100,28 +111,37 @@ internal object WorkspaceDependencyInputsRegistrar {
         return variantsByProject
     }
 
-    private fun ResolveWorkspaceDependenciesTask.wireRootComponents(
+    private fun planRootInputs(
         rootProject: Project,
         migrationChecker: MigrationChecker,
         variantsByProject: Map<Project, Iterable<Variant<*>>>
-    ) {
+    ): List<WorkspaceDependencyRootInput> {
         val migratableProjects = rootProject.subprojects
             .filter { project -> migrationChecker.canMigrate(project) }
             .sortedBy { project -> project.path }
-        WorkspaceDependencyRootInputPlanner
+        return WorkspaceDependencyRootInputPlanner
             .plan(
                 migratableProjects = migratableProjects,
                 variantsByProject = variantsByProject
             )
-            .forEach { rootInput ->
-                addRoot(rootInput)
-            }
     }
 
-    private fun ResolveWorkspaceDependenciesTask.addRoot(rootInput: WorkspaceDependencyRootInput) {
+    private fun ResolveWorkspaceDependenciesTask.addRootComponent(rootInput: WorkspaceDependencyRootInput) {
         workspaceDependencyRootComponents.add(
             rootInput.configuration.incoming.resolutionResult.rootComponent
         )
-        workspaceDependencyRootMetadataJsons.add(Json.encodeToString(rootInput.toMetadata()))
+    }
+
+    private fun CollectWorkspaceDependencyRootMetadataTask.addRootMetadata(
+        rootProject: Project,
+        rootInput: WorkspaceDependencyRootInput
+    ) {
+        workspaceDependencyRootMetadataItems.add(
+            rootProject.objects
+                .newInstance(WorkspaceDependencyRootMetadataInput::class.java)
+                .apply {
+                    setMetadata(rootProject.provider { rootInput.toMetadata() })
+                }
+        )
     }
 }

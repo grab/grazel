@@ -138,5 +138,10 @@ class ComputeWorkspaceDependenciesTaskTest {
             "Live root metadata should be consumed by the resolver task, not compute.",
             "getWorkspaceDependencyRootMetadataJsons" in taskGetterNames
         )
+        assertFalse(
+            "Workspace root metadata should be file-backed and consumed by the resolver task, " +
+                "not compute.",
+            "getWorkspaceDependencyRootMetadata" in taskGetterNames
+        )
     }
 }

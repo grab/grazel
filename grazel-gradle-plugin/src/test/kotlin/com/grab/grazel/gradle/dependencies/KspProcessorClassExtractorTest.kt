@@ -41,10 +41,9 @@ class KspProcessorClassExtractorTest {
         )
 
         val processorClasses = KspProcessorClassExtractor.extractProcessorClasses(
-            artifactJars = setOf(firstJar, secondJar),
             artifactMapping = mapOf(
-                "com.example.first:processor" to firstJar.absolutePath,
-                "com.example.second:processor" to secondJar.absolutePath
+                "com.example.first:processor" to firstJar,
+                "com.example.second:processor" to secondJar
             )
         )
 

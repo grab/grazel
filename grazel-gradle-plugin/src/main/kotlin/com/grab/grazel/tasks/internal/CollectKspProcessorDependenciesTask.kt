@@ -35,18 +35,19 @@ import org.gradle.api.artifacts.result.ResolvedComponentResult
 import org.gradle.api.file.ConfigurableFileCollection
 import org.gradle.api.file.RegularFileProperty
 import org.gradle.api.provider.ListProperty
-import org.gradle.api.provider.MapProperty
+import org.gradle.api.provider.Property
 import org.gradle.api.provider.SetProperty
 import org.gradle.api.tasks.CacheableTask
 import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.InputFiles
+import org.gradle.api.tasks.InputFile
+import org.gradle.api.tasks.Nested
 import org.gradle.api.tasks.OutputFile
 import org.gradle.api.tasks.PathSensitive
 import org.gradle.api.tasks.PathSensitivity
 import org.gradle.api.tasks.TaskAction
 import org.gradle.api.tasks.TaskProvider
 import org.gradle.kotlin.dsl.register
-import java.util.TreeMap
 import java.util.TreeSet
 
 @CacheableTask
@@ -58,8 +59,8 @@ internal abstract class CollectKspProcessorDependenciesTask : DefaultTask() {
     @get:Input
     abstract val kspDirectDependencies: SetProperty</*shortId*/ String>
 
-    @get:Input
-    abstract val kspArtifactMapping: MapProperty</*shortId*/ String, /*file path*/ String>
+    @get:Nested
+    abstract val kspArtifacts: ListProperty<KspArtifactInput>
 
     @get:InputFiles
     @get:PathSensitive(PathSensitivity.ABSOLUTE)
@@ -76,9 +77,12 @@ internal abstract class CollectKspProcessorDependenciesTask : DefaultTask() {
     @TaskAction
     fun action() {
         val directDependencies = kspDirectDependencies.get()
+        val artifactsByShortId = kspArtifacts.get()
+            .associate { artifact ->
+                artifact.shortId.get() to artifact.file.get().asFile
+            }
         val processorClassMap = KspProcessorClassExtractor.extractProcessorClasses(
-            kspClasspathFiles.files,
-            kspArtifactMapping.get()
+            artifactsByShortId
         )
         val resolvedKspDependencies = kspRootComponents.get()
             .asSequence()
@@ -137,7 +141,7 @@ internal abstract class CollectKspProcessorDependenciesTask : DefaultTask() {
                 .register<CollectKspProcessorDependenciesTask>(TASK_NAME) {
                     kspRootComponents.convention(emptyList())
                     kspDirectDependencies.convention(emptySet())
-                    kspArtifactMapping.convention(emptyMap())
+                    kspArtifacts.convention(emptyList())
                     kspDependencies.set(rootProject.layout.buildDirectory.file("grazel/ksp-dependencies.json"))
                 }
 
@@ -171,7 +175,7 @@ internal abstract class CollectKspProcessorDependenciesTask : DefaultTask() {
                 }
             )
 
-            kspArtifactMapping.putAll(
+            kspArtifacts.addAll(
                 project.provider {
                     kspClasspath.processorClasspath.incoming
                         .artifactView {
@@ -184,15 +188,29 @@ internal abstract class CollectKspProcessorDependenciesTask : DefaultTask() {
                                 ?: return@mapNotNull null
                             val shortId = "${id.group}:${id.module}"
                             if (shortId in directDepShortIds) {
-                                shortId to artifact.file.absolutePath
+                                project.objects
+                                    .newInstance(KspArtifactInput::class.java)
+                                    .apply {
+                                        this.shortId.set(shortId)
+                                        file.set(artifact.file)
+                                    }
                             } else null
                         }
-                        .associateTo(TreeMap()) { (shortId, filePath) -> shortId to filePath }
+                        .sortedBy { artifact -> artifact.shortId.get() }
                 }
             )
 
             kspRootComponents.add(kspClasspath.processorClasspath.incoming.resolutionResult.rootComponent)
             kspClasspathFiles.from(kspClasspath.processorClasspath)
         }
+    }
+
+    internal abstract class KspArtifactInput {
+        @get:Input
+        abstract val shortId: Property<String>
+
+        @get:InputFile
+        @get:PathSensitive(PathSensitivity.ABSOLUTE)
+        abstract val file: RegularFileProperty
     }
 }

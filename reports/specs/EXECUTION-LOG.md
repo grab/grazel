@@ -1978,3 +1978,63 @@ evidence in item-specific logs so context compaction can recover state quickly.
   - `git diff --check` and `git diff --check master...HEAD` passed.
 - Next required gate: PAX migrate/build/test loop from `/Users/arun.sampathkumar/work/pax-android`;
   PAX must stay baseline-only and must not be committed.
+
+## 2026-06-29 Current Goal Start: Items 30, 29, 31, 28
+
+- Current Grazel branch: `arun/dependencies-refactor`.
+- Current Grazel commit after approved spec-only baseline commit:
+  `47fe3e7d2b79a0c9860037487e52cf16f677c6ec`
+  (`docs: tighten dependency refactor follow-up specs`).
+- Active item: Item 30 workspace resolution input boundary.
+- PAX regression workspace: `/Users/arun.sampathkumar/work/pax-android`, branch
+  `arun/grazel-refactor`, commit `cfa1057ed58ccb2a795a5f679f072a8f604ff48e`.
+- Live PAX worktree at this checkpoint is not clean and must not be committed by Codex:
+  `build-logic/project/src/main/kotlin/grazel/Constants.kt`,
+  `build-logic/project/src/main/kotlin/grazel/Grazel.kt`,
+  `build-logic/project/src/main/kotlin/grazel/task/ModuleLoggerTask.kt`,
+  `generated/dependency_graph.json`, and untracked
+  `build-logic/project/src/main/kotlin/grazel/task/Buildifier.kt`.
+  Treat that as the local maintainer baseline state unless the maintainer gives new direction.
+- Current execution order: Item 30 -> Item 29 -> Item 31 -> Item 28 -> simplify/adversarial
+  review -> final Grazel/PAX gates.
+- Item 30 hard focus: remove JSON model payloads from workspace-root task wiring, transport root
+  metadata through Gradle file inputs/outputs, keep `ResolvedComponentResult` task inputs intact,
+  add the JSON phase inventory and verifier, and preserve generated output.
+- Reminder for compaction: never replace `ResolvedComponentResult` because it is live-looking;
+  Gradle made this cacheable and this branch intentionally keeps the master-like input contract.
+
+## 2026-06-29 Item 30 Complete: Workspace Resolution Input Boundary
+
+- Implemented file-backed workspace root metadata:
+  `CollectWorkspaceDependencyRootMetadataTask` writes root metadata JSON, and
+  `ResolveWorkspaceDependenciesTask` consumes it as an `@InputFile`.
+- Kept `workspaceDependencyRootComponents: ListProperty<ResolvedComponentResult>` as an `@Input`;
+  this remains intentional and cacheable by Gradle design.
+- Removed eager `Json.encodeToString(rootInput.toMetadata())` from
+  `WorkspaceDependencyInputsRegistrar`; root metadata now flows through managed Gradle input
+  properties and is serialized only in the metadata task action.
+- Fixed the KSP sidecar cache input smell in the same item: replaced absolute path string artifact
+  mapping with nested `KspArtifactInput(shortId, RegularFileProperty)` and changed
+  `KspProcessorClassExtractor` to consume `Map<String, File>`.
+- Added `reports/scripts/verify-json-phase-inventory.sh` and
+  `reports/specs/execution-log/item30-json-phase-inventory.tsv`. Remaining
+  `CollectDeclaredDependencyMetadataTask.declaredDependencyMetadataJson` JSON-string payload is
+  explicitly marked as Item 29-owned debt.
+- Verification passed:
+  focused task/extractor tests, `collectWorkspaceDependencyRootMetadata` plus up-to-date rerun,
+  `collectKspProcessorDependencies` plus up-to-date rerun,
+  `./gradlew :grazel-gradle-plugin:test --console=plain --no-daemon`,
+  `./gradlew migrateToBazel --console=plain --no-daemon`,
+  `reports/scripts/verify-json-phase-inventory.sh`,
+  `reports/scripts/verify-default-task-graph.sh`,
+  `reports/scripts/verify-pax-size-guard.sh --mode preserving`,
+  `git diff --check`, and `git diff --check master...HEAD`.
+- Known local waiver unchanged:
+  `reports/scripts/verify-sample-bucket-labels.sh` still fails on the documented pre-existing
+  one-sided appcompat/constraintlayout exclude case.
+- PAX gates passed:
+  `./gradlew migrateToBazel --no-daemon --console=plain --stacktrace --rerun-tasks` in `12m 6s`,
+  then `./bazel.sh build --verbose_failures //app:app-gps-pax-debug.apk //app:app-gps-pax-debug-android-test.apk`
+  in `216.504s`, plus PAX `git diff --check`.
+- PAX status remained at the maintainer/local baseline dirty shape; no PAX commit was made.
+- Next active item: Item 29 declared metadata aggregation modes.

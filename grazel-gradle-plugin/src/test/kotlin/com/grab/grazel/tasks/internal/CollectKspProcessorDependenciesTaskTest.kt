@@ -19,6 +19,7 @@ package com.grab.grazel.tasks.internal
 import org.gradle.api.provider.SetProperty
 import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.Internal
+import org.gradle.api.tasks.Nested
 import org.gradle.api.tasks.PathSensitive
 import org.gradle.api.tasks.PathSensitivity
 import org.gradle.testfixtures.ProjectBuilder
@@ -35,15 +36,15 @@ class CollectKspProcessorDependenciesTaskTest {
     val temporaryFolder = TemporaryFolder()
 
     @Test
-    fun `ksp processor dependency task declares resolved roots and artifact mapping as inputs`() {
+    fun `ksp processor dependency task declares resolved roots and typed artifact inputs`() {
         val taskGetterNames = CollectKspProcessorDependenciesTask::class.java.methods
             .mapTo(mutableSetOf()) { method -> method.name }
         val rootComponentsGetter = CollectKspProcessorDependenciesTask::class.java
             .getMethod("getKspRootComponents")
         val directDependenciesGetter = CollectKspProcessorDependenciesTask::class.java
             .getMethod("getKspDirectDependencies")
-        val artifactMappingGetter = CollectKspProcessorDependenciesTask::class.java
-            .getMethod("getKspArtifactMapping")
+        val artifactsGetter = CollectKspProcessorDependenciesTask::class.java
+            .getMethod("getKspArtifacts")
         val classpathFilesGetter = CollectKspProcessorDependenciesTask::class.java
             .getMethod("getKspClasspathFiles")
 
@@ -66,12 +67,13 @@ class CollectKspProcessorDependenciesTaskTest {
             directDependenciesGetter.returnType
         )
         assertTrue(
-            "KSP artifact mapping should participate in the task cache key.",
-            artifactMappingGetter.isAnnotationPresent(Input::class.java)
+            "KSP artifact files and short IDs should participate in the task cache key as typed " +
+                "nested inputs, not absolute-path strings.",
+            artifactsGetter.isAnnotationPresent(Nested::class.java)
         )
         assertFalse(
-            "KSP artifact mapping should not be hidden from Gradle caching.",
-            artifactMappingGetter.isAnnotationPresent(Internal::class.java)
+            "KSP artifact mapping strings should not remain as task inputs.",
+            "getKspArtifactMapping" in taskGetterNames
         )
         assertEquals(
             "KSP classpath paths must remain distinct so same-basename processor jars do not collide.",
@@ -92,7 +94,7 @@ class CollectKspProcessorDependenciesTaskTest {
 
         task.kspRootComponents.set(emptyList())
         task.kspDirectDependencies.set(emptySet())
-        task.kspArtifactMapping.set(emptyMap())
+        task.kspArtifacts.set(emptyList())
         task.kspDependencies.set(outputFile)
 
         task.action()

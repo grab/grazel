@@ -22,11 +22,9 @@ import com.grab.grazel.gradle.dependencies.AggregatedDependencyRootMetadata
 import com.grab.grazel.gradle.dependencies.DeclaredDependencyMetadata
 import com.grab.grazel.gradle.dependencies.model.ResolveDependenciesResult
 import com.grab.grazel.gradle.dependencies.model.ResolveDependenciesResult.Companion.Scope.KSP
-import com.grab.grazel.util.Json
 import com.grab.grazel.util.fromJson
 import com.grab.grazel.util.logHeap
 import com.grab.grazel.util.writeJson
-import kotlinx.serialization.decodeFromString
 import org.gradle.api.DefaultTask
 import org.gradle.api.Project
 import org.gradle.api.artifacts.result.ResolvedComponentResult
@@ -55,8 +53,9 @@ internal abstract class ResolveWorkspaceDependenciesTask : DefaultTask() {
     @get:Input
     abstract val workspaceDependencyRootComponents: ListProperty<ResolvedComponentResult>
 
-    @get:Input
-    abstract val workspaceDependencyRootMetadataJsons: ListProperty<String>
+    @get:InputFile
+    @get:PathSensitive(PathSensitivity.RELATIVE)
+    abstract val workspaceDependencyRootMetadata: RegularFileProperty
 
     @get:OutputFile
     abstract val workspaceDependencyResults: RegularFileProperty
@@ -70,9 +69,9 @@ internal abstract class ResolveWorkspaceDependenciesTask : DefaultTask() {
     fun action() {
         logger.logHeap("ResolveWorkspaceDeps:start")
         val rootComponents = workspaceDependencyRootComponents.get()
-        val rootMetadata = workspaceDependencyRootMetadataJsons.get().map { metadataJson ->
-            Json.decodeFromString<AggregatedDependencyRootMetadata>(metadataJson)
-        }
+        val rootMetadata = fromJson<List<AggregatedDependencyRootMetadata>>(
+            workspaceDependencyRootMetadata.get()
+        )
         check(rootComponents.size == rootMetadata.size) {
             "Workspace dependency root component count (${rootComponents.size}) does not match " +
                 "metadata count (${rootMetadata.size})"
@@ -106,7 +105,6 @@ internal abstract class ResolveWorkspaceDependenciesTask : DefaultTask() {
                     rootProject.layout.buildDirectory.file("grazel/workspace-dependency-results.json")
                 )
                 workspaceDependencyRootComponents.convention(emptyList())
-                workspaceDependencyRootMetadataJsons.convention(emptyList())
             }
         }
     }

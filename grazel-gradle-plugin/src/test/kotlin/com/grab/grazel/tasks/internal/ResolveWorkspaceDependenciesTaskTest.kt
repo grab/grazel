@@ -40,20 +40,21 @@ class ResolveWorkspaceDependenciesTaskTest {
         val rootComponentsGetter = ResolveWorkspaceDependenciesTask::class.java
             .getMethod("getWorkspaceDependencyRootComponents")
         val metadataGetter = ResolveWorkspaceDependenciesTask::class.java
-            .getMethod("getWorkspaceDependencyRootMetadataJsons")
+            .getMethod("getWorkspaceDependencyRootMetadata")
         val resultsGetter = ResolveWorkspaceDependenciesTask::class.java
             .getMethod("getWorkspaceDependencyResults")
 
         assertTrue("getDeclaredDependencyMetadata" in taskGetterNames)
         assertTrue("getKspDependencies" in taskGetterNames)
         assertTrue("getWorkspaceDependencyRootComponents" in taskGetterNames)
-        assertTrue("getWorkspaceDependencyRootMetadataJsons" in taskGetterNames)
+        assertTrue("getWorkspaceDependencyRootMetadata" in taskGetterNames)
         assertTrue("getWorkspaceDependencyResults" in taskGetterNames)
 
         assertTrue(rootComponentsGetter.isAnnotationPresent(Input::class.java))
         assertFalse(rootComponentsGetter.isAnnotationPresent(Internal::class.java))
 
-        assertTrue(metadataGetter.isAnnotationPresent(Input::class.java))
+        assertTrue(metadataGetter.isAnnotationPresent(InputFile::class.java))
+        assertTrue(metadataGetter.isAnnotationPresent(PathSensitive::class.java))
         assertTrue(resultsGetter.isAnnotationPresent(OutputFile::class.java))
     }
 
@@ -68,5 +69,18 @@ class ResolveWorkspaceDependenciesTaskTest {
         assertTrue(declaredMetadataGetter.isAnnotationPresent(PathSensitive::class.java))
         assertTrue(kspGetter.isAnnotationPresent(InputFile::class.java))
         assertTrue(kspGetter.isAnnotationPresent(PathSensitive::class.java))
+    }
+
+    @Test
+    fun `root metadata writer task owns serialized metadata file output`() {
+        val metadataGetter = CollectWorkspaceDependencyRootMetadataTask::class.java
+            .getMethod("getWorkspaceDependencyRootMetadata")
+
+        assertTrue(
+            CollectWorkspaceDependencyRootMetadataTask::class.java.isAnnotationPresent(
+                CacheableTask::class.java
+            )
+        )
+        assertTrue(metadataGetter.isAnnotationPresent(OutputFile::class.java))
     }
 }
