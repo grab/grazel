@@ -1554,3 +1554,24 @@ evidence in item-specific logs so context compaction can recover state quickly.
 - `git status --short` after functional tests showed only Item 21 source/test/docs changes and
   the new `DependencyIdentity.kt`; no generated fixture drift.
 - `git diff --check master...HEAD` was run by the verification subagent and exited clean.
+
+## 2026-06-28 Item 22 Outcome B
+
+- Added `reports/specs/execution-log/item22-setmath-ownership-experiment.md`.
+- Ran temporary measurement instrumentation on sample and PAX, then removed all instrumentation
+  before completion.
+- PAX measurement completed via
+  `./gradlew resolveWorkspaceDependencies --no-daemon --console=plain --stacktrace --rerun-tasks -Pgrazel.internal.bucketPlacementReport=build/grazel/bucket-placement-measurement.json`.
+- Resource notes during PAX measurement: disk was tight but stable around `19-21 GiB` free on
+  Data; stale Bazel servers/workers were shut down gracefully with `bazelisk shutdown` /
+  `./bazel.sh shutdown`; no cache deletion was performed.
+- Measurement result: PAX had `48628` placements and `0` unknown classifications. Active
+  problem-essential paths included `429` inferred common-descendant placements, `6049` leaf
+  residual placements, `5666` selected leaf hierarchy placements, `432` default fallback
+  coverage decisions, and `2359` leaf residual exact-artifact coverage decisions.
+- Sample also exercised the retained set-math: `54` inferred common-descendant placements,
+  `4` leaf residual placements, `55` default fallback coverage decisions, `28` hierarchy
+  superset-closure decisions, and `16` leaf residual superset-closure decisions.
+- Decision: do not proceed to Item 22 Phase 2. A declaration-driven replacement is not
+  justified under the empty-diff contract without exact shadow parity. Current set-math is
+  reclassified as proven problem-essential for the verified PAX/sample shape.

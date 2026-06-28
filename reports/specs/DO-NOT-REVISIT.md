@@ -42,3 +42,26 @@ maintainer explicitly asks for a local generated-output baseline commit. Do not 
 Item 19 exists to remove that round-trip. The intended end state is structured
 `TargetReferenceFacts` feeding `WorkspaceRenderPlan`, then target builders running once during
 BUILD generation.
+
+## Do Not Replace Bucket Set-Math With Declaration-Only Ownership
+
+Item 22 measured the current placement engine on sample and PAX. The experiment ended with
+Outcome B: the set-math is proven problem-essential for the verified shape, not merely
+unexamined complexity.
+
+PAX had `48628` measured placements and `0` unknown classifications. Non-trivial retained paths
+fired: `429` inferred common-descendant placements, `6049` leaf residual placements, `5666`
+selected leaf hierarchy placements, `432` default fallback coverage decisions, and `2359` leaf
+residual exact-artifact coverage decisions. Sample also exercised the same families:
+`54` inferred common-descendant placements, `4` leaf residual placements, `55` default fallback
+coverage decisions, `28` hierarchy superset-closure decisions, and `16` leaf residual
+superset-closure decisions.
+
+Concrete PAX examples include `:app` `gps` inferred ownership of `androidx.activity:activity`,
+`androidx.activity:activity-ktx`, `androidx.browser:browser`, and `androidx.camera:camera-view`,
+plus `:app` `gpsPaxDebug` leaf residual ownership of
+`androidx.compose.ui:ui-geometry`, `com.bugsee:bugsee-android`, and
+`com.grab.geo.indoor.nav:indoormapnav:0.0.76.pax-debug`.
+
+A future ownership rewrite must produce an exact shadow-parity model first. Do not re-open a
+declaration-only rewrite based only on intuition that declarations should drive all ownership.
