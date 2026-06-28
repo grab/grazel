@@ -59,7 +59,7 @@ class DependencyBucketPlacementEngineTest {
 
         assertEquals(
             listOf(
-                DependencyBucketVariant(
+                BucketPlacementVariantInput(
                     name = "freeDebug",
                     extendsFrom = setOf(DEFAULT_VARIANT, "debug", "free"),
                     buildType = "debug",
@@ -72,7 +72,7 @@ class DependencyBucketPlacementEngineTest {
         )
         assertEquals(
             listOf(
-                DependencyBucketVariant(
+                BucketPlacementVariantInput(
                     name = "freeDebug",
                     extendsFrom = setOf(DEFAULT_VARIANT, "debug", "demo"),
                     buildType = "debug",
@@ -247,7 +247,7 @@ class DependencyBucketPlacementEngineTest {
         val variants = metadata.mainBucketVariants(":app")
 
         assertEquals(
-            DependencyBucketVariant(
+            BucketPlacementVariantInput(
                 name = "gpsPax",
                 extendsFrom = setOf(DEFAULT_VARIANT, "gps", "pax"),
                 buildType = null,
@@ -914,7 +914,7 @@ class DependencyBucketPlacementEngineTest {
         name: String,
         buildType: String,
         vararg productFlavors: String
-    ): DependencyBucketVariant {
+    ): BucketPlacementVariantInput {
         return leafWithParents(
             name = name,
             extendsFrom = (setOf(DEFAULT_VARIANT, buildType) + productFlavors).toSortedSet(),
@@ -928,7 +928,7 @@ class DependencyBucketPlacementEngineTest {
         extendsFrom: Set<String>,
         buildType: String,
         vararg productFlavors: String
-    ): DependencyBucketVariant {
+    ): BucketPlacementVariantInput {
         return leafWithParents(
             name = name,
             extendsFrom = extendsFrom,
@@ -942,8 +942,8 @@ class DependencyBucketPlacementEngineTest {
         extendsFrom: Set<String>,
         buildType: String,
         productFlavors: List<String>
-    ): DependencyBucketVariant {
-        return DependencyBucketVariant(
+    ): BucketPlacementVariantInput {
+        return BucketPlacementVariantInput(
             name = name,
             extendsFrom = extendsFrom.toSortedSet(),
             buildType = buildType,
@@ -957,8 +957,8 @@ class DependencyBucketPlacementEngineTest {
         extendsFrom: Set<String>,
         buildType: String? = null,
         productFlavors: List<String> = emptyList()
-    ): DependencyBucketVariant {
-        return DependencyBucketVariant(
+    ): BucketPlacementVariantInput {
+        return BucketPlacementVariantInput(
             name = name,
             extendsFrom = extendsFrom.toSortedSet(),
             buildType = buildType,

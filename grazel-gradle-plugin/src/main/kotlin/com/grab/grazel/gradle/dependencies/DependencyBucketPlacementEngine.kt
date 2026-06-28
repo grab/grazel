@@ -24,7 +24,7 @@ import com.grab.grazel.gradle.variant.DEFAULT_VARIANT
 import com.grab.grazel.gradle.variant.VariantType
 import com.grab.grazel.gradle.variant.VariantType.AndroidBuild
 
-internal data class DependencyBucketVariant(
+internal data class BucketPlacementVariantInput(
     val name: String,
     val extendsFrom: Set<String>,
     val buildType: String?,
@@ -54,14 +54,14 @@ internal data class DependencyBucketPlacementPlan(
 
 internal class DependencyBucketPlacementEngine {
     fun planByProject(
-        variants: Collection<DependencyBucketVariant>,
+        variants: Collection<BucketPlacementVariantInput>,
         hierarchyBucketClosures: Map<ProjectDependencyBucket, Map<String, ResolvedDependency>>,
         leafClosures: Map<ProjectDependencyBucket, Map<String, ResolvedDependency>>,
         baseBucketName: String = DEFAULT_VARIANT
     ): Map<String, DependencyBucketPlacementPlan> {
         val variantsByProject = variants
             .filter { variant -> variant.projectPath.isNotBlank() }
-            .groupBy(DependencyBucketVariant::projectPath)
+            .groupBy(BucketPlacementVariantInput::projectPath)
         val hierarchyBucketClosuresByProject = hierarchyBucketClosures
             .entries
             .groupBy { (bucket, _) -> bucket.projectPath }
@@ -91,7 +91,7 @@ internal class DependencyBucketPlacementEngine {
     }
 
     fun plan(
-        variants: Collection<DependencyBucketVariant>,
+        variants: Collection<BucketPlacementVariantInput>,
         hierarchyBucketClosures: Map<String, Map<String, ResolvedDependency>>,
         leafClosures: Map<String, Map<String, ResolvedDependency>>,
         baseBucketName: String = DEFAULT_VARIANT
@@ -333,18 +333,18 @@ internal class DependencyBucketPlacementEngine {
 }
 
 private class BucketPlacementGraph(
-    variants: Collection<DependencyBucketVariant>,
+    variants: Collection<BucketPlacementVariantInput>,
     private val baseBucketName: String
 ) {
-    private val leafVariants = variants.filter(DependencyBucketVariant::leaf)
-    val leafVariantNames = leafVariants.map(DependencyBucketVariant::name).toSortedSet()
+    private val leafVariants = variants.filter(BucketPlacementVariantInput::leaf)
+    val leafVariantNames = leafVariants.map(BucketPlacementVariantInput::name).toSortedSet()
     private val parentNames = variants
-        .flatMap(DependencyBucketVariant::extendsFrom)
+        .flatMap(BucketPlacementVariantInput::extendsFrom)
         .toSortedSet()
     private val projectPath = variants.firstOrNull()?.projectPath.orEmpty()
     private val defaultVariantType = variants.firstOrNull()?.variantType ?: AndroidBuild
     val hierarchyBucketNames = (
-        variants.filterNot(DependencyBucketVariant::leaf).map(DependencyBucketVariant::name) +
+        variants.filterNot(BucketPlacementVariantInput::leaf).map(BucketPlacementVariantInput::name) +
             parentNames +
             baseBucketName
     )
@@ -381,7 +381,7 @@ private class BucketPlacementGraph(
                 leaf = variant.leaf
             )
         }
-        val variantNames = variants.map(DependencyBucketVariant::name).toSet()
+        val variantNames = variants.map(BucketPlacementVariantInput::name).toSet()
         val syntheticNames = hierarchyBucketNames
             .filter { bucketName -> bucketName !in variantNames }
             .toSortedSet()
@@ -442,7 +442,7 @@ private class BucketPlacementGraph(
         return descendantLeafNames(bucketName, leafNames) == leafNames
     }
 
-    private fun DependencyBucketVariant.node(): BucketHierarchyNode {
+    private fun BucketPlacementVariantInput.node(): BucketHierarchyNode {
         return BucketHierarchyNode(
             projectPath = projectPath,
             name = name,
@@ -459,7 +459,7 @@ private class BucketPlacementGraph(
     }
 }
 
-internal fun DeclaredDependencyMetadata.mainBucketVariants(projectPath: String): List<DependencyBucketVariant> {
+internal fun DeclaredDependencyMetadata.mainBucketVariants(projectPath: String): List<BucketPlacementVariantInput> {
     val androidBuildVariants = projects[projectPath]
         ?.variants
         .orEmpty()
@@ -479,7 +479,7 @@ internal fun DeclaredDependencyMetadata.mainBucketVariants(projectPath: String):
                 bucketName = bucketName
             )
         }
-        .associateBy(DependencyBucketVariant::name)
+        .associateBy(BucketPlacementVariantInput::name)
 
     return androidBuildVariants
         .asSequence()
@@ -491,12 +491,12 @@ internal fun DeclaredDependencyMetadata.mainBucketVariants(projectPath: String):
                         owner.name != variant.name &&
                             owner.appliesTo(leafVariant = variant)
                     }
-                    .map(DependencyBucketVariant::name)
+                    .map(BucketPlacementVariantInput::name)
                     .toSet()
             } else {
                 emptySet()
             }
-            DependencyBucketVariant(
+            BucketPlacementVariantInput(
                 name = variant.name,
                 extendsFrom = variant.extendsFrom + declaredOwnersForLeaf,
                 buildType = variant.buildType,
@@ -507,11 +507,11 @@ internal fun DeclaredDependencyMetadata.mainBucketVariants(projectPath: String):
             )
         }
         .plus(declaredOwnersByName.values.asSequence())
-        .sortedBy(DependencyBucketVariant::name)
+        .sortedBy(BucketPlacementVariantInput::name)
         .toList()
 }
 
-private fun DependencyBucketVariant.appliesTo(
+private fun BucketPlacementVariantInput.appliesTo(
     leafVariant: DeclaredVariantDependencyMetadata
 ): Boolean {
     if (name in leafVariant.extendsFrom) return true
@@ -522,12 +522,12 @@ private fun DependencyBucketVariant.appliesTo(
 private fun Collection<DeclaredVariantDependencyMetadata>.ownerVariantFor(
     projectPath: String,
     bucketName: String
-): DependencyBucketVariant? {
+): BucketPlacementVariantInput? {
     val matchingLeaf = firstOrNull { variant ->
         variant.androidLeafVariant && variant.name == bucketName
     }
     if (matchingLeaf != null) {
-        return DependencyBucketVariant(
+        return BucketPlacementVariantInput(
             name = matchingLeaf.name,
             extendsFrom = matchingLeaf.extendsFrom,
             buildType = matchingLeaf.buildType,
@@ -557,7 +557,7 @@ private fun Collection<DeclaredVariantDependencyMetadata>.ownerVariantFor(
         })
     val ownerBuildType = buildTypeNames
         .firstOrNull { buildTypeName -> bucketName.endsWith(buildTypeName, ignoreCase = true) }
-    return DependencyBucketVariant(
+    return BucketPlacementVariantInput(
         name = bucketName,
         extendsFrom = (setOf(DEFAULT_VARIANT) + ownerFlavors + listOfNotNull(ownerBuildType)).toSortedSet(),
         buildType = ownerBuildType,
@@ -621,7 +621,7 @@ private fun List<String>.orderedCombinations(): Set<String> {
     return combinations
 }
 
-internal fun DeclaredDependencyMetadata.mainBucketVariantsByProject(): List<DependencyBucketVariant> {
+internal fun DeclaredDependencyMetadata.mainBucketVariantsByProject(): List<BucketPlacementVariantInput> {
     return projects
         .keys
         .sorted()
@@ -631,7 +631,7 @@ internal fun DeclaredDependencyMetadata.mainBucketVariantsByProject(): List<Depe
 internal fun DeclaredDependencyMetadata.testBucketVariantsByProject(
     variantType: VariantType,
     baseBucketName: String
-): List<DependencyBucketVariant> {
+): List<BucketPlacementVariantInput> {
     return projects
         .keys
         .sorted()
@@ -642,7 +642,7 @@ internal fun DeclaredDependencyMetadata.testBucketVariantsByProject(
                 .asSequence()
                 .filter { variant -> variant.variantType == variantType }
                 .map { variant ->
-                    DependencyBucketVariant(
+                    BucketPlacementVariantInput(
                         name = variant.name,
                         extendsFrom = variant.testBucketExtendsFrom(
                             baseBucketName = baseBucketName
@@ -656,7 +656,7 @@ internal fun DeclaredDependencyMetadata.testBucketVariantsByProject(
                 }
                 .toList()
         }
-        .sortedWith(compareBy(DependencyBucketVariant::projectPath).thenBy(DependencyBucketVariant::name))
+        .sortedWith(compareBy(BucketPlacementVariantInput::projectPath).thenBy(BucketPlacementVariantInput::name))
 }
 
 private fun DeclaredVariantDependencyMetadata.testBucketExtendsFrom(

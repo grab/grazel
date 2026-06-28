@@ -69,7 +69,7 @@ internal interface DependencyResolutionService : BuildService<DependencyResoluti
      * Get variant-scoped transitive dependencies for a direct dependency shortId.
      *
      * Returns `null` when no variant-scoped transitive data exists for the supplied hierarchy,
-     * allowing callers to fall back to the legacy global closure. Returns an empty set when scoped
+     * allowing callers to fall back to the global shortId closure. Returns an empty set when scoped
      * data exists and the dependency has no transitive closure in that hierarchy.
      */
     fun getVariantTransitiveDependencies(variants: Set<String>, shortId: String): Set<String>?

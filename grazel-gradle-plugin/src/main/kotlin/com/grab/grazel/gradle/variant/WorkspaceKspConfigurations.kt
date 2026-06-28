@@ -20,20 +20,20 @@ import com.grab.grazel.gradle.hasKsp
 import org.gradle.api.Project
 import org.gradle.api.artifacts.Configuration
 
-internal data class WorkspaceKspProcessorClasspath(
+internal data class WorkspaceKspProcessorClasspathResult(
     val declarationConfigurations: Set<Configuration>,
     val processorClasspath: Configuration
 )
 
-internal fun Project.workspaceKspProcessorClasspath(): WorkspaceKspProcessorClasspath? {
-    if (!hasKsp) return null
+internal fun createWorkspaceKspProcessorClasspath(project: Project): WorkspaceKspProcessorClasspathResult? {
+    if (!project.hasKsp) return null
 
-    val declarationConfigurations = configurations
+    val declarationConfigurations = project.configurations
         .filter { configuration -> configuration.isKspDeclarationBucket }
         .toSet()
     if (declarationConfigurations.isEmpty()) return null
 
-    val processorClasspath = configurations.maybeCreate(WORKSPACE_KSP_PROCESSOR_CLASSPATH_NAME)
+    val processorClasspath = project.configurations.maybeCreate(WORKSPACE_KSP_PROCESSOR_CLASSPATH_NAME)
     if (processorClasspath.extendsFrom.isEmpty()) {
         processorClasspath.apply {
             isCanBeResolved = true
@@ -43,7 +43,7 @@ internal fun Project.workspaceKspProcessorClasspath(): WorkspaceKspProcessorClas
         }
     }
 
-    return WorkspaceKspProcessorClasspath(
+    return WorkspaceKspProcessorClasspathResult(
         declarationConfigurations = declarationConfigurations,
         processorClasspath = processorClasspath
     )

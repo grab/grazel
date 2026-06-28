@@ -5,6 +5,53 @@ evidence in item-specific logs so context compaction can recover state quickly.
 
 ## Active State
 
+- 2026-06-28 +08 Item 24 start:
+  - Local Item 26 checkpoint committed at `468dd5f`
+    (`refactor: move workspace root inputs into variant layer`).
+  - Maintainer constraint restated: keep Grazel changes local and never push;
+    keep PAX as the regression baseline and never commit PAX.
+  - Active item: Item 24 - branch-diff source shape hygiene.
+  - Current detailed log:
+    `reports/specs/execution-log/item24-source-shape-hygiene.md`.
+  - Deterministic inventory command found 132 changed Kotlin files in
+    `master...HEAD`: 85 production, 45 unit-test, and 2 functional-test files.
+  - Subagent fanout started for dependency/variant, migrate/render, task-layer,
+    and test-scope audits. Parent reconciliation will fix only preserving
+    source/test shape issues and defer behavior/model redesign findings.
+  - 2026-06-28 +08 Item 24 implementation checkpoint: fixed source-shape
+    issues in `BucketOwnershipPlanner`, `DependencyBucketPlacementEngine`,
+    encoded declared-edge parsing, KSP workspace classpath creation, current
+    behavior comments, `DefaultDependenciesDataSourceTest`, `BuildVariantTest`,
+    and `SourcePathTest`.
+  - Subagent findings reconciled in
+    `reports/specs/execution-log/item24-source-shape-hygiene.md`. Medium-risk
+    architecture findings around Maven root artifact planning, target-reference
+    reachability, renderer/pinner text contracts, and task annotation
+    reflection tests were retained/deferred with rationale rather than silently
+    ignored.
+  - Focused unit batches passed for bucket ownership, placement, resolver, KSP,
+    default dependency data source, and experiments extension tests. Functional
+    `BuildVariantTest` + `SourcePathTest` first failed after replacing raw JSON
+    string checks because KSP processor data is under `aggregatedRepos`; the
+    structural helper was fixed, and the same functional command then passed in
+    3m14s.
+  - Item 24 final preserving gates passed: full
+    `./gradlew :grazel-gradle-plugin:test --console=plain --no-daemon`, local
+    `./gradlew migrateToBazel --console=plain --no-daemon`,
+    `reports/scripts/verify-default-task-graph.sh`,
+    `reports/scripts/verify-pax-size-guard.sh --mode preserving`, and both
+    Grazel diff-check commands. The sample bucket-label check still fails only
+    on the known pre-existing appcompat/constraintlayout exclude waiver.
+  - PAX baseline verification for Item 24 passed: PAX
+    `./gradlew migrateToBazel --no-daemon --console=plain --stacktrace --rerun-tasks`
+    passed in 12m24s, PAX `git status --short` stayed clean, PAX
+    `git diff --check` passed, and no PAX commit was made. Size guard stayed
+    unchanged at 11 buckets, 11 pinfiles, 1945 total artifact roots.
+  - Resource note: disk pressure was handled before the final PAX run with
+    `bazelisk shutdown` and `bazelisk clean --expunge` in Grazel and PAX.
+    PAX `bazel-cache` was preserved.
+  - Item 24 locally committed
+    (`refactor: tidy dependency refactor source shape`). Do not push.
 - 2026-06-28 +08 Item 26 checkpoint:
   - Current branch rule reconfirmed by maintainer: keep Grazel changes local and
     never push; keep PAX as the regression baseline and never commit PAX.

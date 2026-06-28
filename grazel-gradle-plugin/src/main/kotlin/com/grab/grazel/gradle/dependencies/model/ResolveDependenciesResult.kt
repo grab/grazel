@@ -168,7 +168,7 @@ internal data class WorkspaceDependencies(
     /**
      * Variant-scoped view of [transitiveClasspath].
      *
-     * The legacy transitive dependency store is keyed by artifact shortId. Generated targets decide
+     * The global transitive dependency store is keyed by artifact shortId. Generated targets decide
      * which declared roots to query, so this map keeps the resolved closure for any artifact root
      * that carries transitive metadata in a scoped bucket.
      */

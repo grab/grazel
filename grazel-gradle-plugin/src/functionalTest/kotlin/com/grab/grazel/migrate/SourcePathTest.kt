@@ -58,18 +58,18 @@ class SourcePathTest : BaseGrazelPluginTest() {
     }
 
     @Test
-    fun migrateToBazelWithAssert() {
+    fun `migrateToBazel uses src main assets for app and library assets`() {
         val task = arrayOf("migrateToBazel", "bazelBuildAll", "-P$MIGRATE_DATABINDING_FLAG")
 
         runGradleBuild(task, rootProject) {
             assertTrue(isMigrateToBazelSuccessful)
             verifyBazelFilesCreated()
-            assetsAppAssetsShouldBeSet(appBuildBazel.readText())
-            assetsLibsValuesShouldBeSet(androidLibraryBazel.readText())
+            assetsAttributeShouldUseSrcMainAssets(appBuildBazel.readText())
+            assetsAttributeShouldUseSrcMainAssets(androidLibraryBazel.readText())
         }
     }
 
-    private fun assetsAppAssetsShouldBeSet(buildFileContent: String) {
+    private fun assetsAttributeShouldUseSrcMainAssets(buildFileContent: String) {
         assertTrue(
             buildFileContent.contains(""""assets": "src/main/assets"""")
         )
@@ -77,17 +77,6 @@ class SourcePathTest : BaseGrazelPluginTest() {
             buildFileContent.contains("""src/main/assets""")
         )
     }
-
-
-    private fun assetsLibsValuesShouldBeSet(buildFileContent: String) {
-        assertTrue(
-            buildFileContent.contains(""""assets": "src/main/assets"""")
-        )
-        assertTrue(
-            buildFileContent.contains("""src/main/assets""")
-        )
-    }
-
 
     private fun verifyBazelFilesCreated() {
         assertTrue(workspace.exists())

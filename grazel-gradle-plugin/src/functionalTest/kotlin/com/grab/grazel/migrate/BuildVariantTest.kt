@@ -164,7 +164,7 @@ class BuildVariantTest : BaseGrazelPluginTest() {
         Assert.assertEquals(SUCCESS, firstResult.task(":computeWorkspaceDependencies")?.outcome)
         Assert.assertFalse(
             "Initial selected fallback dependency data should not include free-only okio",
-            fixtureDependenciesJson.readText().contains(""""shortId":"com.squareup.okio:okio"""")
+            "com.squareup.okio:okio" in dependencyShortIds(fixtureDependenciesJson)
         )
 
         fixtureMismatchBuildGradle.writeText(
@@ -188,7 +188,7 @@ class BuildVariantTest : BaseGrazelPluginTest() {
         )
         Assert.assertTrue(
             "Updated selected fallback dependency data should include newly declared paid okio",
-            fixtureDependenciesJson.readText().contains(""""shortId":"com.squareup.okio:okio"""")
+            "com.squareup.okio:okio" in dependencyShortIds(fixtureDependenciesJson)
         )
     }
 
@@ -206,7 +206,7 @@ class BuildVariantTest : BaseGrazelPluginTest() {
         Assert.assertEquals(SUCCESS, firstResult.task(":computeWorkspaceDependencies")?.outcome)
         Assert.assertTrue(
             "Initial dependency data should include Maven deps reachable through android-library-flavor",
-            fixtureDependenciesJson.readText().contains(""""shortId":"com.google.dagger:dagger"""")
+            "com.google.dagger:dagger" in dependencyShortIds(fixtureDependenciesJson)
         )
 
         fixtureAppBuildGradle.writeText(
@@ -227,7 +227,7 @@ class BuildVariantTest : BaseGrazelPluginTest() {
         )
         Assert.assertFalse(
             "Updated dependency data should not include deps reachable only through the removed project edge",
-            fixtureDependenciesJson.readText().contains(""""shortId":"com.google.dagger:dagger"""")
+            "com.google.dagger:dagger" in dependencyShortIds(fixtureDependenciesJson)
         )
     }
 
@@ -245,7 +245,7 @@ class BuildVariantTest : BaseGrazelPluginTest() {
         Assert.assertEquals(SUCCESS, firstResult.task(":computeWorkspaceDependencies")?.outcome)
         Assert.assertTrue(
             "Initial dependency data should include Maven deps reachable through android-library-flavor",
-            fixtureDependenciesJson.readText().contains(""""shortId":"com.google.dagger:dagger"""")
+            "com.google.dagger:dagger" in dependencyShortIds(fixtureDependenciesJson)
         )
 
         fixtureAppBuildGradle.writeText(
@@ -270,7 +270,7 @@ class BuildVariantTest : BaseGrazelPluginTest() {
         )
         Assert.assertFalse(
             "Updated dependency data should remove excluded deps reachable through the project edge",
-            fixtureDependenciesJson.readText().contains(""""shortId":"com.google.dagger:dagger"""")
+            "com.google.dagger:dagger" in dependencyShortIds(fixtureDependenciesJson)
         )
     }
 
@@ -296,7 +296,7 @@ dependencies {
         Assert.assertEquals(SUCCESS, result.task(":computeWorkspaceDependencies")?.outcome)
         Assert.assertFalse(
             "Implementation deps from non-app modules unreachable from the selected binary root should not be promoted",
-            fixtureDependenciesJson.readText().contains(""""shortId":"com.squareup.okio:okio"""")
+            "com.squareup.okio:okio" in dependencyShortIds(fixtureDependenciesJson)
         )
     }
 
@@ -313,10 +313,14 @@ dependencies {
         )
         Assert.assertEquals(SUCCESS, firstResult.task(":computeWorkspaceDependencies")?.outcome)
         val initialDependencies = fixtureDependenciesJson.readText()
+        val initialVersionsByBucket = dependencyVersionsByBucket(
+            dependenciesFile = fixtureDependenciesJson,
+            shortId = "com.squareup.moshi:moshi-kotlin-codegen",
+            includeAggregatedRepos = true
+        )
         Assert.assertTrue(
             "Initial KSP dependency data should include the Moshi KSP processor",
-            initialDependencies.contains(""""shortId":"com.squareup.moshi:moshi-kotlin-codegen"""") &&
-                initialDependencies.contains(""""version":"1.15.0"""")
+            initialVersionsByBucket.values.flatten().contains("1.15.0")
         )
 
         fixtureAppBuildGradle.writeText(
@@ -337,6 +341,11 @@ dependencies {
             secondResult.task(":computeWorkspaceDependencies")?.outcome
         )
         val updatedDependencies = fixtureDependenciesJson.readText()
+        val updatedVersionsByBucket = dependencyVersionsByBucket(
+            dependenciesFile = fixtureDependenciesJson,
+            shortId = "com.squareup.moshi:moshi-kotlin-codegen",
+            includeAggregatedRepos = true
+        )
         Assert.assertNotEquals(
             "KSP dependency data should change after the KSP processor version changes",
             initialDependencies,
@@ -344,8 +353,7 @@ dependencies {
         )
         Assert.assertTrue(
             "Updated KSP dependency data should include the changed Moshi KSP processor version",
-            updatedDependencies.contains(""""shortId":"com.squareup.moshi:moshi-kotlin-codegen"""") &&
-                updatedDependencies.contains(""""version":"1.14.0"""")
+            updatedVersionsByBucket.values.flatten().contains("1.14.0")
         )
     }
 
@@ -522,17 +530,18 @@ apply plugin: 'com.google.devtools.ksp'
         )
 
         val dependenciesContent = dependenciesJson.readText()
+        val dependencyShortIds = dependencyShortIds(dependenciesJson)
         Assert.assertTrue(
             "Workspace dependency data should include the selected paid-only fallback dependency",
-            dependenciesContent.contains(""""shortId":"com.jakewharton.timber:timber"""")
+            "com.jakewharton.timber:timber" in dependencyShortIds
         )
         Assert.assertFalse(
             "Workspace dependency data should not include the unselected free-only fallback dependency",
-            dependenciesContent.contains(""""shortId":"com.squareup.okio:okio"""")
+            "com.squareup.okio:okio" in dependencyShortIds
         )
         Assert.assertTrue(
             "Workspace dependency data should include the selected debug-only fallback dependency",
-            dependenciesContent.contains(""""shortId":"javax.annotation:javax.annotation-api"""")
+            "javax.annotation:javax.annotation-api" in dependencyShortIds
         )
         Assert.assertTrue(
             "Selected fallback build-type exclude should be preserved",
@@ -1009,10 +1018,25 @@ apply plugin: 'com.google.devtools.ksp'
     }
 
     private fun dependencyVersionsByBucket(shortId: String): Map<String, List<String>> {
-        val result = Json.parseToJsonElement(dependenciesJson.readText())
+        return dependencyVersionsByBucket(
+            dependenciesFile = dependenciesJson,
+            shortId = shortId
+        )
+    }
+
+    private fun dependencyVersionsByBucket(
+        dependenciesFile: File,
+        shortId: String,
+        includeAggregatedRepos: Boolean = false
+    ): Map<String, List<String>> {
+        val dependencyJson = Json.parseToJsonElement(dependenciesFile.readText())
             .jsonObject
-            .getValue("result")
-            .jsonObject
+        val result = buildMap {
+            putAll(dependencyJson.getValue("result").jsonObject)
+            if (includeAggregatedRepos) {
+                putAll(dependencyJson["aggregatedRepos"]?.jsonObject.orEmpty())
+            }
+        }
 
         return result.mapValues { (_, dependencies) ->
             dependencies.jsonArray
@@ -1025,6 +1049,20 @@ apply plugin: 'com.google.devtools.ksp'
                     }
                 }
         }.filterValues { it.isNotEmpty() }
+    }
+
+    private fun dependencyShortIds(dependenciesFile: File): Set<String> {
+        return Json.parseToJsonElement(dependenciesFile.readText())
+            .jsonObject
+            .getValue("result")
+            .jsonObject
+            .values
+            .flatMap { dependencies ->
+                dependencies.jsonArray.mapNotNull { dependency ->
+                    dependency.jsonObject["shortId"]?.jsonPrimitive?.contentOrNull
+                }
+            }
+            .toSortedSet()
     }
 
     private fun sourceShouldOnlyContainEnabledFlavorAndVariant(buildFileContent: String) {

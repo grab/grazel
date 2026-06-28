@@ -58,7 +58,7 @@ class DefaultDependenciesDataSourceTest {
     private lateinit var rootProject: Project
     private lateinit var androidProject: Project
     private lateinit var dependenciesDataSource: DefaultDependenciesDataSource
-    private lateinit var dependencyResolutionService: DependencyResolutionService
+    private lateinit var dependencyResolutionService: DefaultDependencyResolutionService
 
     @get:Rule
     val temporaryFolder = TemporaryFolder()
@@ -268,7 +268,7 @@ class DefaultDependenciesDataSourceTest {
                 }
             }
         )
-        (dependencyResolutionService as DefaultDependencyResolutionService).apply {
+        dependencyResolutionService.apply {
             close()
             populateMavenStore(
                 WorkspaceDependencies(
@@ -318,7 +318,7 @@ class DefaultDependenciesDataSourceTest {
                 }
             }
         )
-        (dependencyResolutionService as DefaultDependencyResolutionService).apply {
+        dependencyResolutionService.apply {
             close()
             populateMavenStore(
                 WorkspaceDependencies(
@@ -370,7 +370,7 @@ class DefaultDependenciesDataSourceTest {
                 }
             }
         )
-        (dependencyResolutionService as DefaultDependencyResolutionService).apply {
+        dependencyResolutionService.apply {
             close()
             populateMavenStore(
                 WorkspaceDependencies(
@@ -419,7 +419,7 @@ class DefaultDependenciesDataSourceTest {
                 }
             }
         )
-        (dependencyResolutionService as DefaultDependencyResolutionService).apply {
+        dependencyResolutionService.apply {
             close()
             populateMavenStore(
                 WorkspaceDependencies(
@@ -466,7 +466,7 @@ class DefaultDependenciesDataSourceTest {
                 }
             }
         )
-        (dependencyResolutionService as DefaultDependencyResolutionService).apply {
+        dependencyResolutionService.apply {
             close()
             populateMavenStore(
                 WorkspaceDependencies(
@@ -525,7 +525,7 @@ class DefaultDependenciesDataSourceTest {
                 }
             }
         )
-        (dependencyResolutionService as DefaultDependencyResolutionService).populateTransitiveDependenciesStore(
+        dependencyResolutionService.populateTransitiveDependenciesStore(
             WorkspaceDependencies(
                 variantDeps = emptyMap(),
                 transitiveClasspath = mapOf(
@@ -1035,7 +1035,7 @@ class DefaultDependenciesDataSourceTest {
                 }
             }
         )
-        (dependencyResolutionService as DefaultDependencyResolutionService).apply {
+        dependencyResolutionService.apply {
             close()
             populateMavenStore(
                 WorkspaceDependencies(
@@ -1445,7 +1445,7 @@ class DefaultDependenciesDataSourceTest {
                 }
             }
         )
-        (dependencyResolutionService as DefaultDependencyResolutionService).apply {
+        dependencyResolutionService.apply {
             close()
             populateMavenStore(
                 WorkspaceDependencies(
@@ -1500,7 +1500,7 @@ class DefaultDependenciesDataSourceTest {
                 }
             }
         )
-        (dependencyResolutionService as DefaultDependencyResolutionService).apply {
+        dependencyResolutionService.apply {
             close()
             populateMavenStore(
                 WorkspaceDependencies(
@@ -1565,7 +1565,7 @@ class DefaultDependenciesDataSourceTest {
                 }
             }
         )
-        (dependencyResolutionService as DefaultDependencyResolutionService).apply {
+        dependencyResolutionService.apply {
             close()
             populateMavenStore(
                 WorkspaceDependencies(
@@ -1623,7 +1623,7 @@ class DefaultDependenciesDataSourceTest {
             .first { it.name == "debug" }!!
 
         // Mock the dependency resolution service to return transitive dependencies
-        (dependencyResolutionService as DefaultDependencyResolutionService).apply {
+        dependencyResolutionService.apply {
             populateTransitiveDependenciesStore(
                 WorkspaceDependencies(
                     variantDeps = emptyMap(),

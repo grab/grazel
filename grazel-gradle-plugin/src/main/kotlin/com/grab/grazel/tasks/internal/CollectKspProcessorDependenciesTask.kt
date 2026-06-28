@@ -24,7 +24,7 @@ import com.grab.grazel.gradle.dependencies.model.ResolveDependenciesResult.Compa
 import com.grab.grazel.gradle.dependencies.model.ResolveDependenciesResult.Companion.Scope.KSP
 import com.grab.grazel.gradle.dependencies.model.ResolvedDependency
 import com.grab.grazel.gradle.variant.DEFAULT_VARIANT
-import com.grab.grazel.gradle.variant.workspaceKspProcessorClasspath
+import com.grab.grazel.gradle.variant.createWorkspaceKspProcessorClasspath
 import com.grab.grazel.util.writeJson
 import dagger.Lazy
 import org.gradle.api.DefaultTask
@@ -154,7 +154,7 @@ internal abstract class CollectKspProcessorDependenciesTask : DefaultTask() {
         }
 
         private fun CollectKspProcessorDependenciesTask.addProjectKspConfigurations(project: Project) {
-            val kspClasspath = project.workspaceKspProcessorClasspath() ?: return
+            val kspClasspath = createWorkspaceKspProcessorClasspath(project) ?: return
 
             val directDepShortIds = kspClasspath.declarationConfigurations
                 .asSequence()

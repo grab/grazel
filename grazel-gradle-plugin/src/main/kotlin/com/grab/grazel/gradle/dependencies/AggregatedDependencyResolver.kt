@@ -136,22 +136,22 @@ internal class AggregatedDependencyResolver(
         private fun variantsFor(projectPath: String): List<DeclaredVariantDependencyMetadata> =
             projectMetadataByPath[projectPath]?.variants.orEmpty()
 
-        private fun String.toDeclaredProjectDependencyEdge(): DeclaredProjectDependencyEdge? {
-            parsedDeclaredProjectDependencyEdges[this]?.let { edge -> return edge }
-            if (this in ignoredDeclaredProjectDependencyEdges) return null
+        private fun parseDeclaredProjectDependencyEdge(encodedEdge: String): DeclaredProjectDependencyEdge? {
+            parsedDeclaredProjectDependencyEdges[encodedEdge]?.let { edge -> return edge }
+            if (encodedEdge in ignoredDeclaredProjectDependencyEdges) return null
 
-            val edgeTarget = substringAfter("->", missingDelimiterValue = "")
+            val edgeTarget = encodedEdge.substringAfter("->", missingDelimiterValue = "")
             if (edgeTarget.isBlank()) {
-                ignoredDeclaredProjectDependencyEdges += this
+                ignoredDeclaredProjectDependencyEdges += encodedEdge
                 return null
             }
             val targetProjectPath = projectPathsByDescendingLength
                 .firstOrNull { projectPath -> edgeTarget.startsWith("$projectPath:") }
             if (targetProjectPath == null) {
-                ignoredDeclaredProjectDependencyEdges += this
+                ignoredDeclaredProjectDependencyEdges += encodedEdge
                 return null
             }
-            val excludedShortIds = substringAfterLast(":[", missingDelimiterValue = "")
+            val excludedShortIds = encodedEdge.substringAfterLast(":[", missingDelimiterValue = "")
                 .removeSuffix("]")
                 .split(",")
                 .mapNotNull { shortId ->
@@ -161,7 +161,7 @@ internal class AggregatedDependencyResolver(
             return DeclaredProjectDependencyEdge(
                 targetProjectPath = targetProjectPath,
                 excludedShortIds = excludedShortIds
-            ).also { edge -> parsedDeclaredProjectDependencyEdges[this] = edge }
+            ).also { edge -> parsedDeclaredProjectDependencyEdges[encodedEdge] = edge }
         }
 
         private fun declaredProjectDependencyEdges(
@@ -181,7 +181,7 @@ internal class AggregatedDependencyResolver(
                     !selectedOnly || variant.name in variantNames
                 }
                 .flatMap { variant -> variant.declaredProjectDependencies.asSequence() }
-                .mapNotNull { edge -> edge.toDeclaredProjectDependencyEdge() }
+                    .mapNotNull { edge -> parseDeclaredProjectDependencyEdge(edge) }
                 .toList()
                 .also { edges -> declaredProjectDependencyEdgesCache[cacheKey] = edges }
         }
