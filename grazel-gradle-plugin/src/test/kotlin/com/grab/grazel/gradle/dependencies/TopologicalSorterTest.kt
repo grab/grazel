@@ -27,7 +27,6 @@ import org.gradle.api.Project
 import org.junit.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
-import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class TopologicalSorterTest {
@@ -407,7 +406,6 @@ class TopologicalSorterTest {
         assertEquals(projects.size, groups.size)
         assertEquals(projects.first(), groups.first().projects.single())
         assertEquals(projects.last(), groups.last().projects.single())
-        assertTrue(groups.none(ProjectReachabilityGroup::cyclic))
     }
 
     @Test
@@ -428,7 +426,59 @@ class TopologicalSorterTest {
 
         val groups = ProjectReachabilityOrder.consumersFirstGroups(graphs)
 
-        assertFalse(groups.any(ProjectReachabilityGroup::cyclic))
+        assertEquals(listOf(projectA, projectB), groups.flatMap(ProjectReachabilityGroup::projects))
+    }
+
+    @Test
+    fun `reachability groups keep consumer before app when path order would prefer app`() {
+        val projectApp = FakeProject("app")
+        val projectUiTest = FakeProject("ui-test")
+        val graphs = FakeDependencyGraphs(
+            typedReachabilityGraph = mapOf(
+                DependencyGraphNode(projectUiTest, DependencyGraphSourceSet.AndroidTest) to setOf(
+                    DependencyGraphNode(projectApp, DependencyGraphSourceSet.Main)
+                ),
+                DependencyGraphNode(projectApp, DependencyGraphSourceSet.Main) to emptySet()
+            )
+        )
+
+        val groups = ProjectReachabilityOrder.consumersFirstGroups(graphs)
+
+        assertEquals(listOf(projectUiTest, projectApp), groups.flatMap(ProjectReachabilityGroup::projects))
+    }
+
+    @Test
+    fun `reachability groups preserve reversed path tie break for independent ready nodes`() {
+        val projectA = FakeProject("a")
+        val projectB = FakeProject("b")
+        val graphs = FakeDependencyGraphs(
+            typedReachabilityGraph = mapOf(
+                DependencyGraphNode(projectA, DependencyGraphSourceSet.Main) to emptySet(),
+                DependencyGraphNode(projectB, DependencyGraphSourceSet.Main) to emptySet()
+            )
+        )
+
+        val groups = ProjectReachabilityOrder.consumersFirstGroups(graphs)
+
+        assertEquals(listOf(projectB, projectA), groups.flatMap(ProjectReachabilityGroup::projects))
+    }
+
+    @Test
+    fun `reachability groups collapse multiple source set nodes to first consumer project occurrence`() {
+        val projectA = FakeProject("a")
+        val projectB = FakeProject("b")
+        val graphs = FakeDependencyGraphs(
+            typedReachabilityGraph = mapOf(
+                DependencyGraphNode(projectA, DependencyGraphSourceSet.Test) to setOf(
+                    DependencyGraphNode(projectA, DependencyGraphSourceSet.Main)
+                ),
+                DependencyGraphNode(projectA, DependencyGraphSourceSet.Main) to emptySet(),
+                DependencyGraphNode(projectB, DependencyGraphSourceSet.Main) to emptySet()
+            )
+        )
+
+        val groups = ProjectReachabilityOrder.consumersFirstGroups(graphs)
+
         assertEquals(listOf(projectA, projectB), groups.flatMap(ProjectReachabilityGroup::projects))
     }
 

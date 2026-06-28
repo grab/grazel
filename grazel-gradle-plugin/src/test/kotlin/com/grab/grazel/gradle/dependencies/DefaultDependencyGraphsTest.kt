@@ -26,7 +26,6 @@ import com.grab.grazel.gradle.variant.VariantType
 import org.gradle.api.Project
 import org.junit.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFalse
 
 
 class DefaultDependencyGraphsTest {
@@ -223,7 +222,6 @@ class DefaultDependencyGraphsTest {
             )
         )
         val groups = ProjectReachabilityOrder.consumersFirstGroups(graphs)
-        assertFalse(groups.any(ProjectReachabilityGroup::cyclic))
         assertEquals(
             listOf(deliveriesModelFood, foodTestkit),
             groups.flatMap(ProjectReachabilityGroup::projects)

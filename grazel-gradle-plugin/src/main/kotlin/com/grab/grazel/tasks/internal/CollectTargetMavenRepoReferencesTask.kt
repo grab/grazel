@@ -99,7 +99,7 @@ constructor(
             project.rootProject.subprojects
                 .filterNot { subproject -> subproject in graphProjects }
                 .sortedBy(Project::getPath)
-                .map { subproject -> ProjectReachabilityGroup(listOf(subproject), cyclic = false) }
+                .map { subproject -> ProjectReachabilityGroup(listOf(subproject)) }
 
         val targetReferences = collectTargetMavenRepoReferencesByGroup(
             projectGroups = orderedGroups,
@@ -144,7 +144,7 @@ internal fun collectTargetMavenRepoReferences(
     workspacePlanService: WorkspacePlanService
 ): TargetMavenRepoReferences =
     collectTargetMavenRepoReferencesByGroup(
-        projectGroups = projects.map { project -> ProjectReachabilityGroup(listOf(project), cyclic = false) },
+        projectGroups = projects.map { project -> ProjectReachabilityGroup(listOf(project)) },
         canMigrate = canMigrate,
         targetsForProject = targetsForProject,
         workspacePlanService = workspacePlanService
@@ -175,11 +175,6 @@ private fun collectTargetMavenRepoReferencesSinglePass(
 ): TargetMavenRepoReferences {
     var accumulated = TargetMavenRepoReferences()
     projectGroups.forEach { group ->
-        check(!group.cyclic) {
-            "Cannot collect target Maven repo references for cyclic project group " +
-                group.projects.map(Project::getPath).sorted() +
-                ". ProjectReachabilityOrder must fail typed SCCs before target collection."
-        }
         accumulated = group.projects.fold(accumulated) { current, project ->
             collectProjectReferences(
                 accumulated = current,

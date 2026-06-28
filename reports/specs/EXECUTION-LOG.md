@@ -1448,3 +1448,25 @@ evidence in item-specific logs so context compaction can recover state quickly.
   `./gradlew :grazel-gradle-plugin:test --tests "com.grab.grazel.gradle.dependencies.AggregatedDependencyResolverTest" --tests "com.grab.grazel.gradle.dependencies.DependencyBucketPlacementEngineTest" --tests "com.grab.grazel.gradle.dependencies.BucketOwnershipPlannerTest" --console=plain --no-daemon`.
 - Grazel `./gradlew migrateToBazel --console=plain --no-daemon` passed and produced no generated
   output diff.
+
+## 2026-06-28 Item 18 Progress
+
+- Added `reports/specs/execution-log/item18-typed-dag-ordering.md`.
+- Replaced SCC/condensation in `ProjectReachabilityOrder.consumersFirstGroups` with direct typed
+  DAG Kahn ordering, removed `ProjectReachabilityGroup.cyclic`, and deleted the dead
+  `CollectTargetMavenRepoReferencesTask` cyclic-group guard.
+- Added order-preservation fixtures for consumer-before-app, independent ready-node tie-break,
+  and same-project multi-source-set collapse.
+- Focused graph/reference tests passed:
+  `./gradlew :grazel-gradle-plugin:test --tests "com.grab.grazel.gradle.dependencies.TopologicalSorterTest" --tests "com.grab.grazel.gradle.dependencies.DefaultDependencyGraphsTest" --tests "com.grab.grazel.tasks.internal.WorkspacePlanTasksTest" --console=plain --no-daemon`.
+- Grazel `./gradlew migrateToBazel --console=plain --no-daemon` passed with no generated-output
+  diff.
+- PAX `./gradlew migrateToBazel --no-daemon --console=plain --stacktrace --rerun-tasks` passed
+  in `11m 3s`; PAX generated output stayed clean against local baseline
+  `cfa1057ed58ccb2a795a5f679f072a8f604ff48e`.
+- PAX `git diff --check` passed and `reports/scripts/verify-pax-size-guard.sh --mode preserving`
+  passed with bucket count `11`, pinfile count `11`, total artifact roots `1945`, all unchanged.
+- PAX `./bazel.sh build --verbose_failures //app:app-gps-pax-debug.apk //app:app-gps-pax-debug-android-test.apk`
+  passed in `223.249s`.
+- PAX focused Bazel tests passed:
+  `./bazel.sh test --test_output=errors //app-utils:app-utils-gps-pax-debug-test //app-test:app-test-gps-pax-debug-test //application-initializer:application-initializer-gps-pax-debug-test`.

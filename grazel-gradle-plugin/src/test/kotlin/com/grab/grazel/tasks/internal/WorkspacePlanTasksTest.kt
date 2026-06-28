@@ -40,7 +40,6 @@ import dagger.Lazy
 import org.gradle.api.Project
 import org.junit.Assert.assertEquals
 import org.junit.Test
-import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 
 class WorkspacePlanTasksTest {
@@ -351,33 +350,6 @@ class WorkspacePlanTasksTest {
             ),
             callsByProject
         )
-    }
-
-    @Test
-    fun `collect target references rejects cyclic groups instead of running local fixpoint`() {
-        val rootProject = buildProject("root")
-        val projectA = buildProject("a", rootProject)
-        val projectB = buildProject("b", rootProject)
-        val workspacePlanService = WorkspacePlanService.register(rootProject).get()
-        var targetExtractionCount = 0
-
-        val exception = assertFailsWith<IllegalStateException> {
-            collectTargetMavenRepoReferencesByGroup(
-                projectGroups = listOf(ProjectReachabilityGroup(listOf(projectA, projectB), cyclic = true)),
-                canMigrate = { true },
-                targetsForProject = {
-                    targetExtractionCount += 1
-                    emptyList()
-                },
-                workspacePlanService = workspacePlanService
-            )
-        }
-
-        val message = exception.message.orEmpty()
-        assertTrue(message.contains("cyclic project group"), message)
-        assertTrue(message.contains(":a"), message)
-        assertTrue(message.contains(":b"), message)
-        assertEquals(0, targetExtractionCount)
     }
 
     private fun fakeTarget(

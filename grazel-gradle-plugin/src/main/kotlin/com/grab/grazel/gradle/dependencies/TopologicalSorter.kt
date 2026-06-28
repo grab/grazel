@@ -166,8 +166,7 @@ private fun <T> dependencyFirstOrder(
 }
 
 internal data class ProjectReachabilityGroup(
-    val projects: List<Project>,
-    val cyclic: Boolean
+    val projects: List<Project>
 )
 
 internal object ProjectReachabilityOrder {
@@ -175,180 +174,54 @@ internal object ProjectReachabilityOrder {
         graphs: DependencyGraphs,
         variantTypeFilter: (VariantType) -> Boolean = { true }
     ): List<ProjectReachabilityGroup> {
-        val graph = graphs.reachabilityGraph(variantTypeFilter).normalized(
-            comparator = dependencyGraphNodeComparator
-        )
+        val graph = graphs.reachabilityGraph(variantTypeFilter)
         if (graph.isEmpty()) return emptyList()
 
-        val components = stronglyConnectedComponents(graph, dependencyGraphNodeComparator)
-        val cyclicComponents = components.filter { nodes ->
-            nodes.size > 1 || nodes.any { node -> node in graph.getValue(node) }
-        }
-        check(cyclicComponents.isEmpty()) {
+        val dependencyFirstNodes = dependencyFirstOrder(graph, dependencyGraphNodeComparator)
+        check(dependencyFirstNodes.size == graph.size) {
             typedCycleDiagnostic(
-                cyclicComponents = cyclicComponents,
+                unprocessedNodes = graph.keys - dependencyFirstNodes.toSet(),
                 diagnosticEdges = graphs.reachabilityDiagnosticEdges(variantTypeFilter)
             )
         }
 
-        val componentIndexByNode = components
-            .flatMapIndexed { index, nodes -> nodes.map { node -> node to index } }
-            .toMap()
-        val componentDependencies = components.indices.associateWithTo(mutableMapOf()) { mutableSetOf<Int>() }
-        graph.forEach { (node, dependencies) ->
-            val from = componentIndexByNode.getValue(node)
-            dependencies.forEach { dependency ->
-                val to = componentIndexByNode.getValue(dependency)
-                if (from != to) {
-                    componentDependencies.getValue(from).add(to)
-                }
-            }
-        }
-
         val seenProjects = mutableSetOf<Project>()
-        return sortComponentIndexes(
-            componentDependencies,
-            compareBy { componentIndex -> components[componentIndex].first().project.path }
-        )
+        return dependencyFirstNodes
             .asReversed()
-            .mapNotNull { componentIndex ->
-                val nodes = components[componentIndex]
-                val projects = nodes
-                    .map(DependencyGraphNode::project)
-                    .distinctBy(Project::getPath)
-                    .filter { project ->
-                        seenProjects.add(project)
-                    }
-                if (projects.isEmpty()) {
-                    null
+            .mapNotNull { node ->
+                if (seenProjects.add(node.project)) {
+                    ProjectReachabilityGroup(listOf(node.project))
                 } else {
-                    ProjectReachabilityGroup(
-                        projects = projects.sortedBy(Project::getPath),
-                        cyclic = false
-                    )
+                    null
                 }
             }
     }
 
     private fun typedCycleDiagnostic(
-        cyclicComponents: List<List<DependencyGraphNode>>,
+        unprocessedNodes: Set<DependencyGraphNode>,
         diagnosticEdges: List<DependencyGraphDiagnosticEdge>
     ): String = buildString {
         appendLine("Typed dependency cycle detected in reachability graph.")
         appendLine("SCC is not a modeling strategy; model missing typed edges instead of running a fixpoint.")
-        cyclicComponents.forEachIndexed { index, nodes ->
-            val nodeSet = nodes.toSet()
-            appendLine("Component ${index + 1}: ${nodes.joinToString(", ") { it.displayName() }}")
-            val componentEdges = diagnosticEdges
-                .filter { edge -> edge.source in nodeSet && edge.target in nodeSet }
-                .sortedWith(
-                    compareBy<DependencyGraphDiagnosticEdge> { it.source.displayName() }
-                        .thenBy { it.target.displayName() }
-                        .thenBy { it.label }
-                )
-            if (componentEdges.isEmpty()) {
-                appendLine("  edges: unavailable")
-            } else {
-                componentEdges.forEach { edge ->
-                    appendLine("  ${edge.source.displayName()} -> ${edge.target.displayName()} via ${edge.label}")
-                }
+        val nodeSet = unprocessedNodes.toSortedSet(dependencyGraphNodeComparator)
+        appendLine("Component 1: ${nodeSet.joinToString(", ") { it.displayName() }}")
+        val componentEdges = diagnosticEdges
+            .filter { edge -> edge.source in nodeSet && edge.target in nodeSet }
+            .sortedWith(
+                compareBy<DependencyGraphDiagnosticEdge> { it.source.displayName() }
+                    .thenBy { it.target.displayName() }
+                    .thenBy { it.label }
+            )
+        if (componentEdges.isEmpty()) {
+            appendLine("  edges: unavailable")
+        } else {
+            componentEdges.forEach { edge ->
+                appendLine("  ${edge.source.displayName()} -> ${edge.target.displayName()} via ${edge.label}")
             }
         }
     }
 
     private fun DependencyGraphNode.displayName(): String = "${project.path}[$sourceSet]"
-
-    private fun <T> Map<T, Set<T>>.normalized(comparator: Comparator<T>): Map<T, Set<T>> {
-        val nodes = (keys + values.flatten()).toSortedSet(comparator)
-        return nodes.associateWith { node ->
-            get(node).orEmpty().filterTo(sortedSetOf(comparator)) { dependency ->
-                dependency in nodes
-            }
-        }
-    }
-
-    private fun <T> stronglyConnectedComponents(
-        graph: Map<T, Set<T>>,
-        comparator: Comparator<T>
-    ): List<List<T>> {
-        val finishOrder = finishOrder(graph, comparator)
-        val reversedGraph = reverseGraph(graph, comparator)
-        val assigned = mutableSetOf<T>()
-        val components = mutableListOf<List<T>>()
-
-        finishOrder.asReversed().forEach { start ->
-            if (start in assigned) return@forEach
-
-            val component = mutableListOf<T>()
-            val stack = ArrayDeque<T>()
-            stack.addLast(start)
-            assigned += start
-
-            while (stack.isNotEmpty()) {
-                val current = stack.removeLast()
-                component += current
-                reversedGraph.getValue(current).forEach { dependent ->
-                    if (assigned.add(dependent)) {
-                        stack.addLast(dependent)
-                    }
-                }
-            }
-
-            components += component.sortedWith(comparator)
-        }
-
-        return components
-    }
-
-    private fun <T> finishOrder(graph: Map<T, Set<T>>, comparator: Comparator<T>): List<T> {
-        val visited = mutableSetOf<T>()
-        val ordered = mutableListOf<T>()
-
-        graph.keys.sortedWith(comparator).forEach { start ->
-            if (!visited.add(start)) return@forEach
-
-            val stack = ArrayDeque<Pair<T, Iterator<T>>>()
-            stack.addLast(start to graph.getValue(start).iterator())
-
-            while (stack.isNotEmpty()) {
-                val (current, dependencies) = stack.last()
-                if (dependencies.hasNext()) {
-                    val dependency = dependencies.next()
-                    if (visited.add(dependency)) {
-                        stack.addLast(dependency to graph.getValue(dependency).iterator())
-                    }
-                } else {
-                    stack.removeLast()
-                    ordered += current
-                }
-            }
-        }
-
-        return ordered
-    }
-
-    private fun <T> reverseGraph(graph: Map<T, Set<T>>, comparator: Comparator<T>): Map<T, Set<T>> {
-        val reversed = graph.keys.associateWithTo(mutableMapOf<T, MutableSet<T>>()) {
-            sortedSetOf(comparator)
-        }
-        graph.forEach { (project, dependencies) ->
-            dependencies.forEach { dependency ->
-                reversed.getValue(dependency).add(project)
-            }
-        }
-        return reversed
-    }
-
-    private fun sortComponentIndexes(
-        componentDependencies: Map<Int, Set<Int>>,
-        comparator: Comparator<Int>
-    ): List<Int> {
-        val ordered = dependencyFirstOrder(componentDependencies, comparator)
-        check(ordered.size == componentDependencies.size) {
-            "Cycle detected in condensed dependency graph."
-        }
-        return ordered
-    }
 
     private val dependencyGraphNodeComparator: Comparator<DependencyGraphNode> =
         compareBy<DependencyGraphNode> { it.project.path }
