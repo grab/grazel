@@ -80,3 +80,10 @@ internal data class TargetMavenRepoReferences(
     val projectPaths: Set<String> = emptySet(),
     val projectTargets: Map<String, Set<String>> = emptyMap()
 )
+
+@Serializable
+internal data class TargetReferenceFacts(
+    val repoNames: Set<String> = emptySet(),
+    val projectPaths: Set<String> = emptySet(),
+    val projectTargets: Map<String, Set<String>> = emptyMap()
+)

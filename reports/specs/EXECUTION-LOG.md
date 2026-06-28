@@ -1470,3 +1470,35 @@ evidence in item-specific logs so context compaction can recover state quickly.
   passed in `223.249s`.
 - PAX focused Bazel tests passed:
   `./bazel.sh test --test_output=errors //app-utils:app-utils-gps-pax-debug-test //app-test:app-test-gps-pax-debug-test //application-initializer:application-initializer-gps-pax-debug-test`.
+
+## 2026-06-28 Item 19 Progress
+
+- Added `reports/specs/execution-log/item19-target-reference-facts.md`.
+- Added structured `TargetReferenceFacts` and `TargetReferenceFactsCollector`.
+- Added target-layer `TargetReferenceFactsExtractor` and cut
+  `CollectTargetMavenRepoReferencesTask` over to facts, removing the production
+  `ProjectBazelFileBuilder.targets()` feedback path from reference collection.
+- Kept `TargetMavenRepoReferencesCollector.fromTargets` as compatibility/test support only and
+  made it delegate to the shared facts collector.
+- Compile failure root causes and fixes:
+  private member-extension function reference changed to a lambda; unnecessary Dagger interface
+  binding removed in favor of injecting the concrete target-layer facts extractor.
+- Focused tests passed:
+  `./gradlew :grazel-gradle-plugin:test --tests "com.grab.grazel.tasks.internal.WorkspacePlanTasksTest" --tests "com.grab.grazel.tasks.internal.TargetMavenRepoReferencesCollectorTest" --tests "com.grab.grazel.gradle.dependencies.TargetReferenceFactsCollectorTest" --console=plain --no-daemon`.
+- Grazel `./gradlew migrateToBazel --console=plain --no-daemon` passed and generated output
+  stayed clean.
+- `git diff --check` passed.
+- PAX `./gradlew migrateToBazel --no-daemon --console=plain --stacktrace --rerun-tasks`
+  passed in `10m 55s`; generated output stayed clean against local baseline
+  `cfa1057ed58ccb2a795a5f679f072a8f604ff48e`.
+- PAX `git diff --check` passed.
+- PAX size guard passed in preserving mode with bucket count `11`, pinfile count `11`, and
+  total artifact roots `1945`, all unchanged.
+- PAX `./bazel.sh build --verbose_failures //app:app-gps-pax-debug.apk //app:app-gps-pax-debug-android-test.apk`
+  passed in `223.159s`.
+- PAX focused Bazel tests passed:
+  `./bazel.sh test --test_output=errors //app-utils:app-utils-gps-pax-debug-test //app-test:app-test-gps-pax-debug-test //application-initializer:application-initializer-gps-pax-debug-test`.
+- PAX worktree stayed clean after migrate/build/test.
+- Remaining Item 19 cleanup note: `collectTargetMavenRepoReferences` prints many fallback
+  compression messages for projects without compression results. This did not affect generated
+  output or size metrics, but can be considered output hygiene in Item 21.

@@ -52,6 +52,7 @@ import com.grab.grazel.migrate.internal.ProjectBazelFileBuilder
 import com.grab.grazel.migrate.internal.RootBazelFileBuilder
 import com.grab.grazel.migrate.internal.WorkspaceBuilder
 import com.grab.grazel.migrate.target.TargetModule
+import com.grab.grazel.migrate.target.TargetReferenceFactsExtractor
 import com.grab.grazel.util.GradleProvider
 import dagger.Binds
 import dagger.BindsInstance
@@ -85,6 +86,7 @@ internal interface GrazelComponent {
     fun artifactPinner(): Lazy<ArtifactPinner>
     fun dependenciesDataSource(): Lazy<DependenciesDataSource>
     fun workspaceTargetTagPlanCollector(): Lazy<WorkspaceTargetTagPlanCollector>
+    fun targetReferenceFactsExtractor(): Lazy<TargetReferenceFactsExtractor>
     fun mavenInstallArtifactsCalculator(): Lazy<MavenInstallArtifactsCalculator>
     fun androidVariantDataSource(): Lazy<AndroidVariantDataSource>
     fun hybridBuildExecutor(): HybridBuildExecutor
@@ -147,4 +149,3 @@ internal interface GrazelModule {
         fun @receiver:RootProject Project.gradleServices() = GradleServices.from(this)
     }
 }
-

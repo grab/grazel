@@ -27,4 +27,4 @@ import dagger.Module
         AndroidTestTargetBuilderModule::class,
     ]
 )
-interface TargetModule
+internal interface TargetModule

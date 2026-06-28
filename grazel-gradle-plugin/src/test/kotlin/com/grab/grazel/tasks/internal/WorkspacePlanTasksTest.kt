@@ -17,13 +17,11 @@
 package com.grab.grazel.tasks.internal
 
 import com.grab.grazel.buildProject
-import com.grab.grazel.bazel.rules.Visibility
-import com.grab.grazel.bazel.starlark.BazelDependency
 import com.grab.grazel.bazel.starlark.BazelDependency.MavenDependency
 import com.grab.grazel.bazel.starlark.BazelDependency.ProjectDependency
-import com.grab.grazel.bazel.starlark.StatementsBuilder
 import com.grab.grazel.gradle.dependencies.DefaultDependencyResolutionService
 import com.grab.grazel.gradle.dependencies.ProjectReachabilityGroup
+import com.grab.grazel.gradle.dependencies.TargetReferenceFactsCollector
 import com.grab.grazel.gradle.dependencies.WorkspacePlanBuilder
 import com.grab.grazel.gradle.dependencies.WorkspacePlanService
 import com.grab.grazel.gradle.dependencies.WorkspaceTargetTagPlanCollector
@@ -33,7 +31,6 @@ import com.grab.grazel.gradle.dependencies.model.TargetTagPlan
 import com.grab.grazel.gradle.dependencies.model.WorkspaceDependencies
 import com.grab.grazel.gradle.dependencies.model.WorkspacePlan
 import com.grab.grazel.gradle.dependencies.model.WorkspaceRenderPlan
-import com.grab.grazel.migrate.BazelBuildTarget
 import com.grab.grazel.util.fromJson
 import com.grab.grazel.util.writeJson
 import dagger.Lazy
@@ -238,31 +235,26 @@ class WorkspacePlanTasksTest {
         val references = collectTargetMavenRepoReferences(
             projects = listOf(uiTestsProject, appProject),
             canMigrate = { true },
-            targetsForProject = { project ->
+            factsForProject = { project ->
                 when (project.path) {
-                    ":ui-tests" -> listOf(
-                        fakeTarget(
-                            name = "ui-tests-gps-pax-debug",
+                    ":ui-tests" ->
+                        TargetReferenceFactsCollector.from(
                             deps = listOf(ProjectDependency(appProject, suffix = "-gps-pax-debug"))
                         )
-                    )
                     ":app" -> if (workspacePlanService.isReferencedTarget(":app", "app-gps-pax-debug")) {
-                        listOf(
-                            fakeTarget(
-                                name = "app-gps-pax-debug",
-                                deps = listOf(
-                                    MavenDependency(
-                                        repo = "debug_maven",
-                                        group = "com.example",
-                                        name = "debug-only"
-                                    )
+                        TargetReferenceFactsCollector.from(
+                            deps = listOf(
+                                MavenDependency(
+                                    repo = "debug_maven",
+                                    group = "com.example",
+                                    name = "debug-only"
                                 )
                             )
                         )
                     } else {
-                        emptyList()
+                        TargetReferenceFactsCollector.from()
                     }
-                    else -> emptyList()
+                    else -> TargetReferenceFactsCollector.from()
                 }
             },
             workspacePlanService = workspacePlanService
@@ -285,49 +277,41 @@ class WorkspacePlanTasksTest {
         val references = collectTargetMavenRepoReferences(
             projects = listOf(uiTestsProject, appProject, libProject),
             canMigrate = { true },
-            targetsForProject = { project ->
+            factsForProject = { project ->
                 callsByProject[project.path] = callsByProject.getOrDefault(project.path, 0) + 1
                 when (project.path) {
-                    ":ui-tests" -> listOf(
-                        fakeTarget(
-                            name = "ui-tests-gps-pax-debug",
+                    ":ui-tests" ->
+                        TargetReferenceFactsCollector.from(
                             deps = listOf(ProjectDependency(appProject, suffix = "-gps-pax-debug"))
                         )
-                    )
                     ":app" -> if (workspacePlanService.isReferencedTarget(":app", "app-gps-pax-debug")) {
-                        listOf(
-                            fakeTarget(
-                                name = "app-gps-pax-debug",
-                                deps = listOf(
-                                    MavenDependency(
-                                        repo = "debug_maven",
-                                        group = "com.example",
-                                        name = "app-debug"
-                                    ),
-                                    ProjectDependency(libProject, suffix = "-gps-pax-debug")
-                                )
+                        TargetReferenceFactsCollector.from(
+                            deps = listOf(
+                                MavenDependency(
+                                    repo = "debug_maven",
+                                    group = "com.example",
+                                    name = "app-debug"
+                                ),
+                                ProjectDependency(libProject, suffix = "-gps-pax-debug")
                             )
                         )
                     } else {
-                        emptyList()
+                        TargetReferenceFactsCollector.from()
                     }
                     ":lib" -> if (workspacePlanService.isReferencedTarget(":lib", "lib-gps-pax-debug")) {
-                        listOf(
-                            fakeTarget(
-                                name = "lib-gps-pax-debug",
-                                deps = listOf(
-                                    MavenDependency(
-                                        repo = "lint_maven",
-                                        group = "com.example",
-                                        name = "lib-lint"
-                                    )
+                        TargetReferenceFactsCollector.from(
+                            deps = listOf(
+                                MavenDependency(
+                                    repo = "lint_maven",
+                                    group = "com.example",
+                                    name = "lib-lint"
                                 )
                             )
                         )
                     } else {
-                        emptyList()
+                        TargetReferenceFactsCollector.from()
                     }
-                    else -> emptyList()
+                    else -> TargetReferenceFactsCollector.from()
                 }
             },
             workspacePlanService = workspacePlanService
@@ -350,20 +334,5 @@ class WorkspacePlanTasksTest {
             ),
             callsByProject
         )
-    }
-
-    private fun fakeTarget(
-        name: String,
-        deps: List<BazelDependency> = emptyList()
-    ): BazelBuildTarget {
-        return object : BazelBuildTarget {
-            override val name: String = name
-            override val srcs: List<String> = emptyList()
-            override val deps: List<BazelDependency> = deps
-            override val visibility: Visibility = Visibility.Public
-            override val tags: List<String> = emptyList()
-            override val sortKey: String = name
-            override fun statements(builder: StatementsBuilder) = Unit
-        }
     }
 }

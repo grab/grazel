@@ -18,17 +18,20 @@ package com.grab.grazel.tasks.internal
 
 import com.grab.grazel.di.GrazelComponent
 import com.grab.grazel.di.qualifiers.RootProject
-import com.grab.grazel.gradle.dependencies.DefaultDependencyGraphsService
 import com.grab.grazel.gradle.MigrationChecker
+import com.grab.grazel.gradle.dependencies.DefaultDependencyGraphsService
 import com.grab.grazel.gradle.dependencies.DefaultDependencyResolutionService
-import com.grab.grazel.gradle.dependencies.WorkspacePlanService
 import com.grab.grazel.gradle.dependencies.DefaultWorkspacePlanService
 import com.grab.grazel.gradle.dependencies.ProjectReachabilityGroup
 import com.grab.grazel.gradle.dependencies.ProjectReachabilityOrder
+import com.grab.grazel.gradle.dependencies.WorkspacePlanService
+import com.grab.grazel.gradle.dependencies.asRenderPlan
+import com.grab.grazel.gradle.dependencies.mergeTargetReferenceFacts
 import com.grab.grazel.gradle.dependencies.model.TargetMavenRepoReferences
-import com.grab.grazel.gradle.dependencies.model.WorkspaceRenderPlan
-import com.grab.grazel.migrate.BazelTarget
-import com.grab.grazel.migrate.internal.ProjectBazelFileBuilder
+import com.grab.grazel.gradle.dependencies.model.TargetReferenceFacts
+import com.grab.grazel.gradle.dependencies.normalized
+import com.grab.grazel.gradle.dependencies.toTargetMavenRepoReferences
+import com.grab.grazel.migrate.target.TargetReferenceFactsExtractor
 import com.grab.grazel.util.GradleProvider
 import com.grab.grazel.util.logHeap
 import com.grab.grazel.util.writeJson
@@ -55,7 +58,7 @@ internal open class CollectTargetMavenRepoReferencesTask
 @Inject
 constructor(
     private val migrationChecker: Lazy<MigrationChecker>,
-    private val bazelFileBuilder: Lazy<ProjectBazelFileBuilder.Factory>,
+    private val targetReferenceFactsExtractor: Lazy<TargetReferenceFactsExtractor>,
     private val dependencyGraphsService: GradleProvider<DefaultDependencyGraphsService>,
     private val workspacePlanService: GradleProvider<DefaultWorkspacePlanService>,
     objectFactory: ObjectFactory,
@@ -104,7 +107,7 @@ constructor(
         val targetReferences = collectTargetMavenRepoReferencesByGroup(
             projectGroups = orderedGroups,
             canMigrate = { subproject -> migrationChecker.get().canMigrate(subproject) },
-            targetsForProject = { subproject -> bazelFileBuilder.get().create(subproject).targets() },
+            factsForProject = { subproject -> targetReferenceFactsExtractor.get().collect(subproject) },
             workspacePlanService = workspacePlanService.get()
         )
 
@@ -122,7 +125,7 @@ constructor(
         ) = rootProject.tasks.register<CollectTargetMavenRepoReferencesTask>(
             TASK_NAME,
             grazelComponent.migrationChecker(),
-            grazelComponent.projectBazelFileBuilderFactory(),
+            grazelComponent.targetReferenceFactsExtractor(),
             grazelComponent.dependencyGraphsService(),
             grazelComponent.workspacePlanService(),
             rootProject.objects,
@@ -130,7 +133,7 @@ constructor(
         ).apply {
             configure {
                 group = GRAZEL_TASK_GROUP
-                description = "Collect Maven repository references from generated target models"
+                description = "Collect Maven repository references from target reference facts"
                 action(this)
             }
         }
@@ -140,47 +143,48 @@ constructor(
 internal fun collectTargetMavenRepoReferences(
     projects: Iterable<Project>,
     canMigrate: (Project) -> Boolean,
-    targetsForProject: (Project) -> List<BazelTarget>,
+    factsForProject: (Project) -> TargetReferenceFacts,
     workspacePlanService: WorkspacePlanService
 ): TargetMavenRepoReferences =
     collectTargetMavenRepoReferencesByGroup(
         projectGroups = projects.map { project -> ProjectReachabilityGroup(listOf(project)) },
         canMigrate = canMigrate,
-        targetsForProject = targetsForProject,
+        factsForProject = factsForProject,
         workspacePlanService = workspacePlanService
     )
 
 internal fun collectTargetMavenRepoReferencesByGroup(
     projectGroups: Iterable<ProjectReachabilityGroup>,
     canMigrate: (Project) -> Boolean,
-    targetsForProject: (Project) -> List<BazelTarget>,
+    factsForProject: (Project) -> TargetReferenceFacts,
     workspacePlanService: WorkspacePlanService
 ): TargetMavenRepoReferences {
-    val references = collectTargetMavenRepoReferencesSinglePass(
+    val referenceFacts = collectTargetMavenRepoReferencesSinglePass(
         projectGroups = projectGroups,
         canMigrate = canMigrate,
-        targetsForProject = targetsForProject,
+        factsForProject = factsForProject,
         workspacePlanService = workspacePlanService
     )
+    val references = referenceFacts.toTargetMavenRepoReferences()
 
-    workspacePlanService.populateRenderPlan(references.asRenderPlan())
+    workspacePlanService.populateRenderPlan(referenceFacts.asRenderPlan())
     return references
 }
 
 private fun collectTargetMavenRepoReferencesSinglePass(
     projectGroups: Iterable<ProjectReachabilityGroup>,
     canMigrate: (Project) -> Boolean,
-    targetsForProject: (Project) -> List<BazelTarget>,
+    factsForProject: (Project) -> TargetReferenceFacts,
     workspacePlanService: WorkspacePlanService
-): TargetMavenRepoReferences {
-    var accumulated = TargetMavenRepoReferences()
+): TargetReferenceFacts {
+    var accumulated = TargetReferenceFacts()
     projectGroups.forEach { group ->
         accumulated = group.projects.fold(accumulated) { current, project ->
             collectProjectReferences(
                 accumulated = current,
                 project = project,
                 canMigrate = canMigrate,
-                targetsForProject = targetsForProject,
+                factsForProject = factsForProject,
                 workspacePlanService = workspacePlanService
             )
         }
@@ -190,55 +194,24 @@ private fun collectTargetMavenRepoReferencesSinglePass(
 }
 
 private fun collectProjectReferences(
-    accumulated: TargetMavenRepoReferences,
+    accumulated: TargetReferenceFacts,
     project: Project,
     canMigrate: (Project) -> Boolean,
-    targetsForProject: (Project) -> List<BazelTarget>,
+    factsForProject: (Project) -> TargetReferenceFacts,
     workspacePlanService: WorkspacePlanService
-): TargetMavenRepoReferences {
+): TargetReferenceFacts {
     workspacePlanService.populateRenderPlan(accumulated.asRenderPlan())
     if (!canMigrate(project)) {
         return accumulated
     }
     return mergeTargetMavenRepoReferences(
         accumulated,
-        TargetMavenRepoReferencesCollector.fromTargets(targetsForProject(project))
+        factsForProject(project)
     )
 }
-
-private fun TargetMavenRepoReferences.asRenderPlan(): WorkspaceRenderPlan =
-    WorkspaceRenderPlan(
-        referencedProjectPaths = projectPaths,
-        referencedProjectTargets = projectTargets
-    )
 
 private fun mergeTargetMavenRepoReferences(
-    left: TargetMavenRepoReferences,
-    right: TargetMavenRepoReferences
-): TargetMavenRepoReferences =
-    TargetMavenRepoReferences(
-        repoNames = left.repoNames + right.repoNames,
-        projectPaths = left.projectPaths + right.projectPaths,
-        projectTargets = mergeProjectTargets(left.projectTargets, right.projectTargets)
-    )
-
-private fun mergeProjectTargets(
-    left: Map<String, Set<String>>,
-    right: Map<String, Set<String>>
-): Map<String, Set<String>> {
-    return (left.keys + right.keys)
-        .associateWith { projectPath ->
-            left.getOrDefault(projectPath, emptySet()) +
-                right.getOrDefault(projectPath, emptySet())
-        }
-        .toSortedMap()
-}
-
-private fun TargetMavenRepoReferences.normalized(): TargetMavenRepoReferences =
-    TargetMavenRepoReferences(
-        repoNames = repoNames.toSortedSet(),
-        projectPaths = projectPaths.toSortedSet(),
-        projectTargets = projectTargets
-            .mapValues { (_, targetNames) -> targetNames.toSortedSet() }
-            .toSortedMap()
-    )
+    left: TargetReferenceFacts,
+    right: TargetReferenceFacts
+): TargetReferenceFacts =
+    mergeTargetReferenceFacts(left, right)
