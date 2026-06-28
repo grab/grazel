@@ -102,9 +102,9 @@ re-derivation round-trips, not by LOC.
 ## Verification Loop
 
 Before every expensive Gradle/Bazel command, check disk, memory, and process pressure. PAX is
-large; long runs are expected. Do not disable Bazel disk cache with `--disk_cache=`. Do not add
-aggressive `--jobs` unless diagnosing a specific resource issue; prefer default wrapper behavior.
-Avoid concurrent huge Gradle/Bazel builds.
+large; long runs are expected. Do not disable disk cache with `--disk_cache=`. Do not add
+aggressive `--jobs` unless diagnosing a specific resource issue. Prefer default wrapper
+behavior. Avoid running huge Gradle/Bazel jobs concurrently.
 
 Grazel checks as changes mature:
 
@@ -145,17 +145,19 @@ Record in `reports/specs/EXECUTION-LOG.md` after meaningful runs:
 
 ## Resource Hygiene
 
-- Watch `~/.gradle/caches`, PAX `bazel-cache`, any `bazel-ccache`, and
-  `/private/var/tmp/_bazel_*` or `/private/var/bazel`-like dirs.
-- If Bazel private output roots grow very large, for example above 90 GiB, or disk becomes
-  genuinely low, clean deliberately instead of letting runs fail.
-- First use `bazelisk shutdown` and `bazelisk clean --expunge` in the relevant repo.
-- Remove stale private Bazel output roots only when clearly needed and after checking they are
-  stale and not active.
-- In PAX, remove `bazel-cache` only as a last resort because preserving it keeps verification
-  fast.
-- Stop stale Gradle daemons, Bazel processes, Coursier children, or high-RAM `python3.12`
-  processes only when clearly stale/problematic.
+Watch `~/.gradle/caches`, `pax-android/bazel-cache`, any `bazel-ccache`, and
+`/private/var/tmp/_bazel_*` or `/private/var/bazel`-like dirs. If Bazel private output roots
+grow very large, for example above 90 GiB, or disk becomes genuinely low, clean deliberately
+instead of letting runs fail:
+
+- first use `bazelisk shutdown` and `bazelisk clean --expunge` in the relevant repo;
+- remove stale private Bazel output roots only when clearly needed and after checking they are
+  stale/not active;
+- in PAX, `rm -rf bazel-cache` is allowed only as a last resort because preserving it keeps
+  verification fast.
+
+Stop stale Gradle daemons, Bazel processes, Coursier children, or high-RAM `python3.12`
+processes only when clearly stale/problematic.
 
 ## Compaction Survival
 

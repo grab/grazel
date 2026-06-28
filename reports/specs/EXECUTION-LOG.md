@@ -1502,3 +1502,25 @@ evidence in item-specific logs so context compaction can recover state quickly.
 - Remaining Item 19 cleanup note: `collectTargetMavenRepoReferences` prints many fallback
   compression messages for projects without compression results. This did not affect generated
   output or size metrics, but can be considered output hygiene in Item 21.
+
+## 2026-06-28 Goal Prompt Prep - Storage Wording
+
+- Maintainer re-emphasized that the next goal prompt must retain the older, stricter
+  operational constraints wording for storage, process, and Bazel/Gradle cleanup.
+- Updated `reports/specs/CURRENT-GOAL-ANCHOR.md` so future goal runs inherit:
+  resource checks before every expensive Gradle/Bazel command; no `--disk_cache=` disabling;
+  no aggressive `--jobs` unless diagnosing; watch `~/.gradle/caches`, PAX `bazel-cache`,
+  `bazel-ccache`, and `/private/var/tmp/_bazel_*` or `/private/var/bazel`-like dirs; use
+  `bazelisk shutdown`/`bazelisk clean --expunge` first; remove private Bazel roots or PAX
+  `bazel-cache` only when genuinely needed; stop stale Gradle/Bazel/Coursier/high-RAM
+  `python3.12` processes only when clearly stale/problematic.
+
+## 2026-06-28 Item 21 Audit Notes
+
+- Persisted the two read-only Item 21 subagent audit summaries to
+  `reports/specs/execution-log/item21-simplify-pass.md`.
+- Key decisions captured there: Group A deletions are production-call-safe with test updates;
+  remove `CollectTargetMavenRepoReferencesTask.compressionResults` only as an input while
+  keeping `dependsOn(analyzeVariantCompressionTask)`; reuse/move existing `isDeclaredMetadata`
+  instead of creating a second declared-dependency predicate; preserve current
+  `MavenInstallArtifactsCalculator` override-target ordering.
