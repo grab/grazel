@@ -104,16 +104,19 @@ intended output change).
 | **22** | Set-math ownership reduction — EXPERIMENT | completed: Outcome B | proven-essential doc | Measured set-subtraction ownership on sample/PAX; active residual paths proved the current set-math problem-essential, so no Phase 2 reshape was attempted | 12, 13, 17 |
 | **23** | Target reference model hygiene | proposed | **preserving (empty-diff)** | Remove dead `BazelTarget` compatibility collector and collapse duplicate target-reference data models; do not broaden into typed-label/regex cleanup | 19 |
 | **26** | Variant-owned workspace dependency root inputs | proposed | **preserving (empty-diff)** | Move workspace dependency root input planning out of `WorkspaceDependencyInputsRegistrar`; prefer lazy `VariantBuilder.onVariants`; keep AGP configuration-name knowledge in `gradle.variant`; registrar wires task inputs only | 9, 10 |
-| **29** | Declared metadata aggregation modes | proposed | **preserving (mode parity + empty-diff)** | Delete broad Gradle/TOML file tracing; add experiment switch between untracked bounded-coroutine single aggregation and cacheable per-project fanout + deterministic merge | 10, prefer after 26 |
-| **24** | Branch-diff source shape hygiene | proposed | **preserving (empty-diff)** | Inventory Kotlin files changed by this branch; use scripts plus scoped subagents to remove policy-heavy generic extensions, clarify helper model naming/placement, remove test-only production seams/reflection escapes, and justify any retained complexity | 23, 26, 29 |
+| **30** | Workspace resolution input boundary | proposed | **preserving (empty-diff)** | Remove eager JSON encode/decode from workspace root task wiring; keep master-like `ResolvedComponentResult` cacheable inputs; preserve deterministic root metadata pairing | 26 preferred |
+| **29** | Declared metadata aggregation modes | proposed | **preserving (mode parity + empty-diff)** | Delete broad Gradle/TOML file tracing; add experiment switch between untracked bounded-coroutine single aggregation and cacheable per-project fanout + deterministic merge | 10, prefer after 26/30 |
+| **24** | Branch-diff source shape hygiene | proposed | **preserving (empty-diff)** | Inventory Kotlin files changed by this branch; use scripts plus scoped subagents to remove policy-heavy generic extensions, clarify helper model naming/placement, remove test-only production seams/reflection escapes, and justify any retained complexity | 23, 26, 30, 29 |
 | **27** | Branch-wide simplify + adversarial review before formatting | proposed | **preserving (empty-diff)** | Explicitly invoke the `simplify-pass` skill, then run adversarial correctness review over the entire branch diff; ambitiously fix maintainability/correctness findings; PAX baseline must not move | 24 |
 | **25** | Merge generate + format into one task per scope | specced | **preserving (empty-diff)** | Collapse the per-project and root generate/format task pairs into one `@UntrackedTask` each; extract a shared `formatWithBuildifier` helper; delete `FormatBazelFileTask`; rewire post/pin/migrate edges. Accepts losing format `@CacheableTask` (~6s/run on PAX; generate already untracked) | 27 |
 | **28** | Hard source-shape inventory remediation | proposed | **preserving (empty-diff)** | Correct the under-enforced Item 24/27 source-shape pass with a committed per-file inventory, mandatory suspicious-pattern scan, row-level subagent reconciliation, and hard no-pending exit gate | 25 |
 
-**Current next-goal execution order:** 23 → 26 → 29 → 24 → 27 → 25 → final verification/review.
+**Current next-goal execution order:** 23 → 26 → 30 → 29 → 24 → 27 → 25 → final verification/review.
 Item 23 removes the stale target-reference compatibility path first. Item 26 then fixes the
 known workspace dependency root-input altitude leak and performs the broad changed-file altitude
-scan. Item 29 then removes the declared-metadata build-file tracing cache proxy and adds the
+scan. Item 30 then fixes the workspace root resolution input boundary: no eager JSON metadata work
+during task wiring, while preserving the master-like `ResolvedComponentResult` cacheable input
+contract. Item 29 then removes the declared-metadata build-file tracing cache proxy and adds the
 single-vs-fanout aggregation experiment before this area is source-shape-polished. Item 24 then
 runs as the branch-diff source-shape hygiene pass, cleaning the source shape after the
 dependency-planning altitude fixes. Item 27 runs a branch-wide simplify/adversarial review over
@@ -125,12 +128,12 @@ task-graph cleanup.
 file-by-file inventory ledger and missed policy-heavy receiver extensions. Item 28 supersedes any
 claim that source-shape cleanup is complete. It is preserving and starts only after the maintainer
 commits the current PAX generated/local baseline, so PAX `git diff` becomes the regression signal.
-If Item 29 has not yet run, run Item 29 before Item 28 so the inventory pass does not preserve or
-polish the obsolete declared-metadata task shape.
+If Item 29 or Item 30 has not yet run, run them before Item 28 so the inventory pass does not
+preserve or polish obsolete dependency task shapes.
 
 **Current next-goal hard exit gate:** do not stop after any single item appears green. The goal is
-complete only when Items 23, 26, 29, 24, 27, and 25 have all met their acceptance criteria; every changed
-Kotlin file required by Items 24/26 has been inventoried, visited, and reconciled; confirmed
+complete only when Items 23, 26, 30, 29, 24, 27, and 25 have all met their acceptance criteria; every changed
+Kotlin file required by Items 24/26/30/29 has been inventoried, visited, and reconciled; confirmed
 altitude violations are fixed in-slice; Item 27's simplify/adversarial findings are fixed or
 rejected with concrete code evidence; generated output is empty-diff; PAX migrate leaves the
 accepted baseline unchanged; required PAX APK builds pass where specified; task-graph checks pass;
