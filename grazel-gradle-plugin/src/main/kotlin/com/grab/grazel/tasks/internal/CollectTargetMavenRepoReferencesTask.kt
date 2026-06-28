@@ -73,10 +73,6 @@ constructor(
     @get:PathSensitive(PathSensitivity.RELATIVE)
     val workspacePlan: RegularFileProperty = objectFactory.fileProperty()
 
-    @get:InputFile
-    @get:PathSensitive(PathSensitivity.RELATIVE)
-    val compressionResults: RegularFileProperty = objectFactory.fileProperty()
-
     @get:Internal
     val dependencyResolutionService: Property<DefaultDependencyResolutionService> =
         objectFactory.property()

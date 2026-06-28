@@ -73,28 +73,18 @@ constructor(
         materializedMavenRepos: Set<String>,
     ): Set<MavenInstallData> {
         val rootArtifactsByVariant = workspaceDependencies.mavenInstallRootArtifactsByVariant()
-        val variantInputs = workspaceDependencies.variantDeps.map { (variantName, _) ->
-            val mavenInstallName = variantName.toMavenRepoName()
-            val rootArtifacts = rootArtifactsByVariant.getValue(variantName)
-            VariantMavenInstallInput(
-                variantName = variantName,
-                mavenInstallName = mavenInstallName,
-                rootArtifacts = rootArtifacts,
-                overrideTargets = calculateOverrideTargets(
-                    artifacts = rootArtifacts,
-                    owningMavenRepoName = mavenInstallName
-                )
-            )
-        }
-
-        val result = variantInputs
-            .mapNotNullTo(TreeSet(compareBy(MavenInstallData::name))) { input ->
-                val variantName = input.variantName
-                val mavenInstallName = input.mavenInstallName
+        val result = workspaceDependencies
+            .variantDeps
+            .mapNotNullTo(TreeSet(compareBy(MavenInstallData::name))) { (variantName, _) ->
+                val mavenInstallName = variantName.toMavenRepoName()
                 if (mavenInstallName !in materializedMavenRepos) {
                     return@mapNotNullTo null
                 }
-                val rootArtifacts = input.rootArtifacts
+                val rootArtifacts = rootArtifactsByVariant.getValue(variantName)
+                val overrideTargets = calculateOverrideTargets(
+                    artifacts = rootArtifacts,
+                    owningMavenRepoName = mavenInstallName
+                )
                 val allArtifacts = rootArtifacts + grazelExtension
                     .dependencies
                     .overrideArtifactVersions
@@ -134,7 +124,7 @@ constructor(
                     ),
                     failOnMissingChecksum = false,
                     excludeArtifacts = mavenInstallExtension.excludeArtifacts.get().toSet(),
-                    overrideTargets = input.overrideTargets,
+                    overrideTargets = overrideTargets,
                     resolveTimeout = mavenInstallExtension.resolveTimeout,
                     artifactPinning = mavenInstallExtension.artifactPinning.enabled.get(),
                     versionConflictPolicy = mavenInstallExtension.versionConflictPolicy,
@@ -180,13 +170,6 @@ constructor(
 
         return result
     }
-
-    private data class VariantMavenInstallInput(
-        val variantName: String,
-        val mavenInstallName: String,
-        val rootArtifacts: List<ResolvedDependency>,
-        val overrideTargets: Map<String, String>
-    )
 
     private fun calculateOverrideTargets(
         artifacts: List<ResolvedDependency>,

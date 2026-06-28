@@ -52,19 +52,11 @@ class WorkspacePlanBuilderTest {
         assertEquals("debug", debugRepo.variantName)
         assertEquals(
             listOf("com.example:debug-root:1.0.0", "com.example:shared-transitive:2.0.0"),
-            debugRepo.rootArtifacts.map(ResolvedDependency::id)
-        )
-        assertEquals(
-            listOf("com.example:debug-root:1.0.0", "com.example:shared-transitive:2.0.0"),
             debugRepo.pinInputs.map(ResolvedDependency::id)
         )
         assertEquals(
             mapOf("com.example:shared-transitive" to "@maven//:com_example_shared_transitive"),
             debugRepo.overrideTargets
-        )
-        assertEquals(
-            listOf("com.example:debug-root:1.0.0"),
-            debugRepo.variantArtifacts.getValue("debug").map(ResolvedDependency::id)
         )
     }
 
@@ -88,7 +80,7 @@ class WorkspacePlanBuilderTest {
         val freeRepo = plan.repoPlan.getValue("free_maven")
         assertEquals(
             listOf("com.example:debug-carrier:1.0.0", "com.example:free-root:1.0.0"),
-            freeRepo.rootArtifacts.map(ResolvedDependency::id)
+            freeRepo.pinInputs.map(ResolvedDependency::id)
         )
         assertEquals(
             mapOf("com.example:debug-carrier" to "@debug_maven//:com_example_debug_carrier"),
@@ -118,7 +110,7 @@ class WorkspacePlanBuilderTest {
         val debugRepo = plan.repoPlan.getValue("debug_maven")
         assertEquals(
             listOf("com.example:debug-root:1.0.0", "com.example:shared:1.0.0"),
-            debugRepo.rootArtifacts.map(ResolvedDependency::id)
+            debugRepo.pinInputs.map(ResolvedDependency::id)
         )
         assertEquals(emptyMap<String, String>(), debugRepo.overrideTargets)
     }
@@ -143,7 +135,7 @@ class WorkspacePlanBuilderTest {
         val plan = WorkspacePlanBuilder().build(workspaceDependencies)
 
         val debugRepo = plan.repoPlan.getValue("debug_maven")
-        val debugSharedRoot = debugRepo.rootArtifacts
+        val debugSharedRoot = debugRepo.pinInputs
             .single { artifact -> artifact.shortId == "com.example:shared" }
         assertEquals(
             "Default-owned artifacts carried for Coursier should redirect Bazel labels to @maven",
@@ -257,7 +249,6 @@ class WorkspacePlanBuilderTest {
                     "debug_maven" to CandidateMavenRepo(
                         variantName = "debug",
                         kind = VARIANT,
-                        rootArtifacts = listOf(inheritedCarrier),
                         pinInputs = listOf(inheritedCarrier),
                         overrideTargets = mapOf("com.example:shared" to "@maven//:com_example_shared")
                     )

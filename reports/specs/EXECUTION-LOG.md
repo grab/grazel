@@ -1524,3 +1524,33 @@ evidence in item-specific logs so context compaction can recover state quickly.
   keeping `dependsOn(analyzeVariantCompressionTask)`; reuse/move existing `isDeclaredMetadata`
   instead of creating a second declared-dependency predicate; preserve current
   `MavenInstallArtifactsCalculator` override-target ordering.
+
+## 2026-06-28 Item 21 PAX Verification
+
+- PAX `./gradlew migrateToBazel --no-daemon --console=plain --stacktrace --rerun-tasks`
+  passed in `11m 30s`; generated output stayed clean against local baseline
+  `cfa1057ed58ccb2a795a5f679f072a8f604ff48e`.
+- PAX `git diff --check` passed.
+- PAX size guard passed in preserving mode with bucket count `11`, pinfile count `11`, and
+  total artifact roots `1945`, all unchanged.
+- PAX `./bazel.sh build --verbose_failures //app:app-gps-pax-debug.apk //app:app-gps-pax-debug-android-test.apk`
+  passed in `234.914s`.
+- PAX focused Bazel tests passed:
+  `./bazel.sh test --test_output=errors //app-utils:app-utils-gps-pax-debug-test //app-test:app-test-gps-pax-debug-test //application-initializer:application-initializer-gps-pax-debug-test`.
+- PAX worktree stayed clean after migrate/build/test.
+- Resource notes: checked disk/memory/process before expensive Gradle/Bazel commands; disk stayed
+  around `21 GiB` free on Data during PAX gates; no cache deletion or process killing was needed.
+
+## 2026-06-28 Item 21 Final Review Checkpoint
+
+- Read-only code-quality/altitude subagent found no blocking Item 21 findings. It verified that
+  shared dependency identity helpers preserve the old predicates, Maven install repo filtering
+  still happens before root-artifact/override calculation, and `compressionResults` input removal
+  keeps task ordering through `dependsOn(analyzeVariantCompressionTask)`.
+- Read-only verification subagent found one missing Item 21 gate: functional tests. Ran it before
+  commit.
+- Passed `./gradlew :grazel-gradle-plugin:functionalTest --console=plain --no-daemon` in
+  `5m 4s`.
+- `git status --short` after functional tests showed only Item 21 source/test/docs changes and
+  the new `DependencyIdentity.kt`; no generated fixture drift.
+- `git diff --check master...HEAD` was run by the verification subagent and exited clean.

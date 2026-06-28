@@ -48,6 +48,10 @@ class WorkspacePlanTasksTest {
             .buildDirectory
             .file("grazel/test-dependencies.json")
             .get()
+        val targetTagPlanFile = rootProject.layout
+            .buildDirectory
+            .file("grazel/test-target-tag-plan.json")
+            .get()
         workspaceDependenciesFile.asFile.parentFile.mkdirs()
         writeJson(
             WorkspaceDependencies(
@@ -57,6 +61,17 @@ class WorkspacePlanTasksTest {
             ),
             workspaceDependenciesFile
         )
+        val targetTagPlan = listOf(
+            TargetTagPlan(
+                key = TargetTagKey(
+                    variantId = ":lib:debugAndroidBuild",
+                    variantType = "AndroidBuild",
+                    targetKind = "android_library"
+                ),
+                tags = listOf("@maven//:com_example_debug")
+            )
+        )
+        writeJson(targetTagPlan, targetTagPlanFile)
 
         val workspacePlanService = WorkspacePlanService.register(rootProject)
         val task = ComputeWorkspacePlanTask.register(
@@ -64,6 +79,7 @@ class WorkspacePlanTasksTest {
             workspacePlanService = workspacePlanService
         ) {
             workspaceDependencies.set(workspaceDependenciesFile)
+            this.targetTagPlan.set(targetTagPlanFile)
         }.get()
 
         task.action()
@@ -73,7 +89,14 @@ class WorkspacePlanTasksTest {
             listOf("com.example:debug:1.0.0"),
             writtenPlan.repoPlan.getValue("debug_maven").pinInputs.map(ResolvedDependency::id)
         )
-        assertEquals(writtenPlan, workspacePlanService.get().getPlan())
+        assertEquals(
+            listOf("@maven//:com_example_debug"),
+            workspacePlanService.get().tagsFor(
+                variantId = ":lib:debugAndroidBuild",
+                variantType = "AndroidBuild",
+                targetKind = "android_library"
+            )
+        )
     }
 
     @Test
@@ -218,7 +241,8 @@ class WorkspacePlanTasksTest {
             mapOf(":ui-tests" to setOf("ui-tests-gps-pax-debug_lib")),
             writtenRenderPlan.referencedProjectTargets
         )
-        assertEquals(writtenRenderPlan, workspacePlanService.get().getRenderPlan())
+        assertTrue(workspacePlanService.get().isReferencedProjectPath(":lint:custom-lint-rules"))
+        assertTrue(workspacePlanService.get().isReferencedTarget(":ui-tests", "ui-tests-gps-pax-debug_lib"))
         assertEquals(
             setOf("ui-tests-gps-pax-debug_lib"),
             workspacePlanService.get().referencedTargetNames(":ui-tests")

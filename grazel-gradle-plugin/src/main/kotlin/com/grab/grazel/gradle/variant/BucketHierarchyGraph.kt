@@ -30,8 +30,7 @@ internal data class BucketHierarchyEntry(
 
 internal class BucketHierarchyGraph private constructor(
     private val entriesByNode: Map<BucketHierarchyNode, BucketHierarchyEntry>,
-    private val predecessorsByNode: Map<BucketHierarchyNode, Set<BucketHierarchyNode>>,
-    private val successorsByNode: Map<BucketHierarchyNode, Set<BucketHierarchyNode>>
+    private val predecessorsByNode: Map<BucketHierarchyNode, Set<BucketHierarchyNode>>
 ) {
     private val ancestorsByNode: Map<BucketHierarchyNode, Set<BucketHierarchyNode>> by lazy {
         entriesByNode.keys
@@ -72,34 +71,11 @@ internal class BucketHierarchyGraph private constructor(
                     .filter { parent -> entry.node.canExtendFrom(parent) }
                     .toSortedNodeSet()
             }.toSortedNodeMap()
-            val successorsByNode = entriesByNode.keys
-                .associateWith { linkedSetOf<BucketHierarchyNode>() }
-                .toMutableMap()
-            predecessorsByNode.forEach { (node, predecessors) ->
-                predecessors.forEach { predecessor ->
-                    successorsByNode.getOrPut(predecessor) { linkedSetOf() }.add(node)
-                }
-            }
             return BucketHierarchyGraph(
                 entriesByNode = entriesByNode,
-                predecessorsByNode = predecessorsByNode,
-                successorsByNode = successorsByNode.mapValues { (_, successors) ->
-                    successors.toSortedNodeSet()
-                }.toSortedNodeMap()
+                predecessorsByNode = predecessorsByNode
             )
         }
-    }
-
-    fun contains(node: BucketHierarchyNode): Boolean {
-        return node in entriesByNode
-    }
-
-    fun predecessorsOf(node: BucketHierarchyNode): Set<BucketHierarchyNode> {
-        return predecessorsByNode[node].orEmpty()
-    }
-
-    fun successorsOf(node: BucketHierarchyNode): Set<BucketHierarchyNode> {
-        return successorsByNode[node].orEmpty()
     }
 
     fun ancestorsOf(node: BucketHierarchyNode): Set<BucketHierarchyNode> {
@@ -110,7 +86,7 @@ internal class BucketHierarchyGraph private constructor(
         val visited = linkedSetOf<BucketHierarchyNode>()
 
         fun visit(current: BucketHierarchyNode) {
-            predecessorsOf(current).forEach { predecessor ->
+            predecessorsByNode[current].orEmpty().forEach { predecessor ->
                 if (visited.add(predecessor)) {
                     visit(predecessor)
                 }

@@ -99,12 +99,29 @@ re-derivation round-trips, not by LOC.
 - **22:** Stretch experiment. Measure whether set-math ownership is reducible; either reshape
   with exact shadow parity and empty generated diff, or document as proven problem-essential.
 
-## Verification Loop
+## Operational Constraints
 
-Before every expensive Gradle/Bazel command, check disk, memory, and process pressure. PAX is
+Before every expensive Gradle/Bazel run, check disk, memory, and process pressure. PAX is
 large; long runs are expected. Do not disable disk cache with `--disk_cache=`. Do not add
 aggressive `--jobs` unless diagnosing a specific resource issue. Prefer default wrapper
-behavior. Avoid running huge Gradle/Bazel jobs concurrently.
+behavior.
+
+Watch `~/.gradle/caches`, `pax-android/bazel-cache`, any `bazel-ccache`, and
+`/private/var/tmp/_bazel_*` or `/private/var/bazel`-like dirs. If Bazel private output roots
+grow very large, for example above 90 GiB, or disk becomes genuinely low, clean deliberately
+instead of letting runs fail:
+
+- first use `bazelisk shutdown` and `bazelisk clean --expunge` in the relevant repo;
+- remove stale private Bazel output roots only when clearly needed and after checking they are
+  stale/not active;
+- in PAX, `rm -rf bazel-cache` is allowed only as a last resort because preserving it keeps
+  verification fast.
+
+Stop stale Gradle daemons, Bazel processes, Coursier children, or high-RAM `python3.12`
+processes only when clearly stale/problematic. Avoid running huge Gradle/Bazel jobs
+concurrently.
+
+## Verification Loop
 
 Grazel checks as changes mature:
 
@@ -142,22 +159,6 @@ Record in `reports/specs/EXECUTION-LOG.md` after meaningful runs:
 - Item 19 target-builder invocation count during reference collection,
 - failures/root causes/fixes,
 - remaining risks.
-
-## Resource Hygiene
-
-Watch `~/.gradle/caches`, `pax-android/bazel-cache`, any `bazel-ccache`, and
-`/private/var/tmp/_bazel_*` or `/private/var/bazel`-like dirs. If Bazel private output roots
-grow very large, for example above 90 GiB, or disk becomes genuinely low, clean deliberately
-instead of letting runs fail:
-
-- first use `bazelisk shutdown` and `bazelisk clean --expunge` in the relevant repo;
-- remove stale private Bazel output roots only when clearly needed and after checking they are
-  stale/not active;
-- in PAX, `rm -rf bazel-cache` is allowed only as a last resort because preserving it keeps
-  verification fast.
-
-Stop stale Gradle daemons, Bazel processes, Coursier children, or high-RAM `python3.12`
-processes only when clearly stale/problematic.
 
 ## Compaction Survival
 

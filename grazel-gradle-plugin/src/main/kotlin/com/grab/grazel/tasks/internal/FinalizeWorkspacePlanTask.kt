@@ -73,7 +73,6 @@ internal abstract class FinalizeWorkspacePlanTask : DefaultTask() {
         )
         workspaceRenderPlan.get().asFile.parentFile.mkdirs()
         writeJson(renderPlan, workspaceRenderPlan.get())
-        workspacePlanService.get().populatePlan(plan)
         workspacePlanService.get().populateRenderPlan(renderPlan)
         logger.logHeap("FinalizeWorkspacePlan:done")
     }

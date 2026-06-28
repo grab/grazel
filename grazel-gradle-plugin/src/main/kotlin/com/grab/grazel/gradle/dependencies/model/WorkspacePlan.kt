@@ -28,10 +28,8 @@ internal data class WorkspacePlan(
 internal data class CandidateMavenRepo(
     val variantName: String? = null,
     val kind: CandidateMavenRepoKind,
-    val rootArtifacts: List<ResolvedDependency> = emptyList(),
-    val pinInputs: List<ResolvedDependency> = rootArtifacts,
-    val overrideTargets: Map<String, String> = emptyMap(),
-    val variantArtifacts: Map<String, List<ResolvedDependency>> = emptyMap()
+    val pinInputs: List<ResolvedDependency> = emptyList(),
+    val overrideTargets: Map<String, String> = emptyMap()
 )
 
 @Serializable
@@ -52,20 +50,6 @@ internal data class TargetTagKey(
     val variantType: String,
     val targetKind: String
 )
-
-internal fun WorkspacePlan.tagsFor(
-    variantId: String,
-    variantType: String,
-    targetKind: String
-): List<String>? = tagPlan
-    .firstOrNull { targetTagPlan ->
-        targetTagPlan.key == TargetTagKey(
-            variantId = variantId,
-            variantType = variantType,
-            targetKind = targetKind
-        )
-    }
-    ?.tags
 
 @Serializable
 internal data class WorkspaceRenderPlan(

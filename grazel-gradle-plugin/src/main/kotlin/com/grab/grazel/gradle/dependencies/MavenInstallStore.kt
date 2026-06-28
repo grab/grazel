@@ -38,10 +38,6 @@ internal interface MavenInstallStore : AutoCloseable {
         version: String? = null
     ): MavenDependency?
 
-    operator fun set(variantRepoName: String, group: String, name: String)
-
-    fun set(variantRepoName: String, group: String, name: String, target: MavenDependency?)
-
     fun set(
         variantRepoName: String,
         group: String,
@@ -111,19 +107,6 @@ class DefaultMavenInstallStore : MavenInstallStore {
             variantsWithDefault()
                 .mapNotNull { variant -> get(variant, null) }
         )
-    }
-
-    override fun set(variantRepoName: String, group: String, name: String) {
-        set(variantRepoName, group, name, target = null)
-    }
-
-    override fun set(
-        variantRepoName: String,
-        group: String,
-        name: String,
-        target: MavenDependency?
-    ) {
-        set(variantRepoName, group, name, version = null, target = target, direct = true)
     }
 
     override fun set(

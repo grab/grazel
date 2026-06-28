@@ -324,7 +324,6 @@ class DefaultArtifactPinnerTest {
             repoPlan = repos.associate { (repoName, pinInputs) ->
                 repoName to CandidateMavenRepo(
                     kind = CandidateMavenRepoKind.AGGREGATED,
-                    rootArtifacts = pinInputs,
                     pinInputs = pinInputs
                 )
             }

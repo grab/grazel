@@ -54,12 +54,11 @@ class BucketHierarchyGraphTest {
             )
         )
 
-        assertEquals(setOf(default, debug, free), graph.predecessorsOf(freeDebug))
-        assertEquals(setOf(freeDebugUnitTest, freeDebugAndroidTest), graph.successorsOf(freeDebug))
         assertEquals(setOf(default, debug, free, test, debugUnitTest, freeDebug), graph.ancestorsOf(freeDebugUnitTest))
         assertTrue(graph.hasAncestor(freeDebugUnitTest, freeDebug))
         assertTrue(graph.hasAncestor(freeDebugAndroidTest, androidTest))
         assertFalse(graph.hasAncestor(freeDebug, test))
+        assertEquals(setOf(freeDebugUnitTest, freeDebugAndroidTest), graph.leafDescendantsOf(freeDebug))
         assertEquals(6, graph.depthOf(freeDebugUnitTest))
     }
 
@@ -80,7 +79,7 @@ class BucketHierarchyGraphTest {
             )
         )
 
-        assertEquals(emptySet<BucketHierarchyNode>(), graph.predecessorsOf(appDebug).intersect(setOf(testAppDebug)))
+        assertFalse(graph.hasAncestor(appDebug, testAppDebug))
         assertEquals(setOf(appDebug), graph.leafDescendantsOf(node(DEFAULT_VARIANT, AndroidBuild, ":app")))
         assertEquals(setOf(testAppDebug), graph.leafDescendantsOf(node(DEFAULT_VARIANT, AndroidBuild, ":test-app")))
         assertEquals(setOf(debugUnitTest), graph.leafDescendantsOf(node(TEST_VARIANT, TestVariantType, ":app")))
@@ -100,7 +99,7 @@ class BucketHierarchyGraphTest {
             )
         )
 
-        assertEquals(setOf(androidDefault), graph.predecessorsOf(debug))
+        assertTrue(graph.hasAncestor(debug, androidDefault))
         assertFalse(graph.hasAncestor(debug, testDefault))
     }
 
@@ -123,9 +122,10 @@ class BucketHierarchyGraphTest {
         )
 
         assertEquals(setOf(freeDebug, paidDebug), graph.leafDescendantsOf(debug))
-        assertFalse(
+        assertEquals(
             "A bucket named free must not be inferred from leaf names unless it exists in extendsFrom metadata",
-            graph.contains(node("free", AndroidBuild))
+            emptySet<BucketHierarchyNode>(),
+            graph.leafDescendantsOf(node("free", AndroidBuild))
         )
     }
 

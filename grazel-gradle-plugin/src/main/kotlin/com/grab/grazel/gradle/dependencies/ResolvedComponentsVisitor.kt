@@ -222,7 +222,7 @@ internal class ResolvedComponentsVisitor {
 
                         // First-level external children can hang directly off the resolved root
                         // (for configuration-level deps) or under a traversed project node.
-                        val childDirectProjectPath = if (traverseProjectNodes && !constraint) {
+                        val childDirectProjectPath = if (traverseProjectNodes) {
                             when {
                                 node.isProject -> node.projectPath
                                 level == 0 -> root.projectPath

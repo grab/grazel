@@ -104,7 +104,6 @@ constructor(
         ) {
             workspaceDependencies.set(computeWorkspaceDependenciesTask.flatMap { it.workspaceDependencies })
             workspacePlan.set(computeWorkspacePlanTask.flatMap { it.workspacePlan })
-            compressionResults.set(analyzeVariantCompressionTask.flatMap { it.compressionResultsFile })
             dependencyResolutionService.set(grazelComponent.dependencyResolutionService())
             dependsOn(analyzeVariantCompressionTask)
         }

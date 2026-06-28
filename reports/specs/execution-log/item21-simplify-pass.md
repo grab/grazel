@@ -82,3 +82,113 @@ Verification to run after Item 21 edits:
 - `reports/scripts/verify-sample-bucket-labels.sh`
 - `reports/scripts/verify-pax-size-guard.sh --mode preserving`
 - PAX migrate/build/test loop from `CURRENT-GOAL-ANCHOR.md` before claiming the item green.
+
+## 2026-06-28 Group A First Slice
+
+Implemented:
+
+- Removed duplicate `CandidateMavenRepo.rootArtifacts` and `variantArtifacts`; callers now use
+  explicit `pinInputs`.
+- Removed unused `WorkspacePlan.tagsFor` extension; production uses `WorkspacePlanService.tagsFor`.
+- Removed test-only `WorkspacePlanService.getPlan` and `getRenderPlan`.
+- Removed unused `List<ResolvedDependency>.mavenInstallRootArtifacts(...)` bridge overload.
+- Removed `MavenInstallStore` 3-arg and 4-arg `set` overloads; full setter remains.
+- Removed `BucketHierarchyGraph.predecessorsOf`, `successorsOf`, `contains`, and the now-dead
+  successor map construction. Tests assert ancestry/leaf-descendant behavior instead.
+- Removed unused `CollectTargetMavenRepoReferencesTask.compressionResults` input and its
+  `TasksManager` property wiring; kept `dependsOn(analyzeVariantCompressionTask)`.
+
+Debug note:
+
+- First focused test compile failed because a local `targetTagPlan` variable shadowed the task
+  property in `WorkspacePlanTasksTest`; fixed with `this.targetTagPlan.set(...)`.
+- Second run failed one graph assertion after replacing `successorsOf` with `leafDescendantsOf`;
+  corrected the expectation to the test/androidTest leaves under `freeDebug`.
+
+Verification:
+
+- Resource checks before Gradle runs showed about 24-25 GiB free on Data and no cleanup-triggering
+  pressure. Some idle Bazel servers from pinner tests remain; not cleaned during focused tests.
+- Passed:
+  `./gradlew :grazel-gradle-plugin:test --tests "com.grab.grazel.gradle.dependencies.WorkspacePlanBuilderTest" --tests "com.grab.grazel.gradle.dependencies.WorkspaceRenderPlanBuilderTest" --tests "com.grab.grazel.tasks.internal.WorkspacePlanTasksTest" --tests "com.grab.grazel.gradle.variant.BucketHierarchyGraphTest" --tests "com.grab.grazel.migrate.dependencies.DefaultArtifactPinnerTest" --console=plain --no-daemon`.
+
+## 2026-06-28 Groups B/C/D Slice
+
+Implemented:
+
+- Added shared `DependencyIdentity.kt` helpers for `isDeclaredMetadata` and
+  `hasSameDefaultOwnerIdentityAs`.
+- Moved `isDeclaredMetadata` out of `AggregatedDependencyResolver.kt` and deleted duplicate
+  declared/default-owner helper copies from `DefaultBucketDependencyReducer` and
+  `DefaultOverrideCarrierPlanner`.
+- Inlined `ComputeWorkspaceDependencies.computeInternal` into `computeFromResults`.
+- Inlined `ResolvedDependency.defaultOwnerOverrideTarget` in `MavenInstallRootArtifacts`.
+- Removed redundant `FinalizeWorkspacePlanTask.populatePlan(plan)`.
+- Removed unreachable `!constraint` check in `ResolvedComponentsVisitor` while preserving the
+  earlier `if (constraint) return@forEach`.
+- Removed wrapper methods from `DeclaredDependencyMetadataCollector`; updated tests to call
+  `collect(...).collect...`.
+- Inlined `VariantMavenInstallInput` in `MavenInstallArtifactsCalculator` and filter
+  `materializedMavenRepos` before `rootArtifactsByVariant.getValue(...)` and override-target
+  calculation.
+
+Verification:
+
+- Stopped stale temp Bazel servers from JUnit scratch workspaces before the next focused test run;
+  left real Grazel/PAX Bazel servers running.
+- Passed:
+  `./gradlew :grazel-gradle-plugin:test --tests "com.grab.grazel.gradle.dependencies.AggregatedDependencyResolverTest" --tests "com.grab.grazel.gradle.dependencies.ComputeWorkspaceDependenciesTest" --tests "com.grab.grazel.migrate.dependencies.MavenInstallArtifactsCalculatorTest" --tests "com.grab.grazel.tasks.internal.WorkspacePlanTasksTest" --tests "com.grab.grazel.gradle.dependencies.WorkspacePlanBuilderTest" --tests "com.grab.grazel.gradle.dependencies.WorkspaceRenderPlanBuilderTest" --tests "com.grab.grazel.gradle.variant.BucketHierarchyGraphTest" --console=plain --no-daemon`.
+
+## 2026-06-28 Grazel Migration Check
+
+- Passed `./gradlew migrateToBazel --console=plain --no-daemon`.
+- Generated output stayed clean: `git status --short` and `git diff --name-only` showed only
+  source/test/docs touched by Item 21, no generated BUILD/WORKSPACE/json drift.
+- Existing fallback compression messages for `:sample-android` still appear; this is the same
+  logged Item 19 hygiene note, not a generated-output change.
+
+## 2026-06-28 Local Broad Gates
+
+- Passed `git diff --check`.
+- Passed full plugin unit tests:
+  `./gradlew :grazel-gradle-plugin:test --console=plain --no-daemon`.
+- Passed `reports/scripts/verify-default-task-graph.sh`.
+- `reports/scripts/verify-sample-bucket-labels.sh` failed only on the documented pre-existing
+  waiver: `WORKSPACE must not union one-sided appcompat exclude onto
+  androidx.constraintlayout:constraintlayout`.
+  Evidence: `git diff -- WORKSPACE build/grazel/dependencies.json sample-android/BUILD.bazel
+  sample-android-tests/BUILD.bazel` was empty after this Item 21 migrate run, and the same waiver
+  is recorded repeatedly in `EXECUTION-LOG.md` and `REVIEW-GUIDE.md`.
+- Passed `reports/scripts/verify-pax-size-guard.sh --mode preserving`; PAX baseline/current:
+  bucket count `11`, pinfile count `11`, total artifact roots `1945`, all unchanged.
+
+## 2026-06-28 PAX Gates
+
+- Passed PAX `./gradlew migrateToBazel --no-daemon --console=plain --stacktrace --rerun-tasks`
+  in `11m 30s`.
+- PAX generated output stayed clean against the committed local baseline
+  `cfa1057ed58ccb2a795a5f679f072a8f604ff48e`.
+- Passed PAX `git diff --check`.
+- Passed `reports/scripts/verify-pax-size-guard.sh --mode preserving`; bucket count `11`,
+  pinfile count `11`, total artifact roots `1945`, no per-repo deltas.
+- Passed PAX
+  `./bazel.sh build --verbose_failures //app:app-gps-pax-debug.apk //app:app-gps-pax-debug-android-test.apk`
+  in `234.914s`.
+- Passed PAX focused Bazel tests:
+  `./bazel.sh test --test_output=errors //app-utils:app-utils-gps-pax-debug-test //app-test:app-test-gps-pax-debug-test //application-initializer:application-initializer-gps-pax-debug-test`.
+- PAX worktree remained clean after migrate/build/test.
+- Resource checks were run before expensive commands; Data volume stayed around `21 GiB` free.
+  No `bazel-cache`, Gradle cache, private Bazel root, or process cleanup was needed.
+
+## 2026-06-28 Final Review And Functional Gate
+
+- Read-only verification audit found no generated-output/PAX drift, but correctly flagged the
+  missing Item 21 functional-test gate.
+- Passed `./gradlew :grazel-gradle-plugin:functionalTest --console=plain --no-daemon` in
+  `5m 4s`.
+- Functional tests left no generated fixture drift; `git status --short` still showed only Item
+  21 source/test/docs changes and the new shared helper file.
+- Read-only code-quality/altitude audit found no blocking findings. Checked hotspots:
+  shared dependency identity helpers, Maven install filtering/override ordering,
+  `compressionResults` input removal with preserved task dependency ordering, and removed
+  internal/test-only surfaces.

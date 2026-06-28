@@ -67,10 +67,10 @@ internal class DefaultOverrideCarrierPlanner {
     private fun ResolvedDependency.isDirectDependencyCoveredBy(
         defaultDependency: ResolvedDependency?
     ): Boolean {
-        if (isDeclaredDependency()) {
+        if (isDeclaredMetadata()) {
             return direct &&
                 defaultDependency?.direct == true &&
-                defaultDependency.isDeclaredDependency() &&
+                defaultDependency.isDeclaredMetadata() &&
                 defaultDependency.hasSameDefaultOwnerIdentityAs(this)
         }
         return direct &&
@@ -88,10 +88,6 @@ internal class DefaultOverrideCarrierPlanner {
             defaultDependency.hasSameDefaultDirectOwnerIdentityAs(this)
     }
 
-    private fun ResolvedDependency.isDeclaredDependency(): Boolean {
-        return repository == DECLARED_DEPENDENCY_REPOSITORY
-    }
-
     private fun ResolvedDependency.isDirectOverrideCarrier(): Boolean {
         return direct && overrideTarget != null
     }
@@ -100,14 +96,6 @@ internal class DefaultOverrideCarrierPlanner {
         defaultDependency: ResolvedDependency
     ): Boolean {
         return !direct && defaultDependency.versionInfo > versionInfo
-    }
-
-    private fun ResolvedDependency.hasSameDefaultOwnerIdentityAs(other: ResolvedDependency): Boolean {
-        return shortId == other.shortId &&
-            version == other.version &&
-            dependencies == other.dependencies &&
-            excludeRules == other.excludeRules &&
-            requiresJetifier == other.requiresJetifier
     }
 
     private fun ResolvedDependency.hasSameDefaultDirectOwnerIdentityAs(other: ResolvedDependency): Boolean {

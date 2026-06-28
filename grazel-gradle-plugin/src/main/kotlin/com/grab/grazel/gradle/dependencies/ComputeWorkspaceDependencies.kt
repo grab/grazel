@@ -23,19 +23,11 @@ internal class ComputeWorkspaceDependencies {
      * @param results One [ResolveDependenciesResult] per synthetic bucket from
      *   [AggregatedDependencyResolver].
      */
-    fun computeFromResults(results: List<ResolveDependenciesResult>): WorkspaceDependencies =
-        computeInternal(results)
-
-    /**
-     * Accepts a materialized [List] of [ResolveDependenciesResult] — one per synthetic bucket —
-     * and runs the 5-stage pipeline: group -> reduce -> flatten -> override-target ->
-     * transitive-map, plus KSP aggregation.
-     */
-    private fun computeInternal(allResults: List<ResolveDependenciesResult>): WorkspaceDependencies {
+    fun computeFromResults(results: List<ResolveDependenciesResult>): WorkspaceDependencies {
         // Parse all jsons parallely and compute the classPaths among all variants.
         // Maximum compatible version is picked using [maxVersionReducer] since different buckets
         // can carry different resolved versions of the same dependency.
-        val classPaths = allResults
+        val classPaths = results
             .parallelStream()
             .collect(
                 Collectors.groupingByConcurrent(
@@ -93,10 +85,10 @@ internal class ComputeWorkspaceDependencies {
 
         // Preserve the global shortId index used by generated target transitive tags.
         val transitiveClasspath = variantTransitiveClasspath.globalTransitiveClasspath()
-        val reachableMainBucketsByProject = allResults.reachableMainBucketsByProject()
+        val reachableMainBucketsByProject = results.reachableMainBucketsByProject()
 
         // Aggregate KSP deps across ALL variants into single bucket, deduplicated by max version
-        val kspDeps: List<ResolvedDependency> = allResults
+        val kspDeps: List<ResolvedDependency> = results
             .parallelStream()
             .flatMap { it.dependencies.getOrDefault(KSP.name, emptySet()).stream() }
             .collect(

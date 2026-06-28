@@ -1,7 +1,6 @@
 package com.grab.grazel.migrate.dependencies
 
 import com.grab.grazel.gradle.dependencies.mavenOverrideTarget
-import com.grab.grazel.gradle.dependencies.model.OverrideTarget
 import com.grab.grazel.gradle.dependencies.model.ResolvedDependency
 import com.grab.grazel.gradle.dependencies.model.WorkspaceDependencies
 import com.grab.grazel.gradle.dependencies.model.hasSameResolvedArtifactIdentityAs
@@ -29,24 +28,6 @@ internal fun WorkspaceDependencies.mavenInstallRootArtifactsByVariant(): Map<Str
             promotedTransitiveClasspath = transitiveClasspath
         )
     }
-}
-
-internal fun List<ResolvedDependency>.mavenInstallRootArtifacts(
-    variantName: String,
-    defaultArtifacts: List<ResolvedDependency> = emptyList(),
-    workspaceArtifactsByVariant: Map<String, List<ResolvedDependency>> = mapOf(
-        DEFAULT_VARIANT to defaultArtifacts
-    ),
-    transitiveClasspath: Map<String, Set<String>> = emptyMap(),
-    workspaceTransitiveClasspath: Map<String, Set<String>> = emptyMap(),
-): List<ResolvedDependency> {
-    return mavenInstallRootArtifacts(
-        variantName = variantName,
-        workspaceArtifacts = workspaceArtifactsByVariant.toVariantScopedArtifacts(),
-        transitiveClasspath = transitiveClasspath,
-        workspaceTransitiveClasspath = workspaceTransitiveClasspath,
-        promotedTransitiveClasspath = workspaceTransitiveClasspath
-    )
 }
 
 private fun List<ResolvedDependency>.mavenInstallRootArtifacts(
@@ -188,12 +169,8 @@ private fun OwnedResolvedDependency.asOwnerOverride(): ResolvedDependency {
     return dependency.copy(
         direct = false,
         overrideTarget = dependency.overrideTarget ?: when (variantName) {
-            DEFAULT_VARIANT -> dependency.defaultOwnerOverrideTarget()
+            DEFAULT_VARIANT -> mavenOverrideTarget(dependency.shortId, DEFAULT_VARIANT)
             else -> mavenOverrideTarget(dependency.shortId, variantName)
         }
     )
-}
-
-private fun ResolvedDependency.defaultOwnerOverrideTarget(): OverrideTarget? {
-    return mavenOverrideTarget(shortId, DEFAULT_VARIANT)
 }

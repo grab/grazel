@@ -129,7 +129,6 @@ class WorkspaceRenderPlanBuilderTest {
     ): CandidateMavenRepo = CandidateMavenRepo(
         variantName = variantName,
         kind = VARIANT,
-        rootArtifacts = listOf(dependency),
         pinInputs = listOf(dependency),
         overrideTargets = overrideTargets
     )
@@ -138,7 +137,6 @@ class WorkspaceRenderPlanBuilderTest {
         val dependency = dependency(artifact)
         return CandidateMavenRepo(
             kind = AGGREGATED,
-            rootArtifacts = listOf(dependency),
             pinInputs = listOf(dependency)
         )
     }

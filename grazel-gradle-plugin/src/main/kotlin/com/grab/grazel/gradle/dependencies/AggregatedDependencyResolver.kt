@@ -750,9 +750,6 @@ internal fun mergeDependencyMetadataByMaxVersion(
     )
 }
 
-internal fun ResolvedDependency.isDeclaredMetadata(): Boolean =
-    repository == DECLARED_DEPENDENCY_REPOSITORY
-
 private data class DeclaredProjectDependencyEdge(
     val targetProjectPath: String,
     val excludedShortIds: Set<String>

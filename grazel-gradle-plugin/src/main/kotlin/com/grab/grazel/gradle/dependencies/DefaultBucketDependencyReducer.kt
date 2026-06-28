@@ -48,22 +48,10 @@ internal class DefaultBucketDependencyReducer {
         dependency: ResolvedDependency
     ): Boolean {
         val defaultDependency = this[shortId] ?: return false
-        if (dependency.isDeclaredDependency() && !defaultDependency.isDeclaredDependency()) {
+        if (dependency.isDeclaredMetadata() && !defaultDependency.isDeclaredMetadata()) {
             return false
         }
         return defaultDependency.hasSameDefaultOwnerIdentityAs(dependency) &&
             (!dependency.direct || defaultDependency.direct)
-    }
-
-    private fun ResolvedDependency.isDeclaredDependency(): Boolean {
-        return repository == DECLARED_DEPENDENCY_REPOSITORY
-    }
-
-    private fun ResolvedDependency.hasSameDefaultOwnerIdentityAs(other: ResolvedDependency): Boolean {
-        return shortId == other.shortId &&
-            version == other.version &&
-            dependencies == other.dependencies &&
-            excludeRules == other.excludeRules &&
-            requiresJetifier == other.requiresJetifier
     }
 }

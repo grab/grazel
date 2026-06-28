@@ -104,25 +104,6 @@ internal class DeclaredDependencyMetadataCollector {
         )
     }
 
-    fun collectExcludeRulesByProjectPath(
-        variantsByProject: Map<Project, Collection<Variant<*>>>,
-        variantTypes: Set<VariantType>,
-        variantNames: Set<String>
-    ): Map<String, ProjectExcludeRules> {
-        return collect(variantsByProject, variantsByProject.keys)
-            .collectExcludeRulesByProjectPath(
-                variantTypes = variantTypes,
-                variantNames = variantNames
-            )
-    }
-
-    fun collectCompileOnlyDependenciesByBucket(
-        variantsByProject: Map<Project, Collection<Variant<*>>>,
-        projects: Collection<Project>
-    ): Map<String, Map<String, ResolvedDependency>> {
-        return collect(variantsByProject, projects)
-            .collectCompileOnlyDependenciesByBucket(projects.map { project -> project.path })
-    }
 }
 
 @Serializable

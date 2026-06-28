@@ -45,18 +45,11 @@ internal class WorkspacePlanBuilder(
                 repoName to CandidateMavenRepo(
                     variantName = variantName,
                     kind = VARIANT,
-                    rootArtifacts = rootArtifacts,
                     pinInputs = rootArtifacts,
                     overrideTargets = calculateMavenInstallOverrideTargets(
                         artifacts = rootArtifacts,
                         owningMavenRepoName = repoName,
                         configuredOverrideTargets = configuredOverrideTargets
-                    ),
-                    variantArtifacts = mapOf(
-                        variantName to workspaceDependencies
-                            .variantDeps
-                            .getValue(variantName)
-                            .sortedBy(ResolvedDependency::id)
                     )
                 )
             }
@@ -66,7 +59,6 @@ internal class WorkspacePlanBuilder(
                 val sortedArtifacts = artifacts.sortedBy(ResolvedDependency::id)
                 CandidateMavenRepo(
                     kind = AGGREGATED,
-                    rootArtifacts = sortedArtifacts,
                     pinInputs = sortedArtifacts
                 )
             }

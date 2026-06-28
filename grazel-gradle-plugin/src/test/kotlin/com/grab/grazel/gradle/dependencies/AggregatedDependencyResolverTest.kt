@@ -827,8 +827,12 @@ class AggregatedDependencyResolverTest {
         ) as ExternalModuleDependency
         dependency.exclude(mapOf("group" to "com.example", "module" to "blocked"))
 
-        val rulesByProjectPath = DeclaredDependencyMetadataCollector().collectExcludeRulesByProjectPath(
-            variantsByProject = mapOf(jvmProject to listOf(JvmVariant(jvmProject, JvmBuild))),
+        val declaredMetadata = DeclaredDependencyMetadataCollector()
+            .collect(
+                variantsByProject = mapOf(jvmProject to listOf(JvmVariant(jvmProject, JvmBuild))),
+                projects = listOf(jvmProject)
+            )
+        val rulesByProjectPath = declaredMetadata.collectExcludeRulesByProjectPath(
             variantTypes = setOf(AndroidBuild),
             variantNames = setOf(DEFAULT_VARIANT)
         )
@@ -851,11 +855,13 @@ class AggregatedDependencyResolverTest {
             project.dependencies.create(mapOf("name" to "library", "version" to "1.0"))
         )
 
-        val depsByBucket = DeclaredDependencyMetadataCollector()
-            .collectCompileOnlyDependenciesByBucket(
+        val declaredMetadata = DeclaredDependencyMetadataCollector()
+            .collect(
                 variantsByProject = mapOf(project to listOf(JvmVariant(project, JvmBuild))),
                 projects = listOf(project)
             )
+        val depsByBucket = declaredMetadata
+            .collectCompileOnlyDependenciesByBucket(listOf(project.path))
 
         assertEquals(emptyMap<String, Map<String, ResolvedDependency>>(), depsByBucket)
     }

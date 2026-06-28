@@ -37,10 +37,6 @@ internal interface WorkspacePlanService : BuildService<WorkspacePlanService.Para
 
     fun initRenderPlan(workspaceRenderPlanJson: File): WorkspaceRenderPlan
 
-    fun getPlan(): WorkspacePlan?
-
-    fun getRenderPlan(): WorkspaceRenderPlan?
-
     fun tagsFor(
         variantId: String,
         variantType: String,
@@ -102,10 +98,6 @@ internal abstract class DefaultWorkspacePlanService : WorkspacePlanService {
             workspaceRenderPlan!!
         }
     }
-
-    override fun getPlan(): WorkspacePlan? = synchronized(lock) { workspacePlan }
-
-    override fun getRenderPlan(): WorkspaceRenderPlan? = synchronized(lock) { workspaceRenderPlan }
 
     override fun tagsFor(
         variantId: String,
