@@ -26,30 +26,51 @@ internal data class CoveredDependency(
     val dependency: ResolvedDependency
 )
 
-internal fun Map<String, ResolvedDependency>.withoutDependenciesCoveredBy(
+internal fun withoutDependenciesCoveredBy(
+    dependenciesByShortId: Map<String, ResolvedDependency>,
     coveredDependencies: Iterable<CoveredDependency>
 ): Map<String, ResolvedDependency> =
-    withoutDependenciesCoveredBy(coveredDependencies.groupByShortId())
+    withoutDependenciesCoveredByShortId(
+        dependenciesByShortId = dependenciesByShortId,
+        coveredByShortId = groupCoveredDependenciesByShortId(coveredDependencies)
+    )
 
-internal fun Iterable<CoveredDependency>.groupByShortId(): Map<String, List<CoveredDependency>> =
-    groupBy { it.dependency.shortId }
+internal fun groupCoveredDependenciesByShortId(
+    coveredDependencies: Iterable<CoveredDependency>
+): Map<String, List<CoveredDependency>> =
+    coveredDependencies.groupBy { it.dependency.shortId }
 
-internal fun Map<String, ResolvedDependency>.withoutDependenciesCoveredBy(
+internal fun withoutDependenciesCoveredByShortId(
+    dependenciesByShortId: Map<String, ResolvedDependency>,
     coveredByShortId: Map<String, List<CoveredDependency>>
 ): Map<String, ResolvedDependency> {
-    return mapNotNull { (shortId, dependency) ->
-        val coveringDependencies = coveredByShortId[shortId]
-            .orEmpty()
-            .filter { covered -> covered.canCover(dependency) }
-        val exactCoveredDependency = coveringDependencies.firstOrNull { covered ->
-            covered.dependency.hasSameResolvedArtifactIdentityAs(dependency)
-        }
-        val supersetClosureCoveredDependency = coveringDependencies.firstOrNull { covered ->
-            covered.rootsSupersetClosureOf(dependency)
+    return dependenciesByShortId.mapNotNull { (shortId, dependency) ->
+        var firstCoveredDependency: CoveredDependency? = null
+        var exactCoveredDependency: CoveredDependency? = null
+        var supersetClosureCoveredDependency: CoveredDependency? = null
+
+        coveredByShortId[shortId].orEmpty().forEach { covered ->
+            if (covered.canCover(dependency)) {
+                if (firstCoveredDependency == null) {
+                    firstCoveredDependency = covered
+                }
+                if (
+                    exactCoveredDependency == null &&
+                    covered.dependency.hasSameResolvedArtifactIdentityAs(dependency)
+                ) {
+                    exactCoveredDependency = covered
+                }
+                if (
+                    supersetClosureCoveredDependency == null &&
+                    covered.rootsSupersetClosureOf(dependency)
+                ) {
+                    supersetClosureCoveredDependency = covered
+                }
+            }
         }
         val coveredDependency = exactCoveredDependency
             ?: supersetClosureCoveredDependency
-            ?: coveringDependencies.firstOrNull()
+            ?: firstCoveredDependency
         when {
             coveredDependency == null -> shortId to dependency
             exactCoveredDependency != null -> null
@@ -89,12 +110,13 @@ private fun CoveredDependency.rootsSupersetClosureOf(dependency: ResolvedDepende
         this.dependency.dependencies.containsAll(dependency.dependencies)
 }
 
-internal fun Map<String, ResolvedDependency>.withoutDependenciesOwnedByNonDefaultHierarchy(
+internal fun withoutDependenciesOwnedByNonDefaultHierarchy(
+    dependenciesByShortId: Map<String, ResolvedDependency>,
     hierarchyDefaultDeps: Map<String, ResolvedDependency>,
     nonDefaultHierarchyDependencies: Iterable<ResolvedDependency>
 ): Map<String, ResolvedDependency> {
     val nonDefaultByShortId = nonDefaultHierarchyDependencies.groupBy { it.shortId }
-    return filterValues { dependency ->
+    return dependenciesByShortId.filterValues { dependency ->
         val hasSameNonDefaultOwner = nonDefaultByShortId[dependency.shortId]
             .orEmpty()
             .any { nonDefaultDependency ->
@@ -110,10 +132,11 @@ internal fun intersectByBucketOwner(
 ): Map<String, ResolvedDependency> {
     val closureList = closures.toList()
     if (closureList.isEmpty()) return emptyMap()
-    val intersectionIds = closureList
-        .map { it.keys }
-        .reduce { a, b -> a intersect b }
     val firstClosure = closureList.first()
+    val intersectionIds = firstClosure.keys.toMutableSet()
+    closureList.drop(1).forEach { closure ->
+        intersectionIds.retainAll(closure.keys)
+    }
     return intersectionIds.mapNotNull { id ->
         val candidate = firstClosure[id]!!
         if (closureList.all { closure -> closure[id]?.hasSameResolvedOwnerIdentityAs(candidate) == true }) {
@@ -124,8 +147,11 @@ internal fun intersectByBucketOwner(
     }.toMap()
 }
 
-internal fun Map<String, ResolvedDependency>.asCoveredBy(bucketName: String): List<CoveredDependency> {
-    return values.map { dependency -> CoveredDependency(bucketName, dependency) }
+internal fun coveredDependenciesForBucket(
+    dependenciesByShortId: Map<String, ResolvedDependency>,
+    bucketName: String
+): List<CoveredDependency> {
+    return dependenciesByShortId.values.map { dependency -> CoveredDependency(bucketName, dependency) }
 }
 
 private fun CoveredDependency.toOverrideTarget(): OverrideTarget {

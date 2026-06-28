@@ -59,19 +59,28 @@ interface Variant<T> {
         get() = safeWorkspaceRuntimeConfigurations + safeWorkspaceCompileConfigurations
 
     val workspaceUnitTestClasspathConfigurations: Set<Configuration>
-        get() = project.configurations.matchingWorkspaceConfigurationNames(
-            "${name}UnitTestRuntimeClasspath",
-            "${name}UnitTestCompileClasspath"
+        get() = matchingWorkspaceConfigurationNames(
+            configurations = project.configurations,
+            names = arrayOf(
+                "${name}UnitTestRuntimeClasspath",
+                "${name}UnitTestCompileClasspath"
+            )
         )
 
     val workspaceAndroidTestClasspathConfigurations: Set<Configuration>
-        get() = project.configurations.matchingWorkspaceConfigurationNames(
-            "${name}AndroidTestRuntimeClasspath",
-            "${name}AndroidTestCompileClasspath"
+        get() = matchingWorkspaceConfigurationNames(
+            configurations = project.configurations,
+            names = arrayOf(
+                "${name}AndroidTestRuntimeClasspath",
+                "${name}AndroidTestCompileClasspath"
+            )
         )
 
     val workspaceLintClasspathConfigurations: Set<Configuration>
-        get() = project.configurations.matchingWorkspaceConfigurationNames("lintChecks")
+        get() = matchingWorkspaceConfigurationNames(
+            configurations = project.configurations,
+            names = arrayOf("lintChecks")
+        )
 }
 
 enum class DefaultVariants(val variantName: String) {
@@ -145,11 +154,12 @@ private val Variant<*>.safeWorkspaceCompileConfigurations: Set<Configuration>
         emptySet()
     }
 
-private fun Iterable<Configuration>.matchingWorkspaceConfigurationNames(
-    vararg names: String
+private fun matchingWorkspaceConfigurationNames(
+    configurations: Iterable<Configuration>,
+    names: Array<String>
 ): Set<Configuration> {
     val requestedNames = names.toSet()
-    return filter { configuration -> configuration.name in requestedNames }.toSet()
+    return configurations.filter { configuration -> configuration.name in requestedNames }.toSet()
 }
 
 /**
@@ -198,15 +208,11 @@ val VariantType.jvmVariantName: String
     }
 
 /**
- * Return the migratable configurations for this variant. Currently all configurations are merged.
- *
- * TODO("Migrate runtime, annotation processor and Kotlin compiler plugin configuration separately")
+ * Returns the compile and runtime configurations that participate in the current migration model.
  */
 val Variant<*>.migratableConfigurations
     get() = (compileConfiguration
-        + runtimeConfiguration
-        /*+ annotationProcessorConfiguration
-        + kotlinCompilerPluginConfiguration*/).toSet()
+        + runtimeConfiguration).toSet()
 
 enum class Classpath {
     Runtime,

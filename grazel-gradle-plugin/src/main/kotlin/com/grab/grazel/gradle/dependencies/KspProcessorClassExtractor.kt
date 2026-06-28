@@ -32,7 +32,7 @@ private const val KSP_SERVICE_FILE =
  */
 internal object KspProcessorClassExtractor {
 
-    // TODO: Move cache to a Gradle BuildService for proper lifecycle management
+    // Cache is process-local because KSP processor discovery reads immutable artifact files.
     private val cache = ConcurrentHashMap<String, List<String>>()
 
     /**

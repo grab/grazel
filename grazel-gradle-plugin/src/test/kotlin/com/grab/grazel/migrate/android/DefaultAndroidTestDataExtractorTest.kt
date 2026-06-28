@@ -186,10 +186,15 @@ class DefaultAndroidTestDataExtractorTest : GrazelPluginTest() {
         val androidBinaryData = androidBinaryDataExtractor.extract(testProject, variant)
         val testData = androidTestDataExtractor.extract(testProject, variant, androidLibraryData, androidBinaryData)
 
-        // Should include app library (lib_app) in associates (not deps)
-        val associateStrings = testData.associates.map { it.toString() }
-        assertTrue(associateStrings.any { it.contains("lib_app") },
-            "Expected associates to contain app library (lib_app), but got: $associateStrings")
+        val appLibraryAssociates = testData.associates
+            .filterIsInstance<ProjectDependency>()
+            .filter { associate -> associate.dependencyProject == appProject }
+        assertTrue(
+            appLibraryAssociates.any { associate ->
+                associate.prefix == "lib_" && associate.suffix == "-debug"
+            },
+            "Expected associates to contain app library dependency, but got: $appLibraryAssociates"
+        )
     }
 
     @Test
@@ -199,10 +204,17 @@ class DefaultAndroidTestDataExtractorTest : GrazelPluginTest() {
         val androidBinaryData = androidBinaryDataExtractor.extract(testProject, variant)
         val testData = androidTestDataExtractor.extract(testProject, variant, androidLibraryData, androidBinaryData)
 
-        // Should NOT include app binary (just :app) in deps
-        val depStrings = testData.deps.map { it.toString() }
-        assertTrue(depStrings.none { it.matches(Regex("//app:app(?!-)")) },
-            "Expected deps to NOT contain app binary (//app:app), but got: $depStrings")
+        val plainAppBinaryDeps = testData.deps
+            .filterIsInstance<ProjectDependency>()
+            .filter { dependency ->
+                dependency.dependencyProject == appProject &&
+                    dependency.prefix.isEmpty() &&
+                    dependency.suffix.isEmpty()
+            }
+        assertTrue(
+            plainAppBinaryDeps.isEmpty(),
+            "Expected deps to not contain the app binary dependency, but got: $plainAppBinaryDeps"
+        )
     }
 
     @Test

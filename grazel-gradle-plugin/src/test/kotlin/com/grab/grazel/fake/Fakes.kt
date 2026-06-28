@@ -22,7 +22,12 @@ import org.gradle.api.internal.artifacts.DefaultModuleIdentifier
 import org.gradle.api.internal.artifacts.DefaultModuleVersionIdentifier
 import org.gradle.api.internal.artifacts.DefaultProjectComponentIdentifier
 import org.gradle.api.internal.artifacts.result.DefaultResolvedComponentResult
+import org.gradle.api.internal.artifacts.result.DefaultResolvedDependencyResult
+import org.gradle.api.internal.artifacts.result.DefaultResolvedVariantResult
+import org.gradle.internal.DisplayName
 import org.gradle.internal.component.external.model.DefaultModuleComponentIdentifier
+import org.gradle.internal.component.external.model.DefaultModuleComponentSelector
+import org.gradle.internal.component.external.model.ImmutableCapabilities
 import org.gradle.util.Path
 
 fun fakeComponentResult(
@@ -54,3 +59,36 @@ fun fakeComponentResult(
     /* allVariants = */ emptyList(),
     /* repositoryName = */ ""
 ).apply(action)
+
+fun DefaultResolvedComponentResult.addDependencyTo(
+    component: ResolvedComponentResult,
+    constraint: Boolean = false,
+    selectedVariantDisplayName: String = ""
+) {
+    val moduleVersion = component.moduleVersion!!
+    val moduleIdentifier = DefaultModuleIdentifier.newId(
+        /* group = */ moduleVersion.group,
+        /* name = */ moduleVersion.name
+    )
+    addDependency(
+        DefaultResolvedDependencyResult(
+            /* requested = */ DefaultModuleComponentSelector
+                .newSelector(/* id = */ moduleIdentifier, /* version = */ moduleVersion.version),
+            /* constraint = */ constraint,
+            /* selectedComponent = */ component,
+            /* selectedVariant = */ DefaultResolvedVariantResult(
+                /* owner = */ DefaultModuleComponentIdentifier
+                    .newId(moduleIdentifier, moduleVersion.version),
+                /* displayName = */ object : DisplayName {
+                    override fun getDisplayName(): String = selectedVariantDisplayName
+                    override fun getCapitalizedDisplayName(): String =
+                        selectedVariantDisplayName.replaceFirstChar(Char::titlecase)
+                },
+                /* attributes = */ FakeAttributeContainer(),
+                /* capabilities = */ ImmutableCapabilities.EMPTY,
+                /* externalVariant = */ null
+            ),
+            /* from = */ this
+        )
+    )
+}

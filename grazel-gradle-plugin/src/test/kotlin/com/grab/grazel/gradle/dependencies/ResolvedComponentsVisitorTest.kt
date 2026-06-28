@@ -3,6 +3,7 @@ package com.grab.grazel.gradle.dependencies
 import com.android.build.gradle.AppExtension
 import com.grab.grazel.buildProject
 import com.grab.grazel.fake.FakeAttributeContainer
+import com.grab.grazel.fake.addDependencyTo
 import com.grab.grazel.fake.fakeComponentResult
 import com.grab.grazel.gradle.ANDROID_APPLICATION_PLUGIN
 import com.grab.grazel.gradle.variant.VariantBuilder
@@ -359,35 +360,4 @@ class ResolvedComponentsVisitorTest {
         }
     }
 
-    private fun org.gradle.api.internal.artifacts.result.DefaultResolvedComponentResult.addDependencyTo(
-        component: org.gradle.api.artifacts.result.ResolvedComponentResult,
-        constraint: Boolean = false,
-        selectedVariantDisplayName: String = ""
-    ) {
-        val moduleVersion = component.moduleVersion!!
-        val moduleIdentifier = DefaultModuleIdentifier.newId(
-            /* group = */ moduleVersion.group,
-            /* name = */ moduleVersion.name
-        )
-        addDependency(
-            DefaultResolvedDependencyResult(
-                /* requested = */ DefaultModuleComponentSelector
-                    .newSelector(/* id = */ moduleIdentifier, /* version = */ moduleVersion.version),
-                /* constraint = */ constraint,
-                /* selectedComponent = */ component,
-                /* selectedVariant = */ DefaultResolvedVariantResult(
-                    /* owner = */ DefaultModuleComponentIdentifier
-                        .newId(moduleIdentifier, moduleVersion.version),
-                    /* displayName = */ object : DisplayName {
-                        override fun getDisplayName(): String = selectedVariantDisplayName
-                        override fun getCapitalizedDisplayName(): String = selectedVariantDisplayName.capitalize()
-                    },
-                    /* attributes = */ FakeAttributeContainer(),
-                    /* capabilities = */ ImmutableCapabilities.EMPTY,
-                    /* externalVariant = */ null
-                ),
-                /* from = */ this
-            )
-        )
-    }
 }

@@ -63,7 +63,7 @@ constructor(
 ) : TargetBuilder {
 
     override fun build(project: Project): List<BazelTarget> {
-        if (!project.isReachableJvmProject(dependencyResolutionService, workspacePlanService)) return emptyList()
+        if (!isReachableJvmProject(project, dependencyResolutionService, workspacePlanService)) return emptyList()
         val projectData = projectDataExtractor.extract(project)
         val ktLibTargets = projectData.toKotlinLibraryTarget()
         val unitTestsTargets = kotlinUnitTestDataExtractor

@@ -22,6 +22,7 @@ import com.grab.grazel.bazel.starlark.BazelDependency
 import com.grab.grazel.buildProject
 import com.grab.grazel.gradle.dependencies.DefaultDependenciesDataSource
 import com.grab.grazel.gradle.dependencies.DefaultDependencyResolutionService
+import com.grab.grazel.gradle.dependencies.DependenciesDataSource
 import com.grab.grazel.gradle.dependencies.DependencyResolutionService
 import com.grab.grazel.gradle.dependencies.IGNORED_ARTIFACT_GROUPS
 import com.grab.grazel.gradle.dependencies.MavenArtifact
@@ -57,7 +58,7 @@ import kotlin.test.assertTrue
 class DefaultDependenciesDataSourceTest {
     private lateinit var rootProject: Project
     private lateinit var androidProject: Project
-    private lateinit var dependenciesDataSource: DefaultDependenciesDataSource
+    private lateinit var dependenciesDataSource: DependenciesDataSource
     private lateinit var dependencyResolutionService: DefaultDependencyResolutionService
 
     @get:Rule
@@ -106,7 +107,7 @@ class DefaultDependenciesDataSourceTest {
         rootProject.createGrazelComponent().let { grazelComponent ->
             dependenciesDataSource = grazelComponent
                 .dependenciesDataSource()
-                .get() as DefaultDependenciesDataSource
+                .get()
             dependencyResolutionService = grazelComponent
                 .dependencyResolutionService()
                 .get().apply {
@@ -137,10 +138,14 @@ class DefaultDependenciesDataSourceTest {
     fun `assert first level module dependencies have default embedded artifacts excluded from them`() {
         configure()
         assertTrue(
-            "First level module dependencies does not contain embedded artifacts",
+            "Maven dependencies do not contain embedded artifacts",
             dependenciesDataSource
-                .firstLevelModuleDependencies(androidProject)
-                .none { it.moduleGroup in IGNORED_ARTIFACT_GROUPS })
+                .collectMavenDeps(
+                    project = androidProject,
+                    variantKey = VariantGraphKey.from(androidProject, "debug", VariantType.AndroidBuild)
+                )
+                .filterIsInstance<BazelDependency.MavenDependency>()
+                .none { dependency -> dependency.group in IGNORED_ARTIFACT_GROUPS })
     }
 
     @Test

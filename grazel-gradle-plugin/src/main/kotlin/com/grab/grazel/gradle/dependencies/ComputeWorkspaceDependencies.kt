@@ -80,12 +80,12 @@ internal class ComputeWorkspaceDependencies {
 
 
         val variantTransitiveClasspath = reducedClasspath
-            .mapValues { (_, dependencies) -> dependencies.values.transitiveClasspathByArtifactRoot() }
+            .mapValues { (_, dependencies) -> transitiveClasspathByArtifactRoot(dependencies.values) }
             .filterValues(Map<String, Set<String>>::isNotEmpty)
 
         // Preserve the global shortId index used by generated target transitive tags.
-        val transitiveClasspath = variantTransitiveClasspath.globalTransitiveClasspath()
-        val reachableMainBucketsByProject = results.reachableMainBucketsByProject()
+        val transitiveClasspath = globalTransitiveClasspath(variantTransitiveClasspath)
+        val reachableMainBucketsByProject = reachableMainBucketsByProject(results)
 
         // Aggregate KSP deps across ALL variants into single bucket, deduplicated by max version
         val kspDeps: List<ResolvedDependency> = results
@@ -107,17 +107,21 @@ internal class ComputeWorkspaceDependencies {
         )
     }
 
-    private fun List<ResolveDependenciesResult>.reachableMainBucketsByProject(): Map<String, Set<String>> =
+    private fun reachableMainBucketsByProject(
+        results: List<ResolveDependenciesResult>
+    ): Map<String, Set<String>> =
         buildMap<String, MutableSet<String>> {
-            this@reachableMainBucketsByProject.forEach { result ->
+            results.forEach { result ->
                 result.reachableMainBucketsByProject.forEach { (projectPath, bucketNames) ->
                     getOrPut(projectPath) { sortedSetOf() }.addAll(bucketNames)
                 }
             }
         }
 
-    private fun Collection<ResolvedDependency>.transitiveClasspathByArtifactRoot(): Map<String, Set<String>> =
-        asSequence()
+    private fun transitiveClasspathByArtifactRoot(
+        dependencies: Collection<ResolvedDependency>
+    ): Map<String, Set<String>> =
+        dependencies.asSequence()
             .filter { dependency -> dependency.dependencies.isNotEmpty() }
             .groupBy(ResolvedDependency::shortId)
             .mapValues { (_, dependencies) ->
@@ -130,9 +134,11 @@ internal class ComputeWorkspaceDependencies {
             }
             .filterValues(Set<String>::isNotEmpty)
 
-    private fun Map<String, Map<String, Set<String>>>.globalTransitiveClasspath(): Map<String, Set<String>> =
+    private fun globalTransitiveClasspath(
+        variantTransitiveClasspath: Map<String, Map<String, Set<String>>>
+    ): Map<String, Set<String>> =
         buildMap<String, MutableSet<String>> {
-            this@globalTransitiveClasspath.values.forEach { variantClasspath ->
+            variantTransitiveClasspath.values.forEach { variantClasspath ->
                 variantClasspath.forEach { (shortId, dependencies) ->
                     getOrPut(shortId) { sortedSetOf() }.addAll(dependencies)
                 }

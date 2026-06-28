@@ -191,7 +191,10 @@ internal class DefaultDependencyGraphs(
             .forEach { (variantKey, graph) ->
                 graph.nodes().forEach { project ->
                     if (graph.successors(project).isNotEmpty() || graph.adjacentNodes(project).isEmpty()) {
-                        val source = project.sourceNode(variantKey)
+                        val source = sourceNode(
+                            project = project,
+                            variantKey = variantKey
+                        )
                         typedGraph.getOrPut(source) {
                             sortedSetOf(dependencyGraphNodeComparator)
                         }
@@ -209,7 +212,10 @@ internal class DefaultDependencyGraphs(
                     }
                 }
                 graph.edges().forEach { edge ->
-                    val source = edge.nodeU().sourceNode(variantKey)
+                    val source = sourceNode(
+                        project = edge.nodeU(),
+                        variantKey = variantKey
+                    )
                     val target = DependencyGraphNode(edge.nodeV(), DependencyGraphSourceSet.Main)
                     val edgeValue = graph.edgeValue(edge.nodeU(), edge.nodeV()).orElse(null)
                     typedGraph.getOrPut(source) {
@@ -231,13 +237,16 @@ internal class DefaultDependencyGraphs(
         )
     }
 
-    private fun Project.sourceNode(variantKey: VariantGraphKey): DependencyGraphNode =
+    private fun sourceNode(
+        project: Project,
+        variantKey: VariantGraphKey
+    ): DependencyGraphNode =
         DependencyGraphNode(
-            project = this,
+            project = project,
             sourceSet = when {
                 variantKey.variantType == VariantType.Test -> DependencyGraphSourceSet.Test
                 variantKey.variantType == VariantType.AndroidTest -> DependencyGraphSourceSet.AndroidTest
-                isAndroidTest -> DependencyGraphSourceSet.AndroidTest
+                project.isAndroidTest -> DependencyGraphSourceSet.AndroidTest
                 else -> DependencyGraphSourceSet.Main
             }
         )

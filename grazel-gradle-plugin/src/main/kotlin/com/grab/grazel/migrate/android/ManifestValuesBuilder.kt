@@ -76,8 +76,7 @@ constructor(
 
                 val buildTypePlaceholders = migratableVariants
                     .flatMap { baseVariant ->
-                        // TODO This should only include matchedVariant's build type, can be fixed
-                        // after migrating projectDependencyGraphs to variant graphs.
+                        // Dependency graph placeholders are project-scoped, so all migratable build types contribute.
                         baseVariant
                             .buildType
                             .manifestPlaceholders
@@ -117,4 +116,3 @@ constructor(
         return (androidManifestValues + defautConfigPlaceHolders + variantPlaceholders + libraryFlavorManifestPlaceHolders).toSortedMap()
     }
 }
-

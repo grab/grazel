@@ -28,6 +28,11 @@ internal data class BucketHierarchyEntry(
     val leaf: Boolean
 )
 
+private data class NodeNameKey(
+    val projectPath: String,
+    val name: String
+)
+
 internal class BucketHierarchyGraph private constructor(
     private val entriesByNode: Map<BucketHierarchyNode, BucketHierarchyEntry>,
     private val predecessorsByNode: Map<BucketHierarchyNode, Set<BucketHierarchyNode>>
@@ -35,7 +40,7 @@ internal class BucketHierarchyGraph private constructor(
     private val ancestorsByNode: Map<BucketHierarchyNode, Set<BucketHierarchyNode>> by lazy {
         entriesByNode.keys
             .associateWith(::computeAncestorsOf)
-            .toSortedNodeMap()
+            .let(::sortedBucketHierarchyNodeMap)
     }
 
     private val leafDescendantsByNode: Map<BucketHierarchyNode, Set<BucketHierarchyNode>> by lazy {
@@ -45,20 +50,24 @@ internal class BucketHierarchyGraph private constructor(
             .filter(BucketHierarchyEntry::leaf)
             .map(BucketHierarchyEntry::node)
             .toList()
-        entriesByNode.keys
-            .associateWith { node ->
-                leafNodes
-                    .filter { leaf -> node in ancestorsOf(leaf) }
-                    .toSortedNodeSet()
+        val descendantsByNode = entriesByNode.keys
+            .associateWith { linkedSetOf<BucketHierarchyNode>() }
+            .toMutableMap()
+        leafNodes.forEach { leaf ->
+            ancestorsOf(leaf).forEach { ancestor ->
+                descendantsByNode.getValue(ancestor).add(leaf)
             }
-            .toSortedNodeMap()
+        }
+        descendantsByNode
+            .mapValues { (_, descendants) -> sortedBucketHierarchyNodes(descendants) }
+            .let(::sortedBucketHierarchyNodeMap)
     }
 
     companion object {
         fun from(entries: Collection<BucketHierarchyEntry>): BucketHierarchyGraph {
             val entriesByNode = entries
                 .associateBy(BucketHierarchyEntry::node)
-                .toSortedNodeMap()
+                .let(::sortedBucketHierarchyNodeMap)
             val nodesByProjectAndName = entriesByNode.keys.groupBy { node ->
                 NodeNameKey(node.projectPath, node.name)
             }
@@ -69,8 +78,8 @@ internal class BucketHierarchyGraph private constructor(
                     }
                     .filter { parent -> parent != entry.node }
                     .filter { parent -> entry.node.canExtendFrom(parent) }
-                    .toSortedNodeSet()
-            }.toSortedNodeMap()
+                    .let(::sortedBucketHierarchyNodes)
+            }.let(::sortedBucketHierarchyNodeMap)
             return BucketHierarchyGraph(
                 entriesByNode = entriesByNode,
                 predecessorsByNode = predecessorsByNode
@@ -94,7 +103,7 @@ internal class BucketHierarchyGraph private constructor(
         }
 
         visit(node)
-        return visited.toSortedNodeSet()
+        return sortedBucketHierarchyNodes(visited)
     }
 
     fun hasAncestor(node: BucketHierarchyNode, ancestor: BucketHierarchyNode): Boolean {
@@ -110,11 +119,6 @@ internal class BucketHierarchyGraph private constructor(
     }
 
 }
-
-private data class NodeNameKey(
-    val projectPath: String,
-    val name: String
-)
 
 private fun BucketHierarchyNode.canExtendFrom(parent: BucketHierarchyNode): Boolean {
     return parent.variantType in when (variantType) {
@@ -137,10 +141,14 @@ private val bucketHierarchyNodeComparator = compareBy<BucketHierarchyNode>(
     BucketHierarchyNode::name
 )
 
-private fun Iterable<BucketHierarchyNode>.toSortedNodeSet(): Set<BucketHierarchyNode> {
-    return sortedWith(bucketHierarchyNodeComparator).toCollection(linkedSetOf())
+private fun sortedBucketHierarchyNodes(
+    nodes: Iterable<BucketHierarchyNode>
+): Set<BucketHierarchyNode> {
+    return nodes.sortedWith(bucketHierarchyNodeComparator).toCollection(linkedSetOf())
 }
 
-private fun <V> Map<BucketHierarchyNode, V>.toSortedNodeMap(): Map<BucketHierarchyNode, V> {
-    return toSortedMap(bucketHierarchyNodeComparator)
+private fun <V> sortedBucketHierarchyNodeMap(
+    valuesByNode: Map<BucketHierarchyNode, V>
+): Map<BucketHierarchyNode, V> {
+    return valuesByNode.toSortedMap(bucketHierarchyNodeComparator)
 }

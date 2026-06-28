@@ -45,9 +45,13 @@ internal data class DependencyBucketPlacementPlan(
 ) {
     fun coveredDependencies(): List<CoveredDependency> {
         return buildList {
-            addAll(defaultBucket.asCoveredBy(baseBucketName))
-            hierarchyBuckets.forEach { (bucketName, deps) -> addAll(deps.asCoveredBy(bucketName)) }
-            leafBuckets.forEach { (bucketName, deps) -> addAll(deps.asCoveredBy(bucketName)) }
+            addAll(coveredDependenciesForBucket(defaultBucket, baseBucketName))
+            hierarchyBuckets.forEach { (bucketName, deps) ->
+                addAll(coveredDependenciesForBucket(deps, bucketName))
+            }
+            leafBuckets.forEach { (bucketName, deps) ->
+                addAll(coveredDependenciesForBucket(deps, bucketName))
+            }
         }
     }
 }
@@ -99,10 +103,13 @@ internal class DependencyBucketPlacementEngine {
         val graph = BucketPlacementGraph(variants, baseBucketName)
         val leafNames = leafClosures.keys.toSortedSet()
         val selectedLeafClosures = leafNames.mapNotNull { leafName -> leafClosures[leafName] }
-        val hierarchyDefaultDeps = hierarchyBucketClosures[baseBucketName]
-            .orEmpty()
-            .onlyDependenciesPresentIn(selectedLeafClosures)
-            .withResolvedLeafMetadata(selectedLeafClosures)
+        val hierarchyDefaultDeps = withResolvedLeafMetadata(
+            dependencies = onlyDependenciesPresentIn(
+                dependencies = hierarchyBucketClosures[baseBucketName].orEmpty(),
+                leafClosures = selectedLeafClosures
+            ),
+            leafClosures = selectedLeafClosures
+        )
         val nonDefaultHierarchyDeps = hierarchyBucketClosures
             .filterKeys { bucketName -> bucketName != baseBucketName }
             .values
@@ -112,6 +119,18 @@ internal class DependencyBucketPlacementEngine {
         } else {
             emptyMap()
         }
+        val candidateDepsByBucketName = linkedMapOf<String, Map<String, ResolvedDependency>>()
+        fun candidateDepsForBucket(bucketName: String): Map<String, ResolvedDependency> {
+            return candidateDepsByBucketName.getOrPut(bucketName) {
+                candidateDepsFor(
+                    bucketName = bucketName,
+                    graph = graph,
+                    leafNames = leafNames,
+                    leafClosures = leafClosures,
+                    hierarchyBucketClosures = hierarchyBucketClosures
+                )
+            }
+        }
         val fullCoverageHierarchyDeps = graph.hierarchyBucketNames
             .filter { bucketName ->
                 bucketName != baseBucketName && graph.coversSelectedLeaves(
@@ -119,26 +138,21 @@ internal class DependencyBucketPlacementEngine {
                     leafNames = leafNames
                 )
             }
-            .flatMap { bucketName ->
-                candidateDepsFor(
-                    bucketName = bucketName,
-                    graph = graph,
-                    leafNames = leafNames,
-                    leafClosures = leafClosures,
-                    hierarchyBucketClosures = hierarchyBucketClosures
-                ).values
-            }
+            .flatMap { bucketName -> candidateDepsForBucket(bucketName).values }
         val defaultDeps = (
             inferredDefaultDeps +
                 hierarchyDefaultDeps
             )
-            .withoutDependenciesOwnedByNonDefaultHierarchy(
-                hierarchyDefaultDeps = hierarchyDefaultDeps,
-                nonDefaultHierarchyDependencies = nonDefaultHierarchyDeps + fullCoverageHierarchyDeps
-            )
+            .let { dependencies ->
+                withoutDependenciesOwnedByNonDefaultHierarchy(
+                    dependenciesByShortId = dependencies,
+                    hierarchyDefaultDeps = hierarchyDefaultDeps,
+                    nonDefaultHierarchyDependencies = nonDefaultHierarchyDeps + fullCoverageHierarchyDeps
+                )
+            }
 
         val selectedHierarchyBuckets = linkedMapOf<String, Map<String, ResolvedDependency>>()
-        val defaultCoveredDeps = defaultDeps.asCoveredBy(baseBucketName)
+        val defaultCoveredDeps = coveredDependenciesForBucket(defaultDeps, baseBucketName)
 
         fun selectedCoveredDepsFor(bucketName: String): List<CoveredDependency> {
             return selectedHierarchyBuckets
@@ -151,7 +165,9 @@ internal class DependencyBucketPlacementEngine {
                             leafNames = leafNames
                         )
                 }
-                .flatMap { (selectedBucketName, deps) -> deps.asCoveredBy(selectedBucketName) }
+                .flatMap { (selectedBucketName, deps) ->
+                    coveredDependenciesForBucket(deps, selectedBucketName)
+                }
         }
 
         val explicitBucketNames = hierarchyBucketClosures
@@ -160,16 +176,13 @@ internal class DependencyBucketPlacementEngine {
             .sortedWith(compareByDescending<String> { bucketName -> graph.depthOf(bucketName) }.thenBy { it })
 
         fun selectHierarchyBucket(bucketName: String) {
-            val deps = candidateDepsFor(
-                bucketName = bucketName,
-                graph = graph,
-                leafNames = leafNames,
-                leafClosures = leafClosures,
-                hierarchyBucketClosures = hierarchyBucketClosures
-            )
-                .withoutDependenciesCoveredBy(
-                    defaultCoveredDeps + selectedCoveredDepsFor(bucketName)
-                )
+            val deps = candidateDepsForBucket(bucketName)
+                .let { dependencies ->
+                    withoutDependenciesCoveredBy(
+                        dependenciesByShortId = dependencies,
+                        coveredDependencies = defaultCoveredDeps + selectedCoveredDepsFor(bucketName)
+                    )
+                }
             if (deps.isNotEmpty()) {
                 selectedHierarchyBuckets[bucketName] = deps
             }
@@ -210,16 +223,22 @@ internal class DependencyBucketPlacementEngine {
                     .orEmpty()
                     .filter { parentName -> parentName != baseBucketName }
                     .flatMap { parentName ->
-                        selectedHierarchyBuckets[parentName].orEmpty().asCoveredBy(parentName)
+                        coveredDependenciesForBucket(
+                            dependenciesByShortId = selectedHierarchyBuckets[parentName].orEmpty(),
+                            bucketName = parentName
+                        )
                     }
                 val selectedLeafDeps = selectedLeafBuckets[leafName].orEmpty()
                 val residualDeps = leafClosures[leafName]
                     .orEmpty()
-                    .withoutDependenciesCoveredBy(
-                        defaultCoveredDeps +
-                            ancestorCoveredDeps +
-                            selectedLeafDeps.asCoveredBy(leafName)
-                    )
+                    .let { dependencies ->
+                        withoutDependenciesCoveredBy(
+                            dependenciesByShortId = dependencies,
+                            coveredDependencies = defaultCoveredDeps +
+                                ancestorCoveredDeps +
+                                coveredDependenciesForBucket(selectedLeafDeps, leafName)
+                        )
+                    }
                 val deps = residualDeps + selectedLeafDeps
                 if (deps.isEmpty()) null else leafName to deps
             }
@@ -248,10 +267,13 @@ internal class DependencyBucketPlacementEngine {
             return emptyMap()
         }
         val descendantLeafClosures = descendantLeafNames.mapNotNull { leafName -> leafClosures[leafName] }
-        val explicitDeps = hierarchyBucketClosures[bucketName]
-            .orEmpty()
-            .onlyDependenciesPresentIn(descendantLeafClosures)
-            .withResolvedLeafMetadata(descendantLeafClosures)
+        val explicitDeps = withResolvedLeafMetadata(
+            dependencies = onlyDependenciesPresentIn(
+                dependencies = hierarchyBucketClosures[bucketName].orEmpty(),
+                leafClosures = descendantLeafClosures
+            ),
+            leafClosures = descendantLeafClosures
+        )
         val inferredDeps = if (descendantLeafNames.size < 2) {
             emptyMap()
         } else {
@@ -259,14 +281,18 @@ internal class DependencyBucketPlacementEngine {
                 descendantLeafClosures
             )
         }
-        return explicitDeps.withInferredClosure(inferredDeps)
+        return withInferredClosure(
+            explicitDependencies = explicitDeps,
+            inferredDependencies = inferredDeps
+        )
     }
 
-    private fun Map<String, ResolvedDependency>.withResolvedLeafMetadata(
+    private fun withResolvedLeafMetadata(
+        dependencies: Map<String, ResolvedDependency>,
         leafClosures: Collection<Map<String, ResolvedDependency>>
     ): Map<String, ResolvedDependency> {
-        if (isEmpty() || leafClosures.isEmpty()) return this
-        return mapValues { (shortId, explicitDependency) ->
+        if (dependencies.isEmpty() || leafClosures.isEmpty()) return dependencies
+        return dependencies.mapValues { (shortId, explicitDependency) ->
             val leafDependencies = leafClosures.asSequence()
                 .mapNotNull { leafClosure -> leafClosure[shortId] }
             val resolvedDependency = if (explicitDependency.isDeclaredMetadata()) {
@@ -290,20 +316,22 @@ internal class DependencyBucketPlacementEngine {
         }.toSortedMap()
     }
 
-    private fun Map<String, ResolvedDependency>.onlyDependenciesPresentIn(
+    private fun onlyDependenciesPresentIn(
+        dependencies: Map<String, ResolvedDependency>,
         leafClosures: Collection<Map<String, ResolvedDependency>>
     ): Map<String, ResolvedDependency> {
-        if (isEmpty() || leafClosures.isEmpty()) return this
-        return filterKeys { shortId -> leafClosures.any { leafClosure -> shortId in leafClosure } }
+        if (dependencies.isEmpty() || leafClosures.isEmpty()) return dependencies
+        return dependencies.filterKeys { shortId -> leafClosures.any { leafClosure -> shortId in leafClosure } }
     }
 
-    private fun Map<String, ResolvedDependency>.withInferredClosure(
-        inferredDeps: Map<String, ResolvedDependency>
+    private fun withInferredClosure(
+        explicitDependencies: Map<String, ResolvedDependency>,
+        inferredDependencies: Map<String, ResolvedDependency>
     ): Map<String, ResolvedDependency> {
-        if (isEmpty()) return inferredDeps
-        if (inferredDeps.isEmpty()) return this
-        val merged = toMutableMap()
-        inferredDeps.forEach { (shortId, inferredDependency) ->
+        if (explicitDependencies.isEmpty()) return inferredDependencies
+        if (inferredDependencies.isEmpty()) return explicitDependencies
+        val merged = explicitDependencies.toMutableMap()
+        inferredDependencies.forEach { (shortId, inferredDependency) ->
             val explicitDependency = merged[shortId]
             merged[shortId] = if (explicitDependency == null) {
                 inferredDependency
@@ -474,7 +502,8 @@ internal fun DeclaredDependencyMetadata.mainBucketVariants(projectPath: String):
         .toSortedSet()
     val declaredOwnersByName = declaredOwnerBucketNames
         .mapNotNull { bucketName ->
-            androidBuildVariants.ownerVariantFor(
+            ownerVariantFor(
+                variants = androidBuildVariants,
                 projectPath = projectPath,
                 bucketName = bucketName
             )
@@ -519,11 +548,12 @@ private fun BucketPlacementVariantInput.appliesTo(
     return parentNames.isNotEmpty() && parentNames.all { parentName -> parentName in leafVariant.extendsFrom }
 }
 
-private fun Collection<DeclaredVariantDependencyMetadata>.ownerVariantFor(
+private fun ownerVariantFor(
+    variants: Collection<DeclaredVariantDependencyMetadata>,
     projectPath: String,
     bucketName: String
 ): BucketPlacementVariantInput? {
-    val matchingLeaf = firstOrNull { variant ->
+    val matchingLeaf = variants.firstOrNull { variant ->
         variant.androidLeafVariant && variant.name == bucketName
     }
     if (matchingLeaf != null) {
@@ -537,8 +567,8 @@ private fun Collection<DeclaredVariantDependencyMetadata>.ownerVariantFor(
             variantType = matchingLeaf.variantType
         )
     }
-    val matchingLeafCandidates = filter { variant ->
-        variant.androidLeafVariant && ownerAppliesToLeaf(bucketName, variant)
+    val matchingLeafCandidates = variants.filter { variant ->
+        variant.androidLeafVariant && ownerAppliesToLeaf(ownerName = bucketName, leafVariant = variant)
     }
     if (matchingLeafCandidates.isEmpty()) return null
 
@@ -568,7 +598,7 @@ private fun Collection<DeclaredVariantDependencyMetadata>.ownerVariantFor(
     )
 }
 
-private fun Collection<DeclaredVariantDependencyMetadata>.ownerAppliesToLeaf(
+private fun ownerAppliesToLeaf(
     ownerName: String,
     leafVariant: DeclaredVariantDependencyMetadata
 ): Boolean {
@@ -580,7 +610,7 @@ private fun candidateOwnerBucketNames(
 ): Set<String> {
     if (!leafVariant.androidLeafVariant) return emptySet()
     val flavors = leafVariant.productFlavors
-    val flavorCombinations = flavors.orderedCombinations()
+    val flavorCombinations = orderedCombinations(flavors)
     val buildType = leafVariant.buildType
     return buildSet {
         addAll(flavors)
@@ -600,12 +630,12 @@ private fun String.bucketPartCapitalized(): String {
     }
 }
 
-private fun List<String>.orderedCombinations(): Set<String> {
-    if (size < 2) return emptySet()
+private fun orderedCombinations(parts: List<String>): Set<String> {
+    if (parts.size < 2) return emptySet()
     val combinations = sortedSetOf<String>()
 
     fun visit(index: Int, selected: List<String>) {
-        if (index == size) {
+        if (index == parts.size) {
             if (selected.size >= 2) {
                 combinations += selected.joinToString(separator = "") { part ->
                     if (selected.first() == part) part else part.bucketPartCapitalized()
@@ -614,7 +644,7 @@ private fun List<String>.orderedCombinations(): Set<String> {
             return
         }
         visit(index + 1, selected)
-        visit(index + 1, selected + this[index])
+        visit(index + 1, selected + parts[index])
     }
 
     visit(index = 0, selected = emptyList())

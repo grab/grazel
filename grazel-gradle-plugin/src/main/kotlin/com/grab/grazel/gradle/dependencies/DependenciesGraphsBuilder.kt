@@ -77,11 +77,12 @@ constructor(
                                     variant.name,
                                     variant.toVariantType()
                                 )
-                                variantGraphs.putEdgeValue(
-                                    variantKey,
-                                    sourceProject,
-                                    projectDependency.dependencyProject,
-                                    ConfigurationEdge(configuration)
+                                putVariantGraphEdge(
+                                    variantGraphs = variantGraphs,
+                                    variantKey = variantKey,
+                                    sourceProject = sourceProject,
+                                    dependencyProject = projectDependency.dependencyProject,
+                                    edge = ConfigurationEdge(configuration)
                                 )
                             }
                         }
@@ -120,11 +121,12 @@ constructor(
                                 variant.name,
                                 variant.toVariantType()
                             )
-                            variantGraph.putEdgeValue(
-                                variantKey,
-                                project,
-                                projectDependency.dependencyProject,
-                                ConfigurationEdge(configuration)
+                            putVariantGraphEdge(
+                                variantGraphs = variantGraph,
+                                variantKey = variantKey,
+                                sourceProject = project,
+                                dependencyProject = projectDependency.dependencyProject,
+                                edge = ConfigurationEdge(configuration)
                             )
                         }
                     }
@@ -135,11 +137,12 @@ constructor(
                         variantType.jvmVariantName,
                         variantType.toJvmVariantType
                     )
-                    variantGraph.putEdgeValue(
-                        variantKey,
-                        project,
-                        projectDependency.dependencyProject,
-                        ConfigurationEdge(configuration)
+                    putVariantGraphEdge(
+                        variantGraphs = variantGraph,
+                        variantKey = variantKey,
+                        sourceProject = project,
+                        dependencyProject = projectDependency.dependencyProject,
+                        edge = ConfigurationEdge(configuration)
                     )
                 }
             }
@@ -158,7 +161,7 @@ constructor(
                         variant.name,
                         variant.toVariantType()
                     )
-                    variantGraphs.addNode(variantKey, sourceProject)
+                    addVariantGraphNode(variantGraphs, variantKey, sourceProject)
                 }
         } else if (
             !sourceProject.isAndroid &&
@@ -170,7 +173,7 @@ constructor(
                 variantType.jvmVariantName,
                 variantType.toJvmVariantType
             )
-            variantGraphs.addNode(variantKey, sourceProject)
+            addVariantGraphNode(variantGraphs, variantKey, sourceProject)
         } else {
             rootProject.logger.info("${sourceProject.name} is a simple directory")
         }
@@ -196,37 +199,40 @@ constructor(
                             variant.name,
                             variant.toVariantType()
                         )
-                        variantGraphs.putEdgeValue(
-                            variantKey,
-                            testProject,
-                            targetProject,
-                            AndroidTestTargetProjectEdge(targetProjectPath)
+                        putVariantGraphEdge(
+                            variantGraphs = variantGraphs,
+                            variantKey = variantKey,
+                            sourceProject = testProject,
+                            dependencyProject = targetProject,
+                            edge = AndroidTestTargetProjectEdge(targetProjectPath)
                         )
                     }
             }
     }
 }
 
-private fun MutableMap<VariantGraphKey, MutableValueGraph<Project, DependencyGraphEdge>>.putEdgeValue(
+private fun putVariantGraphEdge(
+    variantGraphs: MutableMap<VariantGraphKey, MutableValueGraph<Project, DependencyGraphEdge>>,
     variantKey: VariantGraphKey,
     sourceProject: Project,
     dependencyProject: Project,
     edge: DependencyGraphEdge
 ) {
-    computeIfAbsent(variantKey) {
+    variantGraphs.computeIfAbsent(variantKey) {
         buildGraph(sourceProject.subprojects.size)
     }
-    get(variantKey)!!.putEdgeValue(sourceProject, dependencyProject, edge)
+    variantGraphs.getValue(variantKey).putEdgeValue(sourceProject, dependencyProject, edge)
 }
 
-private fun MutableMap<VariantGraphKey, MutableValueGraph<Project, DependencyGraphEdge>>.addNode(
+private fun addVariantGraphNode(
+    variantGraphs: MutableMap<VariantGraphKey, MutableValueGraph<Project, DependencyGraphEdge>>,
     variantKey: VariantGraphKey,
     sourceProject: Project
 ) {
-    computeIfAbsent(variantKey) {
+    variantGraphs.computeIfAbsent(variantKey) {
         buildGraph(sourceProject.subprojects.size)
     }
-    get(variantKey)!!.addNode(sourceProject)
+    variantGraphs.getValue(variantKey).addNode(sourceProject)
 }
 
 internal fun buildGraph(size: Int): MutableValueGraph<Project, DependencyGraphEdge> {

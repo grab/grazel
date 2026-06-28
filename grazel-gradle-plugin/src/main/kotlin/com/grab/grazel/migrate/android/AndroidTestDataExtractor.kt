@@ -168,14 +168,12 @@ constructor(
     ): AndroidTestData {
         val testExtension = project.extensions.getByType<TestExtension>()
 
-        // Extract targetProjectPath - this is REQUIRED for com.android.test modules
         val targetProjectPath = testExtension.targetProjectPath
             ?: throw IllegalStateException(
                 "targetProjectPath is required for com.android.test module ${project.path}. " +
                     "Please set targetProjectPath in the test module's build.gradle."
             )
 
-        // Resolve the target project and get its details
         val targetResolution = targetProjectResolver.resolve(
             testProject = project,
             targetProjectPath = targetProjectPath,
@@ -201,12 +199,11 @@ constructor(
                         "'${targetResolution.targetProject.path}'. Available variants might not include this variant."
                 )
             }
-            is TestTargetProjectResolution.Success -> {
-                // Continue with successful resolution
-            }
+            is TestTargetProjectResolution.Success -> Unit
         }
 
-        return project.extract(
+        return extractStandaloneAndroidTestData(
+            testProject = project,
             matchedVariant = matchedVariant,
             extension = testExtension,
             targetResolution = targetResolution,
@@ -215,38 +212,35 @@ constructor(
         )
     }
 
-    private fun Project.extract(
+    private fun extractStandaloneAndroidTestData(
+        testProject: Project,
         matchedVariant: MatchedVariant,
         extension: TestExtension,
         targetResolution: TestTargetProjectResolution.Success,
         androidLibraryData: AndroidLibraryData,
         androidBinaryData: AndroidBinaryData,
     ): AndroidTestData {
-        // Associates links test to app library (for accessing app internals)
         val associates = listOf(targetResolution.associateDependency)
 
         val migratableSourceSets = matchedVariant.variant.sourceSets
             .filterIsInstance<AndroidSourceSet>()
             .toList()
 
-        // Test-specific resource handling
-        val resources = unitTestResources(migratableSourceSets.asSequence()).toList()
-        val resourceFiles = androidSources(migratableSourceSets, SourceSetType.RESOURCES).toList()
-        val resourceStripPrefix = resourceStripPrefix(migratableSourceSets.asSequence())
-        val assets = androidSources(migratableSourceSets, SourceSetType.ASSETS).toList()
+        val resources = unitTestResources(testProject, migratableSourceSets.asSequence()).toList()
+        val resourceFiles = testProject.androidSources(migratableSourceSets, SourceSetType.RESOURCES).toList()
+        val resourceStripPrefix = testProject.resourceStripPrefix(migratableSourceSets.asSequence())
+        val assets = testProject.androidSources(migratableSourceSets, SourceSetType.ASSETS).toList()
 
         val targetPackage = targetResolution.targetVariant.variant.applicationId
 
         val testInstrumentationRunner = extension.defaultConfig.testInstrumentationRunner
             ?: "androidx.test.runner.AndroidJUnitRunner" // Default runner
 
-        // Combine library deps with test deps, but filter out the target app
-        // (it's handled via 'instruments' and 'associates')
-        val variantKey = VariantGraphKey.from(this, matchedVariant, VariantType.AndroidBuild)
+        val variantKey = VariantGraphKey.from(testProject, matchedVariant, VariantType.AndroidBuild)
         val libraryDeps = androidLibraryData.deps
             .filterNot { it is BazelDependency.MavenDependency }
         val combinedDeps = (libraryDeps + dependenciesDataSource.collectMavenDeps(
-            this,
+            testProject,
             variantKey,
             preferredVariantNames = listOf(ANDROID_TEST_VARIANT, matchedVariant.variantName)
         )).filterNot { dep ->
@@ -259,11 +253,10 @@ constructor(
             variant = androidVariantDataSource.getMigratableBuildVariants(targetResolution.targetProject).firstOrNull()
         )
 
-        // TODO: this is a workaround and should be removed after bazel 8 compatibility
+        // Bazel 8 compatibility requires omitting minSdk unless the workaround is enabled.
         val minSdkVersion = if (grazelExtension.experiments.minSdkVersionWorkaround.get()) 0 else null
 
         return AndroidTestData(
-            // Use data from AndroidLibraryDataExtractor (already includes variant suffix)
             name = androidLibraryData.name,
             srcs = androidLibraryData.srcs,
             resourceSets = androidLibraryData.resourceSets,
@@ -278,11 +271,9 @@ constructor(
             databinding = androidLibraryData.databinding,
             tags = androidLibraryData.tags,
             lintConfigData = androidLibraryData.lintConfigData,
-            // Use data from AndroidBinaryDataExtractor
             manifestValues = androidBinaryData.manifestValues,
             debugKey = debugKey,
             resConfigs = androidBinaryData.resConfigs,
-            // Test-specific fields
             associates = associates,
             instruments = targetResolution.instrumentsDependency,
             targetPackage = targetPackage,

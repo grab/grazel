@@ -210,7 +210,7 @@ class BucketOwnershipPlannerTest {
         )
 
         assertEquals(
-            results.compileSummary(),
+            compileSummary(results),
             listOf("com.example:unit-test-only:1.0"),
             compileIdsFor(results, TEST_VARIANT)
         )
@@ -277,7 +277,7 @@ class BucketOwnershipPlannerTest {
         )
 
         assertEquals(
-            results.compileSummary(),
+            compileSummary(results),
             listOf("com.example:android-test-only:1.0"),
             compileIdsFor(results, ANDROID_TEST_VARIANT)
         )
@@ -344,7 +344,7 @@ class BucketOwnershipPlannerTest {
         )
 
         assertEquals(
-            results.compileSummary(),
+            compileSummary(results),
             listOf("com.example:shared:2.0"),
             compileIdsFor(results, ANDROID_TEST_VARIANT)
         )
@@ -414,7 +414,7 @@ class BucketOwnershipPlannerTest {
 
         val androidTestDeps = compileDepsFor(results, ANDROID_TEST_VARIANT)
         assertEquals(
-            results.compileSummary(),
+            compileSummary(results),
             listOf("com.example:shared:1.0"),
             androidTestDeps.map(ResolvedDependency::id)
         )
@@ -492,7 +492,7 @@ class BucketOwnershipPlannerTest {
 
         val androidTestDeps = compileDepsFor(results, ANDROID_TEST_VARIANT)
         assertEquals(
-            results.compileSummary(),
+            compileSummary(results),
             listOf("com.example:android-test-carrier:1.0"),
             androidTestDeps.map(ResolvedDependency::id)
         )
@@ -568,7 +568,7 @@ class BucketOwnershipPlannerTest {
 
         val androidTestDeps = compileDepsFor(results, ANDROID_TEST_VARIANT)
         assertEquals(
-            results.compileSummary(),
+            compileSummary(results),
             listOf("com.example:android-test-child:1.0"),
             androidTestDeps.map(ResolvedDependency::id)
         )
@@ -608,7 +608,7 @@ class BucketOwnershipPlannerTest {
 
         val androidTestDeps = compileDepsFor(results, ANDROID_TEST_VARIANT)
         assertEquals(
-            results.compileSummary(),
+            compileSummary(results),
             listOf("com.example:android-test-child:1.0"),
             androidTestDeps.map(ResolvedDependency::id)
         )
@@ -743,7 +743,7 @@ class BucketOwnershipPlannerTest {
         )
 
         assertEquals(
-            results.compileSummary(),
+            compileSummary(results),
             listOf("com.example:debug-test-only:1.0"),
             compileIdsFor(results, "debugUnitTest")
         )
@@ -823,8 +823,8 @@ class BucketOwnershipPlannerTest {
             .orEmpty()
     }
 
-    private fun List<ResolveDependenciesResult>.compileSummary(): String {
-        return joinToString(separator = "; ") { result ->
+    private fun compileSummary(results: List<ResolveDependenciesResult>): String {
+        return results.joinToString(separator = "; ") { result ->
             "${result.variantName}=" +
                 result.dependencies.getValue(COMPILE.name).map(ResolvedDependency::id)
         }

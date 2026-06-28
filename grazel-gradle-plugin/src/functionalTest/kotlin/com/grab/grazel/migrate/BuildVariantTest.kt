@@ -19,6 +19,7 @@ package com.grab.grazel.migrate
 import com.grab.grazel.BaseGrazelPluginTest
 import com.grab.grazel.util.MIGRATE_DATABINDING_FLAG
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
@@ -615,8 +616,8 @@ apply plugin: 'com.google.devtools.ksp'
                 .containsMatchIn(androidMismatchBuildBazelContent)
         )
 
-        val dependenciesContent = dependenciesJson.readText()
         val dependencyShortIds = dependencyShortIds(dependenciesJson)
+        val dependencyExcludeArtifacts = dependencyExcludeArtifacts(dependenciesJson)
         Assert.assertTrue(
             "Workspace dependency data should include the selected paid-only fallback dependency",
             "com.jakewharton.timber:timber" in dependencyShortIds
@@ -631,11 +632,11 @@ apply plugin: 'com.google.devtools.ksp'
         )
         Assert.assertTrue(
             "Selected fallback build-type exclude should be preserved",
-            dependenciesContent.contains(""""artifact":"selected-debug-only-exclude"""")
+            "selected-debug-only-exclude" in dependencyExcludeArtifacts
         )
         Assert.assertFalse(
             "Unselected release fallback exclude should not bleed into selected debug metadata",
-            dependenciesContent.contains(""""artifact":"unselected-release-only-exclude"""")
+            "unselected-release-only-exclude" in dependencyExcludeArtifacts
         )
 
         val selectedFallbackArtifactBlock = mavenArtifactBlock(
@@ -1138,17 +1139,35 @@ apply plugin: 'com.google.devtools.ksp'
     }
 
     private fun dependencyShortIds(dependenciesFile: File): Set<String> {
+        return dependencyObjects(dependenciesFile)
+            .mapNotNull { dependency ->
+                dependency["shortId"]?.jsonPrimitive?.contentOrNull
+            }
+            .toSortedSet()
+    }
+
+    private fun dependencyExcludeArtifacts(dependenciesFile: File): Set<String> {
+        return dependencyObjects(dependenciesFile)
+            .flatMap { dependency ->
+                dependency["excludeRules"]
+                    ?.jsonArray
+                    .orEmpty()
+                    .mapNotNull { excludeRule ->
+                        excludeRule.jsonObject["artifact"]?.jsonPrimitive?.contentOrNull
+                    }
+            }
+            .toSortedSet()
+    }
+
+    private fun dependencyObjects(dependenciesFile: File): List<JsonObject> {
         return Json.parseToJsonElement(dependenciesFile.readText())
             .jsonObject
             .getValue("result")
             .jsonObject
             .values
             .flatMap { dependencies ->
-                dependencies.jsonArray.mapNotNull { dependency ->
-                    dependency.jsonObject["shortId"]?.jsonPrimitive?.contentOrNull
-                }
+                dependencies.jsonArray.map { dependency -> dependency.jsonObject }
             }
-            .toSortedSet()
     }
 
     private fun sourceShouldOnlyContainEnabledFlavorAndVariant(buildFileContent: String) {

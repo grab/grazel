@@ -72,6 +72,18 @@ internal interface ArtifactPinner {
     )
 }
 
+private const val MAVEN_INSTALL_JSON_MARKER = "maven_install_json "
+private const val PINNED_MAVEN_INSTALL_MARKER = "#maven_install_json"
+private val COMMENTED_PINNED_LOAD_REGEX = Regex(
+    """(?m)^#(load\("@[^"]+//:defs\.bzl", [A-Za-z0-9_]+_pinned_maven_install = "pinned_maven_install"\))"""
+)
+private val COMMENTED_PINNED_CALL_REGEX = Regex("""(?m)^#([A-Za-z0-9_]+_pinned_maven_install\(\))""")
+private val ACTIVE_MAVEN_INSTALL_JSON_REGEX = Regex("""(?m)^(\s*)maven_install_json """)
+private val ACTIVE_PINNED_LOAD_REGEX = Regex(
+    """(?m)^(?!#)(load\("@[^"]+//:defs\.bzl", [A-Za-z0-9_]+_pinned_maven_install = "pinned_maven_install"\))"""
+)
+private val ACTIVE_PINNED_CALL_REGEX = Regex("""(?m)^(?!#)([A-Za-z0-9_]+_pinned_maven_install\(\))""")
+
 @Singleton
 internal class DefaultArtifactPinner
 @Inject
@@ -85,37 +97,18 @@ constructor(
     private fun pin(workspaceFile: File) {
         workspaceFile.writeText(
             workspaceFile.readText()
-                .replace("#maven_install_json ", "maven_install_json ")
-                .replace(
-                    Regex(
-                        """(?m)^#(load\("@[^"]+//:defs\.bzl", [A-Za-z0-9_]+_pinned_maven_install = "pinned_maven_install"\))"""
-                    ),
-                    "$1"
-                )
-                .replace(
-                    Regex("""(?m)^#([A-Za-z0-9_]+_pinned_maven_install\(\))"""),
-                    "$1"
-                )
+                .replace("#$MAVEN_INSTALL_JSON_MARKER", MAVEN_INSTALL_JSON_MARKER)
+                .replace(COMMENTED_PINNED_LOAD_REGEX, "$1")
+                .replace(COMMENTED_PINNED_CALL_REGEX, "$1")
         )
     }
 
     private fun unpin(workspaceFile: File) {
         workspaceFile.writeText(
             workspaceFile.readText()
-                .replace(
-                    Regex("""(?m)^(\s*)maven_install_json """),
-                    "$1#maven_install_json ",
-                )
-                .replace(
-                    Regex(
-                        """(?m)^(?!#)(load\("@[^"]+//:defs\.bzl", [A-Za-z0-9_]+_pinned_maven_install = "pinned_maven_install"\))"""
-                    ),
-                    "#$1"
-                )
-                .replace(
-                    Regex("""(?m)^(?!#)([A-Za-z0-9_]+_pinned_maven_install\(\))"""),
-                    "#$1"
-                )
+                .replace(ACTIVE_MAVEN_INSTALL_JSON_REGEX, "$1#$MAVEN_INSTALL_JSON_MARKER")
+                .replace(ACTIVE_PINNED_LOAD_REGEX, "#$1")
+                .replace(ACTIVE_PINNED_CALL_REGEX, "#$1")
         )
     }
 
@@ -152,7 +145,7 @@ constructor(
         )
         logger.quiet("Checking if artifacts should be repinned".ansiCyan)
         val mavenInstallJsonMissing = workspaceFile.useLines { lines ->
-            lines.any { line -> line.contains("#maven_install_json") }
+            lines.any { line -> line.contains(PINNED_MAVEN_INSTALL_MARKER) }
         }
         if (mavenInstallJsonMissing) {
             // If we detect maven install json is missing for any repo, we run pinning again
@@ -162,7 +155,7 @@ constructor(
             failWhenOutOfDate(workspaceFile, true)
 
             fun checkRepoOutOfDate(mavenRepo: String, rootArtifacts: List<ResolvedDependency>): Boolean {
-                val dep = rootArtifacts.pinStatusProbeArtifact()
+                val dep = selectPinStatusProbeArtifact(rootArtifacts)
                 val (group, name) = dep.shortId.split(":")
                 progress.progress("Checking $mavenRepo's pin status")
                 val target = MavenDependency(
@@ -232,7 +225,10 @@ constructor(
         val progressLoggerFactory = gradleServices.progressLoggerFactory
 
         val progressLogger = progressLoggerFactory.startOperation("Pin maven artifacts")
-        val allRepos = workspacePlan.pinnableMavenInstallRepos(workspaceRenderPlan)
+        val allRepos = collectPinnableMavenInstallRepos(
+            workspacePlan = workspacePlan,
+            workspaceRenderPlan = workspaceRenderPlan
+        )
         cleanupStaleMavenInstallJsons(gradleServices.layout, allRepos.keys)
 
         val shouldRun = shouldRunPinning(
@@ -329,21 +325,22 @@ constructor(
     }
 }
 
-internal fun WorkspacePlan.pinnableMavenInstallRepos(
+internal fun collectPinnableMavenInstallRepos(
+    workspacePlan: WorkspacePlan,
     workspaceRenderPlan: WorkspaceRenderPlan
 ): Map<String, List<ResolvedDependency>> =
     workspaceRenderPlan.materializedRepoNames
         .mapNotNull { repoName ->
-            val repo = repoPlan[repoName] ?: return@mapNotNull null
+            val repo = workspacePlan.repoPlan[repoName] ?: return@mapNotNull null
             repoName to repo.pinInputs
         }
         .filter { (_, pinInputs) -> pinInputs.isNotEmpty() }
         .toMap()
 
-internal fun List<ResolvedDependency>.pinStatusProbeArtifact(): ResolvedDependency =
-    firstOrNull { it.direct && it.overrideTarget == null }
-        ?: firstOrNull { it.overrideTarget == null }
-        ?: first()
+internal fun selectPinStatusProbeArtifact(pinInputs: List<ResolvedDependency>): ResolvedDependency =
+    pinInputs.firstOrNull { dependency -> dependency.direct && dependency.overrideTarget == null }
+        ?: pinInputs.firstOrNull { dependency -> dependency.overrideTarget == null }
+        ?: pinInputs.first()
 
 internal open class PinningWorkAction
 @Inject

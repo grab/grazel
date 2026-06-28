@@ -53,16 +53,15 @@ val Any.quote: String
  */
 val <T : Any> Collection<T>.quote: Collection<String> get() = map { it.quote }
 
-private typealias SymbolMap = MutableMap< /*Bzl File*/ String, /*Symbols*/ Set<String>>
+private typealias ImportedSymbolsByBzlFile = MutableMap<String, Set<String>>
 
 /**
  * Represents various types of symbol loading strategies
  */
 sealed class LoadStrategy(
-    open val importedSymbols: SymbolMap
+    open val importedSymbols: ImportedSymbolsByBzlFile
 ) {
 
-    // TODO(arun) migrate to a context receiver on StatementsBuilder
     abstract fun load(
         builder: StatementsBuilder,
         bzlFile: String,
@@ -79,7 +78,7 @@ sealed class LoadStrategy(
      * Load strategy where symbols are imported as needed eg. WORKSPACE
      */
     data class Inline(
-        override val importedSymbols: SymbolMap = HashMap()
+        override val importedSymbols: ImportedSymbolsByBzlFile = HashMap()
     ) : LoadStrategy(importedSymbols) {
 
         override fun load(
@@ -114,7 +113,7 @@ sealed class LoadStrategy(
      * Load strategy where symbols are preferred to be in top of the file. eg. BUILD.bazel
      */
     data class Top(
-        override val importedSymbols: SymbolMap = TreeMap()
+        override val importedSymbols: ImportedSymbolsByBzlFile = TreeMap()
     ) : LoadStrategy(importedSymbols) {
 
         override fun load(

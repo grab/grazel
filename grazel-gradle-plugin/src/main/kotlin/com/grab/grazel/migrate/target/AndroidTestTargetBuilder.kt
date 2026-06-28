@@ -71,7 +71,6 @@ internal class AndroidTestTargetBuilder
         val isReachableBucket = reachableBucketPredicate(project, dependencyResolutionService)
         val referencedTargetNames = workspacePlanService.get().referencedTargetNames(project.path)
 
-        // Get variants from the TEST MODULE itself
         variantMatcher.matchedVariants(
             project,
             VariantType.AndroidBuild,
@@ -82,19 +81,16 @@ internal class AndroidTestTargetBuilder
                     referencedTargetNames = referencedTargetNames
                 )
         }.forEach { matchedVariant ->
-            // Extract common library fields (srcs, resourceSets, etc.)
             val androidLibraryData = androidLibraryDataExtractor.extract(
                 project = project,
                 matchedVariant = matchedVariant
             )
 
-            // Extract binary-specific fields (manifestValues, debugKey, etc.)
             val androidBinaryData = androidBinaryDataExtractor.extract(
                 project = project,
                 matchedVariant = matchedVariant
             )
 
-            // Extract test-specific fields (associates, instruments, etc.)
             val androidTestData = androidTestDataExtractor.extract(
                 project = project,
                 matchedVariant = matchedVariant,
@@ -126,7 +122,6 @@ internal fun AndroidTestData.toTarget() = AndroidTestTarget(
     assetsGlob = assets,
     assetsDir = if (assets.isNotEmpty()) resourceStripPrefix else null,
     lintConfigData = lintConfigData,
-    // Test-specific fields
     associates = associates,
     instruments = instruments,
     customPackage = customPackage,

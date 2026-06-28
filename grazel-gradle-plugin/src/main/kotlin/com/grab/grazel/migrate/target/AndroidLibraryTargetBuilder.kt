@@ -76,10 +76,8 @@ constructor(
     override fun build(project: Project): List<BazelTarget> {
         val androidBuildVariants = reachableMatchedVariants(project, VariantType.AndroidBuild)
 
-        // Check if compression result exists for this project
         val compressionResult = variantCompressionService.get().get(project.path)
-        val libraryTargets = // Use pre-computed compressed targets from the analysis phase
-            compressionResult?.let {
+        val libraryTargets = compressionResult?.let {
                 val reachableSuffixes = reachableCompressedTargetSuffixes(
                     variantToSuffix = it.variantToSuffix,
                     reachableVariantNames = androidBuildVariants.mapTo(mutableSetOf()) { variant ->
@@ -96,7 +94,6 @@ constructor(
                 }
             }
                 ?: run {
-                    // Fallback to extracting again
                     project.logger.error("Compressed result does not exist for this project")
                     extractLibraryTargets(project, androidBuildVariants)
                 }
@@ -118,7 +115,6 @@ constructor(
         val compressionResult = variantCompressionService.get().get(project.path)
         val testVariants = reachableMatchedVariants(project, VariantType.Test)
         return if (compressionResult != null) {
-            // Deduplicate by compression suffix: only emit one test per unique suffix
             val variantsBySuffix = testVariants.groupBy { matchedVariant ->
                 variantCompressionService.get().resolveSuffix(
                     projectPath = project.path,
@@ -128,13 +124,11 @@ constructor(
                 )
             }
 
-            // Pick first variant alphabetically as representative for each suffix
             variantsBySuffix.values.map { variantsForSuffix ->
                 val representative = variantsForSuffix.sortedBy { it.variantName }.first()
                 unitTestDataExtractor.extract(project, representative).toUnitTestTarget()
             }
         } else {
-            // Fallback: extract test for every variant
             project.logger.warn(
                 "No compression result for ${project.path}, generating uncompressed unit test targets"
             )

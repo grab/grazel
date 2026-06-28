@@ -92,7 +92,6 @@ constructor(
             dependsOn(collectWorkspaceTargetTagPlanTask)
         }
 
-        // Analyze variant compression opportunities in topological order
         val analyzeVariantCompressionTask = AnalyzeVariantCompressionTask.register(
             rootProject = rootProject,
             grazelComponent = grazelComponent
@@ -135,7 +134,6 @@ constructor(
             grazelComponent
         )
 
-        // Post script generate task must run after scripts are generated
         val postScriptGenerateTask = PostScriptGenerateTask.register(rootProject, grazelComponent)
 
         val generateBuildifierScriptTask = GenerateBuildifierScriptTask.register(
@@ -153,13 +151,11 @@ constructor(
                 workspaceDependencies.set(computeWorkspaceDependenciesTask.flatMap { it.workspaceDependencies })
                 workspacePlan.set(computeWorkspacePlanTask.flatMap { it.workspacePlan })
                 workspaceRenderPlan.set(finalizeWorkspacePlanTask.flatMap { it.workspaceRenderPlan })
-                variantCompressionResults.set(analyzeVariantCompressionTask.flatMap { it.compressionResultsFile })
                 buildifierScript.set(buildifierScriptProvider)
                 dependsOn(finalizeWorkspacePlanTask)
                 dependsOn(generateBuildifierScriptTask)
             }
 
-            // Post script generate task must run after project level tasks are generated
             postScriptGenerateTask.dependsOn(generateBazelScriptsTask)
 
             project to generateBazelScriptsTask
@@ -190,9 +186,6 @@ constructor(
             dependsOn(rootGenerateBazelScriptsTasks)
             dependsOn(projectGenerateBazelScriptsTasks.map { it.second })
             configure {
-                // Inside a configure block since GrazelExtension won't be configured yet and if
-                // we write it as part of plugin application and all extension value would
-                // have default value instead of user configured value.
                 if (grazelComponent.extension().android.features.dataBindingMetaData) {
                     dependsOn(dataBindingMetaDataTask)
                 }

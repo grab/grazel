@@ -39,19 +39,39 @@ internal data class OwnershipPlannerInput(
     val declaredTestDependenciesByBucket: Map<ProjectDependencyBucket, Map<String, ResolvedDependency>>
 )
 
+private data class MainBucketPlanResult(
+    val defaultDeps: Map<String, ResolvedDependency>,
+    val hierarchyBuckets: Map<String, Map<String, ResolvedDependency>>,
+    val filteredPerLeafBuckets: Map<String, Map<String, ResolvedDependency>>,
+    val mainCoveredDepsByProject: Map<String, List<CoveredDependency>>
+) {
+    fun coveredDependencies(): List<CoveredDependency> {
+        return buildList {
+            addAll(coveredDependenciesForBucket(defaultDeps, DEFAULT_VARIANT))
+            hierarchyBuckets.forEach { (bucketName, dependencies) ->
+                addAll(coveredDependenciesForBucket(dependencies, bucketName))
+            }
+            filteredPerLeafBuckets.forEach { (bucketName, dependencies) ->
+                addAll(coveredDependenciesForBucket(dependencies, bucketName))
+            }
+        }
+    }
+}
+
 internal class BucketOwnershipPlanner(
     private val declaredDependencyMetadata: DeclaredDependencyMetadata,
     private val precomputedKspDependencies: Set<ResolvedDependency>
-) {
+    ) {
     fun plan(input: OwnershipPlannerInput): List<ResolveDependenciesResult> {
         val mainBuckets = planMainBuckets(input)
+        val aggregateMainCoveredDeps = mainBuckets.coveredDependencies()
         val testBuckets = planTestBuckets(
             input = input,
             variantType = Test,
             baseBucketName = TEST_VARIANT,
             leafClosures = input.leafUnitTestClosures,
             mainCoveredDepsByProject = mainBuckets.mainCoveredDepsByProject,
-            aggregateMainCoveredDeps = mainBuckets.aggregateMainCoveredDeps,
+            aggregateMainCoveredDeps = aggregateMainCoveredDeps,
             declaredTestDependenciesByBucket = input.declaredTestDependenciesByBucket
         )
         val androidTestBuckets = planTestBuckets(
@@ -60,10 +80,10 @@ internal class BucketOwnershipPlanner(
             baseBucketName = ANDROID_TEST_VARIANT,
             leafClosures = input.leafAndroidTestClosures,
             mainCoveredDepsByProject = mainBuckets.mainCoveredDepsByProject,
-            aggregateMainCoveredDeps = mainBuckets.aggregateMainCoveredDeps,
+            aggregateMainCoveredDeps = aggregateMainCoveredDeps,
             declaredTestDependenciesByBucket = input.declaredTestDependenciesByBucket,
             inheritedTestCoveredDeps = testBuckets
-                .flatMap { (bucketName, deps) -> deps.asCoveredBy(bucketName) }
+                .flatMap { (bucketName, deps) -> coveredDependenciesForBucket(deps, bucketName) }
         )
 
         return buildResults(
@@ -94,7 +114,8 @@ internal class BucketOwnershipPlanner(
         val mainBucketPlans = mainBucketPlansByProject.values
         val declaredMetadataByOutputBucket = linkedMapOf<String, Map<String, ResolvedDependency>>()
         mainBucketPlansByProject.forEach { (projectPath, plan) ->
-            declaredMetadataByOutputBucket.addDeclaredOutputMetadata(
+            addDeclaredOutputMetadata(
+                declaredMetadataByOutputBucket = declaredMetadataByOutputBucket,
                 bucketName = plan.baseBucketName,
                 metadata = declaredOutputMetadata(
                     projectPath = projectPath,
@@ -104,7 +125,8 @@ internal class BucketOwnershipPlanner(
                 )
             )
             plan.hierarchyBuckets.forEach { (bucketName, dependencies) ->
-                declaredMetadataByOutputBucket.addDeclaredOutputMetadata(
+                addDeclaredOutputMetadata(
+                    declaredMetadataByOutputBucket = declaredMetadataByOutputBucket,
                     bucketName = bucketName,
                     metadata = declaredOutputMetadata(
                         projectPath = projectPath,
@@ -115,7 +137,8 @@ internal class BucketOwnershipPlanner(
                 )
             }
             plan.leafBuckets.forEach { (bucketName, dependencies) ->
-                declaredMetadataByOutputBucket.addDeclaredOutputMetadata(
+                addDeclaredOutputMetadata(
+                    declaredMetadataByOutputBucket = declaredMetadataByOutputBucket,
                     bucketName = bucketName,
                     metadata = declaredOutputMetadata(
                         projectPath = projectPath,
@@ -156,11 +179,15 @@ internal class BucketOwnershipPlanner(
                 mainBucketPlans.map { plan ->
                     plan.leafBuckets
                         .mapValues { (leafName, dependencies) ->
-                            dependencies.withoutDependenciesCoveredBy(
-                                plan.leafAncestors[leafName]
+                            withoutDependenciesCoveredBy(
+                                dependenciesByShortId = dependencies,
+                                coveredDependencies = plan.leafAncestors[leafName]
                                     .orEmpty()
                                     .flatMap { ancestorName ->
-                                        hierarchyBuckets[ancestorName].orEmpty().asCoveredBy(ancestorName)
+                                        coveredDependenciesForBucket(
+                                            dependenciesByShortId = hierarchyBuckets[ancestorName].orEmpty(),
+                                            bucketName = ancestorName
+                                        )
                                     }
                             )
                         }
@@ -178,21 +205,11 @@ internal class BucketOwnershipPlanner(
                 defaultDeps = defaultDeps
             )
         }
-        val aggregateMainCoveredDeps = buildList {
-            addAll(defaultDeps.asCoveredBy(DEFAULT_VARIANT))
-            hierarchyBuckets.forEach { (bucketName, dependencies) ->
-                addAll(dependencies.asCoveredBy(bucketName))
-            }
-            filteredPerLeafBuckets.forEach { (bucketName, dependencies) ->
-                addAll(dependencies.asCoveredBy(bucketName))
-            }
-        }
         return MainBucketPlanResult(
             defaultDeps = defaultDeps,
             hierarchyBuckets = hierarchyBuckets,
             filteredPerLeafBuckets = filteredPerLeafBuckets,
-            mainCoveredDepsByProject = mainCoveredDepsByProject,
-            aggregateMainCoveredDeps = aggregateMainCoveredDeps
+            mainCoveredDepsByProject = mainCoveredDepsByProject
         )
     }
 
@@ -251,12 +268,13 @@ internal class BucketOwnershipPlanner(
             .filterKeys { shortId -> shortId in dependencies }
     }
 
-    private fun MutableMap<String, Map<String, ResolvedDependency>>.addDeclaredOutputMetadata(
+    private fun addDeclaredOutputMetadata(
+        declaredMetadataByOutputBucket: MutableMap<String, Map<String, ResolvedDependency>>,
         bucketName: String,
         metadata: Map<String, ResolvedDependency>
     ) {
         if (metadata.isEmpty()) return
-        this[bucketName] = this[bucketName]
+        declaredMetadataByOutputBucket[bucketName] = declaredMetadataByOutputBucket[bucketName]
             ?.let { existing -> unionDependencyMaps(existing, metadata) }
             ?: metadata
     }
@@ -472,7 +490,7 @@ internal class BucketOwnershipPlanner(
                     .asSequence()
                     .flatMap { bucketName -> coveredDepsByBucket[bucketName].orEmpty().asSequence() }
                     .toList()
-                    .groupByShortId()
+                    .let(::groupCoveredDependenciesByShortId)
             }
 
             fun addPlannedBucket(bucketName: String, dependencies: Map<String, ResolvedDependency>) {
@@ -529,7 +547,8 @@ internal class BucketOwnershipPlanner(
                 )
                     .toSortedMap()
                 if (testOnlyDependencies.isNotEmpty()) {
-                    declaredMetadataByOutputBucket.addDeclaredOutputMetadata(
+                    addDeclaredOutputMetadata(
+                        declaredMetadataByOutputBucket = declaredMetadataByOutputBucket,
                         bucketName = outputBucketName,
                         metadata = declaredTestDependencies.filterKeys { shortId ->
                             shortId in testOnlyDependencies
@@ -640,14 +659,6 @@ internal class BucketOwnershipPlanner(
 
         return results
     }
-
-    private data class MainBucketPlanResult(
-        val defaultDeps: Map<String, ResolvedDependency>,
-        val hierarchyBuckets: Map<String, Map<String, ResolvedDependency>>,
-        val filteredPerLeafBuckets: Map<String, Map<String, ResolvedDependency>>,
-        val mainCoveredDepsByProject: Map<String, List<CoveredDependency>>,
-        val aggregateMainCoveredDeps: List<CoveredDependency>
-    )
 }
 
 internal fun unionDependencyMaps(
@@ -673,7 +684,10 @@ private fun withoutTestDependenciesCoveredBy(
     coveredByShortId: Map<String, List<CoveredDependency>>,
     declaredTestDependencies: Map<String, ResolvedDependency>
 ): Map<String, ResolvedDependency> {
-    val filtered = testDependencies.withoutDependenciesCoveredBy(coveredByShortId)
+    val filtered = withoutDependenciesCoveredByShortId(
+        dependenciesByShortId = testDependencies,
+        coveredByShortId = coveredByShortId
+    )
     val scopedSiblingClosureDependenciesByShortId = scopedSiblingClosureDependenciesByShortId(testDependencies)
     val restoredDependencies = testDependencies.filter { (shortId, dependency) ->
         dependency.direct && shortId !in filtered && !coveredByShortId[shortId].orEmpty().any { covered ->
@@ -732,7 +746,7 @@ private fun withoutMergedBaseTestDependenciesCoveredBy(
     }
     val coveredByShortId = (aggregateMainCoveredDeps + inheritedTestCoveredDeps)
         .filter { covered -> covered.bucketName in visibleCoveredBucketNames }
-        .groupByShortId()
+        .let(::groupCoveredDependenciesByShortId)
     if (coveredByShortId.isEmpty()) return testDependenciesByBucket
 
     val filteredBaseBucket = withoutTestDependenciesCoveredBy(
@@ -807,8 +821,8 @@ private fun withoutDeclaredPlaceholdersCoveredByDefault(
 ): Map<String, Map<String, ResolvedDependency>> {
     if (dependenciesByBucket.isEmpty() || defaultDeps.isEmpty()) return dependenciesByBucket
     val defaultCoveredDepsByShortId = defaultDeps
-        .asCoveredBy(DEFAULT_VARIANT)
-        .groupByShortId()
+        .let { dependencies -> coveredDependenciesForBucket(dependencies, DEFAULT_VARIANT) }
+        .let(::groupCoveredDependenciesByShortId)
     return dependenciesByBucket.mapValues { (_, dependencies) ->
         dependencies
             .filterNot { (_, dependency) ->

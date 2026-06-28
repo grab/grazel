@@ -7,6 +7,15 @@ import com.grab.grazel.util.addGrazelExtension
 import com.grab.grazel.util.createGrazelComponent
 import org.junit.Test
 
+private data class RootInputKey(
+    val kind: AggregatedDependencyRootKind,
+    val bucketName: String?,
+    val metadataVariantName: String?,
+    val configurationName: String,
+    val traverseProjectNodes: Boolean,
+    val targetBuckets: Set<String>
+)
+
 class WorkspaceDependencyRootInputPlannerTest {
 
     @Test
@@ -28,7 +37,7 @@ class WorkspaceDependencyRootInputPlannerTest {
             variantsByProject = mapOf(appProject to variants)
         )
 
-        assertThat(rootInputs.map { input -> input.asKey() })
+        assertThat(rootInputs.map(::rootInputKey))
             .containsAtLeast(
                 RootInputKey(
                     kind = AggregatedDependencyRootKind.MAIN_HIERARCHY,
@@ -81,23 +90,14 @@ class WorkspaceDependencyRootInputPlannerTest {
             )
     }
 
-    private fun WorkspaceDependencyRootInput.asKey(): RootInputKey {
+    private fun rootInputKey(input: WorkspaceDependencyRootInput): RootInputKey {
         return RootInputKey(
-            kind = kind,
-            bucketName = bucketName,
-            metadataVariantName = metadataVariant?.name,
-            configurationName = configuration.name,
-            traverseProjectNodes = traverseProjectNodes,
-            targetBuckets = targetBuckets
+            kind = input.kind,
+            bucketName = input.bucketName,
+            metadataVariantName = input.metadataVariant?.name,
+            configurationName = input.configuration.name,
+            traverseProjectNodes = input.traverseProjectNodes,
+            targetBuckets = input.targetBuckets
         )
     }
-
-    private data class RootInputKey(
-        val kind: AggregatedDependencyRootKind,
-        val bucketName: String?,
-        val metadataVariantName: String?,
-        val configurationName: String,
-        val traverseProjectNodes: Boolean,
-        val targetBuckets: Set<String>
-    )
 }

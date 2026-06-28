@@ -111,8 +111,6 @@ constructor(
      * application project which will be the source of truth for buildable variants. We find the
      * application project here with the following caveats
      * * Multiple application projects in a project module graph is not supported
-     *
-     * TODO("Support multiple android application modules")
      */
     private val appProject: Project by lazy {
         rootProject.subprojects

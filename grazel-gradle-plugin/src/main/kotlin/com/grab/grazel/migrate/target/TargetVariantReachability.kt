@@ -91,12 +91,13 @@ internal fun reachableBucketPredicate(
     }
 }
 
-internal fun Project.isReachableJvmProject(
+internal fun isReachableJvmProject(
+    project: Project,
     dependencyResolutionService: GradleProvider<DefaultDependencyResolutionService>,
     workspacePlanService: GradleProvider<WorkspacePlanService>
 ): Boolean {
     val service = dependencyResolutionService.get()
     return !service.hasMainBucketReachability() ||
-        service.isReachableMainBucket(path, DEFAULT_VARIANT) ||
-        workspacePlanService.get().isReferencedProjectPath(path)
+        service.isReachableMainBucket(project.path, DEFAULT_VARIANT) ||
+        workspacePlanService.get().isReferencedProjectPath(project.path)
 }

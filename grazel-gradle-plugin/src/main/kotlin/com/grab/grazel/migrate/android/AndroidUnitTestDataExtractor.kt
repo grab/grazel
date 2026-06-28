@@ -100,7 +100,7 @@ constructor(
 
         val testSize = testSizeCalculator.calculate(name, rawSrcs.toSet())
 
-        val resources = project.unitTestResources(migratableSourceSets).toList()
+        val resources = unitTestResources(project, migratableSourceSets).toList()
         val associate = calculateTestAssociates(project, targetSuffix)
 
         val variantKey = VariantGraphKey.from(project, matchedVariant, VariantType.Test)
@@ -172,11 +172,12 @@ constructor(
     }
 }
 
-internal fun Project.unitTestResources(
+internal fun unitTestResources(
+    project: Project,
     sourceSets: Sequence<AndroidSourceSet>,
     sourceSetType: SourceSetType = SourceSetType.RESOURCES
 ): Sequence<String> {
     val dirs = sourceSets.flatMap { it.resources.srcDirs.asSequence() }
     val dirsKotlin = dirs.map { File(it.path.replace("/java", "/kotlin")) }
-    return filterSourceSetPaths(dirs + dirsKotlin, sourceSetType.patterns)
+    return project.filterSourceSetPaths(dirs + dirsKotlin, sourceSetType.patterns)
 }

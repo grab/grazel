@@ -108,14 +108,14 @@ constructor(
         val projectsToMigrate = rootProject
             .subprojects
             .filter { migrationChecker.get().canMigrate(it) }
-        val workspaceDependencies = dependencyResolutionService
+        val workspaceDependencyModel = dependencyResolutionService
             .get()
             .init(workspaceDependencies.get().asFile)
         val workspacePlanModel = fromJson<WorkspacePlan>(workspacePlan.get())
         val workspaceRenderPlan = fromJson<WorkspaceRenderPlan>(workspaceRenderPlan.get())
 
         val gradleProjectInfo: GradleProjectInfo = gradleProjectInfoFactory.get()
-            .create(workspaceDependencies)
+            .create(workspaceDependencyModel)
 
         workspaceBuilderFactory.get().create(
             projectsToMigrate = projectsToMigrate,
@@ -137,7 +137,7 @@ constructor(
         val rootBuildBazelContents = rootBazelBuilderFactory.get()
             .create(
                 gradleProjectInfo,
-                workspaceDependencies,
+                workspaceDependencyModel,
                 logger
             )
             .build()

@@ -69,8 +69,8 @@ internal class DefaultKotlinProjectDataExtractor
     override fun extract(project: Project): KotlinProjectData {
         val name = project.name
         val sourceSets = project.the<KotlinJvmProjectExtension>().sourceSets
-        val srcs = project.kotlinSources(sourceSets, JAVA_KOTLIN).toList()
-        val resources = project.kotlinSources(sourceSets, RESOURCES).toList()
+        val srcs = kotlinSources(project, sourceSets, JAVA_KOTLIN).toList()
+        val resources = kotlinSources(project, sourceSets, RESOURCES).toList()
 
         val variantKey = VariantGraphKey.from(project, "default", VariantType.JvmBuild)
         val deps = projectDependencyGraphs.directDependenciesByVariant(
@@ -113,8 +113,10 @@ internal class DefaultKotlinProjectDataExtractor
         )
     }
 
-    private fun Project.kotlinSources(
-        sourceSets: NamedDomainObjectContainer<KotlinSourceSet>, sourceSetType: SourceSetType
+    private fun kotlinSources(
+        project: Project,
+        sourceSets: NamedDomainObjectContainer<KotlinSourceSet>,
+        sourceSetType: SourceSetType
     ): Sequence<String> {
         val sourceSetChoosers: KotlinSourceSet.() -> Sequence<File> = when (sourceSetType) {
             JAVA, JAVA_KOTLIN, KOTLIN -> {
@@ -130,9 +132,9 @@ internal class DefaultKotlinProjectDataExtractor
             }
         }
         val dirs = sourceSets.asSequence()
-            .filter { !it.name.lowercase().contains("test") } // TODO Consider enabling later.
+            .filter { sourceSet -> !sourceSet.name.lowercase().contains("test") }
             .flatMap(sourceSetChoosers)
-        return filterSourceSetPaths(dirs, sourceSetType.patterns)
+        return project.filterSourceSetPaths(dirs, sourceSetType.patterns)
     }
 }
 

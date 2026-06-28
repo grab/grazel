@@ -155,7 +155,7 @@ constructor(
     }
 
     private fun kotlinFacts(project: Project): TargetReferenceFacts {
-        if (!project.isReachableJvmProject(dependencyResolutionService, workspacePlanService)) {
+        if (!isReachableJvmProject(project, dependencyResolutionService, workspacePlanService)) {
             return TargetReferenceFacts()
         }
         val projectData = kotlinProjectDataExtractor.extract(project)

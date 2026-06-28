@@ -2216,3 +2216,133 @@ evidence in item-specific logs so context compaction can recover state quickly.
     serialized/file-backed task inputs. Do not treat provider-mapped live Gradle model inputs as
     cacheable without full PAX task-graph proof; current fanout shards remain intentionally
     untracked and the merge remains cacheable.
+
+## 2026-06-29 Item 28 Start
+
+- Starting commit: `9173c50` (`refactor: default declared metadata aggregation to fanout`).
+- Active item: Item 28 - hard source-shape inventory remediation.
+- Grazel worktree was clean at start. PAX remains at branch `arun/grazel-refactor`, commit
+  `cfa1057ed58ccb2a795a5f679f072a8f604ff48e`, with the accepted local baseline dirty set only.
+- Confirmed Items 30, 29, and 31 are complete and locally committed.
+- Initial changed Kotlin scope from `master...HEAD`: `135` files (`86` main, `47` test,
+  `2` functionalTest).
+- Added and ran `reports/scripts/source-shape-inventory.sh`; initial
+  `reports/specs/source-shape-inventory.tsv` is generated with pending rows.
+- Initial detector distribution: `64` no-flag files, `5` generic collection receiver files,
+  `9` private helper model files, `10` project extension files, `13` reflection/dynamic access
+  files, `24` unchecked-cast files, `22` source-string assertion files, and `19` comment/context
+  artifact files. Counts are candidates, not final decisions.
+- Dispatched scoped read-only subagents for dependencies/variant, tasks, migrate/bazel/di, and
+  test/functional clusters. Parent will reconcile row-level findings into the TSV.
+- Item 28 remediation checkpoint:
+  - Cleaned the highest-signal source-shape issues from the first audit pass, including explicit
+    role-parameter rewrites in dependency/task/tag-plan helpers, removal of the dead
+    `GenerateBazelScriptsTask.variantCompressionResults` input/wiring, and localized test fixture
+    downcasts.
+  - `./gradlew :grazel-gradle-plugin:compileKotlin :grazel-gradle-plugin:compileTestKotlin --console=plain --no-daemon`
+    passed in `20s`.
+  - `reports/scripts/source-shape-inventory.sh` reran after edits; the TSV still intentionally has
+    pending rows and must be reconciled before Item 28 can complete.
+  - Added final read-only production/test row-audit subagents against the current tree.
+- Item 28 reconciliation checkpoint:
+  - Finished the second cleanup pass from the final production/test audits:
+    explicit `BucketSetMath`/declared-metadata helpers, structured Android test dependency
+    assertions, parsed JSON checks in `BuildVariantTest`, direct `DefaultArtifactPinner`
+    construction, and removal of the executable `TODO` fake.
+  - Mechanical set-math rewrite briefly failed compile in `DependencyBucketPlacementEngine.kt`;
+    root cause was one extra parenthesis, fixed before continuing.
+  - Compile gates passed:
+    `./gradlew :grazel-gradle-plugin:compileKotlin :grazel-gradle-plugin:compileTestKotlin --console=plain --no-daemon`
+    in `17s`, then
+    `./gradlew :grazel-gradle-plugin:compileKotlin :grazel-gradle-plugin:compileTestKotlin :grazel-gradle-plugin:compileFunctionalTestKotlin --console=plain --no-daemon`
+    in `10s`.
+  - `reports/scripts/source-shape-inventory.sh` reran after final edits.
+  - `reports/specs/source-shape-inventory.tsv` now has `135` changed Kotlin rows, matching
+    `git diff --name-only --diff-filter=ACMR master...HEAD -- '*.kt'`; no pending or blank row
+    fields remain. Terminal row statuses: `21 fixed`, `71 no_issue`,
+    `43 retained_problem_essential`.
+  - Provider API reminder for future task-boundary work: prefer providers for late typed Gradle
+    reads into stable file/serializable task inputs; do not convert this Item 28 preserving cleanup
+    into a provider/cacheability behavior change.
+- Item 28 verification checkpoint:
+  - `./gradlew :grazel-gradle-plugin:test --console=plain --no-daemon` passed in `39s`.
+  - `./gradlew migrateToBazel --console=plain --no-daemon` passed in `10s`.
+  - `reports/scripts/verify-json-phase-inventory.sh`, `reports/scripts/verify-default-task-graph.sh`,
+    `reports/scripts/verify-pax-size-guard.sh --mode preserving`, `git diff --check`, and
+    `git diff --check master...HEAD` passed.
+  - `reports/scripts/verify-sample-bucket-labels.sh` still fails only on the known pre-existing
+    appcompat/constraintlayout exclude waiver.
+  - PAX storage became tight (`8.3 GiB` free), so `bazelisk clean --expunge` was run in the PAX
+    repo. `pax-android/bazel-cache` was preserved.
+  - PAX `./gradlew migrateToBazel --no-daemon --console=plain --stacktrace --rerun-tasks` passed
+    in `12m 32s` and logged `mode=PROJECT_TASK_FANOUT projects=2327 shards=2327
+    aggregateJsonBytes=35247531 elapsedMs=658`.
+  - PAX `./bazel.sh build --verbose_failures //app:app-gps-pax-debug.apk
+    //app:app-gps-pax-debug-android-test.apk` passed in `139.050s` after restarting a stale
+    pre-compaction wrapper/client.
+  - PAX focused unit tests passed in `19.310s`:
+    `//app-utils:app-utils-gps-pax-debug-test`, `//app-test:app-test-gps-pax-debug-test`, and
+    `//application-initializer:application-initializer-gps-pax-debug-test`.
+  - PAX `git diff --check` passed and status remains exactly the accepted local dirty baseline.
+  - Remaining work: simplify pass, adversarial branch-diff review, post-review verification, and
+    local Grazel commit only after green.
+- Item 28 simplify-pass checkpoint:
+  - Ran four read-only simplify-pass reviewers: reuse, simplification, efficiency, and altitude.
+  - Applied local preserving cleanup: derived main covered deps instead of storing them, memoized
+    per-bucket placement candidates, reduced hot set/list allocations, inverted leaf-descendant
+    graph construction, avoided per-variant transitive-classpath filtering allocation, collapsed
+    duplicated declared-metadata task-output state, shared dependency JSON traversal in
+    `BuildVariantTest`, added `mktemp` cleanup to the source-shape inventory script, and moved the
+    duplicated resolved-component edge helper into `com.grab.grazel.fake`.
+  - Deferred larger altitude findings for follow-up architecture work: structured override target
+    data, regex-free target reference facts, removing consumer-first render-plan feedback, and
+    typed variant-owned bucket metadata.
+  - Post-fix compile passed in `13s`; focused dependency tests passed in `12s`; source-shape
+    inventory reran and still has `135` terminal rows for `135` changed Kotlin files.
+  - Remaining work: adversarial branch-diff review, broad verification, PAX final guard, and local
+    Grazel commit only after green.
+- Item 28 adversarial/post-review checkpoint:
+  - Adversarial review found one real singleton-cache bug in `WorkspaceTargetTagPlanCollector`;
+    fixed by clearing both `variantsByProjectPath` and `transitiveMavenDepsCache` at collection
+    boundaries.
+  - Fixed `AnalyzeVariantCompressionTask` to create the compression output parent directory before
+    writing the JSON file.
+  - Fixed `reports/scripts/source-shape-inventory.sh` to inventory the union of committed branch
+    diff, working-tree changes, staged changes, and untracked Kotlin files; this caught
+    `ManifestValuesBuilder.kt`, now reviewed as the 136th terminal row.
+  - Tried the reviewer-suggested master-like Maven repository narrowing in
+    `MavenInstallArtifactsCalculator`, but `./gradlew migrateToBazel --console=plain --no-daemon`
+    proved it changes generated output by removing Google Maven from `ksp_maven`, `lint_maven`,
+    and `test_maven` pins. Because Item 28 is preserving, reverted that behavior/test and logged it
+    as a follow-up output-changing candidate.
+  - `reports/scripts/verify-json-phase-inventory.sh` failed after source reshaping because JSON
+    encode/write helper line numbers moved in `AnalyzeVariantCompressionTask.kt` and
+    `CollectDeclaredDependencyMetadataTask.kt`; verified all sites remain task-action/file-backed
+    and updated only the inventory coordinates.
+  - Current source-shape inventory: `136` rows, no pending/blank fields, terminal statuses
+    `21 fixed`, `72 no_issue`, `43 retained_problem_essential`.
+- Final verification checkpoint after simplify/adversarial fixes:
+  - `./gradlew :grazel-gradle-plugin:test --console=plain --no-daemon` passed in `45s`.
+  - `./gradlew migrateToBazel --console=plain --no-daemon` passed in `20s` and left generated
+    `WORKSPACE`, `BUILD.bazel`, and Maven pin JSONs empty-diff.
+  - `reports/scripts/verify-json-phase-inventory.sh` passed.
+  - `reports/scripts/verify-default-task-graph.sh` passed.
+  - `reports/scripts/verify-pax-size-guard.sh --mode preserving` passed unchanged:
+    `bucketCount=11`, `pinfileCount=11`, `totalArtifactRoots=1945`, no per-repo deltas.
+  - `git diff --check` and `git diff --check master...HEAD` passed.
+  - `reports/scripts/verify-sample-bucket-labels.sh` still fails only on the known pre-existing
+    appcompat/constraintlayout exclude waiver.
+  - PAX `./gradlew migrateToBazel --no-daemon --console=plain --stacktrace --rerun-tasks` passed
+    in `12m 12s` and logged `mode=PROJECT_TASK_FANOUT projects=2327 shards=2327
+    aggregateJsonBytes=35247531 elapsedMs=554`.
+  - Because PAX disk was low, ran `bazelisk clean --expunge` in
+    `/Users/arun.sampathkumar/work/pax-android` before the APK gate; preserved
+    `pax-android/bazel-cache`.
+  - PAX `./bazel.sh build --verbose_failures //app:app-gps-pax-debug.apk
+    //app:app-gps-pax-debug-android-test.apk` passed in `267.070s`.
+  - PAX focused tests passed in `22.898s`:
+    `//app-utils:app-utils-gps-pax-debug-test`, `//app-test:app-test-gps-pax-debug-test`, and
+    `//application-initializer:application-initializer-gps-pax-debug-test`.
+  - PAX `git diff --check` passed and `git status --short` remains exactly the accepted local
+    baseline dirty set: `Constants.kt`, `Grazel.kt`, `ModuleLoggerTask.kt`,
+    `generated/dependency_graph.json`, and untracked `Buildifier.kt`.

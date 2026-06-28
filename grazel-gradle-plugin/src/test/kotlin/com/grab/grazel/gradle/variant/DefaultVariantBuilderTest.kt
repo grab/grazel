@@ -19,6 +19,12 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
+private data class VariantKey(
+    val name: String,
+    val variantType: VariantType,
+    val variantClass: String
+)
+
 class DefaultVariantBuilderTest {
     private lateinit var rootProject: Project
     private lateinit var androidProject: Project
@@ -214,8 +220,8 @@ class DefaultVariantBuilderTest {
         androidProject.doEvaluate()
 
         assertEquals(
-            variantBuilder.build(androidProject).map { it.variantKey() }.toSet(),
-            lazyVariants.map { it.variantKey() }.toSet()
+            variantBuilder.build(androidProject).map(::variantKey).toSet(),
+            lazyVariants.map(::variantKey).toSet()
         )
     }
 
@@ -264,17 +270,11 @@ class DefaultVariantBuilderTest {
         }
     }
 
-    private fun Variant<*>.variantKey(): VariantKey {
+    private fun variantKey(variant: Variant<*>): VariantKey {
         return VariantKey(
-            name = name,
-            variantType = variantType,
-            variantClass = javaClass.name
+            name = variant.name,
+            variantType = variant.variantType,
+            variantClass = variant.javaClass.name
         )
     }
-
-    private data class VariantKey(
-        val name: String,
-        val variantType: VariantType,
-        val variantClass: String
-    )
 }

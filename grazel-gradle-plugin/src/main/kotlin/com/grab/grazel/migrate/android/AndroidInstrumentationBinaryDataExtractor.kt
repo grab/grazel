@@ -89,7 +89,8 @@ internal class DefaultAndroidInstrumentationBinaryDataExtractor
                 suffix = matchedVariant.nameSuffix
             )
 
-        return project.extract(
+        return extractAndroidInstrumentationBinaryData(
+            project = project,
             matchedVariant = matchedVariant,
             extension = extension,
             deps = deps,
@@ -97,7 +98,8 @@ internal class DefaultAndroidInstrumentationBinaryDataExtractor
         )
     }
 
-    private fun Project.extract(
+    private fun extractAndroidInstrumentationBinaryData(
+        project: Project,
         matchedVariant: MatchedVariant,
         extension: BaseExtension,
         deps: List<BazelDependency>,
@@ -121,29 +123,29 @@ internal class DefaultAndroidInstrumentationBinaryDataExtractor
         ) ?: ""
 
         val debugKey = keyStoreExtractor.extract(
-            rootProject = rootProject,
-            variant = variantDataSource.getMigratableBuildVariants(this).firstOrNull()
+            rootProject = project.rootProject,
+            variant = variantDataSource.getMigratableBuildVariants(project).firstOrNull()
         )
 
         val associate = BazelDependency.ProjectDependency(
-            dependencyProject = this,
+            dependencyProject = project,
             prefix = "lib_",
             suffix = "${matchedVariant.nameSuffix}_kt"
         )
 
-        val resources = unitTestResources(migratableSourceSets.asSequence()).toList()
-        val resourceStripPrefix = resourceStripPrefix(migratableSourceSets.asSequence())
-        val resourceFiles = androidSources(migratableSourceSets, SourceSetType.RESOURCES).toList()
+        val resources = unitTestResources(project, migratableSourceSets.asSequence()).toList()
+        val resourceStripPrefix = project.resourceStripPrefix(migratableSourceSets.asSequence())
+        val resourceFiles = project.androidSources(migratableSourceSets, SourceSetType.RESOURCES).toList()
 
-        val srcs = androidSources(migratableSourceSets, sourceSetType).toList()
+        val srcs = project.androidSources(migratableSourceSets, sourceSetType).toList()
         val testInstrumentationRunner = extension.extractTestInstrumentationRunner()
 
-        // TODO: this is a workaround and should be removed after bazel 8 compatibility
+        // Bazel 8 compatibility requires omitting minSdk unless the workaround is enabled.
         val minSdkVersion = if (grazelExtension.experiments.minSdkVersionWorkaround.get()) 0 else null
         val tags = if (grazelExtension.rules.kotlin.enabledTransitiveReduction) {
             val variantKey = VariantGraphKey.from(project, matchedVariant, VariantType.AndroidTest)
             val localTags = calculateDirectDependencyTags(
-                self = "${name}${matchedVariant.nameSuffix}-android-test",
+                self = "${project.name}${matchedVariant.nameSuffix}-android-test",
                 deps = deps
             )
             val mavenTags = workspacePlanService
@@ -158,14 +160,14 @@ internal class DefaultAndroidInstrumentationBinaryDataExtractor
         } else emptyList()
 
         return AndroidInstrumentationBinaryData(
-            name = "${name}${matchedVariant.nameSuffix}-android-test",
+            name = "${project.name}${matchedVariant.nameSuffix}-android-test",
             associates = listOf(associate),
             customPackage = customPackage,
             targetPackage = matchedVariant.variant.applicationId.split(".test").first(),
             debugKey = debugKey,
             deps = deps.sorted(),
             instruments = BazelDependency.StringDependency(
-                ":${name}${matchedVariant.nameSuffix}"
+                ":${project.name}${matchedVariant.nameSuffix}"
             ),
             resources = resources,
             resourceStripPrefix = resourceStripPrefix,
@@ -174,7 +176,7 @@ internal class DefaultAndroidInstrumentationBinaryDataExtractor
             testInstrumentationRunner = testInstrumentationRunner,
             manifestValues = manifestValues,
             tags = tags.sorted(),
-            compose = hasCompose,
+            compose = project.hasCompose,
             minSdkVersion = minSdkVersion,
         )
     }

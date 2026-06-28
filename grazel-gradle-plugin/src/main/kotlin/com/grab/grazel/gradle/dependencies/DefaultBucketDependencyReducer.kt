@@ -36,18 +36,19 @@ internal class DefaultBucketDependencyReducer {
                     dependencies.entries
                         .parallelStream()
                         .filter { (shortId, dependency) ->
-                            !defaultClasspath.containsDefaultOwnerEquivalent(shortId, dependency)
+                            !containsDefaultOwnerEquivalent(defaultClasspath, shortId, dependency)
                         }
                         .collect(Collectors.toMap({ it.key }, { it.value }))
                 })
             ).apply { put(DEFAULT_VARIANT, defaultClasspath) }
     }
 
-    private fun Map<String, ResolvedDependency>.containsDefaultOwnerEquivalent(
+    private fun containsDefaultOwnerEquivalent(
+        defaultClasspath: Map<String, ResolvedDependency>,
         shortId: String,
         dependency: ResolvedDependency
     ): Boolean {
-        val defaultDependency = this[shortId] ?: return false
+        val defaultDependency = defaultClasspath[shortId] ?: return false
         if (dependency.isDeclaredMetadata() && !defaultDependency.isDeclaredMetadata()) {
             return false
         }

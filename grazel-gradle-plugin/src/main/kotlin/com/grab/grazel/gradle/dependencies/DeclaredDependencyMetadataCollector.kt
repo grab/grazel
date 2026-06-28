@@ -100,9 +100,9 @@ internal class DeclaredProjectMetadataSnapshotter {
                             .mapTo(sortedSetOf(), DeclaredExternalDependency::id),
                         declaredDependencyDeclarations = declaredDependencyDeclarations,
                         declaredProjectDependencies = variant.extractDeclaredProjectDependencyIds(),
-                        excludeRulesByShortId = variant
-                            .variantConfigurations
-                            .extractDeclaredExcludeRulesByShortId(),
+                        excludeRulesByShortId = extractDeclaredExcludeRulesByShortId(
+                            configurations = variant.variantConfigurations
+                        ),
                         compileOnlyBucketName = variant.compileOnlyBucketName,
                         compileOnlyDependenciesByShortId = variant.extractCompileOnlyDependenciesByShortId()
                     )
@@ -178,7 +178,7 @@ internal data class DeclaredDependencyMetadata(
                 val bucketRules = variants
                     .filter { variant -> variant.name in variantNames }
                     .map(DeclaredVariantDependencyMetadata::excludeRulesByShortId)
-                    .mergeExcludeRulesByShortId()
+                    .let(::mergeExcludeRulesByShortId)
                 val variantRulesByName = variants
                     .associate { variant -> variant.name to variant.excludeRulesByShortId }
                     .filterValues { it.isNotEmpty() }
@@ -235,7 +235,7 @@ internal data class DeclaredDependencyMetadata(
                     }
                     .toList()
             }
-            .mergedByProjectBucket()
+            .let(::mergeByProjectBucket)
     }
 
     fun collectDeclaredMainDependenciesByProjectBucket(
@@ -279,13 +279,14 @@ internal data class DeclaredDependencyMetadata(
                     }
                     .toList()
             }
-            .mergedByProjectBucket()
+            .let(::mergeByProjectBucket)
     }
 }
 
-private fun Iterable<Pair<ProjectDependencyBucket, ResolvedDependency>>.mergedByProjectBucket():
-    Map<ProjectDependencyBucket, Map<String, ResolvedDependency>> {
-    return groupBy({ (bucket, _) -> bucket }, { (_, dependency) -> dependency })
+private fun mergeByProjectBucket(
+    projectBucketDependencies: Iterable<Pair<ProjectDependencyBucket, ResolvedDependency>>
+): Map<ProjectDependencyBucket, Map<String, ResolvedDependency>> {
+    return projectBucketDependencies.groupBy({ (bucket, _) -> bucket }, { (_, dependency) -> dependency })
         .mapValues { (_, dependencies) ->
             dependencies
                 .groupBy(ResolvedDependency::shortId)
@@ -347,18 +348,18 @@ internal data class DeclaredExternalDependency(
     val id: String
 )
 
-private fun Set<Configuration>.configurationNames(): Set<String> {
-    return mapTo(sortedSetOf()) { configuration -> configuration.name }
-}
-
 private fun Variant<*>.configurationNamesOf(
     configurationsProvider: Variant<*>.() -> Set<Configuration>
 ): Set<String> {
     return try {
-        configurationsProvider().configurationNames()
+        configurationNames(configurationsProvider())
     } catch (e: Exception) {
         emptySet()
     }
+}
+
+private fun configurationNames(configurations: Set<Configuration>): Set<String> {
+    return configurations.mapTo(sortedSetOf()) { configuration -> configuration.name }
 }
 
 private val Variant<*>.compileOnlyBucketName: String
@@ -384,7 +385,7 @@ internal data class ProjectExcludeRules(
         if (selectedVariantNames.isNotEmpty()) {
             return selectedVariantNames
                 .mapNotNull { variantName -> variantRulesByName[variantName]?.get(shortId) }
-                .intersectExcludeRuleSets()
+                .let(::intersectExcludeRuleSets)
         }
         return bucketRulesByShortId[shortId].orEmpty()
     }
@@ -443,18 +444,20 @@ internal fun Configuration.extractExcludeRulesByShortId(): Map<String, Set<Exclu
         .mapValues { (_, dependencies) ->
             dependencies
                 .map { dependency -> dependency.extractExcludeRules() }
-                .intersectExcludeRuleSets()
+                .let(::intersectExcludeRuleSets)
         }
         .filterValues { it.isNotEmpty() }
         .toSortedMap()
 }
 
-internal fun Iterable<Configuration>.extractExcludeRulesByShortId(): Map<String, Set<ExcludeRule>> {
-    return asSequence()
+internal fun extractExcludeRulesByShortId(
+    configurations: Iterable<Configuration>
+): Map<String, Set<ExcludeRule>> {
+    return configurations.asSequence()
         .flatMap { configuration -> configuration.extractExcludeRulesByShortId().asSequence() }
         .groupBy({ it.key }, { it.value })
         .mapValues { (_, ruleSets) ->
-            ruleSets.intersectExcludeRuleSets()
+            intersectExcludeRuleSets(ruleSets)
         }
         .filterValues { it.isNotEmpty() }
         .toSortedMap()
@@ -469,18 +472,20 @@ internal fun Configuration.extractDeclaredExcludeRulesByShortId(): Map<String, S
         .mapValues { (_, dependencies) ->
             dependencies
                 .map { dependency -> dependency.extractExcludeRules() }
-                .intersectExcludeRuleSets()
+                .let(::intersectExcludeRuleSets)
         }
         .filterValues { it.isNotEmpty() }
         .toSortedMap()
 }
 
-internal fun Iterable<Configuration>.extractDeclaredExcludeRulesByShortId(): Map<String, Set<ExcludeRule>> {
-    return asSequence()
+internal fun extractDeclaredExcludeRulesByShortId(
+    configurations: Iterable<Configuration>
+): Map<String, Set<ExcludeRule>> {
+    return configurations.asSequence()
         .flatMap { configuration -> configuration.extractDeclaredExcludeRulesByShortId().asSequence() }
         .groupBy({ it.key }, { it.value })
         .mapValues { (_, ruleSets) ->
-            ruleSets.intersectExcludeRuleSets()
+            intersectExcludeRuleSets(ruleSets)
         }
         .filterValues { it.isNotEmpty() }
         .toSortedMap()
@@ -633,19 +638,21 @@ private fun String.toDeclaredResolvedDependency(
         .copy(excludeRules = excludeRulesByShortId[shortId].orEmpty())
 }
 
-private fun Iterable<Map<String, Set<ExcludeRule>>>.mergeExcludeRulesByShortId(): Map<String, Set<ExcludeRule>> {
-    return asSequence()
+private fun mergeExcludeRulesByShortId(
+    rulesByVariant: Iterable<Map<String, Set<ExcludeRule>>>
+): Map<String, Set<ExcludeRule>> {
+    return rulesByVariant.asSequence()
         .flatMap { rulesByShortId -> rulesByShortId.asSequence() }
         .groupBy({ it.key }, { it.value })
         .mapValues { (_, ruleSets) ->
-            ruleSets.intersectExcludeRuleSets()
+            intersectExcludeRuleSets(ruleSets)
         }
         .filterValues { it.isNotEmpty() }
         .toSortedMap()
 }
 
-private fun Iterable<Set<ExcludeRule>>.intersectExcludeRuleSets(): Set<ExcludeRule> {
-    val iterator = iterator()
+private fun intersectExcludeRuleSets(ruleSets: Iterable<Set<ExcludeRule>>): Set<ExcludeRule> {
+    val iterator = ruleSets.iterator()
     if (!iterator.hasNext()) return emptySet()
     var result = iterator.next().toSortedSet(compareBy(ExcludeRule::toString))
     while (iterator.hasNext()) {
@@ -655,7 +662,8 @@ private fun Iterable<Set<ExcludeRule>>.intersectExcludeRuleSets(): Set<ExcludeRu
     return result
 }
 
-internal fun Map<String, ProjectExcludeRules>.excludeRulesFor(
+internal fun excludeRulesForDependency(
+    excludeRulesByProjectPath: Map<String, ProjectExcludeRules>,
     rootProjectPath: String,
     rootExcludeRulesByShortId: Map<String, Set<ExcludeRule>>,
     ownerProjectPath: String?,
@@ -664,7 +672,7 @@ internal fun Map<String, ProjectExcludeRules>.excludeRulesFor(
 ): Set<ExcludeRule> {
     val ownerRules = ownerProjectPath
         ?.let { path ->
-            this[path]?.rulesFor(
+            excludeRulesByProjectPath[path]?.rulesFor(
                 shortId = shortId,
                 selectedVariantDisplayName = ownerProjectVariantDisplayName
             )

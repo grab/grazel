@@ -52,6 +52,12 @@ internal object TargetTagKinds {
     const val KOTLIN_UNIT_TEST = "kotlin_unit_test"
 }
 
+private data class MavenTagClosureKey(
+    val projectPath: String,
+    val variantId: String,
+    val variantType: VariantType,
+)
+
 @Singleton
 internal class DefaultWorkspaceTargetTagPlanCollector
 @Inject
@@ -68,13 +74,14 @@ constructor(
     private val variantsByProjectPath = mutableMapOf<String, Set<Variant<*>>>()
 
     override fun collect(rootProject: Project): List<TargetTagPlan> {
+        transitiveMavenDepsCache.clear()
         variantsByProjectPath.clear()
         return try {
             rootProject.subprojects
                 .asSequence()
                 .sortedBy(Project::getPath)
                 .filter { project -> migrationChecker.get().canMigrate(project) }
-                .flatMap { project -> project.targetTagPlans() }
+                .flatMap { project -> targetTagPlans(project) }
                 .filter { tagPlan -> tagPlan.tags.isNotEmpty() }
                 .sortedWith(
                     compareBy<TargetTagPlan> { it.key.variantId }
@@ -83,40 +90,45 @@ constructor(
                 )
                 .toList()
         } finally {
+            transitiveMavenDepsCache.clear()
             variantsByProjectPath.clear()
         }
     }
 
-    private fun Project.targetTagPlans(): Sequence<TargetTagPlan> = sequence {
-        if (isAndroid) {
-            if (!isAndroidApplication) {
-                yieldAll(androidLibraryTagPlans())
-                if (!isAndroidTest) {
-                    yieldAll(androidUnitTestTagPlans())
+    private fun targetTagPlans(project: Project): Sequence<TargetTagPlan> = sequence {
+        if (project.isAndroid) {
+            if (!project.isAndroidApplication) {
+                yieldAll(androidLibraryTagPlans(project))
+                if (!project.isAndroidTest) {
+                    yieldAll(androidUnitTestTagPlans(project))
                 }
             }
-            if (isAndroidApplication) {
-                yieldAll(androidInstrumentationTagPlans())
+            if (project.isAndroidApplication) {
+                yieldAll(androidInstrumentationTagPlans(project))
             }
-        } else if (isKotlin) {
-            yield(kotlinLibraryTagPlan())
-            yield(kotlinUnitTestTagPlan())
+        } else if (project.isKotlin) {
+            yield(kotlinLibraryTagPlan(project))
+            yield(kotlinUnitTestTagPlan(project))
         }
     }
 
-    private fun Project.androidLibraryTagPlans(): Sequence<TargetTagPlan> =
+    private fun androidLibraryTagPlans(project: Project): Sequence<TargetTagPlan> =
         matchedVariantTagPlans(
+            project = project,
             variantType = VariantType.AndroidBuild,
             targetKind = TargetTagKinds.ANDROID_LIBRARY
-        ) { matchedVariant, variantKey ->
+        ) { owningProject, matchedVariant, variantKey ->
             val transitiveMavenDeps = mutableSetOf<MavenDependency>()
-            transitiveMavenDeps.addAll(collectTransitiveMavenDeps(this, variantKey))
+            transitiveMavenDeps.addAll(collectTransitiveMavenDeps(owningProject, variantKey))
             dependencyGraphsService
                 .get()
                 .get()
-                .directDependenciesByVariant(this, variantKey)
+                .directDependenciesByVariant(owningProject, variantKey)
                 .forEach { dependencyProject ->
-                    val dependencyVariantKey = dependencyProject.bestVariantKeyForTagClosure(matchedVariant)
+                    val dependencyVariantKey = bestVariantKeyForTagClosure(
+                        project = dependencyProject,
+                        matchedVariant = matchedVariant
+                    )
                     if (dependencyVariantKey != null) {
                         transitiveMavenDeps.addAll(
                             collectTransitiveMavenDeps(dependencyProject, dependencyVariantKey)
@@ -126,53 +138,56 @@ constructor(
             transitiveMavenDeps
         }
 
-    private fun Project.androidUnitTestTagPlans(): Sequence<TargetTagPlan> =
+    private fun androidUnitTestTagPlans(project: Project): Sequence<TargetTagPlan> =
         matchedVariantTagPlans(
+            project = project,
             variantType = VariantType.Test,
             targetKind = TargetTagKinds.ANDROID_UNIT_TEST
         )
 
-    private fun Project.androidInstrumentationTagPlans(): Sequence<TargetTagPlan> =
+    private fun androidInstrumentationTagPlans(project: Project): Sequence<TargetTagPlan> =
         matchedVariantTagPlans(
+            project = project,
             variantType = VariantType.AndroidTest,
             targetKind = TargetTagKinds.ANDROID_INSTRUMENTATION
         )
 
-    private fun Project.kotlinLibraryTagPlan(): TargetTagPlan {
-        val variantKey = VariantGraphKey.from(this, DEFAULT_VARIANT, VariantType.JvmBuild)
+    private fun kotlinLibraryTagPlan(project: Project): TargetTagPlan {
+        val variantKey = VariantGraphKey.from(project, DEFAULT_VARIANT, VariantType.JvmBuild)
         return targetTagPlan(
             variantKey = variantKey,
             targetKind = TargetTagKinds.KOTLIN_LIBRARY,
-            mavenDeps = collectTransitiveMavenDeps(this, variantKey)
+            mavenDeps = collectTransitiveMavenDeps(project, variantKey)
         )
     }
 
-    private fun Project.kotlinUnitTestTagPlan(): TargetTagPlan {
-        val variantKey = VariantGraphKey.from(this, "test", VariantType.Test)
+    private fun kotlinUnitTestTagPlan(project: Project): TargetTagPlan {
+        val variantKey = VariantGraphKey.from(project, "test", VariantType.Test)
         return targetTagPlan(
             variantKey = variantKey,
             targetKind = TargetTagKinds.KOTLIN_UNIT_TEST,
-            mavenDeps = collectTransitiveMavenDeps(this, variantKey)
+            mavenDeps = collectTransitiveMavenDeps(project, variantKey)
         )
     }
 
-    private fun Project.matchedVariantTagPlans(
+    private fun matchedVariantTagPlans(
+        project: Project,
         variantType: VariantType,
         targetKind: String,
-        mavenDeps: Project.(MatchedVariant, VariantGraphKey) -> Set<MavenDependency> = { _, variantKey ->
-            collectTransitiveMavenDeps(this, variantKey)
+        mavenDeps: (Project, MatchedVariant, VariantGraphKey) -> Set<MavenDependency> = { owningProject, _, variantKey ->
+            collectTransitiveMavenDeps(owningProject, variantKey)
         }
     ): Sequence<TargetTagPlan> = variantMatcher
         .get()
-        .matchedVariants(this, variantType)
+        .matchedVariants(project, variantType)
         .asSequence()
         .sortedBy(MatchedVariant::variantName)
         .map { matchedVariant ->
-            val variantKey = VariantGraphKey.from(this, matchedVariant, variantType)
+            val variantKey = VariantGraphKey.from(project, matchedVariant, variantType)
             targetTagPlan(
                 variantKey = variantKey,
                 targetKind = targetKind,
-                mavenDeps = mavenDeps(matchedVariant, variantKey)
+                mavenDeps = mavenDeps(project, matchedVariant, variantKey)
             )
         }
 
@@ -206,9 +221,12 @@ constructor(
         }
     }
 
-    private fun Project.bestVariantKeyForTagClosure(matchedVariant: MatchedVariant): VariantGraphKey? {
-        val variantType = if (isAndroid) VariantType.AndroidBuild else VariantType.JvmBuild
-        val preferredNames = if (isAndroid) {
+    private fun bestVariantKeyForTagClosure(
+        project: Project,
+        matchedVariant: MatchedVariant
+    ): VariantGraphKey? {
+        val variantType = if (project.isAndroid) VariantType.AndroidBuild else VariantType.JvmBuild
+        val preferredNames = if (project.isAndroid) {
             listOf(matchedVariant.variantName, matchedVariant.buildType, DEFAULT_VARIANT)
         } else {
             listOf(DEFAULT_VARIANT)
@@ -217,23 +235,17 @@ constructor(
             .asSequence()
             .distinct()
             .mapNotNull { preferredName ->
-                builtVariants().firstOrNull { variant ->
+                builtVariants(project).firstOrNull { variant ->
                     variant.variantType == variantType && variant.name == preferredName
                 }
             }
             .firstOrNull()
-            ?.toVariantGraphKey()
+            ?.let { variant -> toVariantGraphKey(project, variant) }
     }
 
-    private fun Variant<*>.toVariantGraphKey(): VariantGraphKey =
-        VariantGraphKey(project.path + ":" + id, variantType)
+    private fun toVariantGraphKey(project: Project, variant: Variant<*>): VariantGraphKey =
+        VariantGraphKey(project.path + ":" + variant.id, variant.variantType)
 
-    private fun Project.builtVariants(): Set<Variant<*>> =
-        variantsByProjectPath.getOrPut(path) { variantBuilder.build(this) }
-
-    private data class MavenTagClosureKey(
-        val projectPath: String,
-        val variantId: String,
-        val variantType: VariantType,
-    )
+    private fun builtVariants(project: Project): Set<Variant<*>> =
+        variantsByProjectPath.getOrPut(project.path) { variantBuilder.build(project) }
 }

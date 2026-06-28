@@ -202,16 +202,18 @@ class DeclaredDependencyMetadataCollectorTest {
         val firstOnlyRule = ExcludeRule("com.example", "first-only-blocked")
         val secondOnlyRule = ExcludeRule("com.example", "second-only-blocked")
 
-        val firstDependency = project.dependencies.add(
-            "implementation",
-            "com.example:library:1.0"
-        ) as ExternalModuleDependency
+        val firstDependency = addExternalModuleDependency(
+            project = project,
+            configurationName = "implementation",
+            dependencyNotation = "com.example:library:1.0"
+        )
         firstDependency.exclude(mapOf("group" to commonRule.group, "module" to commonRule.artifact))
         firstDependency.exclude(mapOf("group" to firstOnlyRule.group, "module" to firstOnlyRule.artifact))
-        val secondDependency = project.dependencies.add(
-            "implementation",
-            "com.example:library:2.0"
-        ) as ExternalModuleDependency
+        val secondDependency = addExternalModuleDependency(
+            project = project,
+            configurationName = "implementation",
+            dependencyNotation = "com.example:library:2.0"
+        )
         secondDependency.exclude(mapOf("group" to commonRule.group, "module" to commonRule.artifact))
         secondDependency.exclude(mapOf("group" to secondOnlyRule.group, "module" to secondOnlyRule.artifact))
 
@@ -245,5 +247,13 @@ class DeclaredDependencyMetadataCollectorTest {
             override val kspConfiguration: Set<Configuration> = emptySet()
             override val kotlinCompilerPluginConfiguration: Set<Configuration> = emptySet()
         }
+    }
+
+    private fun addExternalModuleDependency(
+        project: Project,
+        configurationName: String,
+        dependencyNotation: Any
+    ): ExternalModuleDependency {
+        return project.dependencies.add(configurationName, dependencyNotation) as ExternalModuleDependency
     }
 }

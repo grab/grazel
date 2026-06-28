@@ -95,7 +95,7 @@ internal object WorkspaceDependencyRootInputPlanner {
         variants: Iterable<Variant<*>>
     ): List<WorkspaceDependencyRootInput> {
         val standaloneTestProject = project.isAndroidTest
-        val sortedVariants = variants.sortedForWorkspaceDependencyInputs()
+        val sortedVariants = sortedForWorkspaceDependencyInputs(variants)
 
         return buildList {
             sortedVariants
@@ -105,6 +105,7 @@ internal object WorkspaceDependencyRootInputPlanner {
                 }
                 .forEach { variant ->
                     addVariantRoots(
+                        rootInputs = this,
                         project = project,
                         variant = variant,
                         kind = AggregatedDependencyRootKind.MAIN_HIERARCHY,
@@ -123,6 +124,7 @@ internal object WorkspaceDependencyRootInputPlanner {
                 }
                 .forEach { variant ->
                     addVariantRoots(
+                        rootInputs = this,
                         project = project,
                         variant = variant,
                         kind = AggregatedDependencyRootKind.TEST_HIERARCHY,
@@ -138,6 +140,7 @@ internal object WorkspaceDependencyRootInputPlanner {
                 }
                 .forEach { variant ->
                     addVariantRoots(
+                        rootInputs = this,
                         project = project,
                         variant = variant,
                         kind = AggregatedDependencyRootKind.MAIN_LEAF,
@@ -145,6 +148,7 @@ internal object WorkspaceDependencyRootInputPlanner {
                         targetBuckets = variant.targetBuckets(standaloneTestProject)
                     )
                     addConfigurationRoots(
+                        rootInputs = this,
                         project = project,
                         kind = AggregatedDependencyRootKind.UNIT_TEST,
                         bucketName = variant.name,
@@ -154,6 +158,7 @@ internal object WorkspaceDependencyRootInputPlanner {
                         traverseProjectNodes = true
                     )
                     addConfigurationRoots(
+                        rootInputs = this,
                         project = project,
                         kind = AggregatedDependencyRootKind.ANDROID_TEST,
                         bucketName = variant.name,
@@ -166,7 +171,8 @@ internal object WorkspaceDependencyRootInputPlanner {
         }
     }
 
-    private fun MutableList<WorkspaceDependencyRootInput>.addVariantRoots(
+    private fun addVariantRoots(
+        rootInputs: MutableList<WorkspaceDependencyRootInput>,
         project: Project,
         variant: Variant<*>,
         kind: AggregatedDependencyRootKind,
@@ -174,6 +180,7 @@ internal object WorkspaceDependencyRootInputPlanner {
         targetBuckets: Set<String>
     ) {
         addConfigurationRoots(
+            rootInputs = rootInputs,
             project = project,
             kind = kind,
             bucketName = bucketName,
@@ -194,6 +201,7 @@ internal object WorkspaceDependencyRootInputPlanner {
                 .filter { variant -> variant.variantType == VariantType.Lint }
                 .forEach { variant ->
                     addConfigurationRoots(
+                        rootInputs = this,
                         project = project,
                         kind = AggregatedDependencyRootKind.LINT,
                         bucketName = null,
@@ -209,7 +217,8 @@ internal object WorkspaceDependencyRootInputPlanner {
         }
     }
 
-    private fun MutableList<WorkspaceDependencyRootInput>.addConfigurationRoots(
+    private fun addConfigurationRoots(
+        rootInputs: MutableList<WorkspaceDependencyRootInput>,
         project: Project,
         kind: AggregatedDependencyRootKind,
         bucketName: String?,
@@ -224,7 +233,7 @@ internal object WorkspaceDependencyRootInputPlanner {
             .distinctBy { configuration -> configuration.name }
             .sortedBy { configuration -> configuration.name }
             .forEach { configuration ->
-                add(
+                rootInputs.add(
                     WorkspaceDependencyRootInput(
                         project = project,
                         kind = kind,
@@ -240,8 +249,8 @@ internal object WorkspaceDependencyRootInputPlanner {
             }
     }
 
-    private fun Iterable<Variant<*>>.sortedForWorkspaceDependencyInputs(): List<Variant<*>> {
-        return sortedWith(
+    private fun sortedForWorkspaceDependencyInputs(variants: Iterable<Variant<*>>): List<Variant<*>> {
+        return variants.sortedWith(
             compareBy<Variant<*>> { variant -> variant.variantType.name }
                 .thenBy { variant -> variant.name }
         )

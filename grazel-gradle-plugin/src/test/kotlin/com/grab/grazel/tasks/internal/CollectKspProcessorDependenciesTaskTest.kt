@@ -42,7 +42,7 @@ class CollectKspProcessorDependenciesTaskTest {
         val rootComponentsGetter = CollectKspProcessorDependenciesTask::class.java
             .getMethod("getKspRootComponents")
         val directDependenciesGetter = CollectKspProcessorDependenciesTask::class.java
-            .getMethod("getKspDirectDependencies")
+            .getMethod("getKspDirectDependencyShortIds")
         val artifactsGetter = CollectKspProcessorDependenciesTask::class.java
             .getMethod("getKspArtifacts")
         val classpathFilesGetter = CollectKspProcessorDependenciesTask::class.java
@@ -93,7 +93,7 @@ class CollectKspProcessorDependenciesTaskTest {
         val outputFile = project.layout.buildDirectory.file("nested/output/ksp-dependencies.json")
 
         task.kspRootComponents.set(emptyList())
-        task.kspDirectDependencies.set(emptySet())
+        task.kspDirectDependencyShortIds.set(emptySet())
         task.kspArtifacts.set(emptyList())
         task.kspDependencies.set(outputFile)
 

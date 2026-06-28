@@ -281,8 +281,10 @@ internal class DefaultDependenciesDataSource @Inject constructor(
             }
         }
 
-        fun Collection<DirectVariantDeclaration>.bestErrorDeclaration(): DirectVariantDeclaration =
-            maxWithOrNull(
+        fun bestErrorDeclaration(
+            candidateDeclarations: Collection<DirectVariantDeclaration>
+        ): DirectVariantDeclaration =
+            candidateDeclarations.maxWithOrNull(
                 compareBy<DirectVariantDeclaration> { declaration -> declaration.bucketSpecificity() }
                     .thenBy { declaration -> declaration.bucketName }
                     .thenBy { declaration -> declaration.configurationName }
@@ -404,7 +406,7 @@ internal class DefaultDependenciesDataSource @Inject constructor(
                         if (selectedDependency != null) {
                             selectedDependency
                         } else {
-                            val declaration = candidateDeclarations.bestErrorDeclaration()
+                            val declaration = bestErrorDeclaration(candidateDeclarations)
                             val lookupVariants = lookupHierarchyForDeclaration(declaration.bucketName)
                             if (shouldFailOnMissingMavenDependency(lookupVariants)) {
                                 throw IllegalStateException(
@@ -575,38 +577,6 @@ internal class DefaultDependenciesDataSource @Inject constructor(
 
     private val VariantType.prefersDefaultMavenDeps: Boolean
         get() = this == VariantType.AndroidTest || this == VariantType.Test
-
-    /**
-     * Collects first level module dependencies from their resolved configuration. Additionally,
-     * excludes any artifacts that are not meant to be used in Bazel as defined by
-     * [IGNORED_ARTIFACT_GROUPS]
-     *
-     * @return Sequence of [DefaultResolvedDependency] in the first level
-     */
-    private fun Project.firstLevelModuleDependencies(
-        variantTypes: Array<VariantType> = arrayOf(
-            VariantType.AndroidBuild,
-            VariantType.Test,
-            VariantType.AndroidTest
-        )
-    ): Sequence<DefaultResolvedDependency> {
-        return configurationDataSource
-            .resolvedConfigurations(
-                project = this,
-                variantTypes = variantTypes
-            ).map { it.resolvedConfiguration.lenientConfiguration }
-            .flatMap {
-                try {
-                    it.firstLevelModuleDependencies.asSequence()
-                } catch (e: Exception) {
-                    sequenceOf<ResolvedDependency>()
-                }
-            }.filterIsInstance<DefaultResolvedDependency>()
-            .filter { it.moduleGroup !in IGNORED_ARTIFACT_GROUPS }
-    }
-
-    internal fun firstLevelModuleDependencies(project: Project) =
-        project.firstLevelModuleDependencies()
 
     /**
      * Collects dependencies from all available configuration in the pre-resolution state i.e

@@ -51,7 +51,9 @@ class DefaultDependencyResolutionServiceTest {
     fun setup() {
         dependencyResolutionService = object : DefaultDependencyResolutionService() {
             override fun getParameters(): DependencyResolutionService.Params {
-                TODO("Not yet implemented")
+                throw UnsupportedOperationException(
+                    "DefaultDependencyResolutionServiceTest does not use build service parameters"
+                )
             }
         }
         workspaceDependenciesFile = temporaryFolder.newFile("workspace-dependencies.json")

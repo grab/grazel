@@ -26,8 +26,8 @@ import org.gradle.api.artifacts.result.ResolvedComponentResult
 import org.gradle.api.artifacts.result.ResolvedDependencyResult
 import org.gradle.api.internal.artifacts.result.DefaultResolvedComponentResult
 
-private typealias Node = ResolvedComponentResult
-private typealias DefaultNode = DefaultResolvedComponentResult
+private typealias ResolvedComponentNode = ResolvedComponentResult
+private typealias DefaultResolvedComponentNode = DefaultResolvedComponentResult
 
 /**
  * Visitor to flatten all components (including transitives) from a root [ResolvedComponentResult].
@@ -48,15 +48,15 @@ internal class ResolvedComponentsVisitor {
         logger("$prefix$indent $msg")
     }
 
-    private val Node.isProject get() = toString().startsWith("project :")
-    private val Node.repository get() = (this as? DefaultNode)?.repositoryName ?: ""
-    private val Node.shortId get() = toString().substringBeforeLast(":")
+    private val ResolvedComponentNode.isProject get() = toString().startsWith("project :")
+    private val ResolvedComponentNode.repository get() = (this as? DefaultResolvedComponentNode)?.repositoryName ?: ""
+    private val ResolvedComponentNode.shortId get() = toString().substringBeforeLast(":")
 
     private val ComponentSelector.isLegacySupportLibrary
         get() = toString().startsWith("com.android.support")
 
     data class VisitResult(
-        val component: Node,
+        val component: ResolvedComponentNode,
         val repository: String,
         val transitiveDeps: Set<DependencyResult>,
         val requiresJetifier: Boolean,
@@ -86,9 +86,9 @@ internal class ResolvedComponentsVisitor {
         ) = component.toString().compareTo(other.component.toString())
     }
 
-    /** Holder to collect dependency information for a [Node] */
+    /** Holder to collect dependency information for a [ResolvedComponentNode] */
     data class DependencyResult(
-        val dependency: Node,
+        val dependency: ResolvedComponentNode,
         val requiresJetifier: Boolean,
         val unjetifiedSource: String?
     ) : Comparable<DependencyResult> {
@@ -97,12 +97,12 @@ internal class ResolvedComponentsVisitor {
         ) = dependency.toString().compareTo(other.dependency.toString())
     }
 
-    private data class DFSResult(
+    private data class DependencyTraversalResult(
         val dependencies: Set<DependencyResult>,
         val requiresJetifier: Boolean
     )
 
-    private val Node.projectPath: String?
+    private val ResolvedComponentNode.projectPath: String?
         get() = toString()
             .takeIf { it.startsWith("project :") }
             ?.substringAfter("project ")
@@ -124,18 +124,18 @@ internal class ResolvedComponentsVisitor {
      * @param transform The callback used to convert to [T]
      */
     fun <T : Comparable<T>> visit(
-        root: Node,
+        root: ResolvedComponentNode,
         logger: (message: String) -> Unit = { },
         traverseProjectNodes: Boolean = false,
         transform: (visitResult: VisitResult) -> T?
     ): Set<T> {
-        val dfsResults = hashMapOf<Node, DFSResult>()
-        val visited = hashSetOf<Node>()
+        val dfsResults = hashMapOf<ResolvedComponentNode, DependencyTraversalResult>()
+        val visited = hashSetOf<ResolvedComponentNode>()
         val result = sortedSetOf<T>()
 
         fun emit(
-            node: Node,
-            dfsResult: DFSResult,
+            node: ResolvedComponentNode,
+            dfsResult: DependencyTraversalResult,
             directProjectPath: String?,
             directProjectVariantDisplayName: String?
         ) {
@@ -155,7 +155,7 @@ internal class ResolvedComponentsVisitor {
         }
 
         data class ChildDependency(
-            val selected: Node,
+            val selected: ResolvedComponentNode,
             val requested: ComponentSelector,
             val constraint: Boolean,
             val selectedVariantDisplayName: String
@@ -173,14 +173,14 @@ internal class ResolvedComponentsVisitor {
          *   emitted with [VisitResult.directFromProject] = `true`.
          */
         fun dfs(
-            node: Node,
+            node: ResolvedComponentNode,
             level: Int = 0,
             directProjectPath: String? = null,
             directProjectVariantDisplayName: String? = null,
             projectVariantDisplayName: String? = null
-        ): DFSResult {
+        ): DependencyTraversalResult {
             if (node in visited) {
-                val cachedResult = dfsResults[node] ?: return DFSResult(emptySet(), false)
+                val cachedResult = dfsResults[node] ?: return DependencyTraversalResult(emptySet(), false)
                 emit(node, cachedResult, directProjectPath, directProjectVariantDisplayName)
                 return cachedResult
             }
@@ -251,7 +251,7 @@ internal class ResolvedComponentsVisitor {
                     }
                 }
 
-            val dfsResult = DFSResult(allDependencies, requiresJetifier)
+            val dfsResult = DependencyTraversalResult(allDependencies, requiresJetifier)
             dfsResults[node] = dfsResult
 
             emit(node, dfsResult, directProjectPath, directProjectVariantDisplayName)

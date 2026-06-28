@@ -42,7 +42,6 @@ import org.gradle.api.model.ObjectFactory
 import org.gradle.api.provider.Property
 import org.gradle.api.tasks.InputFile
 import org.gradle.api.tasks.Internal
-import org.gradle.api.tasks.Optional
 import org.gradle.api.tasks.OutputFile
 import org.gradle.api.tasks.PathSensitive
 import org.gradle.api.tasks.PathSensitivity
@@ -78,10 +77,6 @@ constructor(
 
     @get:InputFile
     val workspaceRenderPlan: RegularFileProperty = project.objects.fileProperty()
-
-    @get:InputFile
-    @get:Optional
-    val variantCompressionResults: RegularFileProperty = project.objects.fileProperty()
 
     @get:InputFile
     @get:PathSensitive(PathSensitivity.RELATIVE)

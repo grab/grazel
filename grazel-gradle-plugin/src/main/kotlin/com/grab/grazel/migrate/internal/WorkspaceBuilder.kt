@@ -112,7 +112,7 @@ internal class WorkspaceBuilder(
         if (hasDagger) {
             daggerWorkspaceRules(grazelExtension.rules.dagger)
             loadDaggerArtifactsAndRepositories()
-            // TODO Remove dagger rules and build generic annotation processor config
+            // Dagger artifacts stay explicit until annotation processor workspace config is generalized.
             externalArtifacts += DAGGER_ARTIFACTS
             externalRepositories += DAGGER_REPOSITORIES
         }

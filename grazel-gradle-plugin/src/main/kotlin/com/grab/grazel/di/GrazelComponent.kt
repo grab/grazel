@@ -122,7 +122,7 @@ internal interface GrazelComponent {
 )
 internal interface GrazelModule {
     @Binds
-    fun DefaultGradleProjectInfo.bindGradleProjectIndo(): GradleProjectInfo
+    fun DefaultGradleProjectInfo.bindGradleProjectInfo(): GradleProjectInfo
 
     @Binds
     fun DefaultConfigurationDataSource.bindConfigurationDataSource(): ConfigurationDataSource
@@ -143,8 +143,7 @@ internal interface GrazelModule {
         @Singleton
         fun GrazelExtension.provideMavenInstallExtension() = rules.mavenInstall
 
-        // Added to satisfy dagger expectation of having all bindings available when @Inject is used
-        // For usage, actual instance derived from Gradle API must be used
+        // Dagger binding for GradleServices; runtime Gradle APIs remain the source of instances.
         @Provides
         fun @receiver:RootProject Project.gradleServices() = GradleServices.from(this)
     }

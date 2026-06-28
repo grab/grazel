@@ -114,7 +114,6 @@ constructor(
                 matchedVariant = matchedVariant,
             )
 
-            // TODO Implement this via bazel-common
             val intermediateTargets = mutableListOf<BazelTarget>()
             val crashlyticsDeps = crashlyticsDeps(
                 project,

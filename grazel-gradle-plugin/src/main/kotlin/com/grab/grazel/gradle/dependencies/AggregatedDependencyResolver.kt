@@ -32,6 +32,17 @@ import com.grab.grazel.gradle.variant.VariantType.Test
 import org.gradle.api.logging.Logger
 import java.util.TreeSet
 
+private data class DeclaredProjectDependencyEdge(
+    val targetProjectPath: String,
+    val excludedShortIds: Set<String>
+)
+
+private data class MainProjectEdgeScope(
+    val reachableProjectPaths: Set<String>,
+    val reachableBucketNamesByProject: Map<String, Set<String>>,
+    val excludedShortIdsByTargetProject: Map<String, Set<String>>
+)
+
 /**
  * Resolves all external dependencies for the migratable project set from task-wired workspace
  * dependency roots, then buckets them via set-intersection logic.
@@ -111,23 +122,24 @@ internal class AggregatedDependencyResolver(
                 precomputedKspDependencies = precomputedKspDependencies
             ).plan(
                 OwnershipPlannerInput(
-                    leafClosures = leafClosures.snapshotDependencyBuckets(),
-                    leafUnitTestClosures = leafUnitTestClosures.snapshotDependencyBuckets(),
-                    leafAndroidTestClosures = leafAndroidTestClosures.snapshotDependencyBuckets(),
-                    hierarchyBucketClosures = hierarchyBucketClosures.snapshotDependencyBuckets(),
-                    testHierarchyBucketClosures = testHierarchyBucketClosures.snapshotDependencyBuckets(),
+                    leafClosures = snapshotDependencyBuckets(leafClosures),
+                    leafUnitTestClosures = snapshotDependencyBuckets(leafUnitTestClosures),
+                    leafAndroidTestClosures = snapshotDependencyBuckets(leafAndroidTestClosures),
+                    hierarchyBucketClosures = snapshotDependencyBuckets(hierarchyBucketClosures),
+                    testHierarchyBucketClosures = snapshotDependencyBuckets(testHierarchyBucketClosures),
                     reachableMainBucketNamesByProject = reachableMainBucketNamesByProject
                         .mapValues { (_, bucketNames) -> bucketNames.toSortedSet() }
                         .toSortedMap(),
                     lintDeps = lintDeps.toSortedMap(),
-                    declaredTestDependenciesByBucket = declaredTestDependenciesByBucket.snapshotDependencyBuckets()
+                    declaredTestDependenciesByBucket = snapshotDependencyBuckets(declaredTestDependenciesByBucket)
                 )
             )
         }
 
-        private fun Map<ProjectDependencyBucket, Map<String, ResolvedDependency>>.snapshotDependencyBuckets():
-            Map<ProjectDependencyBucket, Map<String, ResolvedDependency>> {
-            return toSortedMap(
+        private fun snapshotDependencyBuckets(
+            dependenciesByProjectBucket: Map<ProjectDependencyBucket, Map<String, ResolvedDependency>>
+        ): Map<ProjectDependencyBucket, Map<String, ResolvedDependency>> {
+            return dependenciesByProjectBucket.toSortedMap(
                 compareBy<ProjectDependencyBucket> { bucket -> bucket.projectPath }
                     .thenBy { bucket -> bucket.bucketName }
             ).mapValues { (_, dependencies) -> dependencies.toSortedMap() }
@@ -186,7 +198,8 @@ internal class AggregatedDependencyResolver(
                 .also { edges -> declaredProjectDependencyEdgesCache[cacheKey] = edges }
         }
 
-        private fun MutableMap<ProjectDependencyBucket, Map<String, ResolvedDependency>>.addToProjectBucket(
+        private fun addDependenciesToProjectBucket(
+            dependenciesByProjectBucket: MutableMap<ProjectDependencyBucket, Map<String, ResolvedDependency>>,
             projectPath: String,
             bucketName: String,
             closure: Map<String, ResolvedDependency>,
@@ -194,7 +207,7 @@ internal class AggregatedDependencyResolver(
         ) {
             if (!keepEmpty && closure.isEmpty()) return
             val bucket = ProjectDependencyBucket(projectPath, bucketName)
-            this[bucket] = this[bucket]
+            dependenciesByProjectBucket[bucket] = dependenciesByProjectBucket[bucket]
                 ?.let { existing -> unionDependencyMaps(existing, closure) }
                 ?: closure
         }
@@ -204,10 +217,11 @@ internal class AggregatedDependencyResolver(
             bucketName: String,
             closure: Map<String, ResolvedDependency>
         ) {
-            hierarchyBucketClosures.addToProjectBucket(
-                projectPath,
-                bucketName,
-                closure,
+            addDependenciesToProjectBucket(
+                dependenciesByProjectBucket = hierarchyBucketClosures,
+                projectPath = projectPath,
+                bucketName = bucketName,
+                closure = closure,
                 keepEmpty = false
             )
         }
@@ -217,10 +231,11 @@ internal class AggregatedDependencyResolver(
             bucketName: String,
             closure: Map<String, ResolvedDependency>
         ) {
-            testHierarchyBucketClosures.addToProjectBucket(
-                projectPath,
-                bucketName,
-                closure,
+            addDependenciesToProjectBucket(
+                dependenciesByProjectBucket = testHierarchyBucketClosures,
+                projectPath = projectPath,
+                bucketName = bucketName,
+                closure = closure,
                 keepEmpty = false
             )
         }
@@ -293,9 +308,10 @@ internal class AggregatedDependencyResolver(
             return bucketName in reachableMainBucketNamesByProject[projectPath].orEmpty()
         }
 
-        private fun Map<ProjectDependencyBucket, Map<String, ResolvedDependency>>.withoutDependenciesExcludedByEveryReachableRoot():
-            Map<ProjectDependencyBucket, Map<String, ResolvedDependency>> {
-            if (mainProjectEdgeScopes.isEmpty()) return this
+        private fun withoutDependenciesExcludedByEveryReachableRoot(
+            dependenciesByProjectBucket: Map<ProjectDependencyBucket, Map<String, ResolvedDependency>>
+        ): Map<ProjectDependencyBucket, Map<String, ResolvedDependency>> {
+            if (mainProjectEdgeScopes.isEmpty()) return dependenciesByProjectBucket
             val reachableScopesByProjectPath = mainProjectEdgeScopes
                 .flatMap { scope ->
                     scope.reachableProjectPaths.map { projectPath -> projectPath to scope }
@@ -304,7 +320,7 @@ internal class AggregatedDependencyResolver(
                     keySelector = { (projectPath, _) -> projectPath },
                     valueTransform = { (_, scope) -> scope }
                 )
-            return mapValues { (bucket, dependencies) ->
+            return dependenciesByProjectBucket.mapValues { (bucket, dependencies) ->
                 val reachableScopes = reachableScopesByProjectPath[bucket.projectPath].orEmpty()
                 dependencies.filterKeys { shortId ->
                     reachableScopes.isEmpty() ||
@@ -511,11 +527,26 @@ internal class AggregatedDependencyResolver(
                             when (bucketName) {
                                 DEFAULT_VARIANT -> addToHierarchyBucket(metadata.projectPath, DEFAULT_VARIANT, closure)
                                 TEST_VARIANT ->
-                                    leafUnitTestClosures.addToProjectBucket(metadata.projectPath, leafName, closure)
+                                    addDependenciesToProjectBucket(
+                                        dependenciesByProjectBucket = leafUnitTestClosures,
+                                        projectPath = metadata.projectPath,
+                                        bucketName = leafName,
+                                        closure = closure
+                                    )
                                 ANDROID_TEST_VARIANT ->
-                                    leafAndroidTestClosures.addToProjectBucket(metadata.projectPath, leafName, closure)
+                                    addDependenciesToProjectBucket(
+                                        dependenciesByProjectBucket = leafAndroidTestClosures,
+                                        projectPath = metadata.projectPath,
+                                        bucketName = leafName,
+                                        closure = closure
+                                    )
                                 else -> {
-                                    leafClosures.addToProjectBucket(metadata.projectPath, bucketName, closure)
+                                    addDependenciesToProjectBucket(
+                                        dependenciesByProjectBucket = leafClosures,
+                                        projectPath = metadata.projectPath,
+                                        bucketName = bucketName,
+                                        closure = closure
+                                    )
                                 }
                             }
                         }
@@ -527,11 +558,21 @@ internal class AggregatedDependencyResolver(
                     }
                     AggregatedDependencyRootKind.UNIT_TEST -> {
                         val leafName = metadata.leafName ?: metadata.bucketName ?: return@forEach
-                        leafUnitTestClosures.addToProjectBucket(metadata.projectPath, leafName, closure)
+                        addDependenciesToProjectBucket(
+                            dependenciesByProjectBucket = leafUnitTestClosures,
+                            projectPath = metadata.projectPath,
+                            bucketName = leafName,
+                            closure = closure
+                        )
                     }
                     AggregatedDependencyRootKind.ANDROID_TEST -> {
                         val leafName = metadata.leafName ?: metadata.bucketName ?: return@forEach
-                        leafAndroidTestClosures.addToProjectBucket(metadata.projectPath, leafName, closure)
+                        addDependenciesToProjectBucket(
+                            dependenciesByProjectBucket = leafAndroidTestClosures,
+                            projectPath = metadata.projectPath,
+                            bucketName = leafName,
+                            closure = closure
+                        )
                     }
                     AggregatedDependencyRootKind.LINT -> {
                         lintDeps = unionDependencyMaps(lintDeps, closure)
@@ -559,7 +600,7 @@ internal class AggregatedDependencyResolver(
             declaredMainDependenciesByBucket
                 .filter { (bucket, _) -> bucket.shouldAddDeclaredHierarchyDependency() }
                 .filter { (bucket, _) -> bucket.isReachableMainBucket() }
-                .withoutDependenciesExcludedByEveryReachableRoot()
+                .let(::withoutDependenciesExcludedByEveryReachableRoot)
                 .filterValues(Map<String, ResolvedDependency>::isNotEmpty)
                 .forEach { (bucket, dependencies) ->
                     addToHierarchyBucket(bucket.projectPath, bucket.bucketName, dependencies)
@@ -665,7 +706,8 @@ internal class AggregatedDependencyResolver(
                         return@forEach
                     }
                     val excludeRules = if (metadata.traverseProjectNodes) {
-                        excludeRulesByProjectPath.excludeRulesFor(
+                        excludeRulesForDependency(
+                            excludeRulesByProjectPath = excludeRulesByProjectPath,
                             rootProjectPath = metadata.projectPath,
                             rootExcludeRulesByShortId = metadata.rootExcludeRulesByShortId,
                             ownerProjectPath = visitResult.directProjectPath,
@@ -749,14 +791,3 @@ internal fun mergeDependencyMetadataByMaxVersion(
         processorClass = winner.processorClass ?: other.processorClass,
     )
 }
-
-private data class DeclaredProjectDependencyEdge(
-    val targetProjectPath: String,
-    val excludedShortIds: Set<String>
-)
-
-private data class MainProjectEdgeScope(
-    val reachableProjectPaths: Set<String>,
-    val reachableBucketNamesByProject: Map<String, Set<String>>,
-    val excludedShortIdsByTargetProject: Map<String, Set<String>>
-)

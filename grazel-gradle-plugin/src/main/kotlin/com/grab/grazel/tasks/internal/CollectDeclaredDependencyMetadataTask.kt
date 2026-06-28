@@ -57,20 +57,24 @@ internal data class DeclaredDependencyMetadataTaskOutput(
 )
 
 internal data class DeclaredDependencyMetadataTaskOutputs(
-    val singleTask: DeclaredDependencyMetadataTaskOutput,
-    val projectTaskFanout: DeclaredDependencyMetadataTaskOutput,
-    private val singleProducerTask: TaskProvider<CollectDeclaredDependencyMetadataTask>,
-    private val projectTaskFanoutMergeTask: TaskProvider<MergeDeclaredDependencyMetadataTask>
+    private val singleTask: TaskProvider<CollectDeclaredDependencyMetadataTask>,
+    private val projectTaskFanout: TaskProvider<MergeDeclaredDependencyMetadataTask>
 ) {
     fun forMode(mode: DeclaredDependencyMetadataAggregationMode): DeclaredDependencyMetadataTaskOutput {
         return when (mode) {
-            SINGLE_TASK -> singleTask
-            PROJECT_TASK_FANOUT -> projectTaskFanout
+            SINGLE_TASK -> DeclaredDependencyMetadataTaskOutput(
+                declaredDependencyMetadata = singleTask.flatMap { it.declaredDependencyMetadata },
+                producerTask = singleTask
+            )
+            PROJECT_TASK_FANOUT -> DeclaredDependencyMetadataTaskOutput(
+                declaredDependencyMetadata = projectTaskFanout.flatMap { it.declaredDependencyMetadata },
+                producerTask = projectTaskFanout
+            )
         }
     }
 
     fun configureSingleTask(metadataSources: List<DeclaredProjectMetadataSource>) {
-        singleProducerTask.configure {
+        singleTask.configure {
             configureCollector(metadataSources)
         }
     }
@@ -81,7 +85,7 @@ internal data class DeclaredDependencyMetadataTaskOutputs(
     ) {
         MergeDeclaredDependencyMetadataTask.configureShards(
             rootProject = rootProject,
-            mergeTask = projectTaskFanoutMergeTask,
+            mergeTask = projectTaskFanout,
             metadataSources = metadataSources
         )
     }
@@ -98,16 +102,8 @@ internal object DeclaredDependencyMetadataTasks {
             rootProject = rootProject
         )
         return DeclaredDependencyMetadataTaskOutputs(
-            singleTask = DeclaredDependencyMetadataTaskOutput(
-                declaredDependencyMetadata = singleTask.flatMap { it.declaredDependencyMetadata },
-                producerTask = singleTask
-            ),
-            projectTaskFanout = DeclaredDependencyMetadataTaskOutput(
-                declaredDependencyMetadata = projectTaskFanout.flatMap { it.declaredDependencyMetadata },
-                producerTask = projectTaskFanout
-            ),
-            singleProducerTask = singleTask,
-            projectTaskFanoutMergeTask = projectTaskFanout
+            singleTask = singleTask,
+            projectTaskFanout = projectTaskFanout
         )
     }
 }

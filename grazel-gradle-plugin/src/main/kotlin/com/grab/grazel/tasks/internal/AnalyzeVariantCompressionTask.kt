@@ -54,6 +54,20 @@ import org.gradle.kotlin.dsl.register
 import java.time.Instant
 import javax.inject.Inject
 
+@Serializable
+private data class AnalysisSummary(
+    val analysisTimestamp: String,
+    val projectCount: Int,
+    val projects: List<ProjectSummary>
+)
+
+@Serializable
+private data class ProjectSummary(
+    val path: String,
+    val variantCount: Int,
+    val suffixes: List<String>
+)
+
 /**
  * Task that analyzes Android library projects and computes variant compression results.
  *
@@ -133,56 +147,47 @@ constructor(
             projects = projectSummaries
         )
 
-        compressionResultsFile.get().asFile.writeText(Json.encodeToString(summary))
+        val outputFile = compressionResultsFile.get().asFile
+        outputFile.parentFile.mkdirs()
+        outputFile.writeText(Json.encodeToString(summary))
 
-        logger.info("Variant compression analysis complete. Results written to ${compressionResultsFile.get().asFile}")
+        logger.info("Variant compression analysis complete. Results written to $outputFile")
     }
 
-    /** Analyzes a single Android library project and returns a compression result. */
     private fun analyzeProject(project: Project): VariantCompressionResult {
         val variants = variantMatcher.get().matchedVariants(project, VariantType.AndroidBuild)
 
-        // Extract AndroidLibraryData for each variant
         val variantData = variants.associate { matchedVariant ->
             matchedVariant.variantName to
                 androidLibraryDataExtractor.get().extract(project, matchedVariant)
         }
 
-        // Collect compression results from dependencies
         val dependencyVariantCompressionResults = mutableMapOf<Project, VariantCompressionResult>()
         val service = variantCompressionService.get()
 
-        // Get all direct project dependencies
         val projectDependencies = variantData.values
             .flatMap { it.deps }
             .filterIsInstance<ProjectDependency>()
             .map { it.dependencyProject }
             .toSet()
 
-        // Collect their compression results
         projectDependencies.forEach { depProject ->
             service.get(depProject.path)?.let { result ->
                 dependencyVariantCompressionResults[depProject] = result
             }
         }
 
-        // Extract build type from variant name
-        // Assumes variant name follows pattern like "freeDebug", "paidRelease"
-        // Build type is the last component when split by capital letters
         fun buildTypeFn(variantName: String): String {
-            // Find the matched variant to get the actual build type
             val matchedVariant = variants.find { it.variantName == variantName }
             return matchedVariant?.buildType ?: "debug"
         }
 
-        // Compress variants using the compressor
         val resultWithDecisions = variantCompressor.get().compress(
             variants = variantData,
             buildTypeFn = ::buildTypeFn,
             dependencyVariantCompressionResults = dependencyVariantCompressionResults
         )
 
-        // Log detailed decision for each build type group
         resultWithDecisions.decisions.forEach { decision ->
             when (decision) {
                 is Compressed -> logger.info(
@@ -236,17 +241,3 @@ constructor(
         }
     }
 }
-
-@Serializable
-private data class AnalysisSummary(
-    val analysisTimestamp: String,
-    val projectCount: Int,
-    val projects: List<ProjectSummary>
-)
-
-@Serializable
-private data class ProjectSummary(
-    val path: String,
-    val variantCount: Int,
-    val suffixes: List<String>
-)

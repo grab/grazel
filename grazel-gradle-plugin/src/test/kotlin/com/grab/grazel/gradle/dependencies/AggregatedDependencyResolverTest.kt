@@ -17,7 +17,7 @@
 package com.grab.grazel.gradle.dependencies
 
 import com.grab.grazel.bazel.starlark.BazelDependency.MavenDependency
-import com.grab.grazel.fake.FakeAttributeContainer
+import com.grab.grazel.fake.addDependencyTo
 import com.grab.grazel.fake.fakeComponentResult
 import com.grab.grazel.gradle.dependencies.model.ExcludeRule
 import com.grab.grazel.gradle.dependencies.model.OverrideTarget
@@ -35,13 +35,6 @@ import com.grab.grazel.gradle.variant.VariantType.JvmBuild
 import com.grab.grazel.gradle.variant.VariantType.Test as TestVariantType
 import org.gradle.api.artifacts.ExternalModuleDependency
 import org.gradle.api.artifacts.result.ResolvedComponentResult
-import org.gradle.api.internal.artifacts.DefaultModuleIdentifier
-import org.gradle.api.internal.artifacts.result.DefaultResolvedDependencyResult
-import org.gradle.api.internal.artifacts.result.DefaultResolvedVariantResult
-import org.gradle.internal.DisplayName
-import org.gradle.internal.component.external.model.DefaultModuleComponentIdentifier
-import org.gradle.internal.component.external.model.DefaultModuleComponentSelector
-import org.gradle.internal.component.external.model.ImmutableCapabilities
 import org.gradle.testfixtures.ProjectBuilder
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -57,8 +50,9 @@ class AggregatedDependencyResolverTest {
         val debugDependency = dependency("com.example:library:2.0")
         val childBucket = mapOf(debugDependency.shortId to debugDependency)
 
-        val filteredBucket = childBucket.withoutDependenciesCoveredBy(
-            listOf(covered("default", defaultDependency))
+        val filteredBucket = withoutDependenciesCoveredBy(
+            dependenciesByShortId = childBucket,
+            coveredDependencies = listOf(covered("default", defaultDependency))
         )
 
         assertEquals(childBucket, filteredBucket)
@@ -70,8 +64,9 @@ class AggregatedDependencyResolverTest {
         val flavorDependency = dependency("com.example:library:1.0")
         val childBucket = mapOf(flavorDependency.shortId to flavorDependency)
 
-        val filteredBucket = childBucket.withoutDependenciesCoveredBy(
-            listOf(covered("debug", debugDependency))
+        val filteredBucket = withoutDependenciesCoveredBy(
+            dependenciesByShortId = childBucket,
+            coveredDependencies = listOf(covered("debug", debugDependency))
         )
 
         assertEquals(emptyMap<String, ResolvedDependency>(), filteredBucket)
@@ -85,8 +80,9 @@ class AggregatedDependencyResolverTest {
         )
         val childBucket = mapOf(flavorDependency.shortId to flavorDependency)
 
-        val filteredBucket = childBucket.withoutDependenciesCoveredBy(
-            listOf(covered("debug", debugDependency))
+        val filteredBucket = withoutDependenciesCoveredBy(
+            dependenciesByShortId = childBucket,
+            coveredDependencies = listOf(covered("debug", debugDependency))
         )
 
         assertEquals(
@@ -119,8 +115,9 @@ class AggregatedDependencyResolverTest {
         )
         val childBucket = mapOf(flavorDependency.shortId to flavorDependency)
 
-        val filteredBucket = childBucket.withoutDependenciesCoveredBy(
-            listOf(covered("debug", debugDependency))
+        val filteredBucket = withoutDependenciesCoveredBy(
+            dependenciesByShortId = childBucket,
+            coveredDependencies = listOf(covered("debug", debugDependency))
         )
 
         assertEquals(emptyMap<String, ResolvedDependency>(), filteredBucket)
@@ -138,8 +135,9 @@ class AggregatedDependencyResolverTest {
         )
         val childBucket = mapOf(debugDependency.shortId to debugDependency)
 
-        val filteredBucket = childBucket.withoutDependenciesCoveredBy(
-            listOf(covered("default", defaultDependency))
+        val filteredBucket = withoutDependenciesCoveredBy(
+            dependenciesByShortId = childBucket,
+            coveredDependencies = listOf(covered("default", defaultDependency))
         )
 
         assertEquals(emptyMap<String, ResolvedDependency>(), filteredBucket)
@@ -159,8 +157,9 @@ class AggregatedDependencyResolverTest {
         )
         val childBucket = mapOf(debugDependency.shortId to debugDependency)
 
-        val filteredBucket = childBucket.withoutDependenciesCoveredBy(
-            listOf(covered("default", defaultDependency))
+        val filteredBucket = withoutDependenciesCoveredBy(
+            dependenciesByShortId = childBucket,
+            coveredDependencies = listOf(covered("default", defaultDependency))
         )
 
         assertEquals(childBucket, filteredBucket)
@@ -349,8 +348,9 @@ class AggregatedDependencyResolverTest {
         val directChildDependency = dependency("com.example:library:1.0")
         val childBucket = mapOf(directChildDependency.shortId to directChildDependency)
 
-        val filteredBucket = childBucket.withoutDependenciesCoveredBy(
-            listOf(covered("default", transitiveDefaultDependency))
+        val filteredBucket = withoutDependenciesCoveredBy(
+            dependenciesByShortId = childBucket,
+            coveredDependencies = listOf(covered("default", transitiveDefaultDependency))
         )
 
         assertEquals(childBucket, filteredBucket)
@@ -362,8 +362,9 @@ class AggregatedDependencyResolverTest {
         val testDependency = dependency("com.example:library:2.0")
         val testBucket = mapOf(testDependency.shortId to testDependency)
 
-        val filteredBucket = testBucket.withoutDependenciesCoveredBy(
-            listOf(covered("default", mainDependency))
+        val filteredBucket = withoutDependenciesCoveredBy(
+            dependenciesByShortId = testBucket,
+            coveredDependencies = listOf(covered("default", mainDependency))
         )
 
         assertEquals(testBucket, filteredBucket)
@@ -473,7 +474,8 @@ class AggregatedDependencyResolverTest {
         val debugDependency = dependency("com.example:library:2.0")
         val defaultBucket = mapOf(defaultDependency.shortId to defaultDependency)
 
-        val filteredBucket = defaultBucket.withoutDependenciesOwnedByNonDefaultHierarchy(
+        val filteredBucket = withoutDependenciesOwnedByNonDefaultHierarchy(
+            dependenciesByShortId = defaultBucket,
             hierarchyDefaultDeps = emptyMap(),
             nonDefaultHierarchyDependencies = listOf(debugDependency)
         )
@@ -487,7 +489,8 @@ class AggregatedDependencyResolverTest {
         val debugDependency = dependency("com.example:library:1.0")
         val defaultBucket = mapOf(defaultDependency.shortId to defaultDependency)
 
-        val filteredBucket = defaultBucket.withoutDependenciesOwnedByNonDefaultHierarchy(
+        val filteredBucket = withoutDependenciesOwnedByNonDefaultHierarchy(
+            dependenciesByShortId = defaultBucket,
             hierarchyDefaultDeps = emptyMap(),
             nonDefaultHierarchyDependencies = listOf(debugDependency)
         )
@@ -505,10 +508,11 @@ class AggregatedDependencyResolverTest {
         }
 
         project.dependencies.add("implementation", "com.example:library:1.0")
-        val debugDependency = project.dependencies.add(
-            "debugImplementation",
-            "com.example:library:1.0"
-        ) as ExternalModuleDependency
+        val debugDependency = addExternalModuleDependency(
+            project = project,
+            configurationName = "debugImplementation",
+            dependencyNotation = "com.example:library:1.0"
+        )
         debugDependency.exclude(mapOf("group" to "com.example", "module" to "blocked"))
 
         assertEquals(emptyMap<String, Set<ExcludeRule>>(), implementation.extractExcludeRulesByShortId())
@@ -527,26 +531,31 @@ class AggregatedDependencyResolverTest {
             extendsFrom(implementation, debugImplementation)
         }
 
-        val mainDependency = project.dependencies.add(
-            "implementation",
-            "com.example:library:1.0"
-        ) as ExternalModuleDependency
+        val mainDependency = addExternalModuleDependency(
+            project = project,
+            configurationName = "implementation",
+            dependencyNotation = "com.example:library:1.0"
+        )
         mainDependency.exclude(mapOf("group" to "com.example", "module" to "main-blocked"))
-        val debugDependency = project.dependencies.add(
-            "debugImplementation",
-            "com.example:library:1.0"
-        ) as ExternalModuleDependency
+        val debugDependency = addExternalModuleDependency(
+            project = project,
+            configurationName = "debugImplementation",
+            dependencyNotation = "com.example:library:1.0"
+        )
         debugDependency.exclude(mapOf("group" to "com.example", "module" to "debug-blocked"))
-        val classpathDependency = project.dependencies.add(
-            "debugRuntimeClasspath",
-            "com.example:library:1.0"
-        ) as ExternalModuleDependency
+        val classpathDependency = addExternalModuleDependency(
+            project = project,
+            configurationName = "debugRuntimeClasspath",
+            dependencyNotation = "com.example:library:1.0"
+        )
         classpathDependency.exclude(mapOf("group" to "com.example", "module" to "classpath-blocked"))
 
         assertEquals(emptyMap<String, Set<ExcludeRule>>(), debugRuntimeClasspath.extractDeclaredExcludeRulesByShortId())
         assertEquals(
             mapOf("com.example:library" to setOf(ExcludeRule("com.example", "debug-blocked"))),
-            listOf(debugRuntimeClasspath, debugImplementation).extractDeclaredExcludeRulesByShortId()
+            extractDeclaredExcludeRulesByShortId(
+                configurations = listOf(debugRuntimeClasspath, debugImplementation)
+            )
         )
     }
 
@@ -554,10 +563,13 @@ class AggregatedDependencyResolverTest {
     fun `declared exclude metadata skips dependencies without group`() {
         val project = ProjectBuilder.builder().build()
         val implementation = project.configurations.create("implementation")
-        val blankGroupDependency = project.dependencies.add(
-            "implementation",
-            project.dependencies.create(mapOf("group" to "", "name" to "library", "version" to "1.0"))
-        ) as ExternalModuleDependency
+        val blankGroupDependency = addExternalModuleDependency(
+            project = project,
+            configurationName = "implementation",
+            dependencyNotation = project.dependencies.create(
+                mapOf("group" to "", "name" to "library", "version" to "1.0")
+            )
+        )
         blankGroupDependency.exclude(mapOf("group" to "com.example", "module" to "blocked"))
 
         assertEquals(emptyMap<String, Set<ExcludeRule>>(), implementation.extractDeclaredExcludeRulesByShortId())
@@ -567,15 +579,17 @@ class AggregatedDependencyResolverTest {
     fun `root exclude metadata is keyed in stable short id order`() {
         val project = ProjectBuilder.builder().build()
         val implementation = project.configurations.create("implementation")
-        val laterDependency = project.dependencies.add(
-            "implementation",
-            "com.zed:later:1.0"
-        ) as ExternalModuleDependency
+        val laterDependency = addExternalModuleDependency(
+            project = project,
+            configurationName = "implementation",
+            dependencyNotation = "com.zed:later:1.0"
+        )
         laterDependency.exclude(mapOf("group" to "com.example", "module" to "later-blocked"))
-        val earlierDependency = project.dependencies.add(
-            "implementation",
-            "com.alpha:earlier:1.0"
-        ) as ExternalModuleDependency
+        val earlierDependency = addExternalModuleDependency(
+            project = project,
+            configurationName = "implementation",
+            dependencyNotation = "com.alpha:earlier:1.0"
+        )
         earlierDependency.exclude(mapOf("group" to "com.example", "module" to "earlier-blocked"))
 
         assertEquals(
@@ -606,7 +620,8 @@ class AggregatedDependencyResolverTest {
 
         assertEquals(
             setOf(ownerRule),
-            excludeRules.excludeRulesFor(
+            excludeRulesForDependency(
+                excludeRulesByProjectPath = excludeRules,
                 rootProjectPath = ":app",
                 rootExcludeRulesByShortId = mapOf(shortId to setOf(rootRule)),
                 ownerProjectPath = ":lib",
@@ -633,7 +648,8 @@ class AggregatedDependencyResolverTest {
 
         assertEquals(
             setOf(ownerRule),
-            excludeRules.excludeRulesFor(
+            excludeRulesForDependency(
+                excludeRulesByProjectPath = excludeRules,
                 rootProjectPath = ":app",
                 rootExcludeRulesByShortId = rootExcludeRules,
                 ownerProjectPath = ":app",
@@ -643,7 +659,8 @@ class AggregatedDependencyResolverTest {
         )
         assertEquals(
             setOf(rootRule),
-            excludeRules.excludeRulesFor(
+            excludeRulesForDependency(
+                excludeRulesByProjectPath = excludeRules,
                 rootProjectPath = ":app",
                 rootExcludeRulesByShortId = rootExcludeRules,
                 ownerProjectPath = null,
@@ -670,7 +687,8 @@ class AggregatedDependencyResolverTest {
 
         assertEquals(
             setOf(androidTestRule),
-            excludeRules.excludeRulesFor(
+            excludeRulesForDependency(
+                excludeRulesByProjectPath = excludeRules,
                 rootProjectPath = ":app",
                 rootExcludeRulesByShortId = extendedClasspathRules,
                 ownerProjectPath = ":app",
@@ -701,7 +719,8 @@ class AggregatedDependencyResolverTest {
 
         assertEquals(
             setOf(paidRule),
-            excludeRules.excludeRulesFor(
+            excludeRulesForDependency(
+                excludeRulesByProjectPath = excludeRules,
                 rootProjectPath = ":app",
                 rootExcludeRulesByShortId = emptyMap(),
                 ownerProjectPath = ":lib",
@@ -733,7 +752,8 @@ class AggregatedDependencyResolverTest {
 
         assertEquals(
             setOf(commonRule),
-            excludeRules.excludeRulesFor(
+            excludeRulesForDependency(
+                excludeRulesByProjectPath = excludeRules,
                 rootProjectPath = ":app",
                 rootExcludeRulesByShortId = emptyMap(),
                 ownerProjectPath = ":lib",
@@ -760,7 +780,8 @@ class AggregatedDependencyResolverTest {
 
         assertEquals(
             emptySet<ExcludeRule>(),
-            excludeRules.excludeRulesFor(
+            excludeRulesForDependency(
+                excludeRulesByProjectPath = excludeRules,
                 rootProjectPath = ":app",
                 rootExcludeRulesByShortId = emptyMap(),
                 ownerProjectPath = ":lib",
@@ -821,10 +842,11 @@ class AggregatedDependencyResolverTest {
         val implementation = jvmProject.configurations.create("implementation")
         jvmProject.configurations.create("compileClasspath").extendsFrom(implementation)
         jvmProject.configurations.create("runtimeClasspath").extendsFrom(implementation)
-        val dependency = jvmProject.dependencies.add(
-            "implementation",
-            "com.example:library:1.0"
-        ) as ExternalModuleDependency
+        val dependency = addExternalModuleDependency(
+            project = jvmProject,
+            configurationName = "implementation",
+            dependencyNotation = "com.example:library:1.0"
+        )
         dependency.exclude(mapOf("group" to "com.example", "module" to "blocked"))
 
         val declaredMetadata = DeclaredDependencyMetadataCollector()
@@ -4219,33 +4241,12 @@ class AggregatedDependencyResolverTest {
         )
     }
 
-    private fun org.gradle.api.internal.artifacts.result.DefaultResolvedComponentResult.addDependencyTo(
-        component: ResolvedComponentResult,
-        selectedVariantDisplayName: String = ""
-    ) {
-        val moduleVersion = component.moduleVersion!!
-        val moduleIdentifier = DefaultModuleIdentifier.newId(
-            moduleVersion.group,
-            moduleVersion.name
-        )
-        addDependency(
-            DefaultResolvedDependencyResult(
-                DefaultModuleComponentSelector.newSelector(moduleIdentifier, moduleVersion.version),
-                false,
-                component,
-                DefaultResolvedVariantResult(
-                    DefaultModuleComponentIdentifier.newId(moduleIdentifier, moduleVersion.version),
-                    object : DisplayName {
-                        override fun getDisplayName(): String = selectedVariantDisplayName
-                        override fun getCapitalizedDisplayName(): String = selectedVariantDisplayName
-                    },
-                    FakeAttributeContainer(),
-                    ImmutableCapabilities.EMPTY,
-                    null
-                ),
-                this
-            )
-        )
+    private fun addExternalModuleDependency(
+        project: org.gradle.api.Project,
+        configurationName: String,
+        dependencyNotation: Any
+    ): ExternalModuleDependency {
+        return project.dependencies.add(configurationName, dependencyNotation) as ExternalModuleDependency
     }
 
     private fun declaredAppMetadata(): DeclaredDependencyMetadata {

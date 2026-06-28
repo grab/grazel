@@ -36,6 +36,14 @@ import org.gradle.api.internal.artifacts.repositories.DefaultMavenArtifactReposi
 import java.util.TreeSet
 import javax.inject.Inject
 
+private data class MavenInstallCoordinate(
+    val group: String,
+    val name: String,
+    val version: String
+) {
+    val shortId: String = "$group:$name"
+}
+
 /**
  * Utility class to convert planned Maven repositories to [MavenInstallData] while accounting for
  * user preferences provided via [grazelExtension].
@@ -180,20 +188,29 @@ constructor(
     private fun toMavenInstallArtifact(
         dependency: ResolvedDependency,
     ): MavenInstallArtifact {
-        val (group, name, version) = dependency.id.split(":")
-        val shortId = "${group}:${name}"
-        val overrideVersion = overrideVersionsMap[shortId] ?: version
-        val artifactId = "$group:$name:$overrideVersion"
+        val coordinate = mavenInstallCoordinate(dependency)
+        val overrideVersion = overrideVersionsMap[coordinate.shortId] ?: coordinate.version
+        val artifactId = "${coordinate.group}:${coordinate.name}:$overrideVersion"
         val exclusions = dependency.excludeRules.mapNotNull(::toExclusion)
         return when {
             exclusions.isEmpty() -> SimpleArtifact(artifactId)
             else -> DetailedArtifact(
-                group = group,
-                artifact = name,
+                group = coordinate.group,
+                artifact = coordinate.name,
                 version = overrideVersion,
                 exclusions = exclusions
             )
         }
+    }
+
+    private fun mavenInstallCoordinate(dependency: ResolvedDependency): MavenInstallCoordinate {
+        val shortIdParts = dependency.shortId.split(":")
+        require(shortIdParts.size == 2) { "Expected group:name shortId for ${dependency.id}" }
+        return MavenInstallCoordinate(
+            group = shortIdParts[0],
+            name = shortIdParts[1],
+            version = dependency.version
+        )
     }
 
     private fun toExclusion(excludeRule: ExcludeRule): SimpleExclusion? {

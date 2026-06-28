@@ -1,6 +1,7 @@
 package com.grab.grazel.migrate.dependencies
 
 import com.android.build.gradle.AppExtension
+import com.grab.grazel.GrazelExtension
 import com.grab.grazel.bazel.exec.bazelCommand
 import com.grab.grazel.bazel.starlark.BazelDependency.MavenDependency
 import com.grab.grazel.buildProject
@@ -20,12 +21,12 @@ import com.grab.grazel.util.ROOT_PATH
 import com.grab.grazel.util.WORKSPACE
 import com.grab.grazel.util.addGrazelExtension
 import com.grab.grazel.util.assertNoThrow
-import com.grab.grazel.util.createGrazelComponent
 import com.grab.grazel.util.doEvaluate
 import com.grab.grazel.util.startOperation
 import org.gradle.api.Project
 import org.gradle.api.logging.LogLevel
 import org.gradle.kotlin.dsl.configure
+import org.gradle.kotlin.dsl.the
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -60,9 +61,7 @@ class DefaultArtifactPinnerTest {
         rootProject.file(".bazelrc").writeText("common --enable_bzlmod=false")
         ROOT_PATH.resolve(".bazelversion").copyTo(rootProject.file(".bazelversion").toPath())
 
-        artifactPinner = rootProject
-            .createGrazelComponent()
-            .artifactPinner().get() as DefaultArtifactPinner
+        artifactPinner = DefaultArtifactPinner(rootProject.the<GrazelExtension>())
 
         appProject = buildProject("android-binary", rootProject)
         appProject.run {
@@ -209,13 +208,16 @@ class DefaultArtifactPinnerTest {
         val debugDirect = ResolvedDependency.fromId("com.example:debug-only:1.0.0", "MavenRepo")
         val unmaterializedFlavorDirect = ResolvedDependency.fromId("com.example:flavor-only:1.0.0", "MavenRepo")
 
-        val repos = workspacePlan(
-            "maven" to listOf(defaultDirect),
-            "debug_maven" to listOf(debugDirect),
-            "moveit_maven" to listOf(unmaterializedFlavorDirect),
-            "empty_maven" to emptyList()
-        ).pinnableMavenInstallRepos(
-            WorkspaceRenderPlan(materializedRepoNames = setOf("maven", "debug_maven", "empty_maven"))
+        val repos = collectPinnableMavenInstallRepos(
+            workspacePlan = workspacePlan(
+                "maven" to listOf(defaultDirect),
+                "debug_maven" to listOf(debugDirect),
+                "moveit_maven" to listOf(unmaterializedFlavorDirect),
+                "empty_maven" to emptyList()
+            ),
+            workspaceRenderPlan = WorkspaceRenderPlan(
+                materializedRepoNames = setOf("maven", "debug_maven", "empty_maven")
+            )
         )
 
         assertEquals(setOf("maven", "debug_maven"), repos.keys)
@@ -233,7 +235,7 @@ class DefaultArtifactPinnerTest {
                 )
             )
 
-        val probeArtifact = listOf(overrideCarrier, directRoot).pinStatusProbeArtifact()
+        val probeArtifact = selectPinStatusProbeArtifact(listOf(overrideCarrier, directRoot))
 
         assertEquals(directRoot, probeArtifact)
     }

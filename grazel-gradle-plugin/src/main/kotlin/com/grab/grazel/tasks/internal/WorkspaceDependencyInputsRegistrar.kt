@@ -84,12 +84,19 @@ internal object WorkspaceDependencyInputsRegistrar {
             )
             resolveWorkspaceDependenciesTask.configure {
                 rootInputs.forEach { rootInput ->
-                    addRootComponent(rootInput)
+                    addRootComponent(
+                        task = this,
+                        rootInput = rootInput
+                    )
                 }
             }
             workspaceRootMetadataTask.configure {
                 rootInputs.forEach { rootInput ->
-                    addRootMetadata(rootProject, rootInput)
+                    addRootMetadata(
+                        task = this,
+                        rootProject = rootProject,
+                        rootInput = rootInput
+                    )
                 }
             }
             val mode = declaredDependencyMetadataAggregationMode.get()
@@ -149,17 +156,21 @@ internal object WorkspaceDependencyInputsRegistrar {
             )
     }
 
-    private fun ResolveWorkspaceDependenciesTask.addRootComponent(rootInput: WorkspaceDependencyRootInput) {
-        workspaceDependencyRootComponents.add(
+    private fun addRootComponent(
+        task: ResolveWorkspaceDependenciesTask,
+        rootInput: WorkspaceDependencyRootInput
+    ) {
+        task.workspaceDependencyRootComponents.add(
             rootInput.configuration.incoming.resolutionResult.rootComponent
         )
     }
 
-    private fun CollectWorkspaceDependencyRootMetadataTask.addRootMetadata(
+    private fun addRootMetadata(
+        task: CollectWorkspaceDependencyRootMetadataTask,
         rootProject: Project,
         rootInput: WorkspaceDependencyRootInput
     ) {
-        workspaceDependencyRootMetadataItems.add(
+        task.workspaceDependencyRootMetadataItems.add(
             rootProject.objects
                 .newInstance(WorkspaceDependencyRootMetadataInput::class.java)
                 .apply {

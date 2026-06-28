@@ -47,7 +47,6 @@ internal data class AndroidTestTarget(
     override val assetsDir: String? = null,
     override val sortKey: String = "2$name",
     override val lintConfigData: LintConfigData? = null,
-    // Test-specific fields
     val associates: List<BazelDependency>,
     val instruments: BazelDependency,
     val customPackage: String,

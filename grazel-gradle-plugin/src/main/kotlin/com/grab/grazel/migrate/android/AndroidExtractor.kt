@@ -93,7 +93,8 @@ constructor(
                     variantKey,
                     preferredVariantNames = listOf(matchedVariant.variantName)
                 ) + project.kotlinParcelizeDeps()
-                return project.extract(
+                return extractAndroidLibraryData(
+                    project = project,
                     matchedVariant = matchedVariant,
                     extension = extension,
                     deps = deps,
@@ -105,13 +106,13 @@ constructor(
         }
     }
 
-    private fun Project.extract(
+    private fun extractAndroidLibraryData(
+        project: Project,
         matchedVariant: MatchedVariant,
         extension: BaseExtension,
         deps: List<BazelDependency>,
         variantKey: VariantGraphKey,
     ): AndroidLibraryData {
-        // Only consider source sets from migratable variants
         val migratableSourceSets = matchedVariant.variant.sourceSets
             .filterIsInstance<AndroidSourceSet>()
             .toList()
@@ -119,7 +120,7 @@ constructor(
             extension,
             migratableSourceSets
         ) ?: ""
-        val srcs = androidSources(migratableSourceSets, JAVA_KOTLIN).toList()
+        val srcs = project.androidSources(migratableSourceSets, JAVA_KOTLIN).toList()
 
         val resourceSets = migratableSourceSets.flatMap { it.toResourceSet(project) }
             .filterNot(BazelSourceSet::isEmpty)
@@ -133,11 +134,11 @@ constructor(
 
         val manifestFile = androidManifestParser
             .androidManifestFile(migratableSourceSets)
-            ?.let(::relativePath)
+            ?.let(project::relativePath)
 
         val tags = if (grazelExtension.rules.kotlin.enabledTransitiveReduction) {
             val localTags = calculateDirectDependencyTags(
-                self = name,
+                self = project.name,
                 deps = deps
             )
             val mavenTags = workspacePlanService
@@ -153,10 +154,10 @@ constructor(
 
         val lintConfigs = lintConfigs(extension.lintOptions, project)
 
-        val plugins = dependenciesDataSource.collectKspPluginDeps(this, variantKey)
+        val plugins = dependenciesDataSource.collectKspPluginDeps(project, variantKey)
 
         return AndroidLibraryData(
-            name = name + matchedVariant.nameSuffix,
+            name = project.name + matchedVariant.nameSuffix,
             srcs = srcs,
             resourceSets = resourceSets,
             manifestFile = manifestFile,
@@ -164,7 +165,7 @@ constructor(
             packageName = packageName,
             databinding = project.hasDatabinding,
             compose = project.hasCompose,
-            buildConfigData = extension.extractBuildConfig(this, matchedVariant.variant),
+            buildConfigData = extension.extractBuildConfig(project, matchedVariant.variant),
             resValuesData = extension.extractResValue(matchedVariant),
             deps = deps.sorted(),
             plugins = plugins,
@@ -218,7 +219,7 @@ constructor(
             .flatMap { it.resourceConfigurations }
             .toSortedSet()
 
-        // TODO: this is a workaround and should be removed after bazel 8 compatibility
+        // Bazel 8 compatibility requires omitting minSdk unless the workaround is enabled.
         val minSdkVersion = if (grazelExtension.experiments.minSdkVersionWorkaround.get()) 0 else null
 
         return AndroidBinaryData(
