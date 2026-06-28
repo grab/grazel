@@ -14,7 +14,13 @@ if grep -q 'ResolveDependencies SKIPPED' "$output_file"; then
   exit 1
 fi
 
-grep -q ':collectDeclaredDependencyMetadata SKIPPED' "$output_file"
+if grep -q ':collectDeclaredDependencyMetadata SKIPPED' "$output_file"; then
+  echo "Default computeWorkspaceDependencies still schedules single-task declared metadata aggregation." >&2
+  exit 1
+fi
+
+grep -q ':collectSampleAndroidDeclaredDependencyMetadata SKIPPED' "$output_file"
+grep -q ':mergeDeclaredDependencyMetadata SKIPPED' "$output_file"
 grep -q ':collectKspProcessorDependencies SKIPPED' "$output_file"
 grep -q ':resolveWorkspaceDependencies SKIPPED' "$output_file"
 grep -q ':computeWorkspaceDependencies SKIPPED' "$output_file"

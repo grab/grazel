@@ -26,11 +26,11 @@ import org.junit.Test
 
 class ExperimentsExtensionTest {
     @Test
-    fun `declared dependency metadata aggregation mode defaults to single task`() {
+    fun `declared dependency metadata aggregation mode defaults to project task fanout`() {
         val project = ProjectBuilder.builder().build()
         val extension = ExperimentsExtension(project.objects)
 
-        assertEquals(SINGLE_TASK, extension.declaredDependencyMetadataAggregationMode.get())
+        assertEquals(PROJECT_TASK_FANOUT, extension.declaredDependencyMetadataAggregationMode.get())
     }
 
     @Test
@@ -41,6 +41,16 @@ class ExperimentsExtensionTest {
         extension.declaredDependencyMetadataAggregationMode.set(PROJECT_TASK_FANOUT)
 
         assertEquals(PROJECT_TASK_FANOUT, extension.declaredDependencyMetadataAggregationMode.get())
+    }
+
+    @Test
+    fun `declared dependency metadata aggregation mode can be switched to single task`() {
+        val project = ProjectBuilder.builder().build()
+        val extension = ExperimentsExtension(project.objects)
+
+        extension.declaredDependencyMetadataAggregationMode.set(SINGLE_TASK)
+
+        assertEquals(SINGLE_TASK, extension.declaredDependencyMetadataAggregationMode.get())
     }
 
     @Test

@@ -66,6 +66,6 @@ data class ExperimentsExtension(private val objects: ObjectFactory) {
 
     val declaredDependencyMetadataAggregationMode: Property<DeclaredDependencyMetadataAggregationMode> = objects
         .property<DeclaredDependencyMetadataAggregationMode>()
-        .convention(DeclaredDependencyMetadataAggregationMode.SINGLE_TASK)
+        .convention(DeclaredDependencyMetadataAggregationMode.PROJECT_TASK_FANOUT)
 
 }

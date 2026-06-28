@@ -2176,3 +2176,43 @@ evidence in item-specific logs so context compaction can recover state quickly.
   - PAX `git diff --check` passed and status remained the accepted local baseline dirty set only.
   - Item 29 can be checkpoint-committed locally; PAX focused Bazel test targets remain a later
     final-goal gate unless rerun before moving to the next item.
+
+## 2026-06-29 Item 31 Start
+
+- Starting commit: `4c2eeb1` (`refactor: add declared metadata aggregation modes`).
+- Active item: Item 31 - declared metadata fanout default decision.
+- Decision from Item 29 evidence: switch the default declared metadata aggregation mode to
+  `PROJECT_TASK_FANOUT`. The full PAX generation path has byte-identical metadata and generated
+  output parity across both modes; fanout shard tasks remain intentionally untracked, while the
+  deterministic merge task remains cacheable.
+- PAX baseline remains `/Users/arun.sampathkumar/work/pax-android` branch
+  `arun/grazel-refactor` at `cfa1057ed58ccb2a795a5f679f072a8f604ff48e`, with the accepted local
+  baseline dirty set only. Do not commit PAX.
+- Item 31 verification:
+  - Changed the default mode to `PROJECT_TASK_FANOUT`; `SINGLE_TASK` remains an explicit override.
+  - Focused `ExperimentsExtensionTest` passed.
+  - Local `./gradlew migrateToBazel --console=plain --no-daemon` passed in `10s` and logged
+    `mode=PROJECT_TASK_FANOUT projects=10 shards=10 aggregateJsonBytes=145401 elapsedMs=16`.
+  - `reports/scripts/verify-default-task-graph.sh` initially failed because it still expected the
+    old default `:collectDeclaredDependencyMetadata` task. Updated the verifier to require shard
+    tasks plus `:mergeDeclaredDependencyMetadata` and to reject the single-task aggregate on the
+    default path; the script then passed.
+  - `reports/scripts/verify-json-phase-inventory.sh` passed.
+  - `reports/scripts/verify-pax-size-guard.sh --mode preserving` passed unchanged.
+  - `./gradlew :grazel-gradle-plugin:test --console=plain --no-daemon` passed in `38s`.
+  - `reports/scripts/verify-sample-bucket-labels.sh` still fails only on the known pre-existing
+    appcompat/constraintlayout exclude waiver.
+  - PAX `./gradlew migrateToBazel --no-daemon --console=plain --stacktrace --rerun-tasks` passed
+    in `12m 11s` and logged `mode=PROJECT_TASK_FANOUT projects=2327 shards=2327
+    aggregateJsonBytes=35247531 elapsedMs=1044`.
+  - PAX size guard stayed unchanged: bucket count `11`, pinfile count `11`, total artifact roots
+    `1945`, no per-repo deltas.
+  - PAX `git diff --check` passed and status stayed at the accepted local baseline dirty set.
+  - PAX `./bazel.sh build --verbose_failures //app:app-gps-pax-debug.apk
+    //app:app-gps-pax-debug-android-test.apk` passed in `214.420s`.
+  - Disk was tight (`10-11 GiB` free) but stable; no cleanup was performed because the incremental
+    Bazel build completed successfully.
+  - Provider API note for later: use providers for late typed Gradle reads when they feed stable
+    serialized/file-backed task inputs. Do not treat provider-mapped live Gradle model inputs as
+    cacheable without full PAX task-graph proof; current fanout shards remain intentionally
+    untracked and the merge remains cacheable.
