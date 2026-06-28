@@ -5,6 +5,7 @@ import com.android.build.gradle.api.BaseVariant
 import com.android.build.gradle.api.LibraryVariant
 import com.android.build.gradle.api.TestVariant
 import com.android.build.gradle.api.UnitTestVariant
+import com.android.builder.model.BuildType
 import com.google.common.base.MoreObjects
 import com.grab.grazel.gradle.hasKapt
 import com.grab.grazel.gradle.hasKsp
@@ -53,6 +54,24 @@ interface Variant<T> {
     val kspConfiguration: Set<Configuration>
 
     val kotlinCompilerPluginConfiguration: Set<Configuration>
+
+    val workspaceVariantClasspathConfigurations: Set<Configuration>
+        get() = safeWorkspaceRuntimeConfigurations + safeWorkspaceCompileConfigurations
+
+    val workspaceUnitTestClasspathConfigurations: Set<Configuration>
+        get() = project.configurations.matchingWorkspaceConfigurationNames(
+            "${name}UnitTestRuntimeClasspath",
+            "${name}UnitTestCompileClasspath"
+        )
+
+    val workspaceAndroidTestClasspathConfigurations: Set<Configuration>
+        get() = project.configurations.matchingWorkspaceConfigurationNames(
+            "${name}AndroidTestRuntimeClasspath",
+            "${name}AndroidTestCompileClasspath"
+        )
+
+    val workspaceLintClasspathConfigurations: Set<Configuration>
+        get() = project.configurations.matchingWorkspaceConfigurationNames("lintChecks")
 }
 
 enum class DefaultVariants(val variantName: String) {
@@ -99,6 +118,39 @@ fun BaseVariant.toVariantType(): VariantType = when (this) {
 }
 
 val Variant<*>.isBase get() = name == DEFAULT_VARIANT
+
+val Variant<*>.isWorkspaceAndroidLeaf: Boolean
+    get() = backingVariant is BaseVariant
+
+val Variant<*>.isWorkspaceMainHierarchyRoot: Boolean
+    get() = isBase || backingVariant is BuildType
+
+val Variant<*>.workspaceBuildTypeName: String?
+    get() = (backingVariant as? BaseVariant)?.buildType?.name
+
+val Variant<*>.workspaceProductFlavorNames: List<String>
+    get() = (backingVariant as? BaseVariant)?.productFlavors?.map { flavor -> flavor.name }.orEmpty()
+
+private val Variant<*>.safeWorkspaceRuntimeConfigurations: Set<Configuration>
+    get() = try {
+        runtimeConfiguration
+    } catch (e: Exception) {
+        emptySet()
+    }
+
+private val Variant<*>.safeWorkspaceCompileConfigurations: Set<Configuration>
+    get() = try {
+        compileConfiguration
+    } catch (e: Exception) {
+        emptySet()
+    }
+
+private fun Iterable<Configuration>.matchingWorkspaceConfigurationNames(
+    vararg names: String
+): Set<Configuration> {
+    val requestedNames = names.toSet()
+    return filter { configuration -> configuration.name in requestedNames }.toSet()
+}
 
 /**
  * Returns true if this variant only extends from default variants (default, test, androidTest).

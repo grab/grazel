@@ -5,6 +5,36 @@ evidence in item-specific logs so context compaction can recover state quickly.
 
 ## Active State
 
+- 2026-06-28 +08 Item 26 checkpoint:
+  - Current branch rule reconfirmed by maintainer: keep Grazel changes local and
+    never push; keep PAX as the regression baseline and never commit PAX.
+  - Active item: Item 26 - variant-owned workspace dependency root inputs.
+  - Current detailed log:
+    `reports/specs/execution-log/item26-variant-owned-root-inputs.md`.
+  - Implementation state: `WorkspaceDependencyInputsRegistrar` now uses
+    `VariantBuilder.onVariants` and delegates root-input intent to
+    `WorkspaceDependencyRootInputPlanner`; variant-layer helpers own workspace
+    main/test/androidTest/lint classpath roles; KSP processor classpath
+    configuration construction moved to `WorkspaceKspConfigurations`.
+  - Passed focused Item 26 tests, full
+    `./gradlew :grazel-gradle-plugin:test --console=plain --no-daemon`,
+    local `./gradlew migrateToBazel --console=plain --no-daemon`,
+    `reports/scripts/verify-default-task-graph.sh`,
+    `reports/scripts/verify-pax-size-guard.sh --mode preserving`, and both
+    Grazel diff-check commands.
+  - Known unchanged waiver:
+    `reports/scripts/verify-sample-bucket-labels.sh` still fails only on the
+    pre-existing one-sided appcompat/constraintlayout exclude-union case.
+  - PAX baseline verification passed on
+    `/Users/arun.sampathkumar/work/pax-android` branch
+    `arun/grazel-refactor` at
+    `cfa1057ed58ccb2a795a5f679f072a8f604ff48e`: migrate passed in 12m26s,
+    debug APK + android-test APK build passed in 221.378s, focused Bazel tests
+    passed 3/3 in 19.045s, PAX `git diff --check` passed, PAX working tree
+    remained clean, and no PAX commit was made.
+  - PAX size guard remained unchanged: 11 buckets, 11 pinfiles, 1945 total
+    artifact roots. No cache deletion was needed; free space stayed around
+    18-22 GiB during the PAX run.
 - 2026-06-28 +08 final post-review checkpoint for Items 17-22:
   - Primary items 17, 18, 19, and 21 are implemented and locally committed.
   - Stretch Item 22 completed as Outcome B: measurement proved bucket set-math
@@ -1710,3 +1740,29 @@ evidence in item-specific logs so context compaction can recover state quickly.
 - Resource notes: checked disk/memory/process before expensive runs; disk stayed around
   `19-20 GiB` free after PAX migrate/build; no cache deletion or process kill was needed.
 - Item 23 status: complete pending local commit.
+
+## 2026-06-28 Item 26 Progress: Variant-Owned Workspace Dependency Root Inputs
+
+- Item 23 was locally committed as `4210235` (`refactor: collapse target reference model`).
+- Active item: Item 26.
+- PAX remains baseline-only on branch `arun/grazel-refactor` at
+  `cfa1057ed58ccb2a795a5f679f072a8f604ff48e`; do not commit PAX.
+- Detailed Item 26 state is tracked in
+  `reports/specs/execution-log/item26-variant-owned-root-inputs.md`.
+- Implemented registrar altitude cleanup:
+  `WorkspaceDependencyInputsRegistrar` now uses `VariantBuilder.onVariants`, delegates root-input
+  planning to `WorkspaceDependencyRootInputPlanner`, and wires task inputs without owning AGP
+  variant/configuration naming.
+- Implemented KSP sidecar altitude cleanup:
+  KSP declaration-bucket scanning and `grazelKspProcessorClasspath` construction moved to
+  `gradle.variant.WorkspaceKspConfigurations`; `CollectKspProcessorDependenciesTask` keeps only
+  task input wiring and KSP artifact/class extraction.
+- Subagent branch-diff altitude scans were reconciled: current slice fixes registrar/KSP task
+  violations; broader display-name parsing, target reachability/model cleanup, and Maven render
+  package-boundary concerns are logged as future/wider-slice work rather than silent Item 26
+  regressions.
+- Verification passed:
+  focused lazy/eager variant parity test, KSP task source guard, and focused Item 26 suite:
+  `./gradlew :grazel-gradle-plugin:test --tests "com.grab.grazel.gradle.variant.VariantTest" --tests "com.grab.grazel.gradle.variant.DefaultVariantBuilderTest" --tests "com.grab.grazel.gradle.dependencies.WorkspaceDependencyRootInputPlannerTest" --tests "com.grab.grazel.tasks.internal.ResolveWorkspaceDependenciesTaskTest" --tests "com.grab.grazel.tasks.internal.CollectKspProcessorDependenciesTaskTest" --console=plain --no-daemon`.
+- Remaining Item 26 gates: preserving Grazel generation/task/diff checks, PAX baseline loop,
+  then local-only Grazel commit if green.

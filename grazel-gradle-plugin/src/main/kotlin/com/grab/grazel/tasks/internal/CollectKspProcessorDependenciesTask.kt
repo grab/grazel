@@ -23,13 +23,12 @@ import com.grab.grazel.gradle.dependencies.model.ResolveDependenciesResult
 import com.grab.grazel.gradle.dependencies.model.ResolveDependenciesResult.Companion.Scope.COMPILE
 import com.grab.grazel.gradle.dependencies.model.ResolveDependenciesResult.Companion.Scope.KSP
 import com.grab.grazel.gradle.dependencies.model.ResolvedDependency
-import com.grab.grazel.gradle.hasKsp
 import com.grab.grazel.gradle.variant.DEFAULT_VARIANT
+import com.grab.grazel.gradle.variant.workspaceKspProcessorClasspath
 import com.grab.grazel.util.writeJson
 import dagger.Lazy
 import org.gradle.api.DefaultTask
 import org.gradle.api.Project
-import org.gradle.api.artifacts.Configuration
 import org.gradle.api.artifacts.ExternalDependency
 import org.gradle.api.artifacts.component.ModuleComponentIdentifier
 import org.gradle.api.artifacts.result.ResolvedComponentResult
@@ -155,29 +154,15 @@ internal abstract class CollectKspProcessorDependenciesTask : DefaultTask() {
         }
 
         private fun CollectKspProcessorDependenciesTask.addProjectKspConfigurations(project: Project) {
-            if (!project.hasKsp) return
+            val kspClasspath = project.workspaceKspProcessorClasspath() ?: return
 
-            val kspDeclarationConfigs = project.configurations
-                .filter { configuration -> configuration.name.isKspDeclarationBucketName() }
-            if (kspDeclarationConfigs.isEmpty()) return
-
-            val directDepShortIds = kspDeclarationConfigs
+            val directDepShortIds = kspClasspath.declarationConfigurations
                 .asSequence()
                 .flatMap { configuration -> configuration.allDependencies }
                 .filterIsInstance<ExternalDependency>()
                 .filter { dependency -> !dependency.group.isNullOrBlank() }
                 .mapTo(TreeSet()) { dependency -> "${dependency.group}:${dependency.name}" }
             if (directDepShortIds.isEmpty()) return
-
-            val kspProcessorClasspath = project.configurations.maybeCreate("grazelKspProcessorClasspath")
-            if (kspProcessorClasspath.extendsFrom.isEmpty()) {
-                kspProcessorClasspath.apply {
-                    isCanBeResolved = true
-                    isCanBeConsumed = false
-                    isVisible = false
-                    setExtendsFrom(kspDeclarationConfigs)
-                }
-            }
 
             kspDirectDependencies.addAll(
                 project.provider {
@@ -187,7 +172,7 @@ internal abstract class CollectKspProcessorDependenciesTask : DefaultTask() {
 
             kspArtifactMapping.putAll(
                 project.provider {
-                    kspProcessorClasspath.incoming
+                    kspClasspath.processorClasspath.incoming
                         .artifactView {
                             isLenient = true
                             componentFilter { id -> id is ModuleComponentIdentifier }
@@ -205,12 +190,8 @@ internal abstract class CollectKspProcessorDependenciesTask : DefaultTask() {
                 }
             )
 
-            kspRootComponents.add(kspProcessorClasspath.incoming.resolutionResult.rootComponent)
-            kspClasspathFiles.from(kspProcessorClasspath)
-        }
-
-        private fun String.isKspDeclarationBucketName(): Boolean {
-            return startsWith("ksp") && "classpath" !in lowercase()
+            kspRootComponents.add(kspClasspath.processorClasspath.incoming.resolutionResult.rootComponent)
+            kspClasspathFiles.from(kspClasspath.processorClasspath)
         }
     }
 }

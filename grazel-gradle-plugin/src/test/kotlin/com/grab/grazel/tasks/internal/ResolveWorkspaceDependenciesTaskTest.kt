@@ -25,6 +25,7 @@ import org.gradle.api.tasks.CacheableTask
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.io.File
 
 class ResolveWorkspaceDependenciesTaskTest {
 
@@ -68,5 +69,20 @@ class ResolveWorkspaceDependenciesTaskTest {
         assertTrue(declaredMetadataGetter.isAnnotationPresent(PathSensitive::class.java))
         assertTrue(kspGetter.isAnnotationPresent(InputFile::class.java))
         assertTrue(kspGetter.isAnnotationPresent(PathSensitive::class.java))
+    }
+
+    @Test
+    fun `workspace dependency input registrar does not own variant configuration semantics`() {
+        val source = File(
+            "src/main/kotlin/com/grab/grazel/tasks/internal/WorkspaceDependencyInputsRegistrar.kt"
+        ).readText()
+
+        assertFalse(source.contains("UnitTestRuntimeClasspath"))
+        assertFalse(source.contains("UnitTestCompileClasspath"))
+        assertFalse(source.contains("AndroidTestRuntimeClasspath"))
+        assertFalse(source.contains("AndroidTestCompileClasspath"))
+        assertFalse(source.contains("findByName(\"lintChecks\")"))
+        assertFalse(source.contains("import com.android.build.gradle.api.BaseVariant"))
+        assertFalse(source.contains("import com.android.builder.model.BuildType"))
     }
 }

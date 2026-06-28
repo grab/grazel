@@ -176,6 +176,36 @@ class VariantTest {
             }
     }
 
+    @Test
+    fun `workspace dependency classpath roles are owned by variant api`() {
+        setupAndroidVariantProject(androidProject)
+        val buildVariant = androidVariant(appExtension.applicationVariants.first())
+
+        assertThat(buildVariant.workspaceVariantClasspathConfigurations.map { it.name })
+            .containsExactly(
+                "${buildVariant.name}CompileClasspath",
+                "${buildVariant.name}RuntimeClasspath"
+            )
+        assertThat(buildVariant.workspaceUnitTestClasspathConfigurations.map { it.name })
+            .containsExactly(
+                "${buildVariant.name}UnitTestCompileClasspath",
+                "${buildVariant.name}UnitTestRuntimeClasspath"
+            )
+        assertThat(buildVariant.workspaceAndroidTestClasspathConfigurations.map { it.name })
+            .containsExactly(
+                "${buildVariant.name}AndroidTestCompileClasspath",
+                "${buildVariant.name}AndroidTestRuntimeClasspath"
+            )
+
+        val lintVariant = AndroidDefaultVariant(
+            project = androidProject,
+            variantType = Lint,
+            ignoreKeywords = setOf(TEST_FLAVOR_FREE, TEST_FLAVOR_PAID, TEST_DEBUG, TEST_RELEASE)
+        )
+        assertThat(lintVariant.workspaceLintClasspathConfigurations.map { it.name })
+            .containsExactly("lintChecks")
+    }
+
 
     private fun jvmVariant(project: Project, variantType: VariantType) = JvmVariant(
         jvmVariantData = JvmVariantData(

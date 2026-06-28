@@ -1,11 +1,18 @@
 package com.grab.grazel.gradle.variant
 
+import com.android.build.gradle.AppExtension
 import com.grab.grazel.buildProject
 import com.grab.grazel.di.GrazelComponent
+import com.grab.grazel.gradle.ANDROID_APPLICATION_PLUGIN
+import com.grab.grazel.gradle.KOTLIN_ANDROID_PLUGIN
+import com.grab.grazel.gradle.KOTLIN_KAPT
 import com.grab.grazel.util.addGrazelExtension
 import com.grab.grazel.util.createGrazelComponent
+import com.grab.grazel.util.doEvaluate
 import com.grab.grazel.util.truth
 import org.gradle.api.Project
+import org.gradle.kotlin.dsl.configure
+import org.gradle.kotlin.dsl.repositories
 import org.junit.Before
 import org.junit.Test
 import kotlin.test.assertEquals
@@ -188,6 +195,31 @@ class DefaultVariantBuilderTest {
     }
 
     @Test
+    fun `lazy android variants match eager variants for project without flavors`() {
+        val rootProject = buildProject("root").also {
+            it.addGrazelExtension()
+        }
+        val androidProject = buildProject("android-no-flavors", rootProject).also {
+            setupNoFlavorAndroidVariantProject(it)
+        }
+        val variantBuilder = rootProject
+            .createGrazelComponent()
+            .variantBuilder()
+            .get()
+        val lazyVariants = mutableListOf<Variant<*>>()
+
+        variantBuilder.onVariants(androidProject) { variant ->
+            lazyVariants += variant
+        }
+        androidProject.doEvaluate()
+
+        assertEquals(
+            variantBuilder.build(androidProject).map { it.variantKey() }.toSet(),
+            lazyVariants.map { it.variantKey() }.toSet()
+        )
+    }
+
+    @Test
     fun `assert jvm variants are built`() {
         val variants = variantBuilder.build(jvmProject)
         assertEquals(3, variants.size)
@@ -211,4 +243,38 @@ class DefaultVariantBuilderTest {
             "Jvm lint variants are built when lint plugin is applied",
         )
     }
+
+    private fun setupNoFlavorAndroidVariantProject(androidProject: Project) {
+        with(androidProject) {
+            with(plugins) {
+                apply(ANDROID_APPLICATION_PLUGIN)
+                apply(KOTLIN_ANDROID_PLUGIN)
+                apply(KOTLIN_KAPT)
+            }
+            repositories {
+                google()
+                mavenCentral()
+            }
+            configure<AppExtension> {
+                namespace = "test"
+                defaultConfig {
+                    compileSdkVersion(32)
+                }
+            }
+        }
+    }
+
+    private fun Variant<*>.variantKey(): VariantKey {
+        return VariantKey(
+            name = name,
+            variantType = variantType,
+            variantClass = javaClass.name
+        )
+    }
+
+    private data class VariantKey(
+        val name: String,
+        val variantType: VariantType,
+        val variantClass: String
+    )
 }

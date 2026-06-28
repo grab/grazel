@@ -25,6 +25,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.io.File
 
 class CollectKspProcessorDependenciesTaskTest {
 
@@ -72,5 +73,16 @@ class CollectKspProcessorDependenciesTaskTest {
             PathSensitivity.ABSOLUTE,
             classpathFilesGetter.getAnnotation(PathSensitive::class.java).value
         )
+    }
+
+    @Test
+    fun `ksp processor dependency task does not own ksp configuration name semantics`() {
+        val source = File(
+            "src/main/kotlin/com/grab/grazel/tasks/internal/CollectKspProcessorDependenciesTask.kt"
+        ).readText()
+
+        assertFalse(source.contains("startsWith(\"ksp\")"))
+        assertFalse(source.contains("\"classpath\" !in lowercase()"))
+        assertFalse(source.contains("grazelKspProcessorClasspath"))
     }
 }
