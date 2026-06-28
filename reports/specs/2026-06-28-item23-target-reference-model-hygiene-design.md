@@ -69,24 +69,25 @@ TargetReferenceFactsExtractor
 ```
 
 No production code should keep a `BazelTarget`-based reference collector. The task output file
-name may remain `target-maven-repo-references.json` for compatibility; the type does not need to
-carry the old name.
+name remains `target-maven-repo-references.json` unless a verified empty-diff implementation proves
+renaming it is harmless; the Kotlin model does not keep the old name.
 
 ## Scope
 
-1. **Delete or move out of production `TargetMavenRepoReferencesCollector`.**
+1. **Delete production `TargetMavenRepoReferencesCollector`.**
    - Grep-confirm `TargetMavenRepoReferencesCollector.fromTargets(...)` has zero non-test
      callers.
-   - Remove `tasks/internal/TargetMavenRepoReferencesCollector.kt` from production source if
-     there are no production callers.
+   - Remove `tasks/internal/TargetMavenRepoReferencesCollector.kt` from production source.
    - Update tests that used it to exercise `TargetReferenceFactsCollector` or task-level
      collection instead. Do not keep dead production code alive for its own test.
+   - If a production caller exists, stop and reconcile the caller with the Item 19 architecture;
+     do not preserve the old collector as a compatibility path.
 
 2. **Collapse duplicate reference models.**
-   - Prefer keeping `TargetReferenceFacts` as the semantic model.
-   - Remove `TargetMavenRepoReferences` if all call sites can read/write `TargetReferenceFacts`
-     directly.
-   - Remove `toTargetMavenRepoReferences()` when the duplicate type is gone.
+   - Keep `TargetReferenceFacts` as the semantic model unless implementation proves a stronger
+     name; there must be exactly one model shape at the end.
+   - Remove `TargetMavenRepoReferences`.
+   - Remove `toTargetMavenRepoReferences()`.
    - Keep `TargetReferenceFacts.asRenderPlan()` and merge/normalization helpers if they still
      carry real behavior.
 
@@ -94,8 +95,8 @@ carry the old name.
    - Do not change `TargetReferenceFactsExtractor`.
    - Do not change tag generation, bucket ownership, Maven repo materialization, pinner behavior,
      `WorkspaceRenderPlanBuilder`, or target builder behavior.
-   - Do not replace `@maven//:` / `//path:target` string parsing in this item. That is a larger
-     typed-label follow-up.
+   - Do not replace `@maven//:` / `//path:target` string parsing in this item. That is a separate
+     typed-label design and cannot be used to skip the required model-collapse work here.
 
 ## Out of Scope
 
@@ -135,8 +136,7 @@ reports/scripts/verify-pax-size-guard.sh --mode preserving
 git diff --check
 ```
 
-PAX, only if source changes unexpectedly move generated Grazel output or touch behavior outside
-the model/test cleanup:
+PAX final guard:
 
 ```text
 cd /Users/arun.sampathkumar/work/pax-android
@@ -149,12 +149,11 @@ No PAX commits. No public push.
 ## Acceptance Criteria
 
 - No production code consumes `BazelTarget` to collect target Maven repo references.
-- `TargetMavenRepoReferencesCollector` is deleted from production source or moved to test source
-  only with a written justification.
-- Only one target-reference data model remains, or any retained split has a written reason beyond
-  naming compatibility.
+- `TargetMavenRepoReferencesCollector` is deleted from production source.
+- Only one target-reference data model remains.
 - Generated Grazel output is empty-diff.
 - PAX size guard remains unchanged.
+- PAX migrate leaves the accepted baseline unchanged.
 
 ## Risks / Traps
 
@@ -164,3 +163,5 @@ No PAX commits. No public push.
   this small preserving cleanup into a cross-layer label model rewrite.
 - **Test-only dead surface:** A test that only proves deleted compatibility code works is not a
   reason to keep that compatibility code in production.
+- **Early exit:** Do not finish after deleting the collector alone. The duplicate model collapse,
+  test rewrite, Grazel verification, and PAX final guard are part of the same item.

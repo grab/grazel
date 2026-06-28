@@ -103,18 +103,28 @@ intended output change).
 | **21** | Simplify pass — dead code, duplication & indirection | specced | **preserving (empty-diff)** | Whole-branch cleanup from the 4-agent simplify audit: delete zero-caller dead code (`tagsFor` ext, `rootArtifacts`/`variantArtifacts` fields, dead overloads/interface methods, unread input), de-dup `hasSameDefaultOwnerIdentityAs`, inline one-caller wrappers, filter-before-override in maven calc. Keeps `TasksManager` dependsOn + `@InputFiles` (deferred) | 10 |
 | **22** | Set-math ownership reduction — EXPERIMENT | completed: Outcome B | proven-essential doc | Measured set-subtraction ownership on sample/PAX; active residual paths proved the current set-math problem-essential, so no Phase 2 reshape was attempted | 12, 13, 17 |
 | **23** | Target reference model hygiene | proposed | **preserving (empty-diff)** | Remove dead `BazelTarget` compatibility collector and collapse duplicate target-reference data models; do not broaden into typed-label/regex cleanup | 19 |
-| **24** | Branch-diff source shape hygiene | proposed | **preserving (empty-diff)** | Inventory Kotlin files changed by this branch; use scripts plus scoped subagents to remove policy-heavy generic extensions, clarify helper model naming/placement, remove test-only production seams/reflection escapes, and justify any retained complexity | 23 |
-| **25** | Merge generate + format into one task per scope | specced | **preserving (empty-diff)** | Collapse the per-project and root generate/format task pairs into one `@UntrackedTask` each; extract a shared `formatWithBuildifier` helper; delete `FormatBazelFileTask`; rewire post/pin/migrate edges. Accepts losing format `@CacheableTask` (~6s/run on PAX; generate already untracked) | 10 |
+| **26** | Variant-owned workspace dependency root inputs | proposed | **preserving (empty-diff)** | Move workspace dependency root input planning out of `WorkspaceDependencyInputsRegistrar`; prefer lazy `VariantBuilder.onVariants`; keep AGP configuration-name knowledge in `gradle.variant`; registrar wires task inputs only | 9, 10 |
+| **24** | Branch-diff source shape hygiene | proposed | **preserving (empty-diff)** | Inventory Kotlin files changed by this branch; use scripts plus scoped subagents to remove policy-heavy generic extensions, clarify helper model naming/placement, remove test-only production seams/reflection escapes, and justify any retained complexity | 23, 26 |
+| **27** | Branch-wide simplify + adversarial review before formatting | proposed | **preserving (empty-diff)** | Explicitly invoke the `simplify-pass` skill, then run adversarial correctness review over the entire branch diff; ambitiously fix maintainability/correctness findings; PAX baseline must not move | 24 |
+| **25** | Merge generate + format into one task per scope | specced | **preserving (empty-diff)** | Collapse the per-project and root generate/format task pairs into one `@UntrackedTask` each; extract a shared `formatWithBuildifier` helper; delete `FormatBazelFileTask`; rewire post/pin/migrate edges. Accepts losing format `@CacheableTask` (~6s/run on PAX; generate already untracked) | 27 |
 
-**Recommended next execution order:** 17 → 18 → 19 → 21, then optionally 22 as the stretch
-goal. Item 21 is mostly independent and may run earlier only for clearly disjoint cleanup, but
-its `compressionResults` input removal must wait until Item 19 settles whether
-target-reference facts need compression data as a declared input. Item 22 (set-math ownership
-reduction experiment) runs only after a clean green checkpoint for the primary work unless the
-maintainer explicitly pulls it forward after Item 17. For Item 22, Phase 1 measurement is the
-required stretch deliverable; Phase 2 reshape is allowed only if the Item 22 exit rubric proves
-shadow parity and a real complexity reduction. Item 20 (task cacheability after
-target-reference facts) remains discussion-only.
+**Current next-goal execution order:** 23 → 26 → 24 → 27 → 25 → final verification/review.
+Item 23 removes the stale target-reference compatibility path first. Item 26 then fixes the
+known workspace dependency root-input altitude leak and performs the broad changed-file altitude
+scan. Item 24 then runs as the branch-diff source-shape hygiene pass, cleaning the source shape
+after the dependency-planning altitude fixes. Item 27 runs a branch-wide simplify/adversarial
+review over the entire diff and fixes confirmed maintainability/correctness findings before
+formatting work starts. Item 25 runs last so the generate/format task-graph reshape is the final
+preserving task-graph cleanup.
+
+**Current next-goal hard exit gate:** do not stop after any single item appears green. The goal is
+complete only when Items 23, 26, 24, 27, and 25 have all met their acceptance criteria; every changed
+Kotlin file required by Items 24/26 has been inventoried, visited, and reconciled; confirmed
+altitude violations are fixed in-slice; Item 27's simplify/adversarial findings are fixed or
+rejected with concrete code evidence; generated output is empty-diff; PAX migrate leaves the
+accepted baseline unchanged; required PAX APK builds pass where specified; task-graph checks pass;
+comment-hygiene requirements are satisfied; execution logs record decisions, commands, failures,
+and remaining risks.
 
 **Post-Item-19 cleanup:** Item 23 is a small preserving cleanup discovered after the Item 19
 cutover. It removes the old `BazelTarget` reference collector from production source and collapses
@@ -127,6 +137,16 @@ starts from Kotlin files changed by this branch, but justified fan-out edits are
 renames, interfaces, call-site cleanup, and type-boundary improvements. It uses deterministic
 inventory plus scoped subagents because scripts catch shapes while agents catch altitude and naming
 intent. Generated output and the PAX baseline must remain unchanged.
+
+**Workspace dependency root-input cleanup:** Item 26 is split out from Item 24 because it is not
+just source-shape hygiene. It fixes a concrete altitude leak where `WorkspaceDependencyInputsRegistrar`
+reconstructs AGP configuration names and inspects backing variant types. The target shape is:
+variant APIs expose typed configuration roles, a small planner maps those facts to dependency root
+descriptors, and the registrar only wires task inputs. Item 26 also requires a broad agentic
+altitude scan over every Kotlin file changed by the branch diff, so similar layer violations are
+fixed in the same slice or rejected as non-violations with rationale before exit. It is preserving
+and PAX-baseline guarded; output-changing redesign findings stop for maintainer direction instead
+of being silently deferred.
 
 **Post-16 follow-up pass (2026-06-28 audit).** Review agents ground-truthed the branch
 after Item 16. Finding: the altitude work landed *more* completely than the executor's

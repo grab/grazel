@@ -7,7 +7,7 @@
 > `reports/specs/2026-06-26-item1-baseline-and-safety-net-design.md`.
 > **Index:** `ALTITUDE-LAYERING-ROADMAP.md`. **Depends on:** Item 23.
 
-> **Execution note - subagent fanout is recommended.** Static scripts can inventory file
+> **Execution note - subagent fanout is required.** Static scripts can inventory file
 > shapes, but they cannot reliably judge altitude, naming intent, hidden policy, or test-only
 > API leaks. Use scoped agents per file or cluster; the parent agent reconciles and owns final
 > decisions.
@@ -35,7 +35,8 @@ Start from the Kotlin files changed by this branch diff, including both:
 - `grazel-gradle-plugin/src/main/...`
 - `grazel-gradle-plugin/src/test/...`
 
-The initial inventory is branch-diff scoped, not repo-wide. Edits may fan out to related files
+The initial inventory is branch-diff scoped, not repo-wide. Every changed Kotlin file in that
+inventory must be visited before exit. Edits may fan out to related files
 when needed for a correct rename, interface extraction, call-site cleanup, or type-boundary
 improvement. Any fan-out must be recorded in the Item 24 inventory/log with the reason.
 
@@ -115,14 +116,16 @@ Kotlin's type system should carry the test boundary too.
 1. Build a deterministic inventory of changed Kotlin files.
 2. Record the inventory and per-file decisions in `reports/specs/EXECUTION-LOG.md` or a focused
    Item 24 inventory file referenced from that log.
-3. Use scripts where useful for repeatable detection. Bun/TypeScript/tree-sitter tooling may be
-   committed under `reports/scripts` if it becomes a useful guard or repeatable inventory tool.
-   Scratch scripts should stay uncommitted.
-4. Use scoped subagents repeatedly by file or cluster. Ask them to classify concrete findings,
-   not to make final scope decisions.
+3. Use deterministic scripts for the inventory and for any repeated mechanical checks that can be
+   encoded safely. Bun/TypeScript/tree-sitter tooling may be committed under `reports/scripts`
+   when it becomes a useful guard or repeatable inventory tool. Scratch scripts stay uncommitted.
+4. Use scoped subagents by file or cluster for the full changed-file inventory. Ask them to
+   classify concrete findings, not to make final scope decisions.
 5. Parent agent reconciles findings, applies small output-preserving cleanup slices, and reruns
    focused checks after each meaningful batch.
 6. Repeat discovery after cleanup so missed cases surface before final verification.
+7. Do not exit until every inventoried file has one of: cleaned findings, explicit "no issue"
+   judgment, or a documented problem-essential reason for retained complexity.
 
 ## Out of Scope
 
@@ -147,8 +150,7 @@ git diff --check
 git diff --check master...HEAD
 ```
 
-Run PAX when source cleanup touches production generation/planning/extraction behavior or after
-the final batch:
+Run PAX after the final batch:
 
 ```text
 cd /Users/arun.sampathkumar/work/pax-android
@@ -162,6 +164,7 @@ diff.
 ## Acceptance Criteria
 
 - Changed-branch Kotlin files have been inventoried.
+- Every inventoried Kotlin file has been visited and reconciled.
 - Each retained policy-heavy extension, ambiguous helper model, or test-only seam is either
   removed, renamed, reshaped, or explicitly justified as problem-essential.
 - No reflection/type-system escape hatches are introduced; existing ones in touched scope are
@@ -181,3 +184,5 @@ diff.
   mechanically equivalent. Generated output is the hard gate.
 - **Subagent drift:** Subagents may find useful issues, but the parent must reconcile against
   the spec. Do not let independent review threads redefine the goal.
+- **Early exit:** Do not stop after one obvious cleanup batch. Completion requires a reconciled
+  file-by-file inventory, final discovery pass, Grazel verification, and PAX final guard.

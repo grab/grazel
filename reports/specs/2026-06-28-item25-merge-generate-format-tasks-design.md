@@ -1,13 +1,13 @@
 # Item 25 — Merge Generate + Format into One Task per Scope (Design)
 
-> **Status:** Approved 2026-06-28 (brainstormed + grounded by two Opus code-path maps).
+> **Status:** Approved 2026-06-28 (grounded against the current task graph).
 > **Executor:** Codex. **Behaviour change:** none to generated output — final in-tree
 > `BUILD.bazel`/`WORKSPACE` must be byte-identical. Golden EMPTY-diff. **Task graph changes**
 > (fewer tasks); format loses `@CacheableTask` — an accepted, documented tradeoff.
 > **Global Constraints + Verification Playbook + Code-quality stance:** inherited from
 > `reports/specs/2026-06-26-item1-baseline-and-safety-net-design.md`.
-> **Index:** `ALTITUDE-LAYERING-ROADMAP.md`. **Depends on:** none (independent task-graph
-> cleanup); inherits Item 10 size guard.
+> **Index:** `ALTITUDE-LAYERING-ROADMAP.md`. **Depends on:** Item 27; inherits Item 10 size guard.
+> This task-graph cleanup intentionally runs after the branch-wide simplify/adversarial review.
 
 > **⚠️ Execution note — delegate to subagents; protect the main context.** Task-graph
 > verification and PAX runs go to focused subagents returning distilled results.
@@ -75,10 +75,10 @@ root:         generateRootBazelScripts   [generates AND formats WORKSPACE + root
               generateRootBazelScripts.WORKSPACE ──▶ pinMavenArtifacts
 ```
 
-`FormatBazelFileTask` is **deleted**. The merged tasks keep their generate task IDs/names (the
-intermediate `format*` IDs disappear; `migrateToBazel` is the user entry point, these are
-internal). Final naming is Codex's call, but prefer keeping `generateBazelScripts` /
-`generateRootBazelScripts` and absorbing formatting into them.
+`FormatBazelFileTask` is **deleted**. The merged tasks keep their generate task IDs/names:
+`generateBazelScripts` and `generateRootBazelScripts`. The intermediate `format*` task IDs
+disappear because `migrateToBazel` is the user entry point and formatting becomes an internal step
+of generation.
 
 ## Work
 
@@ -101,10 +101,9 @@ internal). Final naming is Codex's call, but prefer keeping `generateBazelScript
    in `TasksManager.kt` (`:177-186`, `:195-203`).
 5. **Rewire `TasksManager`:**
    - merged tasks consume `generateBuildifierScript.buildifierScript` as an input (keep the
-     dependency so they wait for the launcher); root merged task keeps
-     `dependsOn(generateBuildifierScript)` / provider wiring, and `generateBuildifierScript`
-     keeps `dependsOn(generateRootBazelScripts)` only if it still needs the root output — verify
-     and preserve the buildifier-launcher availability ordering.
+     dependency so they wait for the launcher); root merged task keeps the explicit provider/task
+     edge to `generateBuildifierScript`. Verify the launcher generation ordering with a dry run
+     and remove any stale reverse edge that no longer has a real input/output reason.
    - `postScriptGenerateTask.dependsOn(merged per-project tasks)` (unchanged intent).
    - `pinMavenArtifacts.workspaceFile` ← merged **root** task's `WORKSPACE` output (`:189`
      retargeted to the merged task's now-final WORKSPACE).
@@ -116,6 +115,13 @@ internal). Final naming is Codex's call, but prefer keeping `generateBazelScript
    cacheable. Accepted: generate is already untracked-and-always-runs, so the cost is ~N
    buildifier execs per migrate (~6s on PAX). Reverting requires fixing generate's live-`Project`
    capture so the merged task can be `@CacheableTask`."
+7. **Clean task/formatting comments while touching the code.** Remove comments that are artifacts
+   of the refactor process, AI/context churn, or historical migration notes. Comments retained or
+   added in this item must explain durable behavior that a future maintainer needs to know, such as
+   Gradle task wiring, failure isolation, temp-file safety, or buildifier filename sensitivity.
+   Do not leave comments that say the code exists because "old code did X", "this pass changed Y",
+   "temporary migration", or other meta-process breadcrumbs unless they describe an active,
+   user-visible compatibility constraint.
 
 ## Care points (must honor)
 
@@ -132,6 +138,9 @@ internal). Final naming is Codex's call, but prefer keeping `generateBazelScript
   `generateBuildifierScript`'s output; keep that edge.
 - **Error isolation is preserved by construction** — a generate failure fails the one task
   before its format step runs (same net effect as today's skip).
+- **Comment hygiene is part of the slice** — comments in touched task/formatting code must encode
+  durable engineering facts, not refactor history, LLM artifacts, context breadcrumbs, or migration
+  diary entries.
 
 ## Safety mechanism
 
@@ -142,6 +151,9 @@ internal). Final naming is Codex's call, but prefer keeping `generateBazelScript
   of `migrateToBazel` before/after to confirm the merged tasks run in the right order and pin
   still runs after the (now-merged) WORKSPACE producer.
 - **Size guard (Item 10):** no change expected.
+- **Full final verification is mandatory.** Do not exit after a local task-graph check. The item
+  requires Grazel migrate, PAX migrate, both PAX APK builds, task-graph verification, and comment
+  hygiene before completion.
 
 ## Acceptance criteria
 
@@ -154,6 +166,12 @@ internal). Final naming is Codex's call, but prefer keeping `generateBazelScript
 - `verify-default-task-graph.sh` green; `migrateToBazel --dry-run` shows the merged shape with
   pin after the root task.
 - Cacheability tradeoff recorded in `KNOWN-LIMITATIONS.md`.
+- Touched task/formatting code has no stale comments that describe the implementation journey
+  rather than the current invariant.
+- No `formatBazelScripts`, `formatWorkSpace`, or `formatBuildBazel` task registrations remain in
+  the live task graph.
+- No local-only success claim: completion requires the PAX final guard, not just sample/golden
+  checks.
 
 ## Out of scope / Non-goal
 
