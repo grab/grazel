@@ -1427,3 +1427,24 @@ evidence in item-specific logs so context compaction can recover state quickly.
   work is green, with Phase 2 gated by exact shadow parity and real complexity reduction.
 - Next action: commit the current spec/anchor docs locally in Grazel so implementation starts
   from a clean worktree, then begin Item 17.
+
+## 2026-06-28 Resource Guardrail Clarification
+
+- Maintainer requested retaining the stricter storage/process wording from the older goal prompt.
+- Updated `CURRENT-GOAL-ANCHOR.md` to require resource checks before every expensive
+  Gradle/Bazel command, preserve Bazel disk cache by default, avoid aggressive `--jobs`, treat
+  large private Bazel output roots as a deliberate cleanup trigger, and keep PAX `bazel-cache`
+  deletion as a last resort.
+
+## 2026-06-28 Item 17 Progress
+
+- Added `reports/specs/execution-log/item17-bucket-set-math.md`.
+- Consolidated general bucket ownership set-math helpers into `BucketSetMath.kt`; resolver and
+  planner duplicate copies were removed while planner-specific test helpers stayed local.
+- Resource check before Gradle work: about `28GiB` free on Data, PAX `bazel-cache` about `14G`,
+  no stale Gradle/Bazel/Coursier or high-RAM `python3.12` process observed. Slow full `du`
+  probes were stopped; no cleanup was triggered.
+- Focused dependency tests passed:
+  `./gradlew :grazel-gradle-plugin:test --tests "com.grab.grazel.gradle.dependencies.AggregatedDependencyResolverTest" --tests "com.grab.grazel.gradle.dependencies.DependencyBucketPlacementEngineTest" --tests "com.grab.grazel.gradle.dependencies.BucketOwnershipPlannerTest" --console=plain --no-daemon`.
+- Grazel `./gradlew migrateToBazel --console=plain --no-daemon` passed and produced no generated
+  output diff.

@@ -101,8 +101,10 @@ re-derivation round-trips, not by LOC.
 
 ## Verification Loop
 
-Before expensive Gradle/Bazel commands, check disk, memory, and process pressure. PAX is large;
-long runs are expected. Avoid concurrent huge builds.
+Before every expensive Gradle/Bazel command, check disk, memory, and process pressure. PAX is
+large; long runs are expected. Do not disable Bazel disk cache with `--disk_cache=`. Do not add
+aggressive `--jobs` unless diagnosing a specific resource issue; prefer default wrapper behavior.
+Avoid concurrent huge Gradle/Bazel builds.
 
 Grazel checks as changes mature:
 
@@ -145,9 +147,13 @@ Record in `reports/specs/EXECUTION-LOG.md` after meaningful runs:
 
 - Watch `~/.gradle/caches`, PAX `bazel-cache`, any `bazel-ccache`, and
   `/private/var/tmp/_bazel_*` or `/private/var/bazel`-like dirs.
-- If storage is genuinely low, prefer `bazelisk shutdown` and `bazelisk clean --expunge` in
-  the relevant repo.
-- Remove PAX `bazel-cache` only as a last resort.
+- If Bazel private output roots grow very large, for example above 90 GiB, or disk becomes
+  genuinely low, clean deliberately instead of letting runs fail.
+- First use `bazelisk shutdown` and `bazelisk clean --expunge` in the relevant repo.
+- Remove stale private Bazel output roots only when clearly needed and after checking they are
+  stale and not active.
+- In PAX, remove `bazel-cache` only as a last resort because preserving it keeps verification
+  fast.
 - Stop stale Gradle daemons, Bazel processes, Coursier children, or high-RAM `python3.12`
   processes only when clearly stale/problematic.
 

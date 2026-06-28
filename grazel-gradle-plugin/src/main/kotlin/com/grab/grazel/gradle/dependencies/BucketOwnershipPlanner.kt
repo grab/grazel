@@ -16,13 +16,10 @@
 
 package com.grab.grazel.gradle.dependencies
 
-import com.grab.grazel.gradle.dependencies.model.OverrideTarget
 import com.grab.grazel.gradle.dependencies.model.ResolveDependenciesResult
 import com.grab.grazel.gradle.dependencies.model.ResolveDependenciesResult.Companion.Scope.COMPILE
 import com.grab.grazel.gradle.dependencies.model.ResolveDependenciesResult.Companion.Scope.KSP
 import com.grab.grazel.gradle.dependencies.model.ResolvedDependency
-import com.grab.grazel.gradle.dependencies.model.hasSameResolvedArtifactIdentityAs
-import com.grab.grazel.gradle.dependencies.model.hasSameResolvedOwnerIdentityAs
 import com.grab.grazel.gradle.variant.ANDROID_TEST_VARIANT
 import com.grab.grazel.gradle.variant.DEFAULT_VARIANT
 import com.grab.grazel.gradle.variant.TEST_VARIANT
@@ -644,9 +641,6 @@ internal fun unionDependencyMaps(
     return merged
 }
 
-private fun Iterable<CoveredDependency>.groupByShortId(): Map<String, List<CoveredDependency>> =
-    groupBy { it.dependency.shortId }
-
 private fun Map<String, ResolvedDependency>.withoutTestDependenciesCoveredBy(
     coveredByShortId: Map<String, List<CoveredDependency>>,
     declaredTestDependencies: Map<String, ResolvedDependency>
@@ -775,55 +769,6 @@ private fun CoveredDependency.canCoverTestDependency(
     }
 }
 
-private fun Map<String, ResolvedDependency>.withoutDependenciesCoveredBy(
-    coveredByShortId: Map<String, List<CoveredDependency>>
-): Map<String, ResolvedDependency> {
-    return mapNotNull { (shortId, dependency) ->
-        val coveringDependencies = coveredByShortId[shortId]
-            .orEmpty()
-            .filter { covered -> covered.canCover(dependency) }
-        val exactCoveredDependency = coveringDependencies.firstOrNull { covered ->
-            covered.dependency.hasSameResolvedArtifactIdentityAs(dependency)
-        }
-        val supersetClosureCoveredDependency = coveringDependencies.firstOrNull { covered ->
-            covered.rootsSupersetClosureOf(dependency)
-        }
-        val coveredDependency = exactCoveredDependency
-            ?: supersetClosureCoveredDependency
-            ?: coveringDependencies.firstOrNull()
-        when {
-            coveredDependency == null -> shortId to dependency
-            exactCoveredDependency != null -> null
-            supersetClosureCoveredDependency != null -> null
-            dependency.direct && coveredDependency.dependency.direct -> {
-                shortId to dependency.copy(
-                    overrideTarget = dependency.overrideTarget ?: coveredDependency.toOverrideTarget()
-                )
-            }
-            else -> null
-        }
-    }
-        .toMap()
-}
-
-private fun CoveredDependency.canCover(dependency: ResolvedDependency): Boolean {
-    return (this.dependency.hasSameResolvedOwnerIdentityAs(dependency) ||
-        this.dependency.canCoverDeclaredPlaceholder(dependency)) &&
-        (!dependency.direct || this.dependency.direct)
-}
-
-private fun ResolvedDependency.canCoverDeclaredPlaceholder(dependency: ResolvedDependency): Boolean {
-    return direct &&
-        !isDeclaredMetadata() &&
-        dependency.direct &&
-        dependency.isDeclaredMetadata() &&
-        shortId == dependency.shortId &&
-        version == dependency.version &&
-        requiresJetifier == dependency.requiresJetifier &&
-        jetifierSource == dependency.jetifierSource &&
-        dependency.excludeRules == excludeRules
-}
-
 private fun Map<String, Map<String, ResolvedDependency>>.withoutDeclaredPlaceholdersCoveredByDefault(
     defaultDeps: Map<String, ResolvedDependency>
 ): Map<String, Map<String, ResolvedDependency>> {
@@ -878,14 +823,4 @@ private fun CoveredDependency.canCoverDeclaredTestRoot(
         scopedSiblingClosureDependencies = scopedSiblingClosureDependencies
     ) &&
         (declaredDependency.excludeRules.isEmpty() || declaredDependency.excludeRules == this.dependency.excludeRules)
-}
-
-private fun CoveredDependency.rootsSupersetClosureOf(dependency: ResolvedDependency): Boolean {
-    return this.dependency.direct &&
-        dependency.direct &&
-        this.dependency.dependencies.containsAll(dependency.dependencies)
-}
-
-private fun CoveredDependency.toOverrideTarget(): OverrideTarget {
-    return mavenOverrideTarget(dependency.shortId, bucketName)
 }

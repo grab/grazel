@@ -17,11 +17,8 @@
 package com.grab.grazel.gradle.dependencies
 
 import com.grab.grazel.gradle.dependencies.model.ExcludeRule
-import com.grab.grazel.gradle.dependencies.model.OverrideTarget
 import com.grab.grazel.gradle.dependencies.model.ResolveDependenciesResult
 import com.grab.grazel.gradle.dependencies.model.ResolvedDependency
-import com.grab.grazel.gradle.dependencies.model.hasSameResolvedArtifactIdentityAs
-import com.grab.grazel.gradle.dependencies.model.hasSameResolvedOwnerIdentityAs
 import com.grab.grazel.gradle.dependencies.model.intersectWith
 import com.grab.grazel.gradle.dependencies.model.versionInfo
 import com.grab.grazel.gradle.variant.ANDROID_TEST_VARIANT
@@ -767,68 +764,6 @@ private data class MainProjectEdgeScope(
     val excludedShortIdsByTargetProject: Map<String, Set<String>>
 )
 
-internal data class CoveredDependency(
-    val bucketName: String,
-    val dependency: ResolvedDependency
-)
-
-internal fun Map<String, ResolvedDependency>.withoutDependenciesCoveredBy(
-    coveredDependencies: Iterable<CoveredDependency>
-): Map<String, ResolvedDependency> =
-    withoutDependenciesCoveredBy(coveredDependencies.groupByShortId())
-
-private fun Iterable<CoveredDependency>.groupByShortId(): Map<String, List<CoveredDependency>> =
-    groupBy { it.dependency.shortId }
-
-private fun Map<String, ResolvedDependency>.withoutDependenciesCoveredBy(
-    coveredByShortId: Map<String, List<CoveredDependency>>
-): Map<String, ResolvedDependency> {
-    return mapNotNull { (shortId, dependency) ->
-        val coveringDependencies = coveredByShortId[shortId]
-            .orEmpty()
-            .filter { covered -> covered.canCover(dependency) }
-        val exactCoveredDependency = coveringDependencies.firstOrNull { covered ->
-            covered.dependency.hasSameResolvedArtifactIdentityAs(dependency)
-        }
-        val supersetClosureCoveredDependency = coveringDependencies.firstOrNull { covered ->
-            covered.rootsSupersetClosureOf(dependency)
-        }
-        val coveredDependency = exactCoveredDependency
-            ?: supersetClosureCoveredDependency
-            ?: coveringDependencies.firstOrNull()
-        when {
-            coveredDependency == null -> shortId to dependency
-            exactCoveredDependency != null -> null
-            supersetClosureCoveredDependency != null -> null
-            dependency.direct && coveredDependency.dependency.direct -> {
-                shortId to dependency.copy(
-                    overrideTarget = dependency.overrideTarget ?: coveredDependency.toOverrideTarget()
-                )
-            }
-            else -> null
-        }
-    }
-        .toMap()
-}
-
-private fun CoveredDependency.canCover(dependency: ResolvedDependency): Boolean {
-    return (this.dependency.hasSameResolvedOwnerIdentityAs(dependency) ||
-        this.dependency.canCoverDeclaredPlaceholder(dependency)) &&
-        (!dependency.direct || this.dependency.direct)
-}
-
-private fun ResolvedDependency.canCoverDeclaredPlaceholder(dependency: ResolvedDependency): Boolean {
-    return direct &&
-        !isDeclaredMetadata() &&
-        dependency.direct &&
-        dependency.isDeclaredMetadata() &&
-        shortId == dependency.shortId &&
-        version == dependency.version &&
-        requiresJetifier == dependency.requiresJetifier &&
-        jetifierSource == dependency.jetifierSource &&
-        dependency.excludeRules == excludeRules
-}
-
 private fun Map<String, Map<String, ResolvedDependency>>.withoutDeclaredPlaceholdersCoveredByDefault(
     defaultDeps: Map<String, ResolvedDependency>
 ): Map<String, Map<String, ResolvedDependency>> {
@@ -848,49 +783,4 @@ private fun Map<String, Map<String, ResolvedDependency>>.withoutDeclaredPlacehol
     }
         .filterValues(Map<String, ResolvedDependency>::isNotEmpty)
         .toSortedMap()
-}
-
-private fun CoveredDependency.rootsSupersetClosureOf(dependency: ResolvedDependency): Boolean {
-    return this.dependency.direct &&
-        dependency.direct &&
-        this.dependency.dependencies.containsAll(dependency.dependencies)
-}
-
-internal fun Map<String, ResolvedDependency>.withoutDependenciesOwnedByNonDefaultHierarchy(
-    hierarchyDefaultDeps: Map<String, ResolvedDependency>,
-    nonDefaultHierarchyDependencies: Iterable<ResolvedDependency>
-): Map<String, ResolvedDependency> {
-    val nonDefaultByShortId = nonDefaultHierarchyDependencies.groupBy { it.shortId }
-    return filterValues { dependency ->
-        val hasSameNonDefaultOwner = nonDefaultByShortId[dependency.shortId]
-            .orEmpty()
-            .any { nonDefaultDependency ->
-                nonDefaultDependency.hasSameResolvedOwnerIdentityAs(dependency)
-            }
-        !hasSameNonDefaultOwner ||
-            hierarchyDefaultDeps[dependency.shortId]?.hasSameResolvedOwnerIdentityAs(dependency) == true
-    }
-}
-
-internal fun intersectByBucketOwner(
-    closures: Iterable<Map<String, ResolvedDependency>>
-): Map<String, ResolvedDependency> {
-    val closureList = closures.toList()
-    if (closureList.isEmpty()) return emptyMap()
-    val intersectionIds = closureList
-        .map { it.keys }
-        .reduce { a, b -> a intersect b }
-    val firstClosure = closureList.first()
-    return intersectionIds.mapNotNull { id ->
-        val candidate = firstClosure[id]!!
-        if (closureList.all { closure -> closure[id]?.hasSameResolvedOwnerIdentityAs(candidate) == true }) {
-            id to candidate
-        } else {
-            null
-        }
-    }.toMap()
-}
-
-private fun CoveredDependency.toOverrideTarget(): OverrideTarget {
-    return mavenOverrideTarget(dependency.shortId, bucketName)
 }

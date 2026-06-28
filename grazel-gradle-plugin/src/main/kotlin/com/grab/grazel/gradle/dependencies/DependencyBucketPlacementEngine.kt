@@ -666,7 +666,3 @@ private fun DeclaredVariantDependencyMetadata.testBucketExtendsFrom(
         .filter { parentName -> parentName != name }
         .toSortedSet()
 }
-
-internal fun Map<String, ResolvedDependency>.asCoveredBy(bucketName: String): List<CoveredDependency> {
-    return values.map { dependency -> CoveredDependency(bucketName, dependency) }
-}
