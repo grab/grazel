@@ -75,7 +75,7 @@ class TargetMavenRepoReferencesCollectorTest {
         val references = TargetMavenRepoReferencesCollector.fromTargets(targets)
 
         assertEquals(
-            setOf("debug_maven", "ksp_maven", "lint_maven", "maven"),
+            setOf("debug_maven", "ksp_maven", "maven"),
             references.repoNames
         )
         assertEquals(

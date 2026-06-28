@@ -20,3 +20,9 @@
   - `./gradlew migrateToBazel --console=plain --no-daemon` passed.
   - `git status --short` after migrate showed no generated-output changes; only source/docs
     files from this item are dirty.
+
+## 2026-06-28 Final Review Fix
+
+- Final spec-compliance review found and removed the resolver's dead
+  `withoutDeclaredPlaceholdersCoveredByDefault` copy. The only remaining helper with that name is
+  the planner-private live path in `BucketOwnershipPlanner.kt`.

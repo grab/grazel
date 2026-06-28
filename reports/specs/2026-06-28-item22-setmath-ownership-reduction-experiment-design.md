@@ -1,6 +1,7 @@
 # Item 22 — Set-Math Ownership Reduction Experiment (Design)
 
-> **Status:** Approved as an EXPERIMENT 2026-06-28. **Executor:** Codex.
+> **Status:** Completed as Outcome B 2026-06-28: proven problem-essential; no Phase 2 reshape.
+> **Executor:** Codex.
 > **Behaviour change:** investigation-first; outcome is either an output-preserving reshape
 > (golden empty-diff) **or** a documented "proven problem-essential" finding. Not an
 > open-ended rewrite.

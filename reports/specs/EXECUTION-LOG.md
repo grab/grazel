@@ -5,6 +5,17 @@ evidence in item-specific logs so context compaction can recover state quickly.
 
 ## Active State
 
+- 2026-06-28 +08 final post-review checkpoint for Items 17-22:
+  - Primary items 17, 18, 19, and 21 are implemented and locally committed.
+  - Stretch Item 22 completed as Outcome B: measurement proved bucket set-math
+    problem-essential for the verified PAX/sample shape, so no Phase 2 reshape was attempted.
+  - Current PAX regression baseline is clean on branch `arun/grazel-refactor` at
+    `cfa1057ed58ccb2a795a5f679f072a8f604ff48e`.
+  - `reports/specs/pax-size-baseline.json` now records that PAX baseline commit with
+    `bucketCount=11`, `pinfileCount=11`, and `totalArtifactRoots=1945`.
+  - Older Active State bullets below are historical checkpoints from Items 12/13 and earlier.
+    They are retained for traceability but are superseded by this final checkpoint and the
+    item-specific logs for Items 17-22.
 - 2026-06-28 +08 current goal pass:
   - Current anchor: `reports/specs/CURRENT-GOAL-ANCHOR.md`.
   - Current item: Item 13 - test/androidTest delta ownership, the only planned
@@ -1575,3 +1586,62 @@ evidence in item-specific logs so context compaction can recover state quickly.
 - Decision: do not proceed to Item 22 Phase 2. A declaration-driven replacement is not
   justified under the empty-diff contract without exact shadow parity. Current set-math is
   reclassified as proven problem-essential for the verified PAX/sample shape.
+
+## 2026-06-28 Final Review Fixes
+
+- Read-only final reviewers found no critical issues.
+- Fixed the remaining Item 17 compliance miss by deleting the dead
+  `AggregatedDependencyResolver.withoutDeclaredPlaceholdersCoveredByDefault` copy. The
+  planner-private helper remains because it is still used by Item 13 behavior.
+- Tightened `TargetReferenceFactsCollector` tag parsing to count only normalized `@maven//:`
+  tags. Bucket-prefixed Maven repo references still come from structured `MavenDependency`
+  facts, not compile-filter tags.
+- Updated `TargetReferenceFactsCollectorTest` with a red/green check proving bucket-prefixed
+  tags are ignored.
+- Updated Item 19 logs with the required target-builder invocation metric: `0` invocations
+  during reference collection.
+- Updated Item 22 spec status to Outcome B and refreshed `pax-size-baseline.json` metadata to
+  current clean PAX baseline `cfa1057ed58ccb2a795a5f679f072a8f604ff48e`.
+
+## 2026-06-28 Final Review Fix Verification
+
+- Focused red/green check: `TargetReferenceFactsCollectorTest` failed before the production
+  parser change when bucket-prefixed tag repos were still counted, then passed after tightening
+  tag parsing to normalized `@maven//:` only.
+- Focused green checks passed:
+  `./gradlew :grazel-gradle-plugin:test --tests "com.grab.grazel.gradle.dependencies.TargetReferenceFactsCollectorTest" --tests "com.grab.grazel.gradle.dependencies.AggregatedDependencyResolverTest" --console=plain --no-daemon`
+  and
+  `./gradlew :grazel-gradle-plugin:test --tests "com.grab.grazel.gradle.dependencies.TargetReferenceFactsCollectorTest" --tests "com.grab.grazel.tasks.internal.TargetMavenRepoReferencesCollectorTest" --console=plain --no-daemon`.
+- Full plugin unit tests passed:
+  `./gradlew :grazel-gradle-plugin:test --console=plain --no-daemon`.
+- Plugin functional tests passed:
+  `./gradlew :grazel-gradle-plugin:functionalTest --console=plain --no-daemon` in `3m 44s`.
+- Grazel local generation passed:
+  `./gradlew migrateToBazel --console=plain --no-daemon`.
+- `reports/scripts/verify-default-task-graph.sh` passed.
+- `reports/scripts/verify-sample-bucket-labels.sh` still hits the known pre-existing
+  one-sided appcompat/constraintlayout exclude waiver; no new sample bucket-label failure was
+  introduced.
+- Root `bazelisk build //...` still hits the documented local sample/rule waiver:
+  `sample-android/crashlytics-demo-free-debug_symlinked_manifest/AndroidManifest.xml` cannot
+  open the Android-transitioned `CrashlyticsManifest.xml`. Reconfirmed that the focused
+  `//sample-android:crashlytics-demo-free-debug_crashlytics_setup_manifest` target succeeds
+  and materializes the host-config output, while the broad Android-config consumer remains the
+  previously documented local sample waiver.
+- Root `bazelisk test //...` still hits the same documented waiver; `9` tests passed before
+  `//sample-android:sample-android-demo-free-debug.lint_test` failed to build on the same
+  missing Crashlytics manifest path.
+- Grazel `git diff --check` and `git diff --check master...HEAD` passed.
+- PAX `./gradlew migrateToBazel --no-daemon --console=plain --stacktrace --rerun-tasks`
+  passed in `10m 56s`; PAX generated output stayed clean against local baseline
+  `cfa1057ed58ccb2a795a5f679f072a8f604ff48e`.
+- PAX `git diff --check` passed and PAX `git status --short` stayed clean.
+- PAX size guard passed in preserving mode with bucket count `11`, pinfile count `11`, and
+  total artifact roots `1945`, all unchanged.
+- PAX `./bazel.sh build --verbose_failures //app:app-gps-pax-debug.apk //app:app-gps-pax-debug-android-test.apk`
+  passed in `225.881s`.
+- PAX focused Bazel tests passed:
+  `./bazel.sh test --test_output=errors //app-utils:app-utils-gps-pax-debug-test //app-test:app-test-gps-pax-debug-test //application-initializer:application-initializer-gps-pax-debug-test`.
+- Resource notes: checked disk/memory/process before expensive Gradle/Bazel commands; disk was
+  tight but stable around `17-19 GiB` free on Data; stopped no Gradle daemon because none was
+  running after migrate; no cache deletion was performed.

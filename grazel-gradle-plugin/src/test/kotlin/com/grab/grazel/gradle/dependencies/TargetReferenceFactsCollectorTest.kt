@@ -61,7 +61,7 @@ class TargetReferenceFactsCollectorTest {
         )
 
         assertEquals(
-            setOf("android_test_maven", "debug_maven", "ksp_maven", "maven"),
+            setOf("debug_maven", "ksp_maven", "maven"),
             facts.repoNames
         )
         assertEquals(

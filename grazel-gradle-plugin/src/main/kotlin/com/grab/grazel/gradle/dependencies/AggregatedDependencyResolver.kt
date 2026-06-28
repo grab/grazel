@@ -760,24 +760,3 @@ private data class MainProjectEdgeScope(
     val reachableBucketNamesByProject: Map<String, Set<String>>,
     val excludedShortIdsByTargetProject: Map<String, Set<String>>
 )
-
-private fun Map<String, Map<String, ResolvedDependency>>.withoutDeclaredPlaceholdersCoveredByDefault(
-    defaultDeps: Map<String, ResolvedDependency>
-): Map<String, Map<String, ResolvedDependency>> {
-    if (isEmpty() || defaultDeps.isEmpty()) return this
-    val defaultCoveredDepsByShortId = defaultDeps
-        .asCoveredBy(DEFAULT_VARIANT)
-        .groupByShortId()
-    return mapValues { (_, dependencies) ->
-        dependencies
-            .filterNot { (_, dependency) ->
-                dependency.isDeclaredMetadata() &&
-                    defaultCoveredDepsByShortId[dependency.shortId]
-                        .orEmpty()
-                        .any { covered -> covered.canCover(dependency) }
-            }
-            .toSortedMap()
-    }
-        .filterValues(Map<String, ResolvedDependency>::isNotEmpty)
-        .toSortedMap()
-}

@@ -25,7 +25,7 @@ import com.grab.grazel.gradle.dependencies.model.TargetReferenceFacts
 import com.grab.grazel.gradle.dependencies.model.WorkspaceRenderPlan
 
 internal object TargetReferenceFactsCollector {
-    private val tagLabelPattern = Regex("""^@([A-Za-z0-9_]+_maven|maven)//:""")
+    private val tagLabelPattern = Regex("""^@(maven)//:""")
     private val projectLabelPattern = Regex("""^//([^:]+):([^:]+)$""")
 
     fun from(

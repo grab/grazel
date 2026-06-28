@@ -7,13 +7,16 @@
 - Added `TargetReferenceFacts` as the structured repo/project reference fact model used before
   target rendering.
 - Added `TargetReferenceFactsCollector` for the shared parsing rules:
-  Maven dependency repos, `@maven`/bucket tag repos, structured project deps, and absolute
+  Maven dependency repos, normalized `@maven` tag repos, structured project deps, and absolute
   `//path:target` string deps.
 - Added `TargetReferenceFactsExtractor` in the target layer. It collects facts from existing
   extractor data models instead of calling `ProjectBazelFileBuilder.targets()`.
 - Cut `CollectTargetMavenRepoReferencesTask` over to `TargetReferenceFactsExtractor`.
   The task no longer imports or calls `ProjectBazelFileBuilder`, `BazelTarget`, or
   `TargetMavenRepoReferencesCollector.fromTargets`.
+- Post-review metric: target-builder invocation count during reference collection is `0`.
+  `CollectTargetMavenRepoReferencesTask` has no `ProjectBazelFileBuilder`, `BazelTarget`, or
+  target-builder execution dependency on the production path.
 - Kept `TargetMavenRepoReferencesCollector.fromTargets` as a compatibility/test helper only,
   and made it delegate to `TargetReferenceFactsCollector` so parsing logic is single-sourced.
 - Preserved known empty-diff blind spots from the previous target-model collector:
