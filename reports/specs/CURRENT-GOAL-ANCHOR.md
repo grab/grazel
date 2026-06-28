@@ -1,4 +1,4 @@
-# Current Goal Anchor - Items 17-22 Follow-Up
+# Current Goal Anchor - Dependency Refactor Follow-Up
 
 > **Read this first for the next long-running goal.** This file is the compact execution
 > anchor. The detailed source of truth is `ALTITUDE-LAYERING-ROADMAP.md`, Item 1's global
@@ -11,6 +11,11 @@
 2. `reports/specs/2026-06-26-item1-baseline-and-safety-net-design.md`
 3. `reports/specs/ALTITUDE-LAYERING-ROADMAP.md`
 4. Active specs:
+   - `2026-06-28-item23-target-reference-model-hygiene-design.md`
+   - `2026-06-28-item26-variant-owned-workspace-dependency-root-inputs-design.md`
+   - `2026-06-28-item24-branch-diff-source-shape-hygiene-design.md`
+   - `2026-06-28-item27-branch-wide-simplify-adversarial-review-design.md`
+   - `2026-06-28-item25-merge-generate-format-tasks-design.md`
    - `2026-06-28-item17-consolidate-bucket-setmath-design.md`
    - `2026-06-28-item18-retire-scc-typed-dag-ordering-design.md`
    - `2026-06-28-item19-target-reference-facts-design.md`
@@ -26,7 +31,23 @@ Do not execute from superseded files directly.
 
 ## Execution Order
 
-Primary order:
+Current continuation order:
+
+```text
+23 -> 26 -> 24 -> 27 -> 25
+```
+
+Items 23, 26, 24, and 27 are complete as of local Grazel commit `fb2b9ab`.
+Item 25 is active and must remain last.
+
+Current Item 25 checkpoint: local Grazel gates, PAX `migrateToBazel`, PAX debug
+APK + android-test APK build, and focused PAX Bazel tests are green. PAX
+BUILD/WORKSPACE/maven output is stable; only `generated/dependency_graph.json`
+has a one-line ordering-only drift. Remaining gates are final diff/log checks
+and a local Grazel commit. See
+`reports/specs/execution-log/item25-merge-generate-format-tasks.md`.
+
+Earlier primary order, now historical:
 
 ```text
 17 -> 18 -> 19 -> 21

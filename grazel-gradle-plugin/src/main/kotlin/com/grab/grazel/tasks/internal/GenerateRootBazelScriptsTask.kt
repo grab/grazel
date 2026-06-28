@@ -36,6 +36,7 @@ import com.grab.grazel.util.logHeap
 import dagger.Lazy
 import org.gradle.api.DefaultTask
 import org.gradle.api.Project
+import org.gradle.api.file.FileSystemOperations
 import org.gradle.api.file.ProjectLayout
 import org.gradle.api.file.RegularFileProperty
 import org.gradle.api.model.ObjectFactory
@@ -49,6 +50,7 @@ import org.gradle.api.tasks.TaskAction
 import org.gradle.api.tasks.UntrackedTask
 import org.gradle.kotlin.dsl.property
 import org.gradle.kotlin.dsl.register
+import org.gradle.process.ExecOperations
 import javax.inject.Inject
 
 @UntrackedTask(because = "Up to dateness not implemented correctly")
@@ -60,7 +62,9 @@ constructor(
     private val rootBazelBuilderFactory: Lazy<RootBazelFileBuilder.Factory>,
     private val gradleProjectInfoFactory: Lazy<DefaultGradleProjectInfo.Factory>,
     objectFactory: ObjectFactory,
-    layout: ProjectLayout
+    private val layout: ProjectLayout,
+    private val execOperations: ExecOperations,
+    private val fileSystemOperations: FileSystemOperations,
 ) : DefaultTask() {
 
     @get:InputFile
@@ -74,6 +78,10 @@ constructor(
     @get:PathSensitive(PathSensitivity.RELATIVE)
     val workspaceRenderPlan: RegularFileProperty = project.objects.fileProperty()
 
+    @get:InputFile
+    @get:PathSensitive(PathSensitivity.RELATIVE)
+    val buildifierScript: RegularFileProperty = project.objects.fileProperty()
+
     @get:OutputFile
     val workspaceFile: RegularFileProperty = objectFactory
         .fileProperty()
@@ -81,6 +89,11 @@ constructor(
 
     @get:OutputFile
     val buildBazel: RegularFileProperty = objectFactory
+        .fileProperty()
+        .convention(layout.projectDirectory.file(BUILD_BAZEL))
+
+    @get:Internal
+    val stagedBuildBazel: RegularFileProperty = objectFactory
         .fileProperty()
         .convention(layout.buildDirectory.file("grazel/$BUILD_BAZEL_IGNORE"))
 
@@ -110,6 +123,14 @@ constructor(
             workspacePlan = workspacePlanModel,
             materializedMavenRepos = workspaceRenderPlan.materializedRepoNames,
         ).build().writeToFile(workspaceFile.get().asFile)
+        formatWithBuildifier(
+            buildifierScript = buildifierScript.get().asFile,
+            source = workspaceFile.get().asFile,
+            destination = workspaceFile.get().asFile,
+            execOperations = execOperations,
+            fileSystemOperations = fileSystemOperations,
+            projectLayout = layout,
+        )
         logger.quiet("Generated WORKSPACE".ansiGreen)
         logger.logHeap("GenerateRootBazelScripts:workspace-done")
 
@@ -121,7 +142,15 @@ constructor(
             )
             .build()
         if (rootBuildBazelContents.isNotEmpty()) {
-            rootBuildBazelContents.writeToFile(buildBazel.get().asFile)
+            rootBuildBazelContents.writeToFile(stagedBuildBazel.get().asFile)
+            formatWithBuildifier(
+                buildifierScript = buildifierScript.get().asFile,
+                source = stagedBuildBazel.get().asFile,
+                destination = buildBazel.get().asFile,
+                execOperations = execOperations,
+                fileSystemOperations = fileSystemOperations,
+                projectLayout = layout,
+            )
             logger.quiet("Generated $BUILD_BAZEL".ansiGreen)
         }
     }

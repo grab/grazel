@@ -5,14 +5,68 @@ evidence in item-specific logs so context compaction can recover state quickly.
 
 ## Active State
 
-- 2026-06-28 +08 CURRENT TRUTH - Item 27 preserving gate:
-  - Grazel is on `arun/dependencies-refactor` at base checkpoint `6a4c40a`
-    with uncommitted Item 27 cleanup fixes. Do not push.
+- 2026-06-28 +08 CURRENT TRUTH - Item 25 PAX migrate checkpoint:
+  - Grazel remains on `arun/dependencies-refactor` with Item 25 changes
+    uncommitted. Last clean local commit before Item 25 is `fb2b9ab`
+    (`Refine workspace plan cleanup`). Do not push.
+  - PAX remains the regression workspace at
+    `/Users/arun.sampathkumar/work/pax-android`, branch
+    `arun/grazel-refactor`, baseline commit
+    `cfa1057ed58ccb2a795a5f679f072a8f604ff48e`. Do not commit PAX.
+  - Item 25 local Grazel gates passed so far: compileKotlin,
+    strengthened `verify-default-task-graph.sh`, local `migrateToBazel`,
+    plugin tests, PAX size guard, and both Grazel diff-check commands.
+    `verify-sample-bucket-labels.sh` still fails only on the known
+    pre-existing appcompat/constraintlayout exclude-union assertion.
+  - PAX build-logic needed a local compatibility update because the old hooks
+    referenced removed format tasks. Local-only PAX changes retarget the hooks
+    to `generateRootBazelScripts`, `generateBazelScripts`, and
+    `generateBuildifierScript`, then format patched temp files through a small
+    local buildifier helper. This is not committed.
+  - First PAX rerun failed because a prior bad generated `WORKSPACE` was
+    missing `rules_java_builtin`; `generateBuildifierScript` loads the current
+    checked-out `WORKSPACE` before the PAX hook can patch it. Restored the
+    baseline block locally and fixed the hook's string match to the formatted
+    one-space `git_repository` load line. Subsequent PAX
+    `./gradlew migrateToBazel --no-daemon --console=plain --stacktrace
+    --rerun-tasks` passed in `10m03s`.
+  - PAX generated BUILD/WORKSPACE/maven output is stable. The only generated
+    drift after migrate is a one-line ordering-only change in
+    `generated/dependency_graph.json`; treat it as classified non-semantic PAX
+    graph-output drift unless a later gate proves otherwise.
+  - `reports/scripts/verify-pax-size-guard.sh --mode preserving` passed after
+    PAX migrate: 11 buckets, 11 pinfiles, 1945 total artifact roots, no
+    per-repo deltas. PAX `git diff --check` passed.
+  - PAX `./bazel.sh build --verbose_failures //app:app-gps-pax-debug.apk
+    //app:app-gps-pax-debug-android-test.apk` passed in `215.146s`.
+  - PAX `./bazel.sh test --test_output=errors
+    //app-utils:app-utils-gps-pax-debug-test
+    //app-test:app-test-gps-pax-debug-test
+    //application-initializer:application-initializer-gps-pax-debug-test`
+    passed 3/3 in `16.593s`.
+  - Next gates: final local cleanup/logging/checks and a local Grazel commit if
+    green.
+- 2026-06-28 +08 CURRENT TRUTH - Item 25 start:
+  - Grazel is on `arun/dependencies-refactor` at clean local checkpoint
+    `fb2b9ab` (`Refine workspace plan cleanup`). Do not push.
   - PAX is the regression workspace at
     `/Users/arun.sampathkumar/work/pax-android`, branch
     `arun/grazel-refactor`, baseline commit
     `cfa1057ed58ccb2a795a5f679f072a8f604ff48e`. Do not commit PAX.
-  - Local Grazel focused tests, full
+  - Items 23, 26, 24, and 27 are complete and locally committed. Item 25
+    (`reports/specs/2026-06-28-item25-merge-generate-format-tasks-design.md`)
+    is active and must run last. Detailed active log:
+    `reports/specs/execution-log/item25-merge-generate-format-tasks.md`.
+  - Item 25 is preserving/empty-diff. Merge generate+format tasks per scope,
+    delete the standalone format task class/registrations, preserve exact final
+    BUILD/WORKSPACE output, keep buildifier temp-copy isolation, and document
+    the accepted format cacheability tradeoff.
+  - Before Item 25 edits, re-read the Item 25 spec and keep this current-truth
+    block concise/current after every milestone. Older checkpoints below are
+    historical context only; do not execute from them unless explicitly
+    cross-checking a claim.
+  - Item 27 final verification before this checkpoint: local Grazel focused
+    tests, full
     `./gradlew :grazel-gradle-plugin:test --console=plain --no-daemon`,
     and `./gradlew migrateToBazel --console=plain --no-daemon` passed after
     the final preserving fix. `reports/scripts/verify-default-task-graph.sh`,
@@ -39,6 +93,10 @@ evidence in item-specific logs so context compaction can recover state quickly.
     //app-test:app-test-gps-pax-debug-test
     //application-initializer:application-initializer-gps-pax-debug-test`
     passed 3/3 in `24.115s`. Do not commit PAX.
+- 2026-06-28 +08 historical checkpoints below:
+  - The remaining Active State bullets are retained only as evidence for prior
+    items. Current execution order is already narrowed to Item 25 from clean
+    commit `fb2b9ab`.
 - 2026-06-28 +08 Item 24 start:
   - Local Item 26 checkpoint committed at `468dd5f`
     (`refactor: move workspace root inputs into variant layer`).

@@ -134,6 +134,12 @@ constructor(
         // Post script generate task must run after scripts are generated
         val postScriptGenerateTask = PostScriptGenerateTask.register(rootProject, grazelComponent)
 
+        val generateBuildifierScriptTask = GenerateBuildifierScriptTask.register(
+            rootProject,
+            grazelComponent
+        )
+        val buildifierScriptProvider = generateBuildifierScriptTask.flatMap { it.buildifierScript }
+
         val projectGenerateBazelScriptsTasks = rootProject.subprojects.map { project ->
             val generateBazelScriptsTask = GenerateBazelScriptsTask.register(
                 project,
@@ -144,7 +150,9 @@ constructor(
                 workspacePlan.set(computeWorkspacePlanTask.flatMap { it.workspacePlan })
                 workspaceRenderPlan.set(finalizeWorkspacePlanTask.flatMap { it.workspaceRenderPlan })
                 variantCompressionResults.set(analyzeVariantCompressionTask.flatMap { it.compressionResultsFile })
+                buildifierScript.set(buildifierScriptProvider)
                 dependsOn(finalizeWorkspacePlanTask)
+                dependsOn(generateBuildifierScriptTask)
             }
 
             // Post script generate task must run after project level tasks are generated
@@ -162,51 +170,21 @@ constructor(
             workspacePlan.set(computeWorkspacePlanTask.flatMap { it.workspacePlan })
             workspaceRenderPlan.set(finalizeWorkspacePlanTask.flatMap { it.workspaceRenderPlan })
             dependencyResolutionService.set(grazelComponent.dependencyResolutionService())
+            buildifierScript.set(buildifierScriptProvider)
             dependsOn(finalizeWorkspacePlanTask)
+            dependsOn(generateBuildifierScriptTask)
         }
-
-        val generateBuildifierScriptTask = GenerateBuildifierScriptTask.register(
-            rootProject,
-            grazelComponent
-        ) {
-            dependsOn(rootGenerateBazelScriptsTasks)
-        }
-
-        val buildifierScriptProvider = generateBuildifierScriptTask.flatMap { it.buildifierScript }
-
-        // Root formatting tasks with generated workspace and build bazel files
-        val rootFormattingTasks = FormatBazelFileTask.registerRootFormattingTasks(
-            rootProject,
-            buildifierScriptProvider,
-            workspaceFormattingTask = {
-                inputFile.set(rootGenerateBazelScriptsTasks.flatMap { it.workspaceFile })
-            },
-            rootBuildBazelTask = {
-                inputFile.set(rootGenerateBazelScriptsTasks.flatMap { it.buildBazel })
-            }
-        )
 
         val pinArtifactsTask = PinMavenArtifactsTask.register(rootProject, grazelComponent) {
-            workspaceFile.set(rootFormattingTasks.workspace.flatMap { it.outputFile })
+            workspaceFile.set(rootGenerateBazelScriptsTasks.flatMap { it.workspaceFile })
             workspacePlan.set(computeWorkspacePlanTask.flatMap { it.workspacePlan })
             workspaceRenderPlan.set(finalizeWorkspacePlanTask.flatMap { it.workspaceRenderPlan })
         }
 
-        // Project level Bazel file formatting tasks
-        val projectBazelFormattingTasks = projectGenerateBazelScriptsTasks.map { (project, generateBazelScriptsTask) ->
-            // Project level Bazel formatting depends on generation tasks
-            FormatBazelFileTask.register(
-                project = project,
-                buildifierScriptProvider = buildifierScriptProvider,
-            ) {
-                inputFile.set(generateBazelScriptsTask.flatMap { it.buildBazel })
-            }
-        }
-
         val migrateTask = migrateToBazelTask().apply {
             dependsOn(postScriptGenerateTask)
-            dependsOn(rootFormattingTasks.all)
-            dependsOn(projectBazelFormattingTasks)
+            dependsOn(rootGenerateBazelScriptsTasks)
+            dependsOn(projectGenerateBazelScriptsTasks.map { it.second })
             configure {
                 // Inside a configure block since GrazelExtension won't be configured yet and if
                 // we write it as part of plugin application and all extension value would

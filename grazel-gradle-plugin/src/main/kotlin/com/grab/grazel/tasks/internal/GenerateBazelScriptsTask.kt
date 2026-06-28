@@ -35,6 +35,7 @@ import com.grab.grazel.util.logHeap
 import dagger.Lazy
 import org.gradle.api.DefaultTask
 import org.gradle.api.Project
+import org.gradle.api.file.FileSystemOperations
 import org.gradle.api.file.ProjectLayout
 import org.gradle.api.file.RegularFileProperty
 import org.gradle.api.model.ObjectFactory
@@ -43,11 +44,14 @@ import org.gradle.api.tasks.InputFile
 import org.gradle.api.tasks.Internal
 import org.gradle.api.tasks.Optional
 import org.gradle.api.tasks.OutputFile
+import org.gradle.api.tasks.PathSensitive
+import org.gradle.api.tasks.PathSensitivity
 import org.gradle.api.tasks.TaskAction
 import org.gradle.api.tasks.TaskProvider
 import org.gradle.api.tasks.UntrackedTask
 import org.gradle.kotlin.dsl.property
 import org.gradle.kotlin.dsl.register
+import org.gradle.process.ExecOperations
 import java.io.File
 import javax.inject.Inject
 
@@ -59,7 +63,9 @@ constructor(
     private val bazelFileBuilder: Lazy<ProjectBazelFileBuilder.Factory>,
     private val workspacePlanService: GradleProvider<WorkspacePlanService>,
     objectFactory: ObjectFactory,
-    private val layout: ProjectLayout
+    private val layout: ProjectLayout,
+    private val execOperations: ExecOperations,
+    private val fileSystemOperations: FileSystemOperations,
 ) : DefaultTask() {
 
     private val rootProject get() = project.rootProject
@@ -77,18 +83,28 @@ constructor(
     @get:Optional
     val variantCompressionResults: RegularFileProperty = project.objects.fileProperty()
 
+    @get:InputFile
+    @get:PathSensitive(PathSensitivity.RELATIVE)
+    val buildifierScript: RegularFileProperty = project.objects.fileProperty()
+
     @get:Internal
     val dependencyResolutionService: Property<DefaultDependencyResolutionService> =
         project.objects.property()
 
     @get:OutputFile
     val buildBazel: RegularFileProperty = objectFactory.fileProperty().apply {
+        set(layout.projectDirectory.file(BUILD_BAZEL))
+    }
+
+    @get:Internal
+    val stagedBuildBazel: RegularFileProperty = objectFactory.fileProperty().apply {
         set(layout.buildDirectory.file("grazel/$BUILD_BAZEL_IGNORE"))
     }
 
     @TaskAction
     fun action() {
         logger.logHeap("GeneratebazelScripts:${project.path}:start")
+        val stagedBuildBazelFile = stagedBuildBazel.get().asFile
         val buildBazelFile = buildBazel.get().asFile
         val bazelIgnoreFile = project.file(BUILD_BAZEL_IGNORE)
 
@@ -99,27 +115,33 @@ constructor(
         workspacePlanService.get()
             .initRenderPlan(workspaceRenderPlan.get().asFile)
 
-        // Check if current project can be migrated
         if (migrationChecker.get().canMigrate(project)) {
-            // If yes, proceed to generate build.bazel
             val projectBazelFileBuilder = bazelFileBuilder.get().create(project)
             val targets = projectBazelFileBuilder.targets()
             if (targets.isEmpty()) {
                 logger.info("No reachable Bazel targets generated for ${project.path}")
                 if (project.hasConcreteTargetPlugin) {
-                    disableProjectBuildFile(buildBazelFile, bazelIgnoreFile)
+                    disableProjectBuildFile(stagedBuildBazelFile, bazelIgnoreFile)
                 } else {
-                    buildBazelFile.delete()
+                    stagedBuildBazelFile.delete()
                 }
                 return
             }
             val content = projectBazelFileBuilder.build(targets)
-            content.writeToFile(buildBazelFile)
+            content.writeToFile(stagedBuildBazelFile)
+            formatWithBuildifier(
+                buildifierScript = buildifierScript.get().asFile,
+                source = stagedBuildBazelFile,
+                destination = buildBazelFile,
+                execOperations = execOperations,
+                fileSystemOperations = fileSystemOperations,
+                projectLayout = layout,
+            )
             val generatedMessage = "Generated ${rootProject.relativePath(buildBazelFile)}"
             logger.quiet(generatedMessage.ansiGreen)
         } else {
             logger.info("Skipping ${project.path}; project is not migratable")
-            disableProjectBuildFile(buildBazelFile, bazelIgnoreFile)
+            disableProjectBuildFile(stagedBuildBazelFile, bazelIgnoreFile)
         }
     }
 

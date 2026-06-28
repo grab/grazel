@@ -110,6 +110,13 @@ prioritizes preserving the verified task shape and PAX behavior. A future cachea
 hardening pass should serialize deterministic resolved-root models and use stable artifact
 identity plus classpath inputs while keeping absolute paths execution-local.
 
+`generateBazelScripts` and `generateRootBazelScripts` now include their buildifier formatting
+step directly. Formatting is no longer a separate `@CacheableTask`; this is accepted because
+generation still captures live Gradle `Project` state and is already `@UntrackedTask`. The
+tradeoff removes task-graph and staging hand-off complexity at the cost of rerunning buildifier
+inside generation. Reintroducing a cacheable formatting boundary should first make generation
+consume a serialized, `Project`-free target model.
+
 ## Renderer-Model References
 
 `TargetMavenRepoReferencesCollector` still derives referenced Maven repos and project
