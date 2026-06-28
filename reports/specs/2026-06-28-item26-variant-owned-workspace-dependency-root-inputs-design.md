@@ -1,6 +1,7 @@
 # Item 26 - Variant-Owned Workspace Dependency Root Inputs (Design)
 
-> **Status:** Proposed 2026-06-28.
+> **Status:** Completed 2026-06-28 (`468dd5f`), with follow-up source-shape review delegated to
+> Items 30, 29, and 28.
 > **Executor:** Codex.
 > **Behaviour change:** none - golden EMPTY-diff.
 > **Global Constraints & Verification Playbook:** inherited from
@@ -68,6 +69,20 @@ VariantBuilder.onVariants(project)
 The task registrar may still run after project evaluation if Gradle providers require it, but it
 must not construct configuration names or inspect AGP backing types to infer hierarchy.
 
+## Post-Execution Clarification
+
+The implemented preserving slice moved workspace dependency root planning out of
+`WorkspaceDependencyInputsRegistrar`. The registrar must remain a task-wiring component only.
+
+The variant layer is the accepted home for workspace classpath role accessors. `Variant.kt` may
+expose common role-shaped APIs such as `workspaceUnitTestClasspathConfigurations`,
+`workspaceAndroidTestClasspathConfigurations`, and `workspaceLintClasspathConfigurations`, because
+callers need one typed variant contract. If those accessors contain Android-specific name
+construction, that is a variant-layer source-shape concern, not a task-layer altitude violation.
+Items 30/29/28 may still improve that placement by moving Android-only defaults into concrete
+Android variant implementations or `ConfigurationParsingVariant`, but they must not move the
+knowledge back into task wiring.
+
 ## Design Principles
 
 ### 1. Prefer `onVariants` for configuration-phase wiring
@@ -85,10 +100,10 @@ final state.
 
 ### 2. Keep configuration parsing in the variant layer
 
-Hardcoded AGP configuration names belong in `gradle.variant`, where they already exist in
-`ConfigurationParsingVariant`. If new classpath roles are needed, extend `Variant` or add
-variant-layer helpers rather than calling `project.configurations.findByName(...)` from the task
-registrar.
+Hardcoded AGP configuration names belong in `gradle.variant`, currently through
+`ConfigurationParsingVariant`, concrete Android variant implementations, or explicit role accessors
+on `Variant`. If new classpath roles are needed, extend `Variant` or add variant-layer helpers
+rather than calling `project.configurations.findByName(...)` from the task registrar.
 
 Allowed variant-layer extensions include typed accessors such as:
 
@@ -226,6 +241,8 @@ No PAX commits. No public push.
   `com.android.test`, lint, and filtered variants.
 - `onVariants` vs `build` parity for the relevant root-input variants is proven or any
   intentional difference is documented and tested.
+- `onVariants` vs `build` parity includes a multi-flavor Android sample, not only no-flavor
+  variants.
 - Every Kotlin file changed by this branch has been visited by the altitude scan.
 - Every similar altitude violation found by the scan is fixed in this slice, or explicitly rejected
   as not a violation with rationale in the execution log/inventory.

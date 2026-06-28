@@ -6,7 +6,8 @@
 > **Global Constraints + Verification Playbook + Code-quality stance:** inherited from
 > `reports/specs/2026-06-26-item1-baseline-and-safety-net-design.md`.
 > **Index:** `ALTITUDE-LAYERING-ROADMAP.md`.
-> **Depends on:** Item 25 complete and the maintainer-created PAX local baseline commit.
+> **Depends on:** Items 25, 30, 29, and 31 complete, plus the maintainer-created PAX local baseline
+> commit.
 
 ---
 
@@ -17,7 +18,9 @@ machine-checkable file-by-file ledger. That allowed policy-heavy receiver extens
 helper models to survive even though the branch passed correctness gates.
 
 This item is the corrective pass. Previous Item 24/27 logs are useful evidence, but they are not
-completion evidence for this item.
+completion evidence for this item. If those logs deferred a file to broader work, especially
+declared-metadata/workspace-dependency files touched by Items 30 and 29, this item must re-examine
+the file after those items land. Do not inherit old `no_issue` or deferral rationales.
 
 Example smell this item must catch and rewrite:
 
@@ -114,11 +117,16 @@ deferred_requires_behavior_change
 ```
 
 `pending`, blank, or vague statuses fail the item. `deferred_requires_behavior_change` requires a
-specific future item or maintainer decision note.
+specific future item or maintainer decision note. `no_issue` also requires a one-line
+`retained_rationale`, for example "no mandatory source-shape pattern applies after scan"; blank
+rationale fails the item.
 
 ## Mandatory Detection
 
-The inventory tool and subagent prompts must check at least:
+The inventory tool and subagent prompts must check at least the patterns below. This list is a
+floor, not a ceiling: if scripts, subagents, simplify-pass, adversarial review, or parent review
+find additional readability/altitude/test-shape issues in a changed file, they must become
+inventory rows and be reconciled before exit.
 
 - generic collection/map receiver helpers:
   - `private fun Map<...>.`
@@ -137,6 +145,12 @@ The inventory tool and subagent prompts must check at least:
 - comments that encode migration diary, AI/context artifacts, stale TODOs, or historical
   explanation instead of durable behavior contracts.
 
+Known rows that must be reconciled explicitly:
+
+- `BucketOwnershipPlanner.kt` helper shapes such as `addDeclaredOutputMetadata`;
+- `DeclaredDependencyMetadataCollector.kt` and declared-metadata task files deferred by Item 24;
+- workspace dependency task files reshaped by Items 30 and 29.
+
 ## Rewrite Rules
 
 ### 1. Generic Receiver Extensions
@@ -145,7 +159,7 @@ Generic collection/map/mutable receiver extensions are banned by default in chan
 
 Allowed only when all are true:
 
-- the function is tiny and algebraic/DSL-like;
+- the function is tiny, side-effect-free, and mathematically algebraic or DSL-like;
 - the receiver role is obvious from the type alone;
 - keeping it improves readability more than an explicit first parameter;
 - the inventory row says `retained_problem_essential` or `no_issue` with a concrete rationale.
@@ -198,6 +212,7 @@ Existing escapes in changed files must be fixed or justified per row.
 ## Execution Model
 
 1. Record Grazel status, current commit, PAX baseline SHA, and active item in the execution log.
+   Confirm Items 25, 30, 29, and 31 are complete before starting remediation.
 2. Generate the inventory with the committed script/tool.
 3. Spawn scoped subagents by file clusters. They must return row-level findings mapped to the TSV,
    not broad prose.
@@ -219,6 +234,8 @@ The item must not complete unless all are true:
 - Every retained generic receiver extension has a concrete rationale.
 - Every retained mid-file helper model has a concrete locality rationale.
 - Every retained reflection/string/proxy test escape has a concrete necessity rationale.
+- Every `no_issue` row has a concrete one-line rationale.
+- Files deferred by Item 24/27 have been re-examined after Items 30 and 29, not inherited.
 - Generated Grazel output is empty-diff.
 - PAX generated output is unchanged from the new maintainer baseline.
 - PAX size guard is unchanged.
@@ -276,6 +293,9 @@ Use subagents aggressively for coverage, but keep them constrained:
 - `source-shape-inventory.tsv` is complete, terminal, and current after final edits.
 - Confirmed source-shape findings are fixed, not merely logged.
 - Retained complexity has concrete evidence, not assertion.
+- Prior execution logs, including Item 22 set-math evidence, are consulted before assigning
+  `retained_problem_essential`; evidence may be reused, but conclusions must be rechecked against
+  the current file.
 - PAX baseline remains unchanged after `migrateToBazel`.
 - Grazel verification and PAX verification pass.
 - Final response states the commit, inventory counts, fixed categories, retained rationales,

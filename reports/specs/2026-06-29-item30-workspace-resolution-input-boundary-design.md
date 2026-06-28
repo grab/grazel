@@ -6,7 +6,7 @@
 > **Global Constraints + Verification Playbook + Code-quality stance:** inherited from
 > `reports/specs/2026-06-26-item1-baseline-and-safety-net-design.md`.
 > **Index:** `ALTITUDE-LAYERING-ROADMAP.md`.
-> **Depends on:** Item 26 preferred. Must run before broad Item 24/28 source-shape cleanup touches
+> **Depends on:** Item 26 complete. Must run before broad Item 24/28 source-shape cleanup touches
 > workspace dependency task wiring.
 
 ---
@@ -40,6 +40,22 @@ This is intentional, master-like, and cacheable by Gradle design. This item must
 `ResolvedComponentResult` as unsafe merely because it is a live Gradle object. The bug is eager
 metadata work and weak metadata/root pairing, not the existence of Gradle-resolved root components
 as task inputs.
+
+Known JSON task-boundary risks to inventory before implementation:
+
+- `WorkspaceDependencyInputsRegistrar.kt`: eager
+  `Json.encodeToString(rootInput.toMetadata())` for workspace root metadata. Item 30 owns fixing
+  this.
+- `CollectDeclaredDependencyMetadataTask.kt`: `declaredDependencyMetadataJson: Property<String>`
+  backed by provider-side declared-metadata JSON. Item 29 owns removing this as part of the declared
+  metadata aggregation task reshape; Item 30 owns verifying the JSON-phase inventory includes it.
+- `CollectKspProcessorDependenciesTask.kt`: KSP metadata and artifact mapping inputs must be
+  inventoried. Item 30 owns confirming no JSON payload crosses task boundaries there. If the
+  cacheable task carries absolute file paths as strings, Item 30 must either fix that to Gradle file
+  inputs/properties or record a maintainer decision before completion.
+
+Neither Item 29 nor Item 30 may close while any task-boundary `Property<String>`,
+`Provider<String>`, or `ListProperty<String>` JSON model payload remains unowned.
 
 ## Goal
 
@@ -167,6 +183,26 @@ blocked_needs_maintainer_decision
 `unknown`, blank, or unreviewed rows fail the item. Every retained non-file JSON transport must
 explain why it is not a task-boundary model payload.
 
+The inventory must be machine-checked by a committed script:
+
+```text
+reports/scripts/verify-json-phase-inventory.sh
+```
+
+The script must scan production Kotlin under `grazel-gradle-plugin/src/main/kotlin` for at least:
+
+```text
+Json.encodeToString
+Json.decodeFromString
+fromJson
+writeJson
+encodeToStream
+decodeFromStream
+```
+
+and fail if any production call site is missing from the inventory. If implementation discovers
+additional JSON wrappers, add them to the scanner before closing the item.
+
 ## Required Semantics
 
 ### 1. No JSON payload work during task wiring
@@ -218,7 +254,7 @@ separate future item proves a concrete Gradle cache failure.
 The current task action zips root components and metadata by list position. That may remain only if
 wiring preserves deterministic ordering and tests prove it.
 
-Preferred within this item:
+Required within this item:
 
 - introduce a stable root key/id in metadata and write the metadata list/file in the same
   deterministic order used to add root component providers;
@@ -287,10 +323,11 @@ Add or update focused tests for:
 - `ResolveWorkspaceDependenciesTask` still decodes metadata inside `@TaskAction`;
 - root component and metadata counts still fail with a clear message if mismatched;
 - root ordering is deterministic for repeated planner output;
-- no production task registration/configuration path eagerly calls JSON encode/decode after the
-  fix, using a source scan or focused unit test where practical;
+- no production task registration/configuration path eagerly calls JSON encode/decode after the fix;
 - JSON phase inventory exists, covers all production encode/decode call sites, and has no unknown
   rows;
+- `reports/scripts/verify-json-phase-inventory.sh` fails when an inventory row is missing for a
+  production JSON encode/decode call site;
 - KSP resolver wiring keeps its current cacheable `ResolvedComponentResult` behavior and has no
   eager JSON work.
 
@@ -305,6 +342,7 @@ Minimum Grazel gates:
 ```text
 ./gradlew :grazel-gradle-plugin:test --console=plain --no-daemon
 ./gradlew migrateToBazel --console=plain --no-daemon
+reports/scripts/verify-json-phase-inventory.sh
 reports/scripts/verify-default-task-graph.sh
 reports/scripts/verify-sample-bucket-labels.sh
 git diff --check
@@ -315,13 +353,13 @@ PAX gate after implementation:
 ```text
 cd /Users/arun.sampathkumar/work/pax-android
 ./gradlew migrateToBazel --no-daemon --console=plain --stacktrace --rerun-tasks
+./bazel.sh build --verbose_failures //app:app-gps-pax-debug.apk //app:app-gps-pax-debug-android-test.apk
 git diff --check
 ```
 
 If PAX generated output differs from the accepted baseline, stop and classify the diff before
-running APK builds. For this item, the expected generated diff is empty. If migrate output is
-unchanged, run the normal PAX build/test gate when this item is part of a larger goal that already
-requires it.
+running any further checks. For this item, the expected generated diff is empty. The PAX APK build
+is mandatory because this item rewires the workspace dependency task inputs.
 
 ## Hard Exit Gates
 
@@ -331,6 +369,7 @@ This item is not complete unless all are true:
   payload work runs eagerly from task registration/configuration for workspace dependency roots;
 - every production JSON encode/decode call site is inventoried with phase, transport, verdict, and
   action/rationale;
+- `reports/scripts/verify-json-phase-inventory.sh` exists and passes;
 - every task-boundary JSON model payload is transported through Gradle file inputs/outputs, matching
   the master-like file boundary style;
 - workspace dependency root metadata is transported as a Gradle file input/output, not as
@@ -345,5 +384,6 @@ This item is not complete unless all are true:
   issue is found;
 - generated Grazel sample output is empty-diff;
 - PAX `migrateToBazel` leaves the accepted baseline unchanged;
+- PAX debug APK and android-test APK builds pass;
 - execution logs record the audit findings, chosen fix shape, commands, results, and remaining
   risks.

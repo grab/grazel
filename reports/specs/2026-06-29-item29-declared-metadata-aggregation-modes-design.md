@@ -76,8 +76,9 @@ Default:
 declaredDependencyMetadataAggregationMode.convention(SINGLE_TASK)
 ```
 
-The default may be flipped only by a later item after PAX parity, performance, and cache behavior
-are proven. This item must make switching modes easy and deterministic.
+The default may be flipped only by Item 31 after PAX parity, performance, and cache behavior are
+proven. This item must make switching modes easy and deterministic, and must leave enough timing
+evidence for Item 31 to decide whether fanout should become the default.
 
 ## Mode 1: `SINGLE_TASK`
 
@@ -85,11 +86,13 @@ This is the compatibility/control path.
 
 Task shape:
 
-- Use a dedicated single-root task class or keep `CollectDeclaredDependencyMetadataTask` as the
-  single-mode implementation.
+- Use a dedicated single-root task class, or reshape `CollectDeclaredDependencyMetadataTask` so the
+  current cacheable `Property<String>` JSON input is gone. Keeping the current class shape with
+  `declaredDependencyMetadataJson: Property<String>` is not allowed.
 - Mark the task explicitly untracked/uncacheable with a durable reason: it reads evaluated
   Gradle/AGP model objects directly.
-- Remove `dependencyDeclarationFiles` and `dependencyDeclarationFileTree`.
+- Remove `dependencyDeclarationFiles`, `declaredDependencyMetadataJson`, and
+  `dependencyDeclarationFileTree`.
 - Write the same aggregate JSON output path used today.
 
 Performance:
@@ -98,8 +101,9 @@ Performance:
 - Parallel work must be scoped to "read finalized model -> immediately produce serializable DTO".
 - No `Project`, `Configuration`, `Variant`, `Dependency`, AGP variant, or mutable Gradle object may
   escape a coroutine worker.
-- No unbounded `parallelStream` or unbounded dispatcher usage. Bound concurrency from Gradle
-  max-workers or a small experiment property if needed.
+- No unbounded `parallelStream` or unbounded dispatcher usage. Bound concurrency with an explicit
+  mechanism such as `Semaphore(gradle.startParameter.maxWorkerCount)` or
+  `Dispatchers.Default.limitedParallelism(n)`. Record the chosen bound in the execution log.
 
 Safety guard:
 
@@ -116,24 +120,31 @@ Task shape:
 
 - Add a cacheable per-project task, for example
   `CollectProjectDeclaredDependencyMetadataTask`.
-- Each task owns one migratable project and writes one shard JSON under a deterministic path, for
-  example:
+- Each task owns one migratable project and writes one shard JSON through a deterministic
+  `RegularFileProperty` output configured from `layout.buildDirectory.file(...)`, for example:
 
 ```text
 build/grazel/declared-dependency-metadata/<safe-project-path>.json
 ```
 
-- Each task receives Provider-backed semantic input, already reduced from live Gradle objects into
-  serialized project metadata.
-- Each task's action only writes the provided semantic value to its shard output.
+- Each task receives cacheable semantic inputs as typed Gradle task properties or Gradle file
+  properties. Do not pass per-project metadata as `Property<String>`, `Provider<String>`, or any
+  JSON payload string.
+- Project shard tasks must not declare `Project`, `Configuration`, `Variant`, `Dependency`, AGP
+  variant objects, or other live Gradle model objects as task inputs.
+- If a per-project snapshot must be serialized before the shard task, serialize it in a producer
+  task and pass the resulting file as `RegularFileProperty` / `Provider<RegularFile>` /
+  `@InputFile`.
+- Each task's action writes or copies its shard output from typed properties/files only.
 - Add a cacheable root merge task that reads shard JSON files, sorts by project path, and writes the
   existing aggregate JSON output.
 - The aggregate output file remains the only input consumed by `ResolveWorkspaceDependenciesTask`.
 
 Cache model:
 
-- Project shard tasks may be `@CacheableTask` because their inputs are serialized semantic values,
-  not live Gradle objects and not broad build-file globs.
+- Project shard tasks may be `@CacheableTask` only if their inputs are typed scalar/list/map Gradle
+  properties and/or Gradle file inputs, not live Gradle objects, broad build-file globs, or JSON
+  strings pretending to be semantic inputs.
 - The merge task may be `@CacheableTask` because its inputs are shard files and stable scalar
   properties.
 - If a needed Gradle fact cannot be represented as stable serialized metadata, add that fact to the
@@ -162,6 +173,10 @@ DeclaredDependencyMetadataMerger
 Names are illustrative, not mandatory. The important boundary is that Gradle/AGP objects are read
 only inside the snapshotter and converted immediately into serializable DTOs. Merge and downstream
 code operate only on DTOs/JSON.
+
+Any JSON encode/decode call site introduced by this item must be added to the Item 30 JSON-phase
+inventory. JSON crossing a task boundary must use Gradle file inputs/outputs, never JSON string
+task properties.
 
 ## Required Parity
 
@@ -198,10 +213,16 @@ leave noisy per-project logs enabled by default.
 Add focused tests before broad PAX validation:
 
 - experiment extension default and mode override;
-- no `dependencyDeclarationFileTree`/build-glob input remains;
+- no `dependencyDeclarationFileTree`, `dependencyDeclarationFiles`, or
+  `declaredDependencyMetadataJson: Property<String>` path remains;
 - single-mode and fanout-mode sample aggregate JSON parity;
-- fanout merge sorts projects deterministically;
+- fanout merge stores the merged `projects` map deterministically, for example with
+  `toSortedMap()`;
+- fanout merge produces byte-identical aggregate JSON when shard inputs are supplied in shuffled
+  order;
 - downstream resolver consumes the same aggregate file path in both modes;
+- fanout shard tasks do not use `Property<String>` / `Provider<String>` JSON payload inputs;
+- fanout shard tasks do not use live Gradle/AGP objects as task inputs;
 - switching modes does not change generated sample BUILD/WORKSPACE files.
 
 Where Gradle functional coverage is expensive, add unit tests around the snapshotter/merger and one
@@ -236,12 +257,17 @@ evidence.
 
 This item is not complete unless all are true:
 
-- `dependencyDeclarationFileTree` and the broad build-file/TOML tracing input are deleted.
+- `dependencyDeclarationFileTree`, `dependencyDeclarationFiles`, and
+  `declaredDependencyMetadataJson` are deleted or replaced by non-JSON-string task properties.
 - The experiment mode exists and is covered by tests.
 - `SINGLE_TASK` is explicitly untracked/uncacheable and uses bounded coroutine fanout only within
   the approved DTO snapshot boundary.
 - `PROJECT_TASK_FANOUT` uses cacheable project shard tasks plus a cacheable deterministic merge
-  task.
+  task, without JSON payload string inputs.
+- fanout shard task inputs are typed Gradle scalar/list/map properties and/or Gradle file
+  properties, with no live Gradle/AGP model object task inputs.
+- merged `DeclaredDependencyMetadata.projects` ordering is deterministic and tested with shuffled
+  shard input order.
 - Both modes write or feed the same aggregate metadata contract to downstream tasks.
 - Focused sample tests prove mode parity.
 - PAX can switch modes without generated-output regression, or any difference is stopped and
