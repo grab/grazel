@@ -7,8 +7,9 @@ planning layer while keeping Gradle-resolved values as the source of truth.
 
 - Root app and `com.android.test` classpaths are resolved once and used as the resolved
   value source for workspace planning.
-- `WorkspacePlan` / `WorkspaceRenderPlan` now own candidate Maven repos, materialized
-  repos, tag decisions, target references, and pin inputs.
+- `WorkspacePlan` / `WorkspaceRenderPlan` own candidate Maven repos, materialized repos, tag
+  decisions, target references, and pin inputs. Item 19 is the follow-up to move target
+  references out of target-builder execution entirely.
 - Root generation, Maven pinning, and tag-producing extractors now read from those plans
   instead of scraping generated BUILD/WORKSPACE output.
 - Generated-output feedback paths were removed: project Maven repo manifests,
@@ -29,8 +30,9 @@ planning layer while keeping Gradle-resolved values as the source of truth.
   `--force-version` shortcuts.
 - Compile-filter Maven tags use `@maven//:` labels only.
 - Candidate Maven repos are not automatically materialized.
-- PAX generated files are verification output only and must not be committed from this
-  Grazel branch.
+- PAX generated files are verification output. A maintainer-authorized local baseline commit in
+  PAX is allowed as a regression guard, but this Grazel goal must not push PAX or mix PAX source
+  edits into generated-output baselines.
 
 ## PAX Diff Shape
 
@@ -92,7 +94,8 @@ Documented local waivers:
 
 - `AggregatedDependencyResolver` and its `ResolutionSession` orchestration.
 - `WorkspacePlanService`, `WorkspacePlan`, and render-plan materialization boundaries.
-- `TargetMavenRepoReferencesCollector` and exact referenced project target propagation.
+- Item 19 `TargetReferenceFacts` / existing `TargetMavenRepoReferencesCollector` transition and
+  exact referenced project target propagation.
 - Android/Kotlin target reachability filtering and BUILD disabling behavior.
 - Maven pin activation in `MavenRules` and `ArtificatPinner`.
 - Tests for exclude intersection, provenance, reachability, and pinning.

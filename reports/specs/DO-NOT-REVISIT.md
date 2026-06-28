@@ -29,8 +29,16 @@ decisions. Lift those decisions into `WorkspacePlan` / `WorkspaceRenderPlan`.
 repos must be limited to reachable generated deps/plugins/tags, override-target closure,
 and always-materialized repos.
 
-## Do Not Treat PAX As A Commit Target
+## Do Not Treat PAX As A Normal Commit Target
 
 PAX is the verification workspace. Its local composite include build should pick up this
 Grazel checkout. PAX build-logic can be temporarily adjusted for task-ordering
-compatibility if necessary, but PAX changes are not committed from this goal.
+compatibility if necessary, but PAX changes are not committed from this goal unless the
+maintainer explicitly asks for a local generated-output baseline commit. Do not push PAX.
+
+## Do Not Execute Target Builders During Reference Collection
+
+`CollectTargetMavenRepoReferencesTask` currently uses target builders as a planning input.
+Item 19 exists to remove that round-trip. The intended end state is structured
+`TargetReferenceFacts` feeding `WorkspaceRenderPlan`, then target builders running once during
+BUILD generation.

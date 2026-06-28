@@ -71,7 +71,7 @@ Layer 0  Variant topology        VariantBuilder / Variant<*> / BucketHierarchyGr
 Layer 1  Cheap declared facts     DeclaredDependencyMetadataCollector + typed graph nodes/edges
 Layer 2  Resolved value graph     AggregatedDependencyResolver (values+closure ONLY) + slim CWD
 Layer 3  Bucket ownership plan     BucketOwnershipPlanner (declared placement + hybrid reconcile)
-Layer 4  Workspace/render plans    WorkspacePlan / WorkspaceRenderPlan
+Layer 4  Workspace/render plans    WorkspacePlan / WorkspaceRenderPlan / TargetReferenceFacts
 Layer 5  Rendering                 project/root gen + pinner (format only)
 ```
 SCC is a **diagnostic fallback for proven genuine typed cycles only**. The known PAX
@@ -97,8 +97,32 @@ intended output change).
 | **14** | Slim `ComputeWorkspaceDependencies` to value-holder | specced | preserving | Move CWD's duplicate-collapse / override-synthesis into the planner/plan layer; CWD keeps flatten / max-version / transitive / KSP | 13 |
 | **15** | Rendering purity + hygiene | specced | preserving | Wire-or-remove `commonAncestorsOf`/`closestCommonAncestorsOf`; delete dead-code residues; add `WorkspaceRenderPlanBuilder` test; confirm no generated-file parsing feedback | 14 |
 | **16** | Simplify, adversarial review & final verification | specced | preserving | Run simplify pass, adversarial review, broad Grazel/PAX verification, docs/waiver cleanup; produce review-ready branch | 15 |
+| **17** | Consolidate bucket set-math; remove duplication & dead code | draft final-review | **preserving (empty-diff)** | Extract duplicated set-math primitives to one `BucketSetMath.kt`; delete the resolver's dead `withoutDeclaredPlaceholdersCoveredByDefault` and orphaned ownership cluster; keep planner-private ownership helper | 10, 12 |
+| **18** | Retire SCC ordering → typed DAG topo sort | draft final-review | **preserving (empty-diff)** | Replace Kosaraju/condensation in `ProjectReachabilityOrder` with direct typed Kahn ordering; keep fail-closed typed cycle diagnostic; delete vestigial `cyclic` flag + dead `check(!group.cyclic)`; drop redundant `normalized()` rebuild | 9, 11, 17 |
+| **19** | Target reference facts; remove target-builder execution from reference collection | draft final-review | **preserving (empty-diff)** | Replace `BazelTarget`/`TargetBuilder`-based reference discovery with structured facts; keep consumer-first `WorkspacePlanService` mutation; target builders run only during generation | 17, 18 |
+| **21** | Simplify pass — dead code, duplication & indirection | specced | **preserving (empty-diff)** | Whole-branch cleanup from the 4-agent simplify audit: delete zero-caller dead code (`tagsFor` ext, `rootArtifacts`/`variantArtifacts` fields, dead overloads/interface methods, unread input), de-dup `hasSameDefaultOwnerIdentityAs`, inline one-caller wrappers, filter-before-override in maven calc. Keeps `TasksManager` dependsOn + `@InputFiles` (deferred) | 10 |
+| **22** | Set-math ownership reduction — EXPERIMENT | specced | investigate → empty-diff reshape **or** proven-essential doc | Measure how much set-subtraction ownership is declaration-explainable (model-essential, reducible) vs undeclared-transitive/conflict-driven (problem-essential); reshape output-preserving if reducible, else document as proven-essential in `DO-NOT-REVISIT.md` | 12, 13, 17 |
 
-**Execution order:** 10 → 9 → 11 → 12 → 13 → 14 → 15 → 16.
+**Recommended next execution order:** 17 → 18 → 19 → 21, then optionally 22 as the stretch
+goal. Item 21 is mostly independent and may run earlier only for clearly disjoint cleanup, but
+its `compressionResults` input removal must wait until Item 19 settles whether
+target-reference facts need compression data as a declared input. Item 22 (set-math ownership
+reduction experiment) runs only after a clean green checkpoint for the primary work unless the
+maintainer explicitly pulls it forward after Item 17. For Item 22, Phase 1 measurement is the
+required stretch deliverable; Phase 2 reshape is allowed only if the Item 22 exit rubric proves
+shadow parity and a real complexity reduction. Item 20 (task cacheability after
+target-reference facts) remains discussion-only.
+
+**Post-16 follow-up pass (2026-06-28 audit).** Review agents ground-truthed the branch
+after Item 16. Finding: the altitude work landed *more* completely than the executor's
+self-assessment implied (typed graph is the ordering substrate, `BucketOwnershipPlanner` is
+pure Layer-3, CWD is a 195-line value-holder, Item 15 hygiene all done, parity flags all
+removed). Items 17–18 capture the only genuinely reducible debt: duplicated/dead set-math
+(missed by the executor) and now-vestigial SCC. Both are **empty-diff**. Item 19 captures the
+stronger altitude/performance smell found afterwards: reference collection executes target
+builders, then generation executes them again. Item 19 removes that dual execution while
+preserving the current consumer-first `WorkspacePlanService` mutation. Item 20 (cacheability)
+is deliberately deferred.
 
 **Behaviour property:** Items 10, 11, 12, 14, 15 and Item 9 Stage 1 are expected
 **golden empty-diff**; Item 16 is final quality/verification only and must not introduce

@@ -88,6 +88,43 @@ Copied verbatim into each later spec's header by reference to this section.
 
 ---
 
+## Code-quality stance (apply to EVERY spec in this set)
+
+The maintainer's standing instruction: **the codebase should end simple. Lean on the PAX
+baseline + golden + size guard to be ambitious about removing complexity.** Apply this
+yardstick, not LOC or surface aesthetics.
+
+1. **Classify complexity three ways before touching it.**
+   - **Accidental** — duplication, dead code, one-caller indirection, tool quirks. *Remove on
+     sight*; no behaviour budget needed (e.g. Item 21).
+   - **Model-essential** — irreducible *only because of the current model* (e.g. the
+     set-subtraction ownership math is essential only while ownership = "resolve everything,
+     then subtract by set membership"). *This is a legitimate, encouraged target* — attack it
+     as an explicit output-changing or output-preserving reshape, never smuggled into an
+     empty-diff item.
+   - **Problem-essential** — genuinely irreducible: distinct equality contracts, a testability
+     seam, the typed projection that prevents false cycles. *Leave it, and document why with
+     evidence* — not by assertion.
+   A "leave alone" entry is only valid if it is problem-essential. If something is merely
+   model-essential, the correct move is to file a reshape item, not to enshrine it.
+2. **Measure complexity by what makes change hard, not by size.** Hunt: special-case / branch
+   count (fallbacks, fixpoints, compensating mechanisms), fan-out to understand one behaviour
+   change, and re-derivation round-trips (stringify-then-regex-parse, resolve-then-subtract,
+   compute-then-filter). Shaving a one-line wrapper does not move these; deleting a fallback,
+   a round-trip, or a whole special-case class does. Net-neutral LOC with fewer special cases
+   is a win.
+3. **Calibrate ambition to the strength of the safety net.**
+   - **Output-preserving reshapes** are nearly free of risk — golden empty-diff + size-guard
+     no-increase prove safety byte-for-byte. *Be maximally ambitious here.*
+   - **Intended-diff reshapes** (new behaviour) have a weaker net: byte-equality no longer
+     applies, so they rely on adversarial review + size guard + diff-by-diff classification.
+     *Be ambitious but careful, and gate hard.*
+   The baseline catches *output* regressions, not internal-correctness regressions that happen
+   to render identically — so an output-preserving reshape still needs focused unit tests on
+   the reshaped logic, not just the golden.
+
+---
+
 ## Verification Playbook (canonical; inherited from Codex's proven flow)
 
 ### Local grazel loop (in order)

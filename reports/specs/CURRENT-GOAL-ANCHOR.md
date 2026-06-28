@@ -1,43 +1,47 @@
-# Current Goal Anchor — Altitude Layering
+# Current Goal Anchor - Items 17-22 Follow-Up
 
 > **Read this first for the next long-running goal.** This file is the compact execution
-> anchor. The detailed source of truth is `ALTITUDE-LAYERING-ROADMAP.md` plus the active item
-> spec. Do not load old long logs into main context; use focused subagents for historical or
-> PAX-heavy lookup.
+> anchor. The detailed source of truth is `ALTITUDE-LAYERING-ROADMAP.md`, Item 1's global
+> constraints/code-quality stance, and the active item spec. Do not load old long logs into main
+> context; use focused subagents for wide reads, PAX audits, and historical checks.
 
 ## Source Of Truth
 
 1. `reports/specs/CURRENT-GOAL-ANCHOR.md`
-2. `reports/specs/ALTITUDE-LAYERING-ROADMAP.md`
-3. The active item spec:
-   - `2026-06-27-item10-pax-size-guard-design.md`
-   - `2026-06-26-item9-reachability-target-edges-design.md`
-   - `2026-06-27-item11-contain-scc-design.md`
-   - `2026-06-27-item12-extract-bucket-ownership-planner-design.md`
-   - `2026-06-27-item13-test-lint-delta-ownership-design.md`
-   - `2026-06-27-item14-slim-compute-workspace-dependencies-design.md`
-   - `2026-06-27-item15-rendering-purity-hygiene-design.md`
-   - `2026-06-27-item16-simplify-review-verification-design.md`
+2. `reports/specs/2026-06-26-item1-baseline-and-safety-net-design.md`
+3. `reports/specs/ALTITUDE-LAYERING-ROADMAP.md`
+4. Active specs:
+   - `2026-06-28-item17-consolidate-bucket-setmath-design.md`
+   - `2026-06-28-item18-retire-scc-typed-dag-ordering-design.md`
+   - `2026-06-28-item19-target-reference-facts-design.md`
+   - `2026-06-28-item21-simplify-pass-dead-code-design.md`
+   - `2026-06-28-item22-setmath-ownership-reduction-experiment-design.md`
 
-`2026-06-27-altitude-layering-refactor-plan.md` is superseded architectural input only. Do
-not execute from it directly.
+Superseded input only:
+
+- `2026-06-27-altitude-layering-refactor-plan.md`
+- `2026-06-28-next-slices-scc-and-target-references-draft.md`
+
+Do not execute from superseded files directly.
 
 ## Execution Order
 
+Primary order:
+
 ```text
-10 -> 9 -> 11 -> 12 -> 13 -> 14 -> 15 -> 16
+17 -> 18 -> 19 -> 21
 ```
 
-- Item 10 creates the machine-enforced PAX size guard.
-- Item 9 adds typed graph nodes/edges and `com.android.test -> app` reachability ordering.
-- Item 11 proves false SCCs are eliminated; SCC remains only as typed diagnostic fallback if
-  a genuine typed cycle is proven.
-- Item 12 extracts `BucketOwnershipPlanner` preserving output.
-- Item 13 is the only planned output change: test/androidTest delta ownership.
-- Item 14 slims `ComputeWorkspaceDependencies` preserving output.
-- Item 15 performs rendering purity/hygiene cleanup.
-- Item 16 runs simplify-pass, adversarial review, broad verification, and final docs/waiver
-  cleanup.
+Stretch:
+
+```text
+22 Phase 1 measurement after the primary checkpoint is green.
+22 Phase 2 reshape only if the Item 22 rubric proves exact shadow parity and real complexity
+reduction.
+```
+
+Item 21 is mostly independent, but its `compressionResults` input removal must wait until Item
+19 decides whether target-reference facts need compression data.
 
 ## PAX Baseline
 
@@ -49,8 +53,9 @@ branch: arun/grazel-refactor
 sha:    05d2b4801530726ab722133c2ba32cbba9afeb67
 ```
 
-Never commit PAX changes. Use PAX `git diff` after migration as the generated-output impact
-loop.
+The maintainer may create a local PAX generated-output baseline commit before this goal so
+`git diff` is a direct regression signal. Do not push PAX. Do not commit PAX again during the
+goal unless the maintainer explicitly asks for a new local baseline commit.
 
 ## Hard Invariants
 
@@ -69,64 +74,46 @@ loop.
   roots.
 - No PAX-only hacks. Do not push. Commit Grazel locally only at clean green checkpoints.
 
-## Complexity And Performance Anchor
+## Code-Quality Anchor
 
-The point of layering is not cosmetic. The current PAX-verified baseline gives the refactor
-room to replace compensating machinery with better models while preserving correctness.
+Inherit Item 1's code-quality stance:
 
-Prefer:
+- accidental complexity: remove on sight;
+- model-essential complexity: reshape only as an explicit item with gates;
+- problem-essential complexity: leave only after evidence is documented.
 
-- typed graph projections over SCC/fixpoint fallback;
-- aggregated declared metadata over downstream inference;
-- `BucketOwnershipPlanner` over scattered ownership predicates;
-- mechanical `ComputeWorkspaceDependencies` value/index computation over policy;
-- renderers consuming plans over target/output feedback.
+Measure complexity by special-case count, fan-out, fallback/fixpoint machinery, and
+re-derivation round-trips, not by LOC.
 
-Each item should try to delete or simplify the special-case logic its new layer makes
-unnecessary. If complexity stays or grows, document why it is still required.
+## Item Intent
 
-## Guard Semantics
-
-- Preserving items exact-match generated output and per-repo artifact identity.
-- Item 9 Stage 2 may have a classified correctness diff only if the new target edge exposes
-  real under-collection.
-- Item 13 may change only test/androidTest scoped repos.
-- Lint is out of scope for Item 13 and must exact-match.
-- Item 13 has no internal increase waiver. If it increases guarded totals, abandon/redesign
-  the item.
-- Item 13 may move roots between `test_maven` and `android_test_maven` only when the move is
-  classified as more precise typed ownership and the scoped aggregate plus guarded totals
-  stay flat or shrink.
-- Accepted reductions monotonically lower the machine-readable PAX baseline.
-- SCC is not a modeling strategy. The known PAX `deliveries-model-food ↔ food-testkit` case
-  is presumed false until typed graph projection proves a genuine same-projection cycle.
-
-## Temporary Harness
-
-Use the temporary parity/diff property while the old path for that item exists:
-
-```text
--Pgrazel.internal.parity=ownership|cwd
-```
-
-For Item 13, `-Pgrazel.internal.parity=delta` is valid only if a pre-Item-13 path still
-exists. Otherwise use the frozen Item 10 PAX baseline JSON plus generated diff
-classification as the parity source. Remove each temporary parity mode and old path before
-completing its item.
+- **17:** Move duplicated bucket set math to `BucketSetMath.kt`; delete dead resolver/planner
+  helper copies. Empty generated diff.
+- **18:** Replace SCC/condensation in reachability ordering with direct typed DAG topo sort;
+  keep typed fail-closed diagnostics. Empty generated diff.
+- **19:** Remove target-builder execution from reference collection. Keep consumer-first
+  `WorkspacePlanService` mutation; target builders run only during generation. Empty generated
+  diff.
+- **21:** Remove dead code, duplicate predicates, one-caller indirection, and the scoped
+  perf-inline. Guard `compressionResults` removal until Item 19 decides its input needs.
+- **22:** Stretch experiment. Measure whether set-math ownership is reducible; either reshape
+  with exact shadow parity and empty generated diff, or document as proven problem-essential.
 
 ## Verification Loop
 
-Before expensive Gradle/Bazel commands, check disk, memory, and process pressure. PAX is
-large; long runs are expected. Avoid concurrent huge builds.
+Before expensive Gradle/Bazel commands, check disk, memory, and process pressure. PAX is large;
+long runs are expected. Avoid concurrent huge builds.
 
 Grazel checks as changes mature:
 
 ```text
 ./gradlew :grazel-gradle-plugin:test --console=plain --no-daemon
-./gradlew migrateToBazel --console=plain
+./gradlew migrateToBazel --console=plain --no-daemon
 reports/scripts/verify-default-task-graph.sh
 reports/scripts/verify-sample-bucket-labels.sh
+reports/scripts/verify-pax-size-guard.sh --mode preserving
 git diff --check
+git diff --check master...HEAD
 ```
 
 PAX loop after meaningful non-doc changes:
@@ -139,7 +126,20 @@ cd /Users/arun.sampathkumar/work/pax-android
 git diff --check
 ```
 
-Then run the Grazel PAX size guard from Item 10.
+For preserving items, any generated PAX/sample diff is stop-and-investigate unless explicitly
+classified by the active spec.
+
+## Performance Hygiene
+
+Record in `reports/specs/EXECUTION-LOG.md` after meaningful runs:
+
+- active item and current commit,
+- commands and results,
+- PAX size guard counts,
+- `migrateToBazel` elapsed time when measured,
+- Item 19 target-builder invocation count during reference collection,
+- failures/root causes/fixes,
+- remaining risks.
 
 ## Resource Hygiene
 
@@ -151,19 +151,12 @@ Then run the Grazel PAX size guard from Item 10.
 - Stop stale Gradle daemons, Bazel processes, Coursier children, or high-RAM `python3.12`
   processes only when clearly stale/problematic.
 
-## Logging And Compaction Survival
+## Compaction Survival
 
-Keep `reports/specs/EXECUTION-LOG.md` current after major milestones/failures:
-
-- active item and current commit,
-- decisions made,
-- commands and results,
-- failures/root causes,
-- remaining risk.
-
-Also maintain concise item-specific logs under `reports/specs/execution-log/` for the active
-item. On context compaction, reload the current anchor, roadmap, active item spec, and the
-active item execution-log file before touching code.
+Keep `reports/specs/EXECUTION-LOG.md` current after major milestones/failures. Also maintain
+concise item-specific logs under `reports/specs/execution-log/` for the active item. On context
+compaction, reload this anchor, roadmap, Item 1, the active item spec, and the active item
+execution-log file before touching code.
 
 Use subagents deliberately for wide reads, historical master/PAX comparisons, audit scripts,
-and final adversarial review. Spot-check important claims.
+PAX diff/count checks, and final adversarial review. Spot-check important claims.

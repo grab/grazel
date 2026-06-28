@@ -1400,3 +1400,30 @@ evidence in item-specific logs so context compaction can recover state quickly.
   `b9b38774443602baa0adf251daeb236e68cd181e1f4ccdf74ee412a30822c6d6`, and
   dirty-entry count `2231`.
 - PAX `git diff --check` passed after Bazel build/test.
+
+## 2026-06-28 Next Goal Anchor Cleanup
+
+- Consulted current Codex manual guidance for Goal mode: goal text should act as both starting
+  prompt and completion criteria, include measurable verification criteria, and use subagents
+  deliberately for context-heavy work.
+- Replaced `CURRENT-GOAL-ANCHOR.md` so the active compact anchor is Items 17, 18, 19, 21, and
+  stretch Item 22, not the completed Items 10-16.
+- Clarified the PAX baseline rule: a maintainer-authorized local generated-output baseline
+  commit in PAX is allowed as a regression guard, but the Grazel goal must not push PAX or
+  commit additional PAX changes unless explicitly asked.
+- Reconciled `DO-NOT-REVISIT.md` and `REVIEW-GUIDE.md` with Item 19: target reference
+  discovery should move to structured `TargetReferenceFacts`, and target builders should run
+  once during generation.
+- Remaining prep before execution: if the maintainer commits the current PAX generated-output
+  baseline locally, record the PAX commit SHA in this log before starting item work.
+
+## 2026-06-28 Goal Start Baseline
+
+- Grazel branch: `arun/dependencies-refactor`; starting commit before spec-anchor commit:
+  `afbdaa3fd1503248d2aff313ec94d03ef6a501fb`.
+- PAX branch: `arun/grazel-refactor`; local generated-output baseline commit:
+  `cfa1057ed58ccb2a795a5f679f072a8f604ff48e`; PAX worktree clean at goal start.
+- Active objective: Items 17, 18, 19, and 21 required; Item 22 stretch only after primary
+  work is green, with Phase 2 gated by exact shadow parity and real complexity reduction.
+- Next action: commit the current spec/anchor docs locally in Grazel so implementation starts
+  from a clean worktree, then begin Item 17.
