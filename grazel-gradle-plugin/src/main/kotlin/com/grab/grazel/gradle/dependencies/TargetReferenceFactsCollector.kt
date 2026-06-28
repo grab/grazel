@@ -20,7 +20,6 @@ import com.grab.grazel.bazel.starlark.BazelDependency
 import com.grab.grazel.bazel.starlark.BazelDependency.MavenDependency
 import com.grab.grazel.bazel.starlark.BazelDependency.ProjectDependency
 import com.grab.grazel.bazel.starlark.BazelDependency.StringDependency
-import com.grab.grazel.gradle.dependencies.model.TargetMavenRepoReferences
 import com.grab.grazel.gradle.dependencies.model.TargetReferenceFacts
 import com.grab.grazel.gradle.dependencies.model.WorkspaceRenderPlan
 
@@ -93,13 +92,6 @@ internal fun Iterable<TargetReferenceFacts>.merged(): TargetReferenceFacts {
     }
         .normalized()
 }
-
-internal fun TargetReferenceFacts.toTargetMavenRepoReferences(): TargetMavenRepoReferences =
-    TargetMavenRepoReferences(
-        repoNames = repoNames,
-        projectPaths = projectPaths,
-        projectTargets = projectTargets
-    )
 
 internal fun TargetReferenceFacts.asRenderPlan(): WorkspaceRenderPlan =
     WorkspaceRenderPlan(

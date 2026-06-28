@@ -27,10 +27,8 @@ import com.grab.grazel.gradle.dependencies.ProjectReachabilityOrder
 import com.grab.grazel.gradle.dependencies.WorkspacePlanService
 import com.grab.grazel.gradle.dependencies.asRenderPlan
 import com.grab.grazel.gradle.dependencies.mergeTargetReferenceFacts
-import com.grab.grazel.gradle.dependencies.model.TargetMavenRepoReferences
 import com.grab.grazel.gradle.dependencies.model.TargetReferenceFacts
 import com.grab.grazel.gradle.dependencies.normalized
-import com.grab.grazel.gradle.dependencies.toTargetMavenRepoReferences
 import com.grab.grazel.migrate.target.TargetReferenceFactsExtractor
 import com.grab.grazel.util.GradleProvider
 import com.grab.grazel.util.logHeap
@@ -141,7 +139,7 @@ internal fun collectTargetMavenRepoReferences(
     canMigrate: (Project) -> Boolean,
     factsForProject: (Project) -> TargetReferenceFacts,
     workspacePlanService: WorkspacePlanService
-): TargetMavenRepoReferences =
+): TargetReferenceFacts =
     collectTargetMavenRepoReferencesByGroup(
         projectGroups = projects.map { project -> ProjectReachabilityGroup(listOf(project)) },
         canMigrate = canMigrate,
@@ -154,16 +152,16 @@ internal fun collectTargetMavenRepoReferencesByGroup(
     canMigrate: (Project) -> Boolean,
     factsForProject: (Project) -> TargetReferenceFacts,
     workspacePlanService: WorkspacePlanService
-): TargetMavenRepoReferences {
+): TargetReferenceFacts {
     val referenceFacts = collectTargetMavenRepoReferencesSinglePass(
         projectGroups = projectGroups,
         canMigrate = canMigrate,
         factsForProject = factsForProject,
         workspacePlanService = workspacePlanService
     )
-    val references = referenceFacts.toTargetMavenRepoReferences()
+    val references = referenceFacts.normalized()
 
-    workspacePlanService.populateRenderPlan(referenceFacts.asRenderPlan())
+    workspacePlanService.populateRenderPlan(references.asRenderPlan())
     return references
 }
 
@@ -200,14 +198,8 @@ private fun collectProjectReferences(
     if (!canMigrate(project)) {
         return accumulated
     }
-    return mergeTargetMavenRepoReferences(
+    return mergeTargetReferenceFacts(
         accumulated,
         factsForProject(project)
     )
 }
-
-private fun mergeTargetMavenRepoReferences(
-    left: TargetReferenceFacts,
-    right: TargetReferenceFacts
-): TargetReferenceFacts =
-    mergeTargetReferenceFacts(left, right)

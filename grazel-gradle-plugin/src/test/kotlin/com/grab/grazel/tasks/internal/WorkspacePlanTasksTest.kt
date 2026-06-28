@@ -28,6 +28,7 @@ import com.grab.grazel.gradle.dependencies.WorkspaceTargetTagPlanCollector
 import com.grab.grazel.gradle.dependencies.model.ResolvedDependency
 import com.grab.grazel.gradle.dependencies.model.TargetTagKey
 import com.grab.grazel.gradle.dependencies.model.TargetTagPlan
+import com.grab.grazel.gradle.dependencies.model.TargetReferenceFacts
 import com.grab.grazel.gradle.dependencies.model.WorkspaceDependencies
 import com.grab.grazel.gradle.dependencies.model.WorkspacePlan
 import com.grab.grazel.gradle.dependencies.model.WorkspaceRenderPlan
@@ -256,7 +257,7 @@ class WorkspacePlanTasksTest {
         val uiTestsProject = buildProject("ui-tests", rootProject)
         val workspacePlanService = WorkspacePlanService.register(rootProject).get()
 
-        val references = collectTargetMavenRepoReferences(
+        val references: TargetReferenceFacts = collectTargetMavenRepoReferences(
             projects = listOf(uiTestsProject, appProject),
             canMigrate = { true },
             factsForProject = { project ->
@@ -298,7 +299,7 @@ class WorkspacePlanTasksTest {
         val workspacePlanService = WorkspacePlanService.register(rootProject).get()
         val callsByProject = mutableMapOf<String, Int>()
 
-        val references = collectTargetMavenRepoReferences(
+        val references: TargetReferenceFacts = collectTargetMavenRepoReferences(
             projects = listOf(uiTestsProject, appProject, libProject),
             canMigrate = { true },
             factsForProject = { project ->

@@ -18,7 +18,7 @@ package com.grab.grazel.tasks.internal
 
 import com.grab.grazel.gradle.dependencies.DefaultWorkspacePlanService
 import com.grab.grazel.gradle.dependencies.WorkspaceRenderPlanBuilder
-import com.grab.grazel.gradle.dependencies.model.TargetMavenRepoReferences
+import com.grab.grazel.gradle.dependencies.model.TargetReferenceFacts
 import com.grab.grazel.util.GradleProvider
 import com.grab.grazel.util.fromJson
 import com.grab.grazel.util.logHeap
@@ -63,7 +63,7 @@ internal abstract class FinalizeWorkspacePlanTask : DefaultTask() {
     fun action() {
         logger.logHeap("FinalizeWorkspacePlan:start")
         val plan = workspacePlanService.get().initPlan(workspacePlan.get().asFile)
-        val targetReferences = fromJson<TargetMavenRepoReferences>(targetMavenRepoReferences.get())
+        val targetReferences = fromJson<TargetReferenceFacts>(targetMavenRepoReferences.get())
         val renderPlan = WorkspaceRenderPlanBuilder().build(
             workspacePlan = plan,
             referencedRepoNames = targetReferences.repoNames

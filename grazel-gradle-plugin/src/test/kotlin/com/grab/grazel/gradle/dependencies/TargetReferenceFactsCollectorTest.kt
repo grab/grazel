@@ -78,4 +78,17 @@ class TargetReferenceFactsCollectorTest {
             facts.projectTargets
         )
     }
+
+    @Test
+    fun `collects structured Android test instrumented target reference`() {
+        val rootProject = buildProject("root")
+        val appProject = buildProject("app", rootProject)
+
+        val facts = TargetReferenceFactsCollector.from(
+            instruments = ProjectDependency(appProject, suffix = "-gps-pax-debug")
+        )
+
+        assertEquals(setOf(":app"), facts.projectPaths)
+        assertEquals(mapOf(":app" to setOf("app-gps-pax-debug")), facts.projectTargets)
+    }
 }

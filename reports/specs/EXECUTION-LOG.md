@@ -1645,3 +1645,68 @@ evidence in item-specific logs so context compaction can recover state quickly.
 - Resource notes: checked disk/memory/process before expensive Gradle/Bazel commands; disk was
   tight but stable around `17-19 GiB` free on Data; stopped no Gradle daemon because none was
   running after migrate; no cache deletion was performed.
+
+## 2026-06-28 Next Goal Start: Items 23, 26, 24, 27, 25
+
+- Goal source: `/Users/arun.sampathkumar/.codex/attachments/e715213e-f220-4897-8cd0-41915310448a/pasted-text-1.txt`.
+- Current execution order is hard-gated by `reports/specs/ALTITUDE-LAYERING-ROADMAP.md`:
+  Item 23 -> Item 26 -> Item 24 -> Item 27 -> Item 25 -> final verification/review.
+- Committed approved spec-only updates before production work:
+  `5e08bb169c704f0fbfb25f357e36e0fb04345350` (`docs: add next refactor goal specs`).
+- Grazel branch at goal start: `arun/dependencies-refactor`.
+- Grazel worktree after spec commit: clean.
+- PAX regression workspace:
+  `/Users/arun.sampathkumar/work/pax-android`, branch `arun/grazel-refactor`,
+  commit `cfa1057ed58ccb2a795a5f679f072a8f604ff48e`.
+- PAX worktree at goal start: clean. Do not commit or push PAX changes unless explicitly
+  instructed by maintainer.
+- Active item: Item 23 target reference model hygiene.
+- Key hard gates carried forward:
+  generated Grazel output empty-diff, PAX generated baseline unchanged, no PAX-only hacks,
+  no closure dropping / `--force-version`, normalized `@maven//:` compile-filter tags only,
+  and no early exit before Items 23, 26, 24, 27, and 25 satisfy their acceptance criteria.
+
+## 2026-06-28 Item 23 Progress: Target Reference Model Hygiene
+
+- Red check: changed `WorkspacePlanTasksTest` local variables to require
+  `TargetReferenceFacts` from `collectTargetMavenRepoReferences(...)`; focused test compile
+  failed because the helper still returned `TargetMavenRepoReferences`.
+- Implementation:
+  - removed the duplicate `TargetMavenRepoReferences` data model;
+  - changed reference collection/finalization to read and write `TargetReferenceFacts`;
+  - deleted production `TargetMavenRepoReferencesCollector`;
+  - deleted the old collector test and moved live-API coverage into
+    `TargetReferenceFactsCollectorTest`;
+  - removed the stale test-only merge wrapper in favor of `mergeTargetReferenceFacts(...)`.
+- Acceptance scan: no production `TargetMavenRepoReferences` model, conversion helper, or
+  production collector remains. The remaining `TargetMavenRepoReferences` text is task/helper
+  naming only.
+- Verification passed:
+  `./gradlew :grazel-gradle-plugin:test --tests "com.grab.grazel.tasks.internal.WorkspacePlanTasksTest" --tests "com.grab.grazel.gradle.dependencies.TargetReferenceFactsCollectorTest" --console=plain --no-daemon`
+  and
+  `./gradlew :grazel-gradle-plugin:test --console=plain --no-daemon`.
+- `git diff --check` passed.
+- Remaining Item 23 gates: local `migrateToBazel`, default task graph, sample bucket labels,
+  PAX migrate/build/test baseline loop, size guard, and local commit if all remain green.
+
+## 2026-06-28 Item 23 Verification Complete
+
+- Grazel generation passed:
+  `./gradlew migrateToBazel --console=plain --no-daemon`.
+- `reports/scripts/verify-default-task-graph.sh` passed.
+- `reports/scripts/verify-sample-bucket-labels.sh` still hits the documented pre-existing
+  one-sided appcompat/constraintlayout exclude waiver; not an Item 23 regression.
+- `reports/scripts/verify-pax-size-guard.sh --mode preserving` passed with unchanged PAX
+  counts: bucket count `11`, pinfile count `11`, total artifact roots `1945`.
+- `git diff --check` and `git diff --check master...HEAD` passed.
+- PAX `./gradlew migrateToBazel --no-daemon --console=plain --stacktrace --rerun-tasks`
+  passed in `12m 26s`; generated output stayed clean against baseline
+  `cfa1057ed58ccb2a795a5f679f072a8f604ff48e`.
+- PAX `./bazel.sh build --verbose_failures //app:app-gps-pax-debug.apk //app:app-gps-pax-debug-android-test.apk`
+  passed in `224.543s`.
+- PAX focused Bazel tests passed:
+  `./bazel.sh test --test_output=errors //app-utils:app-utils-gps-pax-debug-test //app-test:app-test-gps-pax-debug-test //application-initializer:application-initializer-gps-pax-debug-test`.
+- PAX `git status --short` stayed clean and PAX `git diff --check` passed.
+- Resource notes: checked disk/memory/process before expensive runs; disk stayed around
+  `19-20 GiB` free after PAX migrate/build; no cache deletion or process kill was needed.
+- Item 23 status: complete pending local commit.
