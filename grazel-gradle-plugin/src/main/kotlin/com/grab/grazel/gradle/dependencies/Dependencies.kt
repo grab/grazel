@@ -37,6 +37,7 @@ import com.grab.grazel.gradle.variant.Variant
 import com.grab.grazel.gradle.variant.VariantBuilder
 import com.grab.grazel.gradle.variant.VariantGraphKey
 import com.grab.grazel.gradle.variant.VariantType
+import com.grab.grazel.gradle.variant.declarationBucketName
 import com.grab.grazel.gradle.variant.id
 import com.grab.grazel.gradle.variant.isTest
 import com.grab.grazel.gradle.variant.migratableConfigurations

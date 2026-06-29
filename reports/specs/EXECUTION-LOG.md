@@ -56,6 +56,19 @@ evidence in item-specific logs so context compaction can recover state quickly.
     preserving`, and both diff-check commands. `verify-sample-bucket-labels.sh`
     still fails only on the known pre-existing
     appcompat/constraintlayout exclude-union assertion.
+  - Item 33 variant-layer declared configuration roles is locally green with
+    evidence in
+    `reports/specs/execution-log/item33-variant-layer-declared-config-roles.md`.
+    Declaration bucket classification, compile-only declaration
+    classification, `declarationBucketName()`, and `compileOnlyBucketName`
+    moved to `gradle.variant`; the dependencies layer consumes typed role
+    accessors. Focused tests, full plugin unit tests, local `migrateToBazel`,
+    default task-graph verification, PAX size guard, and diff checks passed.
+    PAX `migrateToBazel` passed in `28m` with
+    `mode=PROJECT_TASK_FANOUT projects=2327 shards=2327
+    aggregateJsonBytes=35247531 elapsedMs=442`; PAX APK build passed in
+    `751.827s`; PAX focused Bazel tests passed in `23.001s`; PAX generated
+    diff stayed exactly on the accepted dirty baseline.
 
 - 2026-06-28 +08 CURRENT TRUTH - Item 25 PAX migrate checkpoint:
   - Grazel remains on `arun/dependencies-refactor` with Item 25 changes

@@ -16,22 +16,26 @@
 
 package com.grab.grazel.gradle.dependencies
 
-import com.android.build.gradle.api.BaseVariant
 import com.grab.grazel.gradle.dependencies.model.ExcludeRule
 import com.grab.grazel.gradle.dependencies.model.ResolvedDependency
 import com.grab.grazel.gradle.dependencies.model.intersectWith
 import com.grab.grazel.gradle.isAndroidApplication
 import com.grab.grazel.gradle.isAndroidTest
-import com.grab.grazel.gradle.variant.ANDROID_TEST_VARIANT
 import com.grab.grazel.gradle.variant.DEFAULT_VARIANT
-import com.grab.grazel.gradle.variant.TEST_VARIANT
 import com.grab.grazel.gradle.variant.Variant
 import com.grab.grazel.gradle.variant.VariantType
 import com.grab.grazel.gradle.variant.VariantType.AndroidBuild
 import com.grab.grazel.gradle.variant.VariantType.AndroidTest
 import com.grab.grazel.gradle.variant.VariantType.JvmBuild
 import com.grab.grazel.gradle.variant.VariantType.Test
+import com.grab.grazel.gradle.variant.compileOnlyBucketName
+import com.grab.grazel.gradle.variant.compileOnlyDeclaredDependencyConfigurations
+import com.grab.grazel.gradle.variant.declarationBucketName
+import com.grab.grazel.gradle.variant.declaredDependencyConfigurations
+import com.grab.grazel.gradle.variant.isWorkspaceAndroidLeaf
 import com.grab.grazel.gradle.variant.toJvmVariantType
+import com.grab.grazel.gradle.variant.workspaceBuildTypeName
+import com.grab.grazel.gradle.variant.workspaceProductFlavorNames
 import kotlinx.serialization.Serializable
 import org.gradle.api.Project
 import org.gradle.api.artifacts.Configuration
@@ -79,7 +83,6 @@ internal class DeclaredProjectMetadataSnapshotter {
                 .sortedWith(compareBy<Variant<*>> { variant -> variant.name }
                     .thenBy { variant -> variant.variantType.name })
                 .map { variant ->
-                    val backingBaseVariant = variant.backingVariant as? BaseVariant
                     val declaredDependencyDeclarations =
                         variant.extractDeclaredExternalDependencyDeclarations()
                     DeclaredVariantDependencyMetadata(
@@ -90,18 +93,15 @@ internal class DeclaredProjectMetadataSnapshotter {
                         compileConfigurationNames = variant.configurationNamesOf { compileConfiguration },
                         runtimeConfigurationNames = variant.configurationNamesOf { runtimeConfiguration },
                         kspConfigurationNames = variant.configurationNamesOf { kspConfiguration },
-                        androidLeafVariant = backingBaseVariant != null,
-                        buildType = backingBaseVariant?.buildType?.name,
-                        productFlavors = backingBaseVariant
-                            ?.productFlavors
-                            ?.map { flavor -> flavor.name }
-                            .orEmpty(),
+                        androidLeafVariant = variant.isWorkspaceAndroidLeaf,
+                        buildType = variant.workspaceBuildTypeName,
+                        productFlavors = variant.workspaceProductFlavorNames,
                         declaredDependencies = declaredDependencyDeclarations
                             .mapTo(sortedSetOf(), DeclaredExternalDependency::id),
                         declaredDependencyDeclarations = declaredDependencyDeclarations,
                         declaredProjectDependencies = variant.extractDeclaredProjectDependencyIds(),
                         excludeRulesByShortId = extractDeclaredExcludeRulesByShortId(
-                            configurations = variant.variantConfigurations
+                            configurations = variant.declaredDependencyConfigurations
                         ),
                         compileOnlyBucketName = variant.compileOnlyBucketName,
                         compileOnlyDependenciesByShortId = variant.extractCompileOnlyDependenciesByShortId()
@@ -362,13 +362,6 @@ private fun configurationNames(configurations: Set<Configuration>): Set<String> 
     return configurations.mapTo(sortedSetOf()) { configuration -> configuration.name }
 }
 
-private val Variant<*>.compileOnlyBucketName: String
-    get() = when (variantType) {
-        Test -> TEST_VARIANT
-        AndroidTest -> ANDROID_TEST_VARIANT
-        else -> name
-    }
-
 internal data class ProjectExcludeRules(
     val bucketRulesByShortId: Map<String, Set<ExcludeRule>>,
     val variantRulesByName: Map<String, Map<String, Set<ExcludeRule>>>,
@@ -417,12 +410,6 @@ internal fun selectedVariantHierarchyNames(
         }
 }
 
-private val Configuration.isCompileOnlyDeclaration: Boolean
-    get() {
-        val normalizedName = name.lowercase()
-        return "compileonly" in normalizedName && "dependenciesmetadata" !in normalizedName
-    }
-
 private fun ModuleDependency.extractExcludeRules(): Set<ExcludeRule> {
     return excludeRules
         .map {
@@ -464,7 +451,6 @@ internal fun extractExcludeRulesByShortId(
 }
 
 internal fun Configuration.extractDeclaredExcludeRulesByShortId(): Map<String, Set<ExcludeRule>> {
-    if (!isDeclarationBucket) return emptyMap()
     return dependencies
         .filterIsInstance<ExternalDependency>()
         .filter { dependency -> !dependency.group.isNullOrBlank() }
@@ -491,40 +477,9 @@ internal fun extractDeclaredExcludeRulesByShortId(
         .toSortedMap()
 }
 
-private val Configuration.isDeclarationBucket: Boolean
-    get() {
-        val normalizedName = name.lowercase()
-        if (normalizedName.startsWith("_")) return false
-        if (declarationBucketExcludedNameFragments.any { fragment -> fragment in normalizedName }) {
-            return false
-        }
-        return declarationConfigurationSuffixes.any { suffix ->
-            normalizedName.endsWith(suffix.lowercase())
-        }
-    }
-
-private val declarationBucketExcludedNameFragments = setOf(
-    "annotationprocessor",
-    "androidapis",
-    "androidjdkimage",
-    "androidsdkimage",
-    "archives",
-    "classpath",
-    "corelibrarydesugaring",
-    "dependenciesmetadata",
-    "jacoco",
-    "kapt",
-    "kotlin-extension",
-    "kotlincompiler",
-    "ksp",
-    "lint",
-    "reversemetadata"
-)
-
 private fun Variant<*>.extractDeclaredExternalDependencyDeclarations(): Set<DeclaredExternalDependency> {
-    return variantConfigurations
+    return declaredDependencyConfigurations
         .asSequence()
-        .filter { configuration -> configuration.isDeclarationBucket }
         .flatMap { configuration ->
             configuration.dependencies
                 .filterIsInstance<ExternalDependency>()
@@ -546,38 +501,9 @@ private fun Variant<*>.extractDeclaredExternalDependencyDeclarations(): Set<Decl
             .thenBy { declaration -> declaration.id })
 }
 
-private val declarationConfigurationSuffixes = listOf(
-    "Implementation",
-    "Api",
-    "CompileOnly",
-    "RuntimeOnly"
-)
-
-internal fun Configuration.declarationBucketName(): String {
-    val prefix = declarationConfigurationSuffixes
-        .firstNotNullOfOrNull { suffix ->
-            name.removeSuffixIgnoringCase(suffix)
-                .takeIf { bucketPrefix -> bucketPrefix.length != name.length }
-        }
-        .orEmpty()
-    return prefix
-        .takeUnless(String::isBlank)
-        ?.replaceFirstChar { char -> char.lowercase() }
-        ?: DEFAULT_VARIANT
-}
-
-private fun String.removeSuffixIgnoringCase(suffix: String): String {
-    return if (endsWith(suffix, ignoreCase = true)) {
-        dropLast(suffix.length)
-    } else {
-        this
-    }
-}
-
 private fun Variant<*>.extractDeclaredProjectDependencyIds(): Set<String> {
-    return variantConfigurations
+    return declaredDependencyConfigurations
         .asSequence()
-        .filter { configuration -> configuration.isDeclarationBucket }
         .flatMap { configuration ->
             configuration.dependencies
                 .filterIsInstance<ProjectDependency>()
@@ -593,9 +519,8 @@ private fun Variant<*>.extractDeclaredProjectDependencyIds(): Set<String> {
 }
 
 private fun Variant<*>.extractCompileOnlyDependenciesByShortId(): Map<String, ResolvedDependency> {
-    return variantConfigurations
+    return compileOnlyDeclaredDependencyConfigurations
         .asSequence()
-        .filter { configuration -> configuration.isCompileOnlyDeclaration }
         .flatMap { configuration ->
             configuration.dependencies
                 .filterIsInstance<ExternalDependency>()

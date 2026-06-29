@@ -227,6 +227,48 @@ class DeclaredDependencyMetadataCollectorTest {
         )
     }
 
+    @Test
+    fun `declared exclude metadata ignores non declaration configurations`() {
+        val project = ProjectBuilder.builder().withName("library").build()
+        val implementation = project.configurations.create("implementation")
+        val customTool = project.configurations.create("customTool")
+        val rule = ExcludeRule("com.example", "blocked")
+        val toolRule = ExcludeRule("com.example", "tool-blocked")
+
+        val declaredDependency = addExternalModuleDependency(
+            project = project,
+            configurationName = "implementation",
+            dependencyNotation = "com.example:library:1.0"
+        )
+        declaredDependency.exclude(mapOf("group" to rule.group, "module" to rule.artifact))
+        val toolDependency = addExternalModuleDependency(
+            project = project,
+            configurationName = "customTool",
+            dependencyNotation = "com.example:tool:1.0"
+        )
+        toolDependency.exclude(mapOf("group" to toolRule.group, "module" to toolRule.artifact))
+
+        val metadata = DeclaredDependencyMetadataCollector().collect(
+            variantsByProject = mapOf(
+                project to listOf(
+                    variant(
+                        project = project,
+                        variantConfigurations = setOf(implementation, customTool)
+                    )
+                )
+            ),
+            projects = listOf(project)
+        )
+
+        assertEquals(
+            mapOf("com.example:library" to setOf(rule)),
+            metadata.projects.getValue(project.path)
+                .variants
+                .single()
+                .excludeRulesByShortId
+        )
+    }
+
     private fun variant(
         project: Project,
         variantConfigurations: Set<Configuration>,

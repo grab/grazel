@@ -523,7 +523,7 @@ class AggregatedDependencyResolverTest {
     }
 
     @Test
-    fun `declared exclude metadata ignores inherited classpath dependencies`() {
+    fun `declared exclude metadata only uses declared dependency configurations`() {
         val project = ProjectBuilder.builder().build()
         val implementation = project.configurations.create("implementation")
         val debugImplementation = project.configurations.create("debugImplementation")
@@ -545,16 +545,15 @@ class AggregatedDependencyResolverTest {
         debugDependency.exclude(mapOf("group" to "com.example", "module" to "debug-blocked"))
         val classpathDependency = addExternalModuleDependency(
             project = project,
-            configurationName = "debugRuntimeClasspath",
+            configurationName = debugRuntimeClasspath.name,
             dependencyNotation = "com.example:library:1.0"
         )
         classpathDependency.exclude(mapOf("group" to "com.example", "module" to "classpath-blocked"))
 
-        assertEquals(emptyMap<String, Set<ExcludeRule>>(), debugRuntimeClasspath.extractDeclaredExcludeRulesByShortId())
         assertEquals(
             mapOf("com.example:library" to setOf(ExcludeRule("com.example", "debug-blocked"))),
             extractDeclaredExcludeRulesByShortId(
-                configurations = listOf(debugRuntimeClasspath, debugImplementation)
+                configurations = listOf(debugImplementation)
             )
         )
     }
