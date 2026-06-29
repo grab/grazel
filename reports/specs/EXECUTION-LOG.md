@@ -5,6 +5,30 @@ evidence in item-specific logs so context compaction can recover state quickly.
 
 ## Active State
 
+- 2026-06-29 +08 CURRENT TRUTH - KSP relocatability + Items 32/33 start:
+  - Grazel is on `arun/dependencies-refactor` at local commit `c8dcdf4`
+    (`Clean up dependency refactor source shape`). Do not push.
+  - Current goal order: spec/status checkpoint -> KSP path-sensitivity
+    relocatable-cache fix -> Item 32 true source-project declared metadata
+    fanout -> Item 33 variant-layer declared config-role relocation ->
+    simplify/adversarial review -> full Grazel/PAX verification.
+  - Spec-only changes present before code work: Item 32 spec, Item 33 spec,
+    and roadmap status/index updates. These match the approved current slice
+    and should be locally committed before source edits.
+  - PAX regression workspace is `/Users/arun.sampathkumar/work/pax-android`,
+    branch `arun/grazel-refactor`, commit `cfa1057ed58c`, with accepted local
+    dirty baseline only: `Constants.kt`, `Grazel.kt`, `ModuleLoggerTask.kt`,
+    `generated/dependency_graph.json`, and untracked `Buildifier.kt`. Do not
+    commit PAX.
+  - Current root-task fanout baseline from the last verified Item 28 PAX run:
+    full PAX `migrateToBazel --rerun-tasks` passed in `12m 12s`,
+    `mode=PROJECT_TASK_FANOUT projects=2327 shards=2327
+    aggregateJsonBytes=35247531 elapsedMs=554`. Item 32 must compare true
+    source-project fanout against this baseline.
+  - Preserving guardrails remain active: generated Grazel output and accepted
+    PAX generated baseline must stay unchanged; any generated diff is
+    stop-and-investigate unless explicitly classified by an active spec.
+
 - 2026-06-28 +08 CURRENT TRUTH - Item 25 PAX migrate checkpoint:
   - Grazel remains on `arun/dependencies-refactor` with Item 25 changes
     uncommitted. Last clean local commit before Item 25 is `fb2b9ab`
