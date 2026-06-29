@@ -63,7 +63,7 @@ internal abstract class CollectKspProcessorDependenciesTask : DefaultTask() {
     abstract val kspArtifacts: ListProperty<KspArtifactInput>
 
     @get:InputFiles
-    @get:PathSensitive(PathSensitivity.ABSOLUTE)
+    @get:PathSensitive(PathSensitivity.NONE)
     abstract val kspClasspathFiles: ConfigurableFileCollection
 
     @get:OutputFile
@@ -216,7 +216,7 @@ internal abstract class CollectKspProcessorDependenciesTask : DefaultTask() {
         abstract val shortId: Property<String>
 
         @get:InputFile
-        @get:PathSensitive(PathSensitivity.ABSOLUTE)
+        @get:PathSensitive(PathSensitivity.NONE)
         abstract val file: RegularFileProperty
     }
 }

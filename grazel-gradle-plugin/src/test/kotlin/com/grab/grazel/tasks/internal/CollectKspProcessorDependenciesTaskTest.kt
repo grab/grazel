@@ -47,6 +47,8 @@ class CollectKspProcessorDependenciesTaskTest {
             .getMethod("getKspArtifacts")
         val classpathFilesGetter = CollectKspProcessorDependenciesTask::class.java
             .getMethod("getKspClasspathFiles")
+        val artifactFileGetter = CollectKspProcessorDependenciesTask.KspArtifactInput::class.java
+            .getMethod("getFile")
 
         assertFalse(
             "KSP sidecar resolution should be driven by explicit root-component inputs, not hidden " +
@@ -76,9 +78,14 @@ class CollectKspProcessorDependenciesTaskTest {
             "getKspArtifactMapping" in taskGetterNames
         )
         assertEquals(
-            "KSP classpath paths must remain distinct so same-basename processor jars do not collide.",
-            PathSensitivity.ABSOLUTE,
+            "KSP classpath cache keys should be relocatable; short IDs model artifact identity.",
+            PathSensitivity.NONE,
             classpathFilesGetter.getAnnotation(PathSensitive::class.java).value
+        )
+        assertEquals(
+            "KSP nested artifact files should be relocatable; nested shortId disambiguates identity.",
+            PathSensitivity.NONE,
+            artifactFileGetter.getAnnotation(PathSensitive::class.java).value
         )
     }
 

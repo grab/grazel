@@ -28,6 +28,19 @@ evidence in item-specific logs so context compaction can recover state quickly.
   - Preserving guardrails remain active: generated Grazel output and accepted
     PAX generated baseline must stay unchanged; any generated diff is
     stop-and-investigate unless explicitly classified by an active spec.
+  - KSP relocatable-cache checkpoint:
+    - Red test first: changed
+      `CollectKspProcessorDependenciesTaskTest.ksp processor dependency task
+      declares resolved roots and typed artifact inputs` to require
+      `PathSensitivity.NONE` for both `kspClasspathFiles` and nested
+      `KspArtifactInput.file`; focused test failed at the expected old
+      `ABSOLUTE` assertion.
+    - Fix: changed both KSP file inputs from `PathSensitivity.ABSOLUTE` to
+      `PathSensitivity.NONE`. `shortId` remains the semantic artifact identity
+      input; file content remains the file input.
+    - Verification: focused red-green test passed, full
+      `CollectKspProcessorDependenciesTaskTest` passed, and `git diff --check`
+      passed.
 
 - 2026-06-28 +08 CURRENT TRUTH - Item 25 PAX migrate checkpoint:
   - Grazel remains on `arun/dependencies-refactor` with Item 25 changes
