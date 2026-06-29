@@ -101,8 +101,20 @@ class BuildVariantTest : BaseGrazelPluginTest() {
         )
 
         Assert.assertTrue(
-            "Dependency resolution should collect declared metadata via a task",
+            "Dependency resolution should collect declared metadata through source-project shard tasks",
+            result.output.contains(":app:collectProjectDeclaredDependencyMetadata SKIPPED")
+        )
+        Assert.assertTrue(
+            "Dependency resolution should merge declared metadata shards through the root task",
+            result.output.contains(":mergeDeclaredDependencyMetadata SKIPPED")
+        )
+        Assert.assertFalse(
+            "Default declared metadata collection must not use the single-task compatibility path",
             result.output.contains(":collectDeclaredDependencyMetadata SKIPPED")
+        )
+        Assert.assertFalse(
+            "Default declared metadata collection must not use root-flat shard task names",
+            result.output.contains(":collectAppDeclaredDependencyMetadata SKIPPED")
         )
         Assert.assertTrue(
             "Dependency resolution should collect KSP processor metadata via a task",
@@ -126,7 +138,11 @@ class BuildVariantTest : BaseGrazelPluginTest() {
             arrayOf("computeWorkspaceDependencies", "--console=plain"),
             fixtureRoot
         )
-        Assert.assertEquals(SUCCESS, firstResult.task(":collectDeclaredDependencyMetadata")?.outcome)
+        Assert.assertEquals(
+            SUCCESS,
+            firstResult.task(":app:collectProjectDeclaredDependencyMetadata")?.outcome
+        )
+        Assert.assertEquals(SUCCESS, firstResult.task(":mergeDeclaredDependencyMetadata")?.outcome)
         Assert.assertEquals(SUCCESS, firstResult.task(":collectKspProcessorDependencies")?.outcome)
         Assert.assertEquals(SUCCESS, firstResult.task(":computeWorkspaceDependencies")?.outcome)
 
@@ -135,10 +151,15 @@ class BuildVariantTest : BaseGrazelPluginTest() {
             fixtureRoot
         )
         Assert.assertEquals(
-            "Default declared metadata collection is intentionally untracked because it reads " +
-                "the evaluated Gradle model directly.",
+            "Default declared metadata shards are intentionally untracked because they read the " +
+                "evaluated Gradle model directly.",
             SUCCESS,
-            secondResult.task(":collectDeclaredDependencyMetadata")?.outcome
+            secondResult.task(":app:collectProjectDeclaredDependencyMetadata")?.outcome
+        )
+        Assert.assertEquals(
+            "Fanout merge should be up-to-date when project shard contents are unchanged",
+            UP_TO_DATE,
+            secondResult.task(":mergeDeclaredDependencyMetadata")?.outcome
         )
         Assert.assertEquals(
             "No-edit KSP processor collection should be up-to-date",
@@ -155,7 +176,7 @@ class BuildVariantTest : BaseGrazelPluginTest() {
     @Test
     fun projectTaskFanoutDeclaredMetadataModeProducesStableWorkspaceDependencies() {
         val fixtureRoot = copyAndroidProjectFixture()
-        enableProjectTaskFanoutDeclaredMetadata(fixtureRoot)
+        setDeclaredMetadataAggregationMode(fixtureRoot, "PROJECT_TASK_FANOUT")
 
         val firstResult = runGradleBuild(
             arrayOf("computeWorkspaceDependencies", "--console=plain"),
@@ -186,15 +207,16 @@ class BuildVariantTest : BaseGrazelPluginTest() {
     @Test
     fun declaredMetadataAggregationModesProduceSameAggregateJson() {
         val fixtureRoot = copyAndroidProjectFixture()
+        setDeclaredMetadataAggregationMode(fixtureRoot, "SINGLE_TASK")
 
-        val defaultResult = runGradleBuild(
+        val singleTaskResult = runGradleBuild(
             arrayOf("computeWorkspaceDependencies", "--console=plain"),
             fixtureRoot
         )
-        Assert.assertEquals(SUCCESS, defaultResult.task(":collectDeclaredDependencyMetadata")?.outcome)
-        val defaultMetadata = declaredDependencyMetadataJsonFor(fixtureRoot).readText()
+        Assert.assertEquals(SUCCESS, singleTaskResult.task(":collectDeclaredDependencyMetadata")?.outcome)
+        val singleTaskMetadata = declaredDependencyMetadataJsonFor(fixtureRoot).readText()
 
-        enableProjectTaskFanoutDeclaredMetadata(fixtureRoot)
+        setDeclaredMetadataAggregationMode(fixtureRoot, "PROJECT_TASK_FANOUT")
         val fanoutResult = runGradleBuild(
             arrayOf("computeWorkspaceDependencies", "--console=plain", "--rerun-tasks"),
             fixtureRoot
@@ -203,7 +225,7 @@ class BuildVariantTest : BaseGrazelPluginTest() {
 
         Assert.assertEquals(
             "SINGLE_TASK and PROJECT_TASK_FANOUT must feed the same aggregate declared metadata.",
-            defaultMetadata,
+            singleTaskMetadata,
             declaredDependencyMetadataJsonFor(fixtureRoot).readText()
         )
     }
@@ -436,20 +458,35 @@ dependencies {
         return fixtureRoot
     }
 
-    private fun enableProjectTaskFanoutDeclaredMetadata(fixtureRoot: File) {
+    private fun setDeclaredMetadataAggregationMode(fixtureRoot: File, mode: String) {
         val fixtureBuildGradle = File(fixtureRoot, "build.gradle")
         val original = fixtureBuildGradle.readText()
-        val updated = original.replace(
-            "        minSdkVersionWorkaround.set(true)",
-            """
+        val declaration = """
         minSdkVersionWorkaround.set(true)
         declaredDependencyMetadataAggregationMode.set(
-                com.grab.grazel.extension.DeclaredDependencyMetadataAggregationMode.PROJECT_TASK_FANOUT
+                com.grab.grazel.extension.DeclaredDependencyMetadataAggregationMode.$mode
         )
-            """.trimIndent()
+        """.trimIndent()
+        val updated = if ("declaredDependencyMetadataAggregationMode.set(" in original) {
+            original.replace(
+                Regex(
+                    """declaredDependencyMetadataAggregationMode\.set\(\s*com\.grab\.grazel\.extension\.DeclaredDependencyMetadataAggregationMode\.\w+\s*\)""",
+                    setOf(RegexOption.MULTILINE)
+                ),
+                """
+        declaredDependencyMetadataAggregationMode.set(
+                com.grab.grazel.extension.DeclaredDependencyMetadataAggregationMode.$mode
         )
+                """.trimIndent()
+            )
+        } else {
+            original.replace(
+                "        minSdkVersionWorkaround.set(true)",
+                declaration
+            )
+        }
         Assert.assertNotEquals(
-            "Test fixture should enable the declared metadata fanout experiment",
+            "Test fixture should set the declared metadata aggregation mode",
             original,
             updated
         )

@@ -41,6 +41,21 @@ evidence in item-specific logs so context compaction can recover state quickly.
     - Verification: focused red-green test passed, full
       `CollectKspProcessorDependenciesTaskTest` passed, and `git diff --check`
       passed.
+  - Item 32 source-project declared metadata fanout checkpoint is in progress
+    with evidence in
+    `reports/specs/execution-log/item32-true-project-declared-metadata-fanout.md`.
+    Current implementation moves shard tasks from root-flat names such as
+    `:collectSampleAndroidDeclaredDependencyMetadata` to source-project tasks
+    named `:<project>:collectProjectDeclaredDependencyMetadata`; root
+    `:mergeDeclaredDependencyMetadata` still consumes the shard output files
+    and writes the same aggregate JSON. Local gates passed so far:
+    `CollectDeclaredDependencyMetadataTaskTest`, focused `BuildVariantTest`
+    fanout/up-to-date/parity tests, full
+    `:grazel-gradle-plugin:test`, local `migrateToBazel`,
+    `verify-default-task-graph.sh`, `verify-pax-size-guard.sh --mode
+    preserving`, and both diff-check commands. `verify-sample-bucket-labels.sh`
+    still fails only on the known pre-existing
+    appcompat/constraintlayout exclude-union assertion.
 
 - 2026-06-28 +08 CURRENT TRUTH - Item 25 PAX migrate checkpoint:
   - Grazel remains on `arun/dependencies-refactor` with Item 25 changes

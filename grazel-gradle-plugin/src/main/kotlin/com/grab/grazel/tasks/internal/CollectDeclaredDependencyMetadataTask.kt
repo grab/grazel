@@ -49,7 +49,6 @@ import org.gradle.api.tasks.TaskAction
 import org.gradle.api.tasks.TaskProvider
 import org.gradle.api.tasks.UntrackedTask
 import org.gradle.kotlin.dsl.register
-import java.io.File
 
 internal data class DeclaredDependencyMetadataTaskOutput(
     val declaredDependencyMetadata: Provider<RegularFile>,
@@ -80,11 +79,9 @@ internal data class DeclaredDependencyMetadataTaskOutputs(
     }
 
     fun configureProjectTaskFanout(
-        rootProject: Project,
         metadataSources: List<DeclaredProjectMetadataSource>
     ) {
         MergeDeclaredDependencyMetadataTask.configureShards(
-            rootProject = rootProject,
             mergeTask = projectTaskFanout,
             metadataSources = metadataSources
         )
@@ -192,18 +189,16 @@ internal abstract class CollectProjectDeclaredDependencyMetadataTask : DefaultTa
 
     companion object {
         internal fun register(
-            rootProject: Project,
             metadataSource: DeclaredProjectMetadataSource
         ): TaskProvider<CollectProjectDeclaredDependencyMetadataTask> {
             val sourceProject = metadataSource.project
-            val safeProjectPath = sourceProject.path.toSafeFileName()
-            return rootProject.tasks.register<CollectProjectDeclaredDependencyMetadataTask>(
-                "collect${sourceProject.path.toPascalTaskName()}DeclaredDependencyMetadata"
+            return sourceProject.tasks.register<CollectProjectDeclaredDependencyMetadataTask>(
+                "collectProjectDeclaredDependencyMetadata"
             ) {
                 configureCollector(metadataSource)
                 declaredDependencyMetadataShard.set(
-                    rootProject.layout.buildDirectory.file(
-                        "grazel/declared-dependency-metadata/$safeProjectPath.json"
+                    sourceProject.layout.buildDirectory.file(
+                        "grazel/declared-dependency-metadata/project.json"
                     )
                 )
             }
@@ -230,9 +225,9 @@ internal abstract class MergeDeclaredDependencyMetadataTask : DefaultTask() {
         logger.logHeap("MergeDeclaredDependencyMetadata:start")
         val startedAt = System.nanoTime()
         val merged = DeclaredDependencyMetadataMerger.mergeShards(
-            declaredDependencyMetadataShards.files
-                .sortedBy(File::getAbsolutePath)
-                .map { shard -> fromJson<DeclaredDependencyMetadata>(shard) }
+            declaredDependencyMetadataShards.files.map { shard ->
+                fromJson<DeclaredDependencyMetadata>(shard)
+            }
         )
         declaredDependencyMetadata.get().asFile.parentFile.mkdirs()
         writeJson(merged, declaredDependencyMetadata.get())
@@ -259,13 +254,11 @@ internal abstract class MergeDeclaredDependencyMetadataTask : DefaultTask() {
         }
 
         internal fun configureShards(
-            rootProject: Project,
             mergeTask: TaskProvider<MergeDeclaredDependencyMetadataTask>,
             metadataSources: List<DeclaredProjectMetadataSource>
         ) {
             metadataSources.forEach { metadataSource ->
                 val shardTask = CollectProjectDeclaredDependencyMetadataTask.register(
-                    rootProject = rootProject,
                     metadataSource = metadataSource
                 )
                 mergeTask.configure {
@@ -304,24 +297,3 @@ private fun collectDeclaredDependencyMetadata(
 
 private fun declaredDependencyMetadataFile(rootProject: Project): Provider<RegularFile> =
     rootProject.layout.buildDirectory.file("grazel/declared-dependency-metadata.json")
-
-private fun String.toSafeFileName(): String {
-    return removePrefix(":")
-        .ifBlank { "root" }
-        .replace(Regex("[^A-Za-z0-9._-]+"), "_")
-}
-
-private fun String.toPascalTaskName(): String {
-    return removePrefix(":")
-        .split(":")
-        .filter(String::isNotBlank)
-        .joinToString(separator = "") { segment ->
-            segment
-                .split(Regex("[^A-Za-z0-9]+"))
-                .filter(String::isNotBlank)
-                .joinToString(separator = "") { token ->
-                    token.replaceFirstChar { char -> char.uppercaseChar() }
-                }
-        }
-        .ifBlank { "Root" }
-}

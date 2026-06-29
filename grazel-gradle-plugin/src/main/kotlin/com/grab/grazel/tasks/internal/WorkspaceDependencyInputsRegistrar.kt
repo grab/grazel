@@ -103,7 +103,6 @@ internal object WorkspaceDependencyInputsRegistrar {
             declaredDependencyMetadataTask.configureSingleTask(declaredMetadataSources)
             if (mode == DeclaredDependencyMetadataAggregationMode.PROJECT_TASK_FANOUT) {
                 declaredDependencyMetadataTask.configureProjectTaskFanout(
-                    rootProject = rootProject,
                     metadataSources = declaredMetadataSources
                 )
             }

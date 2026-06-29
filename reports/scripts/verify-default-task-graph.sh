@@ -19,7 +19,12 @@ if grep -q ':collectDeclaredDependencyMetadata SKIPPED' "$output_file"; then
   exit 1
 fi
 
-grep -q ':collectSampleAndroidDeclaredDependencyMetadata SKIPPED' "$output_file"
+if grep -q ':collectSampleAndroidDeclaredDependencyMetadata SKIPPED' "$output_file"; then
+  echo "Default computeWorkspaceDependencies still schedules root-flat declared metadata shard tasks." >&2
+  exit 1
+fi
+
+grep -q ':sample-android:collectProjectDeclaredDependencyMetadata SKIPPED' "$output_file"
 grep -q ':mergeDeclaredDependencyMetadata SKIPPED' "$output_file"
 grep -q ':collectKspProcessorDependencies SKIPPED' "$output_file"
 grep -q ':resolveWorkspaceDependencies SKIPPED' "$output_file"

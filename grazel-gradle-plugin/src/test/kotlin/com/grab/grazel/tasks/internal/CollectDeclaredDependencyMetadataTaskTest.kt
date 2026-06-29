@@ -111,6 +111,37 @@ class CollectDeclaredDependencyMetadataTaskTest {
     }
 
     @Test
+    fun `fanout shard task is owned by the source project`() {
+        val rootProject = ProjectBuilder.builder().withName("root").build()
+        val sourceProject = ProjectBuilder.builder().withName("library").withParent(rootProject).build()
+        val implementation = sourceProject.configurations.create("implementation")
+        val metadataSource = DeclaredProjectMetadataSource(
+            project = sourceProject,
+            variants = listOf(variant(project = sourceProject, configuration = implementation))
+        )
+
+        val task = CollectProjectDeclaredDependencyMetadataTask.register(
+            metadataSource = metadataSource
+        ).get()
+
+        assertEquals(
+            ":library:collectProjectDeclaredDependencyMetadata",
+            task.path
+        )
+        assertFalse(
+            "Source-project fanout must not leave root-flat shard tasks in the default graph.",
+            "collectLibraryDeclaredDependencyMetadata" in rootProject.tasks.names
+        )
+        assertTrue(
+            "Shard output should be owned by the source project's build directory.",
+            task.declaredDependencyMetadataShard.get().asFile
+                .relativeTo(sourceProject.layout.buildDirectory.get().asFile)
+                .path
+                .startsWith("grazel/declared-dependency-metadata/")
+        )
+    }
+
+    @Test
     fun `fanout shard input snapshots declared metadata after task registration`() {
         val rootProject = ProjectBuilder.builder().withName("root").build()
         val sourceProject = ProjectBuilder.builder().withName("library").withParent(rootProject).build()
@@ -120,7 +151,6 @@ class CollectDeclaredDependencyMetadataTaskTest {
             variants = listOf(variant(project = sourceProject, configuration = implementation))
         )
         val task = CollectProjectDeclaredDependencyMetadataTask.register(
-            rootProject = rootProject,
             metadataSource = metadataSource
         ).get()
 
