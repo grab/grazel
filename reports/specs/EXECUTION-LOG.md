@@ -2411,3 +2411,117 @@ evidence in item-specific logs so context compaction can recover state quickly.
   - PAX `git diff --check` passed and `git status --short` remains exactly the accepted local
     baseline dirty set: `Constants.kt`, `Grazel.kt`, `ModuleLoggerTask.kt`,
     `generated/dependency_graph.json`, and untracked `Buildifier.kt`.
+
+## 2026-06-29 - Item 33 post-commit simplify-pass checkpoint
+
+- Baseline commit before this pass: `5868d22`.
+- Scope: committed branch diff through Item 33 only. The unstaged future Item34
+  roadmap/spec docs were intentionally left out of this simplify pass.
+- Four simplify-pass reviewers completed: reuse, simplification, efficiency,
+  and altitude. Parent reconciled and applied only preserving, local cleanups.
+- Applied cleanups:
+  - `WorkspaceTargetTagPlanCollector` now reuses `VariantGraphKey.from(variant)`
+    and `TEST_VARIANT` instead of reconstructing those facts locally.
+  - `TargetReferenceFactsCollector` derives project target references from the
+    canonical `ProjectDependency.toString()` Bazel label, avoiding a second
+    local target-name formula.
+  - `CollectTargetMavenRepoReferencesTask` no longer normalizes accumulated
+    reference facts twice in the single-pass collection path.
+  - `DeclaredDependencyMetadataCollector` shares exclude-rule grouping for
+    all-dependency and declared-dependency callers while preserving their
+    separate caller contracts.
+  - `DependencyBucketPlacementEngine` memoizes selected descendant leaves per
+    bucket inside one plan and removes the duplicate graph coverage helpers.
+- One compile failure occurred during cleanup:
+  - Symptom: Kotlin platform declaration clash on
+    `extractExcludeRulesByShortId(Iterable)`.
+  - Root cause: a private generic extension erased to the same JVM signature as
+    the existing public `Iterable<Configuration>` helper.
+  - Fix: renamed the private helper to an explicit-parameter function,
+    `excludeRulesByShortId(dependencies = ...)`.
+- Deferred larger simplify findings as architecture follow-ups, not shortcuts:
+  root component resolution/traversal sharding; moving target Maven repo
+  reference collection out of the task layer; extracting KSP processor
+  dependency collection out of its task action; replacing target-reference
+  regex/string parsing with fuller typed facts; moving owner inference away
+  from bucket-name string facts; moving Maven tag helper calculation out of the
+  migrate package.
+- Focused verification passed:
+  `./gradlew :grazel-gradle-plugin:test --tests "com.grab.grazel.gradle.dependencies.TargetReferenceFactsCollectorTest" --tests "com.grab.grazel.tasks.internal.WorkspacePlanTasksTest" --tests "com.grab.grazel.gradle.dependencies.DeclaredDependencyMetadataCollectorTest" --tests "com.grab.grazel.gradle.dependencies.WorkspaceTargetTagPlanCollectorTest" --tests "com.grab.grazel.gradle.dependencies.DependencyBucketPlacementEngineTest" --console=plain --no-daemon`.
+- `git diff --check` passed.
+- Remaining current-goal work: adversarial branch-diff review, broad local
+  verification, PAX final guard if non-doc code remains, and local Grazel commit
+  only after green.
+
+## 2026-06-29 - Item 33 adversarial review checkpoint
+
+- Ran four read-only adversarial reviewers focused on dependency correctness,
+  Gradle task/cache boundaries, generated-output/PAX risk, and altitude/code
+  quality.
+- Confirmed and fixed the current uncommitted P1:
+  `TargetReferenceFactsCollector` briefly derived `ProjectDependency` facts by
+  parsing `ProjectDependency.toString()`, which could key references by Bazel
+  filesystem label path instead of Gradle `project.path`. Fixed by exposing the
+  canonical target-name part on `ProjectDependency` while keeping the project
+  key as `dependencyProject.path`.
+- Added regression coverage:
+  `TargetReferenceFactsCollectorTest.structured project references use Gradle path instead of rendered label path`.
+- Rejected one reviewer blocker as conflicting with the maintained design:
+  `ResolvedComponentResult` root components remain `@Input` on the cacheable
+  resolver tasks by explicit maintainer decision and prior master behavior.
+  Existing tests assert this for KSP root components; no Gradle validation
+  failure has been observed.
+- Classified as follow-up/output-changing candidates, not hidden shortcuts:
+  - KSP aggregated repo pin inputs currently materialize direct processors, not
+    expanded full KSP transitive closure. This may need a dedicated correctness
+    item because changing it moves generated pin JSON/WORKSPACE shape.
+  - `DefaultOverrideCarrierPlanner` intentionally promotes lower non-direct
+    variant artifacts to a higher default repo version. This is codified by
+    existing tests and needs a separate Gradle-resolved-version correctness
+    decision before changing behavior.
+  - Declared project dependency edges and root exclude metadata still encode
+    some structured data as strings. They are file/provider-backed but should
+    be converted to serializable structured models in a follow-up.
+  - `CollectTargetMavenRepoReferencesTask` still owns reference accumulation
+    orchestration; Item34 is the planned service-shape follow-up.
+- Verification after the P1 fix passed:
+  `./gradlew :grazel-gradle-plugin:test --tests "com.grab.grazel.gradle.dependencies.TargetReferenceFactsCollectorTest" --console=plain --no-daemon`
+  and the broader touched-area focused test command from the simplify checkpoint.
+- Remaining current-goal work: broad Grazel verification, PAX final guard,
+  final logs, and local commit only after green.
+
+## 2026-06-29 - Item 33 final verification after simplify/adversarial fixes
+
+- Local Grazel verification passed:
+  - `./gradlew :grazel-gradle-plugin:test --console=plain --no-daemon`
+    (`40s`).
+  - `./gradlew migrateToBazel --console=plain --no-daemon` (`35s`), with no
+    local generated-output diff.
+  - `reports/scripts/verify-default-task-graph.sh`.
+  - `reports/scripts/verify-pax-size-guard.sh --mode preserving`: 11 buckets,
+    11 pinfiles, 1945 total artifact roots, no per-repo deltas.
+  - `reports/scripts/verify-json-phase-inventory.sh` after refreshing moved
+    line numbers in the inventory.
+  - `git diff --check` and `git diff --check master...HEAD`.
+- Known pre-existing/local waiver unchanged:
+  `reports/scripts/verify-sample-bucket-labels.sh` still fails on the existing
+  one-sided appcompat/constraintlayout exclude assertion.
+- PAX verification on
+  `/Users/arun.sampathkumar/work/pax-android` branch `arun/grazel-refactor`
+  commit `cfa1057ed58ccb2a795a5f679f072a8f604ff48e` passed:
+  - `./gradlew migrateToBazel --no-daemon --console=plain --stacktrace --rerun-tasks`
+    (`11m21s`), with declared metadata metric
+    `mode=PROJECT_TASK_FANOUT projects=2327 shards=2327 aggregateJsonBytes=35247531 elapsedMs=481`.
+  - PAX `git diff --check`.
+  - `./bazel.sh build --verbose_failures //app:app-gps-pax-debug.apk //app:app-gps-pax-debug-android-test.apk`
+    (`215.433s`), build completed successfully.
+  - `./bazel.sh test --test_output=errors //app-utils:app-utils-gps-pax-debug-test //app-test:app-test-gps-pax-debug-test //application-initializer:application-initializer-gps-pax-debug-test`
+    (`16.790s`), 3 test targets passed.
+  - Final PAX `git diff --check` and size guard passed.
+- PAX generated state remained exactly on the accepted local baseline:
+  `Constants.kt`, `Grazel.kt`, `ModuleLoggerTask.kt`,
+  `generated/dependency_graph.json`, and untracked `Buildifier.kt`.
+- Resource checks before PAX gates showed roughly `28-29GiB` free; no cache
+  cleanup was needed.
+- Current patch is ready for a local Grazel checkpoint commit. Future Item34
+  docs remain unstaged unless explicitly requested.

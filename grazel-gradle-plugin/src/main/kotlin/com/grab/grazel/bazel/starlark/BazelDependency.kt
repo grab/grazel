@@ -31,11 +31,15 @@ sealed class BazelDependency : Comparable<BazelDependency> {
         val prefix: String = ""
     ) : BazelDependency() {
 
+        internal val targetName: String
+            get() = "$prefix${dependencyProject.name}$suffix"
+
         override fun toString(): String {
             val relativeRootPath = dependencyProject
                 .rootProject
                 .relativePath(dependencyProject.projectDir)
             val buildTargetName = dependencyProject.name
+            val labelTargetName = targetName
             val sep = File.separator
             return when {
                 relativeRootPath.contains(sep) -> {
@@ -43,10 +47,10 @@ sealed class BazelDependency : Comparable<BazelDependency> {
                         .split(sep)
                         .dropLast(1)
                         .joinToString(sep)
-                    "//$path/$buildTargetName:$prefix$buildTargetName$suffix"
+                    "//$path/$buildTargetName:$labelTargetName"
                 }
 
-                else -> "//$buildTargetName:$prefix$buildTargetName$suffix"
+                else -> "//$buildTargetName:$labelTargetName"
             }
         }
     }

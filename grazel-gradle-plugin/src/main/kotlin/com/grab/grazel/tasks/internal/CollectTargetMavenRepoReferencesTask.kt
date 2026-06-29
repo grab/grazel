@@ -170,7 +170,7 @@ private fun collectTargetMavenRepoReferencesSinglePass(
         }
     }
 
-    return accumulated.normalized()
+    return accumulated
 }
 
 private fun collectProjectReferences(

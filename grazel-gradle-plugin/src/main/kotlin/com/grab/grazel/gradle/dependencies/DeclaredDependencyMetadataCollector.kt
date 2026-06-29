@@ -424,17 +424,9 @@ private fun ModuleDependency.extractExcludeRules(): Set<ExcludeRule> {
 }
 
 internal fun Configuration.extractExcludeRulesByShortId(): Map<String, Set<ExcludeRule>> {
-    return allDependencies
-        .filterIsInstance<ExternalDependency>()
-        .filter { dependency -> !dependency.group.isNullOrBlank() }
-        .groupBy { dependency -> "${dependency.group}:${dependency.name}" }
-        .mapValues { (_, dependencies) ->
-            dependencies
-                .map { dependency -> dependency.extractExcludeRules() }
-                .let(::intersectExcludeRuleSets)
-        }
-        .filterValues { it.isNotEmpty() }
-        .toSortedMap()
+    return excludeRulesByShortId(
+        dependencies = allDependencies.filterIsInstance<ExternalDependency>()
+    )
 }
 
 internal fun extractExcludeRulesByShortId(
@@ -451,8 +443,15 @@ internal fun extractExcludeRulesByShortId(
 }
 
 internal fun Configuration.extractDeclaredExcludeRulesByShortId(): Map<String, Set<ExcludeRule>> {
+    return excludeRulesByShortId(
+        dependencies = dependencies.filterIsInstance<ExternalDependency>()
+    )
+}
+
+private fun excludeRulesByShortId(
+    dependencies: Iterable<ExternalDependency>
+): Map<String, Set<ExcludeRule>> {
     return dependencies
-        .filterIsInstance<ExternalDependency>()
         .filter { dependency -> !dependency.group.isNullOrBlank() }
         .groupBy { dependency -> "${dependency.group}:${dependency.name}" }
         .mapValues { (_, dependencies) ->

@@ -26,12 +26,12 @@ import com.grab.grazel.gradle.isAndroidTest
 import com.grab.grazel.gradle.isKotlin
 import com.grab.grazel.gradle.variant.DEFAULT_VARIANT
 import com.grab.grazel.gradle.variant.MatchedVariant
+import com.grab.grazel.gradle.variant.TEST_VARIANT
 import com.grab.grazel.gradle.variant.Variant
 import com.grab.grazel.gradle.variant.VariantBuilder
 import com.grab.grazel.gradle.variant.VariantGraphKey
 import com.grab.grazel.gradle.variant.VariantMatcher
 import com.grab.grazel.gradle.variant.VariantType
-import com.grab.grazel.gradle.variant.id
 import com.grab.grazel.migrate.dependencies.calculateMavenDependencyTags
 import com.grab.grazel.util.GradleProvider
 import dagger.Lazy
@@ -162,7 +162,7 @@ constructor(
     }
 
     private fun kotlinUnitTestTagPlan(project: Project): TargetTagPlan {
-        val variantKey = VariantGraphKey.from(project, "test", VariantType.Test)
+        val variantKey = VariantGraphKey.from(project, TEST_VARIANT, VariantType.Test)
         return targetTagPlan(
             variantKey = variantKey,
             targetKind = TargetTagKinds.KOTLIN_UNIT_TEST,
@@ -240,11 +240,8 @@ constructor(
                 }
             }
             .firstOrNull()
-            ?.let { variant -> toVariantGraphKey(project, variant) }
+            ?.let(VariantGraphKey::from)
     }
-
-    private fun toVariantGraphKey(project: Project, variant: Variant<*>): VariantGraphKey =
-        VariantGraphKey(project.path + ":" + variant.id, variant.variantType)
 
     private fun builtVariants(project: Project): Set<Variant<*>> =
         variantsByProjectPath.getOrPut(project.path) { variantBuilder.build(project) }

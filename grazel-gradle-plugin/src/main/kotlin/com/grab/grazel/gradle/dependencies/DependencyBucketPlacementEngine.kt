@@ -102,6 +102,23 @@ internal class DependencyBucketPlacementEngine {
     ): DependencyBucketPlacementPlan {
         val graph = BucketPlacementGraph(variants, baseBucketName)
         val leafNames = leafClosures.keys.toSortedSet()
+        val selectedDescendantLeafNamesByBucket = graph.bucketNames.associateWith { bucketName ->
+            graph.descendantLeafNames(bucketName, leafNames)
+        }.toSortedMap()
+        fun selectedDescendantLeafNames(bucketName: String): Set<String> {
+            return selectedDescendantLeafNamesByBucket[bucketName].orEmpty()
+        }
+
+        fun coversSelectedLeaves(bucketName: String): Boolean {
+            return leafNames.isNotEmpty() && selectedDescendantLeafNames(bucketName) == leafNames
+        }
+
+        fun coversDescendantLeaves(coveringBucketName: String, coveredBucketName: String): Boolean {
+            val coveredLeaves = selectedDescendantLeafNames(coveredBucketName)
+            if (coveredLeaves.isEmpty()) return false
+            return selectedDescendantLeafNames(coveringBucketName).containsAll(coveredLeaves)
+        }
+
         val selectedLeafClosures = leafNames.mapNotNull { leafName -> leafClosures[leafName] }
         val hierarchyDefaultDeps = withResolvedLeafMetadata(
             dependencies = onlyDependenciesPresentIn(
@@ -124,8 +141,7 @@ internal class DependencyBucketPlacementEngine {
             return candidateDepsByBucketName.getOrPut(bucketName) {
                 candidateDepsFor(
                     bucketName = bucketName,
-                    graph = graph,
-                    leafNames = leafNames,
+                    descendantLeafNames = selectedDescendantLeafNames(bucketName),
                     leafClosures = leafClosures,
                     hierarchyBucketClosures = hierarchyBucketClosures
                 )
@@ -133,10 +149,7 @@ internal class DependencyBucketPlacementEngine {
         }
         val fullCoverageHierarchyDeps = graph.hierarchyBucketNames
             .filter { bucketName ->
-                bucketName != baseBucketName && graph.coversSelectedLeaves(
-                    bucketName = bucketName,
-                    leafNames = leafNames
-                )
+                bucketName != baseBucketName && coversSelectedLeaves(bucketName)
             }
             .flatMap { bucketName -> candidateDepsForBucket(bucketName).values }
         val defaultDeps = (
@@ -159,10 +172,9 @@ internal class DependencyBucketPlacementEngine {
                 .filterKeys { selectedBucketName ->
                     graph.hasAncestor(bucketName, selectedBucketName) ||
                         graph.hasAncestor(selectedBucketName, bucketName) ||
-                        graph.coversDescendantLeaves(
+                        coversDescendantLeaves(
                             coveringBucketName = selectedBucketName,
-                            coveredBucketName = bucketName,
-                            leafNames = leafNames
+                            coveredBucketName = bucketName
                         )
                 }
                 .flatMap { (selectedBucketName, deps) ->
@@ -194,7 +206,7 @@ internal class DependencyBucketPlacementEngine {
             .filter { bucketName -> bucketName != baseBucketName && bucketName !in hierarchyBucketClosures }
             .sortedWith(
                 compareByDescending<String> { bucketName ->
-                    graph.descendantLeafNames(bucketName, leafNames).size
+                    selectedDescendantLeafNames(bucketName).size
                 }
                     .thenByDescending { bucketName -> graph.depthOf(bucketName) }
                     .thenBy { bucketName -> bucketName }
@@ -213,9 +225,7 @@ internal class DependencyBucketPlacementEngine {
         val bucketAncestors = graph.bucketNames.associateWith { bucketName ->
             graph.ancestorsOf(bucketName)
         }.toSortedMap()
-        val bucketDescendantLeaves = graph.bucketNames.associateWith { bucketName ->
-            graph.descendantLeafNames(bucketName, leafNames)
-        }.toSortedMap()
+        val bucketDescendantLeaves = selectedDescendantLeafNamesByBucket
         val outputLeafNames = (leafNames + selectedLeafBuckets.keys).toSortedSet()
         val leafBuckets = outputLeafNames
             .mapNotNull { leafName ->
@@ -257,13 +267,11 @@ internal class DependencyBucketPlacementEngine {
 
     private fun candidateDepsFor(
         bucketName: String,
-        graph: BucketPlacementGraph,
-        leafNames: Set<String>,
+        descendantLeafNames: Set<String>,
         leafClosures: Map<String, Map<String, ResolvedDependency>>,
         hierarchyBucketClosures: Map<String, Map<String, ResolvedDependency>>
     ): Map<String, ResolvedDependency> {
-        val descendantLeafNames = graph.descendantLeafNames(bucketName, leafNames)
-        if (leafNames.isNotEmpty() && descendantLeafNames.isEmpty()) {
+        if (leafClosures.isNotEmpty() && descendantLeafNames.isEmpty()) {
             return emptyMap()
         }
         val descendantLeafClosures = descendantLeafNames.mapNotNull { leafName -> leafClosures[leafName] }
@@ -450,24 +458,6 @@ private class BucketPlacementGraph(
             .orEmpty()
             .filter { leafName -> leafName in leafNames }
             .toSortedSet()
-    }
-
-    fun coversDescendantLeaves(
-        coveringBucketName: String,
-        coveredBucketName: String,
-        leafNames: Set<String>
-    ): Boolean {
-        val coveredLeaves = descendantLeafNames(coveredBucketName, leafNames)
-        if (coveredLeaves.isEmpty()) return false
-        return descendantLeafNames(coveringBucketName, leafNames).containsAll(coveredLeaves)
-    }
-
-    fun coversSelectedLeaves(
-        bucketName: String,
-        leafNames: Set<String>
-    ): Boolean {
-        if (leafNames.isEmpty()) return false
-        return descendantLeafNames(bucketName, leafNames) == leafNames
     }
 
     private fun BucketPlacementVariantInput.node(): BucketHierarchyNode {

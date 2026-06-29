@@ -64,12 +64,9 @@ internal object TargetReferenceFactsCollector {
     private fun String.mavenRepoFromTag(): String? =
         tagLabelPattern.find(this)?.groupValues?.get(1)
 
-    private fun ProjectDependency.targetName(): String =
-        "$prefix${dependencyProject.name}$suffix"
-
     private fun BazelDependency.projectReference(): Pair<String, String>? =
         when (this) {
-            is ProjectDependency -> dependencyProject.path to targetName()
+            is ProjectDependency -> dependencyProject.path to targetName
             is StringDependency -> string.projectReference()
             else -> null
         }

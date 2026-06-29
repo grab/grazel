@@ -21,9 +21,14 @@ import com.grab.grazel.bazel.starlark.BazelDependency.ProjectDependency
 import com.grab.grazel.bazel.starlark.BazelDependency.StringDependency
 import com.grab.grazel.buildProject
 import org.junit.Assert.assertEquals
+import org.junit.Rule
 import org.junit.Test
+import org.junit.rules.TemporaryFolder
 
 class TargetReferenceFactsCollectorTest {
+
+    @get:Rule
+    val temporaryFolder = TemporaryFolder()
 
     @Test
     fun `collects repo and project references from target reference facts`() {
@@ -90,5 +95,27 @@ class TargetReferenceFactsCollectorTest {
 
         assertEquals(setOf(":app"), facts.projectPaths)
         assertEquals(mapOf(":app" to setOf("app-gps-pax-debug")), facts.projectTargets)
+    }
+
+    @Test
+    fun `structured project references use Gradle path instead of rendered label path`() {
+        val rootDir = temporaryFolder.newFolder("root")
+        val rootProject = buildProject("root", projectDir = rootDir)
+        val logicalProjectDir = rootDir.resolve("physical/location/logical")
+        val logicalProject = buildProject(
+            name = "logical",
+            parent = rootProject,
+            projectDir = logicalProjectDir
+        )
+
+        val facts = TargetReferenceFactsCollector.from(
+            deps = listOf(ProjectDependency(logicalProject, prefix = "prefix_", suffix = "_debug"))
+        )
+
+        assertEquals(setOf(":logical"), facts.projectPaths)
+        assertEquals(
+            mapOf(":logical" to setOf("prefix_logical_debug")),
+            facts.projectTargets
+        )
     }
 }
