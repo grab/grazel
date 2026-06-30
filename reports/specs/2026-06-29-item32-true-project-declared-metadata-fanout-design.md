@@ -1,6 +1,6 @@
 # Item 32 - True Project Declared Metadata Fanout (Design)
 
-> **Status:** Proposed 2026-06-29.
+> **Status:** Completed 2026-06-29; status reconfirmed 2026-07-01.
 > **Executor:** Codex.
 > **Behaviour change:** preserving generated output; task graph and performance shape may change.
 > **Global Constraints + Verification Playbook + Code-quality stance:** inherited from
@@ -45,6 +45,21 @@ to its source project:
 ```
 
 The current shape is correct but leaves performance and task-graph altitude on the table.
+
+## Completion Note
+
+This item has landed. The implementation now registers each
+`CollectProjectDeclaredDependencyMetadataTask` on `metadataSource.project.tasks` with the short
+task name `collectProjectDeclaredDependencyMetadata`, writes the shard to the source project's
+`build/grazel/declared-dependency-metadata/project.json`, and keeps the root-owned
+`mergeDeclaredDependencyMetadata` task as the cacheable file-based merge. The default task-graph
+verifier expects representative source-project shard paths such as
+`:sample-android:collectProjectDeclaredDependencyMetadata` and rejects the old root-flat
+`:collectSampleAndroidDeclaredDependencyMetadata` shape.
+
+Future work should not re-open Item32 as pending implementation unless that task shape regresses.
+Remaining related work is only normal follow-up hygiene/performance measurement, not the source
+project fanout conversion itself.
 
 ## Goal
 

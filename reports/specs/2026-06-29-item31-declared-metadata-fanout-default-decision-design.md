@@ -1,6 +1,6 @@
 # Item 31 - Declared Metadata Fanout Default Decision (Design)
 
-> **Status:** Proposed 2026-06-29.
+> **Status:** Completed 2026-06-29; status reconfirmed 2026-07-01.
 > **Executor:** Codex.
 > **Behaviour change:** preserving generated output; task graph/default mode may change.
 > **Global Constraints + Verification Playbook + Code-quality stance:** inherited from

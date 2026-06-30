@@ -67,10 +67,14 @@ Resource notes:
   PAX `bazel-cache` was preserved.
 - Free space after cleanup was about 17 GiB; after local migrate about 16 GiB.
 
-Remaining before Item 32 commit:
+Closure:
 
-- Check current diff shape one more time.
-- Commit the preserving Item 32 change locally if no unexpected generated diff
-  appears.
-- PAX full loop may run after Item 33 or before final combined checkpoint unless
-  Item 32 diff raises concern.
+- Item 32 landed in local commit `a27b618`
+  (`refactor: fan out declared metadata by source project`).
+- Final combined verification after Item 33 and post-review cleanup confirmed
+  the source-project fanout shape remained active:
+  `mode=PROJECT_TASK_FANOUT projects=2327 shards=2327 aggregateJsonBytes=35247531`.
+- PAX migrate, debug APK, android-test APK, focused Bazel tests, size guard, and
+  diff checks passed in the final Item 33 checkpoint.
+- Do not treat Item 32 as pending implementation unless the source-project
+  shard task shape regresses.

@@ -75,4 +75,7 @@
 ## Status
 
 - Item 31 default decision is implemented and verified.
-- Ready for a local Grazel checkpoint commit. Do not push. Do not commit PAX.
+- Item 31 landed in local commit `9173c50`
+  (`refactor: default declared metadata aggregation to fanout`).
+- Do not treat Item 31 as pending implementation unless the default mode
+  regresses from `PROJECT_TASK_FANOUT`.

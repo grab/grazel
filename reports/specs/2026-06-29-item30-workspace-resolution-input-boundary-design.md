@@ -1,6 +1,6 @@
 # Item 30 - Workspace Resolution Input Boundary (Design)
 
-> **Status:** Proposed 2026-06-29.
+> **Status:** Completed 2026-06-29; status reconfirmed 2026-07-01.
 > **Executor:** Codex.
 > **Behaviour change:** none - generated EMPTY-diff.
 > **Global Constraints + Verification Playbook + Code-quality stance:** inherited from
@@ -53,6 +53,11 @@ Known JSON task-boundary risks to inventory before implementation:
   inventoried. Item 30 owns confirming no JSON payload crosses task boundaries there. If the
   cacheable task carries absolute file paths as strings, Item 30 must either fix that to Gradle file
   inputs/properties or record a maintainer decision before completion.
+
+Completion note: the `CollectDeclaredDependencyMetadataTask` JSON-string payload called out above
+was later removed by Item 29. Item 30's durable JSON-phase inventory and verifier now track the
+remaining production encode/decode sites as task-action/file-backed or explicitly retained service
+reads.
 
 Neither Item 29 nor Item 30 may close while any task-boundary `Property<String>`,
 `Provider<String>`, or `ListProperty<String>` JSON model payload remains unowned.

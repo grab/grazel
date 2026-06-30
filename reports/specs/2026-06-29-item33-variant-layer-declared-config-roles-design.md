@@ -1,6 +1,6 @@
 # Item 33 — Move Declared-Metadata Configuration-Role Logic into the Variant Layer (Design)
 
-> **Status:** Approved 2026-06-29 (brainstormed + grounded by an Opus feasibility investigation).
+> **Status:** Completed 2026-06-29; status reconfirmed 2026-07-01.
 > **Executor:** Codex. **Behaviour change:** none — verbatim relocation of config-role
 > classification from the dependencies layer to the variant layer. Golden EMPTY-diff.
 > **Global Constraints + Verification Playbook + Code-quality stance:** inherited from

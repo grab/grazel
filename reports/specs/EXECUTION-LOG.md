@@ -5,7 +5,28 @@ evidence in item-specific logs so context compaction can recover state quickly.
 
 ## Active State
 
-- 2026-06-29 +08 CURRENT TRUTH - KSP relocatability + Items 32/33 start:
+- 2026-07-01 CURRENT TRUTH - Item34/35 goal:
+  - Grazel is on `arun/dependencies-refactor` at local commit `2a780b5`
+    (`refactor: tighten item33 cleanup`). Do not push.
+  - Current goal order: status/docs truth checkpoint -> Item34 workspace tag
+    plan service shape -> Item35 progress reporting -> simplify/adversarial
+    review -> full Grazel/PAX verification.
+  - Items 30, 29, 31, 32, 28, and 33 are completed prerequisite work. Item32
+    is true source-project declared-metadata fanout and must not be treated as
+    pending implementation unless that task shape regresses.
+  - PAX regression workspace is `/Users/arun.sampathkumar/work/pax-android`,
+    branch `arun/grazel-refactor`, commit `cfa1057ed58c`, with accepted local
+    dirty baseline only: `Constants.kt`, `Grazel.kt`, `ModuleLoggerTask.kt`,
+    `generated/dependency_graph.json`, and untracked `Buildifier.kt`. Do not
+    commit PAX.
+  - Preserving guardrails remain active: generated Grazel output and accepted
+    PAX generated baseline must stay unchanged; any generated diff is
+    stop-and-investigate unless explicitly classified by an active spec.
+  - Console/log output may change only for Item35 progress/summary reporting.
+    Generated `BUILD.bazel`, `WORKSPACE`, and pin JSON output must remain
+    empty-diff.
+
+- 2026-06-29 +08 HISTORICAL - KSP relocatability + Items 32/33 start:
   - Grazel is on `arun/dependencies-refactor` at local commit `c8dcdf4`
     (`Clean up dependency refactor source shape`). Do not push.
   - Current goal order: spec/status checkpoint -> KSP path-sensitivity
@@ -41,7 +62,7 @@ evidence in item-specific logs so context compaction can recover state quickly.
     - Verification: focused red-green test passed, full
       `CollectKspProcessorDependenciesTaskTest` passed, and `git diff --check`
       passed.
-  - Item 32 source-project declared metadata fanout checkpoint is in progress
+  - Historical Item 32 source-project declared metadata fanout checkpoint was in progress
     with evidence in
     `reports/specs/execution-log/item32-true-project-declared-metadata-fanout.md`.
     Current implementation moves shard tasks from root-flat names such as
@@ -2523,5 +2544,59 @@ evidence in item-specific logs so context compaction can recover state quickly.
   `generated/dependency_graph.json`, and untracked `Buildifier.kt`.
 - Resource checks before PAX gates showed roughly `28-29GiB` free; no cache
   cleanup was needed.
-- Current patch is ready for a local Grazel checkpoint commit. Future Item34
-  docs remain unstaged unless explicitly requested.
+- Item33 cleanup landed in local commit `2a780b5`
+  (`refactor: tighten item33 cleanup`). Future Item34/35 work starts from that
+  checkpoint.
+
+## 2026-07-01 - Item 32 status correction for context survival
+
+- Clarified that Item32, true project declared-metadata fanout, is already
+  implemented and should not be treated as pending implementation work.
+- Grounded evidence in code:
+  - `CollectProjectDeclaredDependencyMetadataTask.register(...)` now uses
+    `metadataSource.project.tasks.register("collectProjectDeclaredDependencyMetadata")`.
+  - Each shard writes to the source project build directory:
+    `build/grazel/declared-dependency-metadata/project.json`.
+  - The root `mergeDeclaredDependencyMetadata` task remains the cacheable
+    file-backed merge and consumes shard `RegularFileProperty` providers.
+  - `reports/scripts/verify-default-task-graph.sh` expects
+    `:sample-android:collectProjectDeclaredDependencyMetadata` and rejects the
+    old root-flat `:collectSampleAndroidDeclaredDependencyMetadata` shape.
+- Updated durable docs:
+  - `reports/specs/ALTITUDE-LAYERING-ROADMAP.md`: Item32 status is now
+    `completed`.
+  - `reports/specs/2026-06-29-item32-true-project-declared-metadata-fanout-design.md`:
+    added a completion note and warning not to re-open Item32 unless the task
+    shape regresses.
+- Remaining related work is follow-up hygiene/performance observation only, not
+  the source-project fanout conversion itself.
+
+## 2026-07-01 - Item 34/35 goal start and status-doc checkpoint
+
+- Current Grazel branch/status at goal start:
+  `arun/dependencies-refactor` at `2a780b5`
+  (`refactor: tighten item33 cleanup`).
+- Current PAX regression workspace:
+  `/Users/arun.sampathkumar/work/pax-android`, branch `arun/grazel-refactor`,
+  commit `cfa1057ed58ccb2a795a5f679f072a8f604ff48e`, with the accepted local
+  dirty baseline only:
+  `Constants.kt`, `Grazel.kt`, `ModuleLoggerTask.kt`,
+  `generated/dependency_graph.json`, and untracked `Buildifier.kt`.
+  Do not commit PAX.
+- Active execution order for this goal:
+  status/docs truth checkpoint -> Item 34 -> Item 35 -> simplify/adversarial
+  review -> final Grazel/PAX gates.
+- Status/doc corrections made before code work:
+  - Item30/31/33 spec headers now say completed.
+  - Item33 roadmap status now says completed.
+  - Item32 spec, roadmap, and item log now explicitly say source-project
+    declared-metadata fanout has landed and is not pending implementation.
+  - Item34 is marked approved for this goal, with validation still required
+    before implementation.
+  - Roadmap current active order now points to Item34/35 instead of the old
+    Item30/29/31/28 goal.
+- Untracked `reports/DEPENDENCY-PINNING-MAP.md` is a read-only reference map
+  not required by the Item34/35 goal checkpoint; leave it uncommitted unless a
+  later step explicitly needs it.
+- Resource checkpoint: about `43GiB` free on `/System/Volumes/Data`; no cleanup
+  needed before local doc/status work.

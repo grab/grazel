@@ -64,9 +64,13 @@
 - Resource checkpoint before local generation: about `28 GiB` free, `~/.gradle/caches` `19G`,
   PAX `bazel-cache` `14G`, private Bazel root `61G`; no cleanup performed.
 
-### Next
+### Closure
 
-- Item 30 is ready for local commit unless final diff review finds a source-shape issue.
+- Item 30 landed in local commit `f0bfa47`
+  (`refactor: file-back workspace root metadata`).
+- The PAX gate below passed and generated output remained on the accepted
+  baseline. Do not treat Item 30 as pending implementation unless the
+  file-backed workspace root metadata boundary regresses.
 
 ## 2026-06-29 PAX Gate
 

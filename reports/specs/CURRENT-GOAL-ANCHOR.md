@@ -11,16 +11,15 @@
 2. `reports/specs/2026-06-26-item1-baseline-and-safety-net-design.md`
 3. `reports/specs/ALTITUDE-LAYERING-ROADMAP.md`
 4. Active specs:
-   - `2026-06-28-item23-target-reference-model-hygiene-design.md`
-   - `2026-06-28-item26-variant-owned-workspace-dependency-root-inputs-design.md`
-   - `2026-06-28-item24-branch-diff-source-shape-hygiene-design.md`
-   - `2026-06-28-item27-branch-wide-simplify-adversarial-review-design.md`
-   - `2026-06-28-item25-merge-generate-format-tasks-design.md`
-   - `2026-06-28-item17-consolidate-bucket-setmath-design.md`
-   - `2026-06-28-item18-retire-scc-typed-dag-ordering-design.md`
-   - `2026-06-28-item19-target-reference-facts-design.md`
-   - `2026-06-28-item21-simplify-pass-dead-code-design.md`
-   - `2026-06-28-item22-setmath-ownership-reduction-experiment-design.md`
+   - `2026-06-29-item34-workspace-tag-plan-service-shape-design.md`
+   - `2026-07-01-item35-task-progress-reporting-design.md`
+
+Recently completed specs that should not be re-opened as active work unless code regresses:
+
+- `2026-06-29-item30-workspace-resolution-input-boundary-design.md`
+- `2026-06-29-item31-declared-metadata-fanout-default-decision-design.md`
+- `2026-06-29-item32-true-project-declared-metadata-fanout-design.md`
+- `2026-06-29-item33-variant-layer-declared-config-roles-design.md`
 
 Superseded input only:
 
@@ -34,18 +33,13 @@ Do not execute from superseded files directly.
 Current continuation order:
 
 ```text
-23 -> 26 -> 24 -> 27 -> 25
+status/docs truth checkpoint -> 34 -> 35 -> simplify/adversarial review -> final Grazel/PAX gates
 ```
 
-Items 23, 26, 24, and 27 are complete as of local Grazel commit `fb2b9ab`.
-Item 25 is active and must remain last.
-
-Current Item 25 checkpoint: local Grazel gates, PAX `migrateToBazel`, PAX debug
-APK + android-test APK build, and focused PAX Bazel tests are green. PAX
-BUILD/WORKSPACE/maven output is stable; only `generated/dependency_graph.json`
-has a one-line ordering-only drift. Remaining gates are final diff/log checks
-and a local Grazel commit. See
-`reports/specs/execution-log/item25-merge-generate-format-tasks.md`.
+Current checkpoint: Items 30, 31, 32, and 33 are completed. Item 32 is true
+source-project declared-metadata fanout and is not pending implementation.
+Before code work on Item 34/35, reconcile stale status docs and commit a local
+docs-only checkpoint if the diff contains only approved status/spec/log updates.
 
 Earlier primary order, now historical:
 
@@ -108,17 +102,14 @@ re-derivation round-trips, not by LOC.
 
 ## Item Intent
 
-- **17:** Move duplicated bucket set math to `BucketSetMath.kt`; delete dead resolver/planner
-  helper copies. Empty generated diff.
-- **18:** Replace SCC/condensation in reachability ordering with direct typed DAG topo sort;
-  keep typed fail-closed diagnostics. Empty generated diff.
-- **19:** Remove target-builder execution from reference collection. Keep consumer-first
-  `WorkspacePlanService` mutation; target builders run only during generation. Empty generated
-  diff.
-- **21:** Remove dead code, duplicate predicates, one-caller indirection, and the scoped
-  perf-inline. Guard `compressionResults` removal until Item 19 decides its input needs.
-- **22:** Stretch experiment. Measure whether set-math ownership is reducible; either reshape
-  with exact shadow parity and empty generated diff, or document as proven problem-essential.
+- **34:** Clean the workspace tag-plan service shape without changing emitted tags. Stop routing
+  the tag plan through `WorkspacePlanBuilder`/`ComputeWorkspacePlanTask`; load it from
+  `target-tag-plan.json`; split read-only tag lookup from mutable render-plan state; isolate the
+  consumer-first render-plan back-edge. Empty generated diff.
+- **35:** Add user-facing progress reporting for long-running dependency-refactor tasks. Progress
+  uses `ProgressLogger` through a pure-JVM `ProgressReporter` lambda seam; permanent summaries use
+  `logger.quiet` with capitalized plain messages; diagnostics stay on `info`/`warn`. Generated
+  output remains empty-diff.
 
 ## Operational Constraints
 
@@ -191,17 +182,16 @@ execution-log file before touching code.
 Use subagents deliberately for wide reads, historical master/PAX comparisons, audit scripts,
 PAX diff/count checks, and final adversarial review. Spot-check important claims.
 
-## 2026-06-28 Current Continuation Addendum
+## 2026-06-28 Historical Continuation Addendum
 
-The active continuation goal has advanced beyond the original Items 17-22 anchor. Current hard
-execution order is:
+This section is historical. It records the completed Item 23-25 continuation and must not override
+the current Item 34/35 execution order above. Historical hard execution order was:
 
 ```text
 23 -> 26 -> 24 -> 27 -> 25
 ```
 
-Item 25 remains last. Do not start the generate/format task-graph merge until Item 27 has passed
-its simplify/adversarial/post-fix review gates.
+Item 25 remained last for that completed slice. Do not use this section as current guidance.
 
 Because Item 27 can add or reshape Kotlin code after the Item 24 source-shape pass, rerun an
 Item 24-style changed-file source-shape inventory after Item 27 fixes and before exiting the
@@ -209,9 +199,8 @@ cleanup phase. The rerun must visit/reconcile every Kotlin file changed by the b
 worktree, including new files added during adversarial fixes. Do not stop at broad tests alone;
 individual changed files must be accounted for.
 
-Do not mark the overall goal complete until Items 23, 26, 24, 27, and 25 all meet their
-acceptance criteria, generated output is empty-diff, PAX migrate/build/test gates pass, and logs
-record the evidence. Keep Grazel changes local only. Never push. Do not commit PAX.
+That historical goal completed. Current completion requirements are the Item34/35 requirements
+listed above. Keep Grazel changes local only. Never push. Do not commit PAX.
 
 During long runs, regularly optimize the durable context files: keep current truth near the top,
 mark stale legacy checkpoints as historical/superseded, and condense noisy status into concise

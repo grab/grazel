@@ -107,12 +107,14 @@ intended output change).
 | **30** | Workspace resolution input boundary | completed | **preserving (empty-diff)** | Remove eager JSON encode/decode from workspace root task wiring; keep master-like `ResolvedComponentResult` cacheable inputs; preserve deterministic root metadata pairing | 26 |
 | **29** | Declared metadata aggregation modes | completed | **preserving (mode parity + empty-diff)** | Delete broad Gradle/TOML file tracing; add experiment switch between untracked bounded-coroutine single aggregation and untracked per-project fanout + cacheable deterministic merge | 10, prefer after 26/30 |
 | **31** | Declared metadata fanout default decision | completed | **preserving (default-mode decision)** | Use Item 29 PAX parity/timing/cache evidence to flip the default to `PROJECT_TASK_FANOUT`, or record maintainer-approved blocker before source-shape cleanup | 29 |
-| **32** | True project declared-metadata fanout | approved | **preserving (task-graph/perf shape)** | Move default fanout shard tasks from root-flat tasks to source-project tasks so Gradle project parallelism can apply; preserve aggregate JSON and generated output | 29, 31, prefer after 28 |
+| **32** | True project declared-metadata fanout | completed | **preserving (task-graph/perf shape)** | Default fanout shard tasks are source-project owned (`:project:collectProjectDeclaredDependencyMetadata`) and root merge consumes shard `RegularFileProperty` outputs; aggregate JSON and generated output preserved | 29, 31, prefer after 28 |
 | **24** | Branch-diff source shape hygiene | completed | **preserving (empty-diff)** | Inventory Kotlin files changed by this branch; use scripts plus scoped subagents to remove policy-heavy generic extensions, clarify helper model naming/placement, remove test-only production seams/reflection escapes, and justify any retained complexity | 23, 26, 30, 29, 31 |
 | **27** | Branch-wide simplify + adversarial review before formatting | completed | **preserving (empty-diff)** | Explicitly invoke the `simplify-pass` skill, then run adversarial correctness review over the entire branch diff; ambitiously fix maintainability/correctness findings; PAX baseline must not move | 24 |
 | **25** | Merge generate + format into one task per scope | completed | **preserving (empty-diff)** | Collapse the per-project and root generate/format task pairs into one `@UntrackedTask` each; extract a shared `formatWithBuildifier` helper; delete `FormatBazelFileTask`; rewire post/pin/migrate edges. Accepts losing format `@CacheableTask` (~6s/run on PAX; generate already untracked) | 27 |
 | **28** | Hard source-shape inventory remediation | completed | **preserving (empty-diff)** | Correct the under-enforced Item 24/27 source-shape pass with a committed per-file inventory, mandatory suspicious-pattern scan, row-level subagent reconciliation, and hard no-pending exit gate | 25 |
-| **33** | Move declared-metadata config-role logic into the variant layer | approved | **preserving (empty-diff)** | Relocate AGP access + config-name classification (`isDeclarationBucket`, suffix/fragment lists, `declarationBucketName`, `isCompileOnlyDeclaration`) out of `DeclaredDependencyMetadataCollector` into `gradle.variant`; collector consumes typed `declaredDependencyConfigurations`/`compileOnlyDeclaredDependencyConfigurations`. Verbatim move; merging the 3 divergent classifiers is a deferred follow-up | 26, 29, 30 |
+| **33** | Move declared-metadata config-role logic into the variant layer | completed | **preserving (empty-diff)** | Relocate AGP access + config-name classification (`isDeclarationBucket`, suffix/fragment lists, `declarationBucketName`, `isCompileOnlyDeclaration`) out of `DeclaredDependencyMetadataCollector` into `gradle.variant`; collector consumes typed `declaredDependencyConfigurations`/`compileOnlyDeclaredDependencyConfigurations`. Verbatim move; merging the 3 divergent classifiers is a deferred follow-up | 26, 29, 30 |
+| **34** | Workspace tag plan: service shape & packaging cleanup | approved | **preserving (empty-diff)** | De-passenger the tag plan (stop routing through `WorkspacePlanBuilder`/`ComputeWorkspacePlanTask`; single `target-tag-plan.json` home); split `WorkspacePlanService` into read-only tag index + mutable render-plan service (isolate the consumer-first back-edge); optionally type `TargetTagKey`. Accepts the `@UntrackedTask`/live-variant-model coupling (out of scope) | — |
+| **35** | User-facing progress reporting for the new tasks | approved | **preserving (empty-diff)** | Add a pure-JVM `ProgressReporter` `fun interface` + a `ProgressLoggerFactory.withProgress` adapter; thread a **required** reporter into the heavy N-of-M tasks (resolve / declared-metadata / tag-plan / maven-refs / compression / ksp / merge) for a transient single-line per-module ticker, plus a permanent `logger.quiet` summary. Two channels kept strictly separate (progress vs `quiet` summary vs untouched `info`/`warn` diagnostics); module granularity only; Gradle API stays out of pure-JVM code via the lambda boundary | — |
 
 **Completed prerequisite chain:** 23 → 26 → 24 → 27 → 25.
 Item 23 removes the stale target-reference compatibility path first. Item 26 then fixes the
@@ -129,33 +131,20 @@ review over the entire diff and fixes confirmed maintainability/correctness find
 formatting work starts. Item 25 runs last so the generate/format task-graph reshape is the final
 preserving task-graph cleanup.
 
-**Current active execution order:** 30 → 29 → 31 → 28 → final simplify/adversarial review.
-Items 30 and 29 fix the dependency-input/task-boundary shapes that Item 28 must inspect. Item 31
-then makes the declared-metadata default-mode decision from Item 29 evidence. Item 28 runs last as
-the hard source-shape remediation pass over the current branch diff after the dependency task shapes
-settle.
+**Current active execution order:** status/docs truth checkpoint → Item 34 → Item 35 →
+simplify/adversarial review → final Grazel/PAX gates.
 
-**Post-Item-25 corrective pass:** Item 28 exists because Item 24/27 did not leave a hard
-file-by-file inventory ledger and missed policy-heavy receiver extensions. Item 28 supersedes any
-claim that source-shape cleanup is complete. It is preserving and starts only after the maintainer
-commits the current PAX generated/local baseline, so PAX `git diff` becomes the regression signal.
-If Items 30, 29, or 31 have not yet run, run them before Item 28 so the inventory pass does not
-preserve or polish obsolete dependency task shapes.
+Items 30, 29, 31, 32, 28, and 33 are completed prerequisite work. Do not re-open them as active
+implementation unless current code regresses from the recorded accepted shape. Item 32 is already
+true source-project declared-metadata fanout: shard tasks are owned by source projects and root
+`mergeDeclaredDependencyMetadata` consumes their file outputs.
 
 **Current next-goal hard exit gate:** do not stop after any single item appears green. The goal is
-complete only when Items 30, 29, 31, and 28 have all met their acceptance criteria; every changed
-Kotlin file required by Items 30/29/31/28 has been inventoried, visited, and reconciled; confirmed
-altitude violations are fixed in-slice; Item 27's simplify/adversarial findings are fixed or
-rejected with concrete code evidence; generated output is empty-diff; PAX migrate leaves the
-accepted baseline unchanged; required PAX APK builds pass where specified; task-graph checks pass;
-comment-hygiene requirements are satisfied; execution logs record decisions, commands, failures,
-and remaining risks.
-
-**Post-current performance/altitude follow-up:** Item 32 exists because Item 31 made
-`PROJECT_TASK_FANOUT` the default but the implementation currently registers shard tasks on the
-root project. That is correct for output but not true Gradle project fanout. Run Item 32 as the next
-task-graph/performance cleanup if the goal is to make declared metadata aggregation benefit from
-Gradle's parallel project scheduling without changing dependency semantics or generated output.
+complete only when stale status/docs are corrected; Item 34 and Item 35 have met acceptance
+criteria or have maintainer-quality explicit waivers; generated output is empty-diff; PAX migrate
+leaves the accepted baseline unchanged; required PAX APK builds and focused test gates pass;
+task-graph checks pass; simplify/adversarial findings are fixed or rejected with concrete code
+evidence; execution logs record decisions, commands, failures, and remaining risks.
 
 **Post-Item-19 cleanup:** Item 23 is a small preserving cleanup discovered after the Item 19
 cutover. It removes the old `BazelTarget` reference collector from production source and collapses

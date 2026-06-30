@@ -93,7 +93,9 @@ Item 33 checkpoint result:
 
 - Local Grazel gates and PAX migrate/build/focused-test gates passed.
 - Generated output is preserving/empty-diff against the accepted baselines.
-- Ready for local Grazel checkpoint commit; do not push.
+- Initial Item 33 relocation landed in local commit `5868d22`
+  (`refactor: move declared config roles to variant layer`). Post-review cleanup
+  landed in local commit `2a780b5` (`refactor: tighten item33 cleanup`).
 
 Post-commit simplify-pass checkpoint:
 
