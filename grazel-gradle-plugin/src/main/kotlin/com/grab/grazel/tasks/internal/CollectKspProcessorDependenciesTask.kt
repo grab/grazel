@@ -16,6 +16,7 @@
 
 package com.grab.grazel.tasks.internal
 
+import com.grab.grazel.di.GradleServices
 import com.grab.grazel.gradle.MigrationChecker
 import com.grab.grazel.gradle.dependencies.KspProcessorClassExtractor
 import com.grab.grazel.gradle.dependencies.ResolvedComponentsVisitor
@@ -25,6 +26,7 @@ import com.grab.grazel.gradle.dependencies.model.ResolveDependenciesResult.Compa
 import com.grab.grazel.gradle.dependencies.model.ResolvedDependency
 import com.grab.grazel.gradle.variant.DEFAULT_VARIANT
 import com.grab.grazel.gradle.variant.createWorkspaceKspProcessorClasspath
+import com.grab.grazel.util.withProgress
 import com.grab.grazel.util.writeJson
 import dagger.Lazy
 import org.gradle.api.DefaultTask
@@ -84,38 +86,44 @@ internal abstract class CollectKspProcessorDependenciesTask : DefaultTask() {
         val processorClassMap = KspProcessorClassExtractor.extractProcessorClasses(
             artifactsByShortId
         )
-        val resolvedKspDependencies = kspRootComponents.get()
-            .asSequence()
-            .flatMap { root ->
-                ResolvedComponentsVisitor().visit(
-                    root = root,
-                    logger = logger::info
-                ) { visitResult ->
-                    val component = visitResult.component
-                    val moduleVersion = component.moduleVersion ?: return@visit null
-                    val shortId = "${moduleVersion.group}:${moduleVersion.name}"
-                    if (shortId in directDependencies) {
-                        ResolvedDependency(
-                            id = component.toString(),
-                            shortId = shortId,
-                            direct = true,
-                            version = moduleVersion.version,
-                            dependencies = visitResult.transitiveDeps.mapTo(TreeSet()) { depResult ->
-                                ResolvedDependency.createDependencyNotation(
-                                    depResult.dependency,
-                                    depResult.requiresJetifier,
-                                    depResult.unjetifiedSource
-                                )
-                            },
-                            excludeRules = emptySet(),
-                            repository = visitResult.repository,
-                            requiresJetifier = visitResult.requiresJetifier,
-                            processorClass = processorClassMap[shortId]
-                        )
-                    } else null
-                }.asSequence()
-            }
-            .toSortedSet()
+        val roots = kspRootComponents.get()
+        val resolvedKspDependencies = GradleServices.from(project).progressLoggerFactory.withProgress(
+            "scanning KSP processors"
+        ) { reporter ->
+            roots
+                .asSequence()
+                .flatMapIndexed { index, root ->
+                    reporter.report("scanning KSP root (${index + 1}/${roots.size})")
+                    ResolvedComponentsVisitor().visit(
+                        root = root,
+                        logger = logger::info
+                    ) { visitResult ->
+                        val component = visitResult.component
+                        val moduleVersion = component.moduleVersion ?: return@visit null
+                        val shortId = "${moduleVersion.group}:${moduleVersion.name}"
+                        if (shortId in directDependencies) {
+                            ResolvedDependency(
+                                id = component.toString(),
+                                shortId = shortId,
+                                direct = true,
+                                version = moduleVersion.version,
+                                dependencies = visitResult.transitiveDeps.mapTo(TreeSet()) { depResult ->
+                                    ResolvedDependency.createDependencyNotation(
+                                        depResult.dependency,
+                                        depResult.requiresJetifier,
+                                        depResult.unjetifiedSource
+                                    )
+                                },
+                                excludeRules = emptySet(),
+                                repository = visitResult.repository,
+                                requiresJetifier = visitResult.requiresJetifier,
+                                processorClass = processorClassMap[shortId]
+                            )
+                        } else null
+                    }.asSequence()
+                }
+                .toSortedSet()
+        }
 
         kspDependencies.get().asFile.parentFile.mkdirs()
         writeJson(
@@ -127,6 +135,9 @@ internal abstract class CollectKspProcessorDependenciesTask : DefaultTask() {
                 )
             ),
             kspDependencies.get()
+        )
+        logger.quiet(
+            "Scanned ${resolvedKspDependencies.size} KSP processors across ${roots.size} roots"
         )
     }
 

@@ -33,6 +33,7 @@ import com.grab.grazel.gradle.variant.VariantType.AndroidTest
 import com.grab.grazel.gradle.variant.VariantType.AndroidBuild
 import com.grab.grazel.gradle.variant.VariantType.JvmBuild
 import com.grab.grazel.gradle.variant.VariantType.Test as TestVariantType
+import com.grab.grazel.util.ProgressReporter
 import org.gradle.api.artifacts.ExternalModuleDependency
 import org.gradle.api.artifacts.result.ResolvedComponentResult
 import org.gradle.testfixtures.ProjectBuilder
@@ -180,6 +181,7 @@ class AggregatedDependencyResolverTest {
 
         val results = AggregatedDependencyResolver(
             logger = ProjectBuilder.builder().build().logger,
+            reporter = ProgressReporter.NoOp,
             declaredDependencyMetadata = DeclaredDependencyMetadata(
                 projects = mapOf(
                     ":app" to ProjectDeclaredDependencyMetadata(
@@ -267,6 +269,7 @@ class AggregatedDependencyResolverTest {
 
         val results = AggregatedDependencyResolver(
             logger = ProjectBuilder.builder().build().logger,
+            reporter = ProgressReporter.NoOp,
             declaredDependencyMetadata = DeclaredDependencyMetadata(
                 projects = mapOf(
                     ":app" to ProjectDeclaredDependencyMetadata(
@@ -894,6 +897,7 @@ class AggregatedDependencyResolverTest {
 
         val results = AggregatedDependencyResolver(
             logger = ProjectBuilder.builder().build().logger,
+            reporter = ProgressReporter.NoOp,
             declaredDependencyMetadata = declaredAppMetadata(),
             precomputedKspDependencies = setOf(kspDependency),
             workspaceDependencyRoots = listOf(
@@ -920,6 +924,7 @@ class AggregatedDependencyResolverTest {
         try {
             AggregatedDependencyResolver(
                 logger = ProjectBuilder.builder().build().logger,
+            reporter = ProgressReporter.NoOp,
                 declaredDependencyMetadata = declaredAppMetadata(),
                 workspaceDependencyRoots = listOf(
                     root(
@@ -956,6 +961,7 @@ class AggregatedDependencyResolverTest {
 
         val results = AggregatedDependencyResolver(
             logger = ProjectBuilder.builder().build().logger,
+            reporter = ProgressReporter.NoOp,
             declaredDependencyMetadata = DeclaredDependencyMetadata(
                 projects = mapOf(
                     ":app" to ProjectDeclaredDependencyMetadata(
@@ -1035,6 +1041,7 @@ class AggregatedDependencyResolverTest {
 
         val results = AggregatedDependencyResolver(
             logger = ProjectBuilder.builder().build().logger,
+            reporter = ProgressReporter.NoOp,
             declaredDependencyMetadata = DeclaredDependencyMetadata(
                 projects = mapOf(
                     ":app" to ProjectDeclaredDependencyMetadata(
@@ -1118,6 +1125,7 @@ class AggregatedDependencyResolverTest {
 
         val results = AggregatedDependencyResolver(
             logger = ProjectBuilder.builder().build().logger,
+            reporter = ProgressReporter.NoOp,
             declaredDependencyMetadata = DeclaredDependencyMetadata(
                 projects = mapOf(
                     ":app" to ProjectDeclaredDependencyMetadata(
@@ -1195,6 +1203,7 @@ class AggregatedDependencyResolverTest {
 
         val results = AggregatedDependencyResolver(
             logger = ProjectBuilder.builder().build().logger,
+            reporter = ProgressReporter.NoOp,
             declaredDependencyMetadata = DeclaredDependencyMetadata(
                 projects = mapOf(
                     ":app" to ProjectDeclaredDependencyMetadata(
@@ -1284,6 +1293,7 @@ class AggregatedDependencyResolverTest {
 
         val results = AggregatedDependencyResolver(
             logger = ProjectBuilder.builder().build().logger,
+            reporter = ProgressReporter.NoOp,
             declaredDependencyMetadata = DeclaredDependencyMetadata(
                 projects = mapOf(
                     ":app" to ProjectDeclaredDependencyMetadata(
@@ -1363,6 +1373,7 @@ class AggregatedDependencyResolverTest {
 
         val results = AggregatedDependencyResolver(
             logger = ProjectBuilder.builder().build().logger,
+            reporter = ProgressReporter.NoOp,
             declaredDependencyMetadata = DeclaredDependencyMetadata(
                 projects = mapOf(
                     ":app" to ProjectDeclaredDependencyMetadata(
@@ -1446,6 +1457,7 @@ class AggregatedDependencyResolverTest {
 
         val results = AggregatedDependencyResolver(
             logger = ProjectBuilder.builder().build().logger,
+            reporter = ProgressReporter.NoOp,
             declaredDependencyMetadata = DeclaredDependencyMetadata(
                 projects = mapOf(
                     ":app" to ProjectDeclaredDependencyMetadata(
@@ -1589,6 +1601,7 @@ class AggregatedDependencyResolverTest {
 
         val results = AggregatedDependencyResolver(
             logger = ProjectBuilder.builder().build().logger,
+            reporter = ProgressReporter.NoOp,
             declaredDependencyMetadata = DeclaredDependencyMetadata(
                 projects = mapOf(
                     ":app" to ProjectDeclaredDependencyMetadata(
@@ -1654,6 +1667,7 @@ class AggregatedDependencyResolverTest {
 
         val results = AggregatedDependencyResolver(
             logger = ProjectBuilder.builder().build().logger,
+            reporter = ProgressReporter.NoOp,
             declaredDependencyMetadata = DeclaredDependencyMetadata(
                 projects = mapOf(
                     ":app" to ProjectDeclaredDependencyMetadata(
@@ -1707,6 +1721,7 @@ class AggregatedDependencyResolverTest {
 
         val results = AggregatedDependencyResolver(
             logger = ProjectBuilder.builder().build().logger,
+            reporter = ProgressReporter.NoOp,
             declaredDependencyMetadata = DeclaredDependencyMetadata(
                 projects = mapOf(
                     ":app" to ProjectDeclaredDependencyMetadata(
@@ -1793,6 +1808,7 @@ class AggregatedDependencyResolverTest {
 
         val results = AggregatedDependencyResolver(
             logger = ProjectBuilder.builder().build().logger,
+            reporter = ProgressReporter.NoOp,
             declaredDependencyMetadata = DeclaredDependencyMetadata(
                 projects = mapOf(
                     ":app" to ProjectDeclaredDependencyMetadata(
@@ -1896,6 +1912,7 @@ class AggregatedDependencyResolverTest {
 
         val results = AggregatedDependencyResolver(
             logger = ProjectBuilder.builder().build().logger,
+            reporter = ProgressReporter.NoOp,
             declaredDependencyMetadata = DeclaredDependencyMetadata(
                 projects = mapOf(
                     ":app" to ProjectDeclaredDependencyMetadata(
@@ -2090,6 +2107,7 @@ class AggregatedDependencyResolverTest {
 
         val results = AggregatedDependencyResolver(
             logger = ProjectBuilder.builder().build().logger,
+            reporter = ProgressReporter.NoOp,
             declaredDependencyMetadata = DeclaredDependencyMetadata(
                 projects = mapOf(
                     ":app" to ProjectDeclaredDependencyMetadata(
@@ -2190,6 +2208,7 @@ class AggregatedDependencyResolverTest {
 
         val results = AggregatedDependencyResolver(
             logger = ProjectBuilder.builder().build().logger,
+            reporter = ProgressReporter.NoOp,
             declaredDependencyMetadata = DeclaredDependencyMetadata(
                 projects = mapOf(
                     ":app" to ProjectDeclaredDependencyMetadata(
@@ -2256,6 +2275,7 @@ class AggregatedDependencyResolverTest {
 
         val results = AggregatedDependencyResolver(
             logger = ProjectBuilder.builder().build().logger,
+            reporter = ProgressReporter.NoOp,
             declaredDependencyMetadata = DeclaredDependencyMetadata(
                 projects = mapOf(
                     ":app" to ProjectDeclaredDependencyMetadata(
@@ -2323,6 +2343,7 @@ class AggregatedDependencyResolverTest {
 
         val results = AggregatedDependencyResolver(
             logger = ProjectBuilder.builder().build().logger,
+            reporter = ProgressReporter.NoOp,
             declaredDependencyMetadata = DeclaredDependencyMetadata(
                 projects = mapOf(
                     ":app" to ProjectDeclaredDependencyMetadata(
@@ -2404,6 +2425,7 @@ class AggregatedDependencyResolverTest {
 
         val results = AggregatedDependencyResolver(
             logger = ProjectBuilder.builder().build().logger,
+            reporter = ProgressReporter.NoOp,
             declaredDependencyMetadata = DeclaredDependencyMetadata(
                 projects = mapOf(
                     ":app" to ProjectDeclaredDependencyMetadata(
@@ -2488,6 +2510,7 @@ class AggregatedDependencyResolverTest {
 
         val results = AggregatedDependencyResolver(
             logger = ProjectBuilder.builder().build().logger,
+            reporter = ProgressReporter.NoOp,
             declaredDependencyMetadata = DeclaredDependencyMetadata(
                 projects = mapOf(
                     ":app" to ProjectDeclaredDependencyMetadata(
@@ -2583,6 +2606,7 @@ class AggregatedDependencyResolverTest {
 
         val results = AggregatedDependencyResolver(
             logger = ProjectBuilder.builder().build().logger,
+            reporter = ProgressReporter.NoOp,
             declaredDependencyMetadata = DeclaredDependencyMetadata(
                 projects = mapOf(
                     ":app" to ProjectDeclaredDependencyMetadata(
@@ -2649,6 +2673,7 @@ class AggregatedDependencyResolverTest {
 
         val results = AggregatedDependencyResolver(
             logger = ProjectBuilder.builder().build().logger,
+            reporter = ProgressReporter.NoOp,
             declaredDependencyMetadata = DeclaredDependencyMetadata(
                 projects = mapOf(
                     ":app" to ProjectDeclaredDependencyMetadata(
@@ -2762,6 +2787,7 @@ class AggregatedDependencyResolverTest {
 
         val results = AggregatedDependencyResolver(
             logger = ProjectBuilder.builder().build().logger,
+            reporter = ProgressReporter.NoOp,
             declaredDependencyMetadata = DeclaredDependencyMetadata(
                 projects = mapOf(
                     ":app" to ProjectDeclaredDependencyMetadata(
@@ -2833,6 +2859,7 @@ class AggregatedDependencyResolverTest {
 
         val results = AggregatedDependencyResolver(
             logger = ProjectBuilder.builder().build().logger,
+            reporter = ProgressReporter.NoOp,
             declaredDependencyMetadata = DeclaredDependencyMetadata(
                 projects = mapOf(
                     ":excluding-app" to ProjectDeclaredDependencyMetadata(
@@ -2919,6 +2946,7 @@ class AggregatedDependencyResolverTest {
 
         val results = AggregatedDependencyResolver(
             logger = ProjectBuilder.builder().build().logger,
+            reporter = ProgressReporter.NoOp,
             declaredDependencyMetadata = DeclaredDependencyMetadata(
                 projects = mapOf(
                     ":app" to ProjectDeclaredDependencyMetadata(
@@ -3000,6 +3028,7 @@ class AggregatedDependencyResolverTest {
 
         val results = AggregatedDependencyResolver(
             logger = ProjectBuilder.builder().build().logger,
+            reporter = ProgressReporter.NoOp,
             declaredDependencyMetadata = DeclaredDependencyMetadata(
                 projects = mapOf(
                     ":app" to ProjectDeclaredDependencyMetadata(
@@ -3080,6 +3109,7 @@ class AggregatedDependencyResolverTest {
 
         val results = AggregatedDependencyResolver(
             logger = ProjectBuilder.builder().build().logger,
+            reporter = ProgressReporter.NoOp,
             declaredDependencyMetadata = DeclaredDependencyMetadata(
                 projects = mapOf(
                     ":excluding-app" to ProjectDeclaredDependencyMetadata(
@@ -3159,6 +3189,7 @@ class AggregatedDependencyResolverTest {
 
         val results = AggregatedDependencyResolver(
             logger = ProjectBuilder.builder().build().logger,
+            reporter = ProgressReporter.NoOp,
             declaredDependencyMetadata = DeclaredDependencyMetadata(
                 projects = mapOf(
                     ":app" to ProjectDeclaredDependencyMetadata(
@@ -3214,6 +3245,7 @@ class AggregatedDependencyResolverTest {
 
         val results = AggregatedDependencyResolver(
             logger = ProjectBuilder.builder().build().logger,
+            reporter = ProgressReporter.NoOp,
             declaredDependencyMetadata = DeclaredDependencyMetadata(
                 projects = mapOf(
                     ":app" to ProjectDeclaredDependencyMetadata(
@@ -3275,6 +3307,7 @@ class AggregatedDependencyResolverTest {
 
         val results = AggregatedDependencyResolver(
             logger = ProjectBuilder.builder().build().logger,
+            reporter = ProgressReporter.NoOp,
             declaredDependencyMetadata = DeclaredDependencyMetadata(
                 projects = mapOf(
                     ":ui-tests" to ProjectDeclaredDependencyMetadata(
@@ -3336,6 +3369,7 @@ class AggregatedDependencyResolverTest {
 
         val results = AggregatedDependencyResolver(
             logger = ProjectBuilder.builder().build().logger,
+            reporter = ProgressReporter.NoOp,
             declaredDependencyMetadata = DeclaredDependencyMetadata(
                 projects = mapOf(
                     ":app" to ProjectDeclaredDependencyMetadata(
@@ -3400,6 +3434,7 @@ class AggregatedDependencyResolverTest {
 
         val results = AggregatedDependencyResolver(
             logger = ProjectBuilder.builder().build().logger,
+            reporter = ProgressReporter.NoOp,
             declaredDependencyMetadata = DeclaredDependencyMetadata(
                 projects = mapOf(
                     ":app" to ProjectDeclaredDependencyMetadata(
@@ -3514,6 +3549,7 @@ class AggregatedDependencyResolverTest {
 
         val results = AggregatedDependencyResolver(
             logger = ProjectBuilder.builder().build().logger,
+            reporter = ProgressReporter.NoOp,
             declaredDependencyMetadata = DeclaredDependencyMetadata(
                 projects = mapOf(
                     ":app" to ProjectDeclaredDependencyMetadata(
@@ -3610,6 +3646,7 @@ class AggregatedDependencyResolverTest {
 
         val results = AggregatedDependencyResolver(
             logger = ProjectBuilder.builder().build().logger,
+            reporter = ProgressReporter.NoOp,
             declaredDependencyMetadata = DeclaredDependencyMetadata(
                 projects = mapOf(
                     ":app" to ProjectDeclaredDependencyMetadata(
@@ -3718,6 +3755,7 @@ class AggregatedDependencyResolverTest {
 
         val results = AggregatedDependencyResolver(
             logger = ProjectBuilder.builder().build().logger,
+            reporter = ProgressReporter.NoOp,
             declaredDependencyMetadata = DeclaredDependencyMetadata(
                 projects = mapOf(
                     ":app" to ProjectDeclaredDependencyMetadata(
@@ -3814,6 +3852,7 @@ class AggregatedDependencyResolverTest {
 
         val results = AggregatedDependencyResolver(
             logger = ProjectBuilder.builder().build().logger,
+            reporter = ProgressReporter.NoOp,
             declaredDependencyMetadata = DeclaredDependencyMetadata(
                 projects = mapOf(
                     ":app" to ProjectDeclaredDependencyMetadata(
@@ -3879,6 +3918,7 @@ class AggregatedDependencyResolverTest {
 
         val results = AggregatedDependencyResolver(
             logger = ProjectBuilder.builder().build().logger,
+            reporter = ProgressReporter.NoOp,
             declaredDependencyMetadata = DeclaredDependencyMetadata(
                 projects = mapOf(
                     ":app" to ProjectDeclaredDependencyMetadata(
@@ -3964,6 +4004,7 @@ class AggregatedDependencyResolverTest {
 
         val results = AggregatedDependencyResolver(
             logger = ProjectBuilder.builder().build().logger,
+            reporter = ProgressReporter.NoOp,
             declaredDependencyMetadata = DeclaredDependencyMetadata(
                 projects = mapOf(
                     ":app" to ProjectDeclaredDependencyMetadata(
@@ -4034,6 +4075,7 @@ class AggregatedDependencyResolverTest {
 
         val results = AggregatedDependencyResolver(
             logger = ProjectBuilder.builder().build().logger,
+            reporter = ProgressReporter.NoOp,
             declaredDependencyMetadata = DeclaredDependencyMetadata(
                 projects = mapOf(
                     ":app" to ProjectDeclaredDependencyMetadata(

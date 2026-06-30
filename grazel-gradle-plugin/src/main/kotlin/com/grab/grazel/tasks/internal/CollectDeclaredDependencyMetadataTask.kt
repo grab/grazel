@@ -16,6 +16,7 @@
 
 package com.grab.grazel.tasks.internal
 
+import com.grab.grazel.di.GradleServices
 import com.grab.grazel.extension.DeclaredDependencyMetadataAggregationMode
 import com.grab.grazel.extension.DeclaredDependencyMetadataAggregationMode.PROJECT_TASK_FANOUT
 import com.grab.grazel.extension.DeclaredDependencyMetadataAggregationMode.SINGLE_TASK
@@ -24,12 +25,14 @@ import com.grab.grazel.gradle.dependencies.DeclaredDependencyMetadataMerger
 import com.grab.grazel.gradle.dependencies.DeclaredProjectMetadataSource
 import com.grab.grazel.gradle.dependencies.DeclaredProjectMetadataSnapshotter
 import com.grab.grazel.gradle.dependencies.ProjectDeclaredDependencyMetadata
+import com.grab.grazel.util.ProgressReporter
 import com.grab.grazel.util.fromJson
 import com.grab.grazel.util.logHeap
+import com.grab.grazel.util.withProgress
 import com.grab.grazel.util.writeJson
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
@@ -88,6 +91,11 @@ internal data class DeclaredDependencyMetadataTaskOutputs(
     }
 }
 
+private data class DeclaredMetadataSnapshotResult(
+    val projectPath: String,
+    val metadata: ProjectDeclaredDependencyMetadata
+)
+
 internal object DeclaredDependencyMetadataTasks {
     fun register(
         rootProject: Project
@@ -121,18 +129,22 @@ internal abstract class CollectDeclaredDependencyMetadataTask : DefaultTask() {
     fun action() {
         logger.logHeap("CollectDeclaredDependencyMetadata:start")
         val startedAt = System.nanoTime()
-        val metadata = collectDeclaredDependencyMetadata(
-            metadataSources = metadataSources,
-            maxWorkerCount = project.gradle.startParameter.maxWorkerCount
-        )
+        val metadata = GradleServices.from(project).progressLoggerFactory.withProgress(
+            "collecting declared dependency metadata"
+        ) { reporter ->
+            collectDeclaredDependencyMetadata(
+                metadataSources = metadataSources,
+                maxWorkerCount = project.gradle.startParameter.maxWorkerCount,
+                reporter = reporter
+            )
+        }
         declaredDependencyMetadata.get().asFile.parentFile.mkdirs()
         writeJson(metadata, declaredDependencyMetadata.get())
         val elapsedMs = (System.nanoTime() - startedAt) / 1_000_000
-        logger.lifecycle(
-            "Grazel: declared dependency metadata mode=SINGLE_TASK " +
-                "projects=${metadata.projects.size} " +
-                "aggregateJsonBytes=${declaredDependencyMetadata.get().asFile.length()} " +
-                "elapsedMs=$elapsedMs"
+        val outputBytes = declaredDependencyMetadata.get().asFile.length()
+        logger.quiet(
+            "Collected declared dependency metadata for ${metadata.projects.size} projects in " +
+                "${elapsedMs}ms ($outputBytes bytes, mode SINGLE_TASK)"
         )
         logger.logHeap("CollectDeclaredDependencyMetadata:done")
     }
@@ -224,20 +236,24 @@ internal abstract class MergeDeclaredDependencyMetadataTask : DefaultTask() {
     fun action() {
         logger.logHeap("MergeDeclaredDependencyMetadata:start")
         val startedAt = System.nanoTime()
-        val merged = DeclaredDependencyMetadataMerger.mergeShards(
-            declaredDependencyMetadataShards.files.map { shard ->
-                fromJson<DeclaredDependencyMetadata>(shard)
-            }
-        )
+        val shards = declaredDependencyMetadataShards.files.toList()
+        val merged = GradleServices.from(project).progressLoggerFactory.withProgress(
+            "merging declared dependency metadata"
+        ) { reporter ->
+            DeclaredDependencyMetadataMerger.mergeShards(
+                shards.mapIndexed { index, shard ->
+                    reporter.report("merging shard (${index + 1}/${shards.size})")
+                    fromJson<DeclaredDependencyMetadata>(shard)
+                }
+            )
+        }
         declaredDependencyMetadata.get().asFile.parentFile.mkdirs()
         writeJson(merged, declaredDependencyMetadata.get())
         val elapsedMs = (System.nanoTime() - startedAt) / 1_000_000
-        logger.lifecycle(
-            "Grazel: declared dependency metadata mode=PROJECT_TASK_FANOUT " +
-                "projects=${merged.projects.size} " +
-                "shards=${declaredDependencyMetadataShards.files.size} " +
-                "aggregateJsonBytes=${declaredDependencyMetadata.get().asFile.length()} " +
-                "elapsedMs=$elapsedMs"
+        val outputBytes = declaredDependencyMetadata.get().asFile.length()
+        logger.quiet(
+            "Collected declared dependency metadata for ${merged.projects.size} projects across " +
+                "${shards.size} shards in ${elapsedMs}ms ($outputBytes bytes, mode PROJECT_TASK_FANOUT)"
         )
         logger.logHeap("MergeDeclaredDependencyMetadata:done")
     }
@@ -272,25 +288,46 @@ internal abstract class MergeDeclaredDependencyMetadataTask : DefaultTask() {
     }
 }
 
-private fun collectDeclaredDependencyMetadata(
+internal fun collectDeclaredDependencyMetadata(
     metadataSources: List<DeclaredProjectMetadataSource>,
-    maxWorkerCount: Int
+    maxWorkerCount: Int,
+    reporter: ProgressReporter
 ): DeclaredDependencyMetadata {
     val snapshotter = DeclaredProjectMetadataSnapshotter()
     val workerCount = maxOf(1, maxWorkerCount)
     return runBlocking {
         val semaphore = Semaphore(workerCount)
+        val completedSnapshots = Channel<DeclaredMetadataSnapshotResult>(Channel.UNLIMITED)
         DeclaredDependencyMetadataMerger.merge(
-            metadataSources.map { metadataSource ->
-                async(Dispatchers.Default) {
-                    semaphore.withPermit {
-                        metadataSource.project.path to snapshotter.snapshot(
-                            project = metadataSource.project,
-                            variants = metadataSource.variants
-                        )
+            buildList {
+                metadataSources.forEach { metadataSource ->
+                    launch(Dispatchers.Default) {
+                        val result = semaphore.withPermit {
+                            val metadata = snapshotter.snapshot(
+                                project = metadataSource.project,
+                                variants = metadataSource.variants
+                            )
+                            DeclaredMetadataSnapshotResult(
+                                projectPath = metadataSource.project.path,
+                                metadata = metadata
+                            )
+                        }
+                        completedSnapshots.send(result)
                     }
                 }
-            }.awaitAll()
+
+                try {
+                    repeat(metadataSources.size) { index ->
+                        val result = completedSnapshots.receive()
+                        reporter.report(
+                            "snapshotting ${result.projectPath} (${index + 1}/${metadataSources.size})"
+                        )
+                        add(result.projectPath to result.metadata)
+                    }
+                } finally {
+                    completedSnapshots.close()
+                }
+            }
         )
     }
 }

@@ -23,6 +23,18 @@ fun ProgressLoggerFactory.startOperation(
     message: String
 ): ProgressLogger = newOperation(message).apply { start(message, message) }
 
+inline fun <T> ProgressLoggerFactory.withProgress(
+    header: String,
+    block: (ProgressReporter) -> T
+): T {
+    val operation = startOperation(header)
+    try {
+        return block(ProgressReporter { message -> operation.progress(message) })
+    } finally {
+        operation.completed()
+    }
+}
+
 inline fun <reified T> ProgressLoggerFactory.startOperation(
     message: String,
     parent: ProgressLogger

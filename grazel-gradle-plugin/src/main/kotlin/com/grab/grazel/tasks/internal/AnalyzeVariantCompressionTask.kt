@@ -18,6 +18,7 @@ package com.grab.grazel.tasks.internal
 
 import com.grab.grazel.bazel.starlark.BazelDependency.ProjectDependency
 import com.grab.grazel.di.GrazelComponent
+import com.grab.grazel.di.GradleServices
 import com.grab.grazel.gradle.dependencies.DefaultDependencyGraphsService
 import com.grab.grazel.gradle.dependencies.DefaultDependencyResolutionService
 import com.grab.grazel.gradle.dependencies.TopologicalSorter
@@ -36,6 +37,7 @@ import com.grab.grazel.migrate.android.AndroidLibraryDataExtractor
 import com.grab.grazel.util.GradleProvider
 import com.grab.grazel.util.Json
 import com.grab.grazel.util.logHeap
+import com.grab.grazel.util.withProgress
 import dagger.Lazy
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
@@ -115,11 +117,16 @@ constructor(
 
         val graphs = dependencyGraphsService.get().get()
         val orderedProjects = TopologicalSorter.sort(graphs)
+        val androidLibraryProjects = orderedProjects.filter(Project::isAndroidLibrary)
 
         val projectSummaries = mutableListOf<ProjectSummary>()
 
-        orderedProjects.forEach { project ->
-            if (project.isAndroidLibrary) {
+        val startedAt = System.nanoTime()
+        GradleServices.from(project).progressLoggerFactory.withProgress(
+            "analyzing variant compression"
+        ) { reporter ->
+            androidLibraryProjects.forEachIndexed { index, project ->
+                reporter.report("analyzing ${project.path} (${index + 1}/${androidLibraryProjects.size})")
                 try {
                     val compressionResult = analyzeProject(project)
                     variantCompressionService.get().register(project.path, compressionResult)
@@ -140,6 +147,7 @@ constructor(
                 }
             }
         }
+        val elapsedMs = (System.nanoTime() - startedAt) / 1_000_000
 
         val summary = AnalysisSummary(
             analysisTimestamp = Instant.now().toString(),
@@ -151,7 +159,7 @@ constructor(
         outputFile.parentFile.mkdirs()
         outputFile.writeText(Json.encodeToString(summary))
 
-        logger.info("Variant compression analysis complete. Results written to $outputFile")
+        logger.quiet("Analyzed variant compression for ${projectSummaries.size} projects in ${elapsedMs}ms")
     }
 
     private fun analyzeProject(project: Project): VariantCompressionResult {

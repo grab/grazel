@@ -20,6 +20,7 @@ import com.grab.grazel.gradle.dependencies.DeclaredDependencyMetadata
 import com.grab.grazel.gradle.dependencies.DeclaredProjectMetadataSource
 import com.grab.grazel.gradle.variant.Variant
 import com.grab.grazel.gradle.variant.VariantType
+import com.grab.grazel.util.ProgressReporter
 import com.grab.grazel.util.fromJson
 import org.gradle.api.Project
 import org.gradle.api.artifacts.Configuration
@@ -164,6 +165,52 @@ class CollectDeclaredDependencyMetadataTaskTest {
                 .variants
                 .single()
                 .declaredDependencies
+        )
+    }
+
+    @Test
+    fun `single task progress is emitted from caller thread while snapshots run in parallel`() {
+        val rootProject = ProjectBuilder.builder().withName("root").build()
+        val metadataSources = (1..4).map { index ->
+            val sourceProject = ProjectBuilder.builder()
+                .withName("library$index")
+                .withParent(rootProject)
+                .build()
+            val implementation = sourceProject.configurations.create("implementation")
+            sourceProject.dependencies.add("implementation", "com.example:library$index:1.0")
+            DeclaredProjectMetadataSource(
+                project = sourceProject,
+                variants = listOf(variant(project = sourceProject, configuration = implementation))
+            )
+        }
+        val callerThread = Thread.currentThread()
+        val progressMessages = mutableListOf<String>()
+
+        val metadata = collectDeclaredDependencyMetadata(
+            metadataSources = metadataSources,
+            maxWorkerCount = 4,
+            reporter = ProgressReporter { message ->
+                assertEquals(callerThread, Thread.currentThread())
+                progressMessages += message
+            }
+        )
+
+        assertEquals(
+            setOf(":library1", ":library2", ":library3", ":library4"),
+            metadata.projects.keys
+        )
+        assertEquals(4, progressMessages.size)
+        assertEquals(
+            listOf(1, 2, 3, 4),
+            progressMessages.map { message ->
+                Regex("""\((\d+)/4\)""").find(message)?.groupValues?.get(1)?.toInt()
+            }
+        )
+        assertEquals(
+            setOf(":library1", ":library2", ":library3", ":library4"),
+            progressMessages.mapTo(mutableSetOf()) { message ->
+                message.substringAfter("snapshotting ").substringBefore(" (")
+            }
         )
     }
 

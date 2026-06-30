@@ -20,6 +20,7 @@ import com.grab.grazel.util.createGrazelComponent
 import com.grab.grazel.util.doEvaluate
 import com.grab.grazel.util.initDependencyGraphsForTest
 import com.grab.grazel.util.truth
+import com.grab.grazel.util.writeJson
 import org.gradle.api.Project
 import org.gradle.api.provider.Provider
 import org.gradle.kotlin.dsl.configure
@@ -264,7 +265,9 @@ class DefaultAndroidLibraryDataExtractorTest {
         configure()
         rootProject.the<com.grab.grazel.GrazelExtension>()
             .rules.kotlin.enabledTransitiveReduction = true
-        grazelComponent.workspaceTargetTagPlanService().get().populateTagPlan(
+        val tagPlanFile = rootProject.layout.buildDirectory.file("grazel/test-target-tag-plan.json").get()
+        tagPlanFile.asFile.parentFile.mkdirs()
+        writeJson(
             listOf(
                 TargetTagPlan(
                     key = TargetTagKey(
@@ -274,8 +277,10 @@ class DefaultAndroidLibraryDataExtractorTest {
                     ),
                     tags = listOf("@maven//:com_example_planned")
                 )
-            )
+            ),
+            tagPlanFile
         )
+        grazelComponent.workspaceTargetTagPlanService().get().initTagPlan(tagPlanFile.asFile)
 
         val androidLibraryData = androidLibraryDataExtractor.extract(appProject, debugVariant())
 

@@ -17,9 +17,11 @@
 package com.grab.grazel.tasks.internal
 
 import com.grab.grazel.di.GrazelComponent
+import com.grab.grazel.di.GradleServices
 import com.grab.grazel.di.qualifiers.RootProject
 import com.grab.grazel.gradle.dependencies.DefaultDependencyResolutionService
 import com.grab.grazel.gradle.dependencies.WorkspaceTargetTagPlanCollector
+import com.grab.grazel.util.withProgress
 import com.grab.grazel.util.logHeap
 import com.grab.grazel.util.writeJson
 import dagger.Lazy
@@ -68,9 +70,19 @@ constructor(
         logger.logHeap("CollectWorkspaceTargetTagPlan:start")
         dependencyResolutionService.get().init(workspaceDependencies.get().asFile)
         targetTagPlan.get().asFile.parentFile.mkdirs()
+        val startedAt = System.nanoTime()
+        val tagPlan = GradleServices.from(project).progressLoggerFactory.withProgress(
+            "collecting workspace target tags"
+        ) { reporter ->
+            targetTagPlanCollector.get().collect(project.rootProject, reporter)
+        }
         writeJson(
-            targetTagPlanCollector.get().collect(project.rootProject),
+            tagPlan,
             targetTagPlan.get()
+        )
+        val elapsedMs = (System.nanoTime() - startedAt) / 1_000_000
+        logger.quiet(
+            "Collected target tags for ${tagPlan.size} targets in ${elapsedMs}ms"
         )
         logger.logHeap("CollectWorkspaceTargetTagPlan:done")
     }

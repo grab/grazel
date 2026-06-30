@@ -26,6 +26,7 @@ import com.grab.grazel.gradle.dependencies.model.TargetTagKey
 import com.grab.grazel.gradle.dependencies.model.TargetTagPlan
 import com.grab.grazel.gradle.dependencies.model.WorkspaceDependencies
 import com.grab.grazel.gradle.variant.DEFAULT_VARIANT
+import com.grab.grazel.util.ProgressReporter
 import com.grab.grazel.util.addGrazelExtension
 import com.grab.grazel.util.createGrazelComponent
 import com.grab.grazel.util.doEvaluate
@@ -77,7 +78,10 @@ class WorkspaceTargetTagPlanCollectorTest {
             )
         )
 
-        val tagPlan = grazelComponent.workspaceTargetTagPlanCollector().get().collect(rootProject)
+        val tagPlan = grazelComponent.workspaceTargetTagPlanCollector().get().collect(
+            rootProject,
+            ProgressReporter.NoOp
+        )
 
         assertThat(tagPlan).contains(
             TargetTagPlan(

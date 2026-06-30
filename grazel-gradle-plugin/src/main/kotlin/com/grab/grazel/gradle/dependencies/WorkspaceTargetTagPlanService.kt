@@ -29,12 +29,6 @@ internal abstract class WorkspaceTargetTagPlanService : BuildService<BuildServic
     private val lock = Any()
     private var targetTagsByKey: Map<TargetTagKey, List<String>>? = null
 
-    fun populateTagPlan(targetTagPlan: List<TargetTagPlan>) {
-        synchronized(lock) {
-            targetTagsByKey = targetTagPlan.indexByKey()
-        }
-    }
-
     fun initTagPlan(targetTagPlanJson: File) {
         synchronized(lock) {
             if (targetTagsByKey == null) {

@@ -34,6 +34,7 @@ import com.grab.grazel.gradle.variant.VariantMatcher
 import com.grab.grazel.gradle.variant.VariantType
 import com.grab.grazel.migrate.dependencies.calculateMavenDependencyTags
 import com.grab.grazel.util.GradleProvider
+import com.grab.grazel.util.ProgressReporter
 import dagger.Lazy
 import org.gradle.api.Project
 import java.util.concurrent.ConcurrentHashMap
@@ -41,7 +42,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 internal interface WorkspaceTargetTagPlanCollector {
-    fun collect(rootProject: Project): List<TargetTagPlan>
+    fun collect(rootProject: Project, reporter: ProgressReporter): List<TargetTagPlan>
 }
 
 internal object TargetTagKinds {
@@ -73,15 +74,19 @@ constructor(
         ConcurrentHashMap<MavenTagClosureKey, Set<MavenDependency>>()
     private val variantsByProjectPath = mutableMapOf<String, Set<Variant<*>>>()
 
-    override fun collect(rootProject: Project): List<TargetTagPlan> {
+    override fun collect(rootProject: Project, reporter: ProgressReporter): List<TargetTagPlan> {
         transitiveMavenDepsCache.clear()
         variantsByProjectPath.clear()
         return try {
-            rootProject.subprojects
-                .asSequence()
+            val migratableProjects = rootProject.subprojects
                 .sortedBy(Project::getPath)
                 .filter { project -> migrationChecker.get().canMigrate(project) }
-                .flatMap { project -> targetTagPlans(project) }
+            migratableProjects
+                .asSequence()
+                .flatMapIndexed { index, project ->
+                    reporter.report("tagging ${project.path} (${index + 1}/${migratableProjects.size})")
+                    targetTagPlans(project)
+                }
                 .filter { tagPlan -> tagPlan.tags.isNotEmpty() }
                 .sortedWith(
                     compareBy<TargetTagPlan> { it.key.variantId }

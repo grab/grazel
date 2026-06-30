@@ -34,6 +34,7 @@ import com.grab.grazel.gradle.dependencies.model.TargetReferenceFacts
 import com.grab.grazel.gradle.dependencies.model.WorkspaceDependencies
 import com.grab.grazel.gradle.dependencies.model.WorkspacePlan
 import com.grab.grazel.gradle.dependencies.model.WorkspaceRenderPlan
+import com.grab.grazel.util.ProgressReporter
 import com.grab.grazel.util.fromJson
 import com.grab.grazel.util.writeJson
 import dagger.Lazy
@@ -104,7 +105,10 @@ class WorkspacePlanTasksTest {
             rootProject = rootProject,
             targetTagPlanCollector = Lazy {
                 object : WorkspaceTargetTagPlanCollector {
-                    override fun collect(rootProject: Project): List<TargetTagPlan> = targetTagPlan
+                    override fun collect(
+                        rootProject: Project,
+                        reporter: ProgressReporter
+                    ): List<TargetTagPlan> = targetTagPlan
                 }
             }
         ) {
@@ -232,6 +236,7 @@ class WorkspacePlanTasksTest {
         val appProject = buildProject("app", rootProject)
         val uiTestsProject = buildProject("ui-tests", rootProject)
         val workspaceRenderPlanService = WorkspaceRenderPlanService.register(rootProject).get()
+        val progressMessages = mutableListOf<String>()
 
         val references: TargetReferenceFacts = collectTargetMavenRepoReferencesByGroup(
             projectGroups = listOf(uiTestsProject, appProject).map { project ->
@@ -260,12 +265,20 @@ class WorkspacePlanTasksTest {
                     else -> TargetReferenceFactsCollector.from()
                 }
             },
-            workspaceRenderPlanService = workspaceRenderPlanService
+            workspaceRenderPlanService = workspaceRenderPlanService,
+            reporter = ProgressReporter(progressMessages::add)
         )
 
         assertEquals(setOf("debug_maven"), references.repoNames)
         assertEquals(setOf(":app"), references.projectPaths)
         assertEquals(mapOf(":app" to setOf("app-gps-pax-debug")), references.projectTargets)
+        assertEquals(
+            listOf(
+                "collecting :ui-tests (1/2)",
+                "collecting :app (2/2)"
+            ),
+            progressMessages
+        )
     }
 
     @Test
@@ -319,7 +332,8 @@ class WorkspacePlanTasksTest {
                     else -> TargetReferenceFactsCollector.from()
                 }
             },
-            workspaceRenderPlanService = workspaceRenderPlanService
+            workspaceRenderPlanService = workspaceRenderPlanService,
+            reporter = ProgressReporter.NoOp
         )
 
         assertEquals(setOf("debug_maven", "lint_maven"), references.repoNames)

@@ -29,6 +29,7 @@ import com.grab.grazel.gradle.variant.VariantType.AndroidBuild
 import com.grab.grazel.gradle.variant.VariantType.AndroidTest
 import com.grab.grazel.gradle.variant.VariantType.JvmBuild
 import com.grab.grazel.gradle.variant.VariantType.Test
+import com.grab.grazel.util.ProgressReporter
 import org.gradle.api.logging.Logger
 import java.util.TreeSet
 
@@ -60,6 +61,7 @@ private data class MainProjectEdgeScope(
  */
 internal class AggregatedDependencyResolver(
     private val logger: Logger,
+    private val reporter: ProgressReporter,
     private val declaredDependencyMetadata: DeclaredDependencyMetadata = DeclaredDependencyMetadata.EMPTY,
     private val precomputedKspDependencies: Set<ResolvedDependency> = emptySet(),
     private val workspaceDependencyRoots: List<AggregatedDependencyRoot> = emptyList()
@@ -406,11 +408,12 @@ internal class AggregatedDependencyResolver(
         }
 
         private fun collectRootClosures() {
-            workspaceDependencyRoots.forEach { aggregatedRoot ->
+            val rootsToResolve = workspaceDependencyRoots.filter { root ->
+                root.metadata.shouldResolveMainHierarchyRoot()
+            }
+            rootsToResolve.forEachIndexed rootLoop@{ index, aggregatedRoot ->
                 val metadata = aggregatedRoot.metadata
-                if (!metadata.shouldResolveMainHierarchyRoot()) {
-                    return@forEach
-                }
+                reporter.report("resolving ${metadata.projectPath} (${index + 1}/${rootsToResolve.size})")
                 var mainProjectEdgeScope: MainProjectEdgeScope? = null
                 val reachableProjectPaths = when (metadata.kind) {
                     AggregatedDependencyRootKind.MAIN_HIERARCHY,
@@ -521,7 +524,7 @@ internal class AggregatedDependencyResolver(
                     }
                     AggregatedDependencyRootKind.MAIN_LEAF -> {
                         sawBinaryRoot = true
-                        val leafName = metadata.leafName ?: metadata.bucketName ?: return@forEach
+                        val leafName = metadata.leafName ?: metadata.bucketName ?: return@rootLoop
                         val targetBuckets = metadata.targetBucketNames()
                         targetBuckets.forEach { bucketName ->
                             when (bucketName) {
@@ -557,7 +560,7 @@ internal class AggregatedDependencyResolver(
                         }
                     }
                     AggregatedDependencyRootKind.UNIT_TEST -> {
-                        val leafName = metadata.leafName ?: metadata.bucketName ?: return@forEach
+                        val leafName = metadata.leafName ?: metadata.bucketName ?: return@rootLoop
                         addDependenciesToProjectBucket(
                             dependenciesByProjectBucket = leafUnitTestClosures,
                             projectPath = metadata.projectPath,
@@ -566,7 +569,7 @@ internal class AggregatedDependencyResolver(
                         )
                     }
                     AggregatedDependencyRootKind.ANDROID_TEST -> {
-                        val leafName = metadata.leafName ?: metadata.bucketName ?: return@forEach
+                        val leafName = metadata.leafName ?: metadata.bucketName ?: return@rootLoop
                         addDependenciesToProjectBucket(
                             dependenciesByProjectBucket = leafAndroidTestClosures,
                             projectPath = metadata.projectPath,

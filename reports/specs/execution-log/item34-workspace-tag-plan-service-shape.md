@@ -2,7 +2,9 @@
 
 ## Status
 
-- 2026-07-01: Implementation in progress.
+- 2026-07-01: Implemented and committed locally as `85c6136`
+  (`refactor: split workspace tag plan service`). Final Item35 verification
+  reran the broader Grazel/PAX gates against this shape.
 
 ## Decisions
 
@@ -11,6 +13,9 @@
 - `WorkspacePlanService` is plan-only.
 - `WorkspaceTargetTagPlanService` owns read-only target tag lookup keyed by
   `TargetTagKey`.
+- Post-Item35 adversarial review removed the last in-memory
+  `populateTagPlan(...)` test seam; tests now hydrate this service through
+  `target-tag-plan.json` with `initTagPlan(...)`, matching production.
 - `WorkspaceRenderPlanService` owns generated target reachability and keeps the
   documented consumer-first back-edge used during target-reference collection.
 - Part 3 typed-key cleanup remains deferred unless it can be proven
@@ -36,8 +41,8 @@
 - `git diff --check`
   - Passed.
 
-## Remaining Before Item 34 Closure
+## Closure
 
-- Run broader local test/generation gates after Item35 or before final.
-- Run PAX migrate/build/test final guard after Item35 because Item35 is also
-  source-changing and allowed to affect console output only.
+- Item34 is closed. Remaining verification evidence is recorded in the Item35
+  log and top-level execution log because the final gates were rerun after
+  Item35's source changes.

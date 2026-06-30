@@ -17,6 +17,7 @@
 package com.grab.grazel.tasks.internal
 
 import com.grab.grazel.di.GrazelComponent
+import com.grab.grazel.di.GradleServices
 import com.grab.grazel.di.qualifiers.RootProject
 import com.grab.grazel.gradle.MigrationChecker
 import com.grab.grazel.gradle.dependencies.DefaultDependencyGraphsService
@@ -32,6 +33,8 @@ import com.grab.grazel.gradle.dependencies.normalized
 import com.grab.grazel.migrate.target.TargetReferenceFactsExtractor
 import com.grab.grazel.util.GradleProvider
 import com.grab.grazel.util.logHeap
+import com.grab.grazel.util.ProgressReporter
+import com.grab.grazel.util.withProgress
 import com.grab.grazel.util.writeJson
 import dagger.Lazy
 import org.gradle.api.DefaultTask
@@ -98,15 +101,26 @@ constructor(
                 .filterNot { subproject -> subproject in graphProjects }
                 .sortedBy(Project::getPath)
                 .map { subproject -> ProjectReachabilityGroup(listOf(subproject)) }
+        val totalProjects = orderedGroups.sumOf { group -> group.projects.size }
 
-        val targetReferences = collectTargetMavenRepoReferencesByGroup(
-            projectGroups = orderedGroups,
-            canMigrate = { subproject -> migrationChecker.get().canMigrate(subproject) },
-            factsForProject = { subproject -> targetReferenceFactsExtractor.get().collect(subproject) },
-            workspaceRenderPlanService = workspaceRenderPlanService.get()
-        )
+        val startedAt = System.nanoTime()
+        val targetReferences = GradleServices.from(project).progressLoggerFactory.withProgress(
+            "collecting target Maven repo references"
+        ) { reporter ->
+            collectTargetMavenRepoReferencesByGroup(
+                projectGroups = orderedGroups,
+                canMigrate = { subproject -> migrationChecker.get().canMigrate(subproject) },
+                factsForProject = { subproject -> targetReferenceFactsExtractor.get().collect(subproject) },
+                workspaceRenderPlanService = workspaceRenderPlanService.get(),
+                reporter = reporter
+            )
+        }
 
         writeJson(targetReferences, targetMavenRepoReferences.get())
+        val elapsedMs = (System.nanoTime() - startedAt) / 1_000_000
+        logger.quiet(
+            "Collected target references across $totalProjects modules in ${elapsedMs}ms"
+        )
         logger.logHeap("CollectTargetMavenRepoReferences:done")
     }
 
@@ -137,16 +151,18 @@ constructor(
 }
 
 internal fun collectTargetMavenRepoReferencesByGroup(
-    projectGroups: Iterable<ProjectReachabilityGroup>,
+    projectGroups: List<ProjectReachabilityGroup>,
     canMigrate: (Project) -> Boolean,
     factsForProject: (Project) -> TargetReferenceFacts,
-    workspaceRenderPlanService: WorkspaceRenderPlanService
+    workspaceRenderPlanService: WorkspaceRenderPlanService,
+    reporter: ProgressReporter
 ): TargetReferenceFacts {
     val referenceFacts = collectTargetMavenRepoReferencesSinglePass(
         projectGroups = projectGroups,
         canMigrate = canMigrate,
         factsForProject = factsForProject,
-        workspaceRenderPlanService = workspaceRenderPlanService
+        workspaceRenderPlanService = workspaceRenderPlanService,
+        reporter = reporter
     )
     val references = referenceFacts.normalized()
 
@@ -155,14 +171,19 @@ internal fun collectTargetMavenRepoReferencesByGroup(
 }
 
 private fun collectTargetMavenRepoReferencesSinglePass(
-    projectGroups: Iterable<ProjectReachabilityGroup>,
+    projectGroups: List<ProjectReachabilityGroup>,
     canMigrate: (Project) -> Boolean,
     factsForProject: (Project) -> TargetReferenceFacts,
-    workspaceRenderPlanService: WorkspaceRenderPlanService
+    workspaceRenderPlanService: WorkspaceRenderPlanService,
+    reporter: ProgressReporter
 ): TargetReferenceFacts {
+    val totalProjects = projectGroups.sumOf { group -> group.projects.size }
+    var visitedProjects = 0
     var accumulated = TargetReferenceFacts()
     projectGroups.forEach { group ->
         accumulated = group.projects.fold(accumulated) { current, project ->
+            visitedProjects += 1
+            reporter.report("collecting ${project.path} ($visitedProjects/$totalProjects)")
             collectProjectReferences(
                 accumulated = current,
                 project = project,

@@ -6,12 +6,12 @@ evidence in item-specific logs so context compaction can recover state quickly.
 ## Active State
 
 - 2026-07-01 CURRENT TRUTH - Item34/35 goal:
-  - Grazel is on `arun/dependencies-refactor` at local commit `bfddc28`
-    (`docs: align dependency refactor status for item34`). Do not push.
-    Item34 source changes are in progress and uncommitted.
-  - Current goal order: status/docs truth checkpoint -> Item34 workspace tag
-    plan service shape -> Item35 progress reporting -> simplify/adversarial
-    review -> full Grazel/PAX verification.
+  - Grazel is on `arun/dependencies-refactor` at local commit `85c6136`
+    (`refactor: split workspace tag plan service`). Do not push.
+    Item35 source/log changes are verified and ready for a local commit.
+  - Current goal order reached final checkpoint: status/docs truth checkpoint,
+    Item34 workspace tag plan service shape, Item35 progress reporting,
+    simplify/adversarial review, and full Grazel/PAX verification are complete.
   - Items 30, 29, 31, 32, 28, and 33 are completed prerequisite work. Item32
     is true source-project declared-metadata fanout and must not be treated as
     pending implementation unless that task shape regresses.
@@ -26,6 +26,8 @@ evidence in item-specific logs so context compaction can recover state quickly.
   - Console/log output may change only for Item35 progress/summary reporting.
     Generated `BUILD.bazel`, `WORKSPACE`, and pin JSON output must remain
     empty-diff.
+  - Item34 source checkpoint committed locally as `85c6136`
+    (`refactor: split workspace tag plan service`).
   - Item34 checkpoint so far:
     - Split `WorkspacePlanService` into plan-only service plus
       `WorkspaceRenderPlanService` and `WorkspaceTargetTagPlanService`.
@@ -42,6 +44,47 @@ evidence in item-specific logs so context compaction can recover state quickly.
       `git diff --name-only -- '*.bazel' 'WORKSPACE' 'maven_install.json' 'maven_install_*.json'`
       returned empty, so committed generated Bazel output is unchanged.
       `git diff --check` passed.
+  - Item35 checkpoint so far:
+    - Added pure-JVM `ProgressReporter`, Gradle `withProgress` adapter, and
+      progress/quiet summaries for the seven heavy task paths listed in the
+      spec.
+    - Simplify/adversarial review fixes applied:
+      - KSP progress path streams visit results instead of building an
+        intermediate flat list.
+      - Target-reference progress derives totals from the concrete group list
+        instead of accepting a separate progress-only count.
+      - Declared-metadata single-task progress no longer calls Gradle
+        `ProgressLogger` from worker coroutines; worker snapshots send results
+        through a channel and the task-thread coroutine emits progress.
+      - Added a declared-metadata regression test proving progress emits on the
+        caller thread while snapshots run in parallel.
+      - Removed mutable `WorkspaceTargetTagPlanService.populateTagPlan(...)`;
+        the remaining test hydrates through JSON with `initTagPlan(...)`.
+      - Declared-metadata summaries are prose-style quiet messages.
+    - Full plugin unit tests passed:
+      `./gradlew :grazel-gradle-plugin:test --console=plain --no-daemon`.
+    - Local generation passed:
+      `./gradlew migrateToBazel --console=plain --no-daemon`.
+    - Generated Bazel output diff remained empty; `git diff --check`,
+      `verify-default-task-graph.sh`, and
+      `verify-pax-size-guard.sh --mode preserving` passed.
+    - `verify-sample-bucket-labels.sh` failed only on the documented
+      pre-existing one-sided appcompat/constraintlayout exclude assertion.
+    - PAX verification passed:
+      `./gradlew migrateToBazel --no-daemon --console=plain --stacktrace --rerun-tasks`
+      passed in the final run in `10m 47s`;
+      `./bazel.sh build --verbose_failures //app:app-gps-pax-debug.apk //app:app-gps-pax-debug-android-test.apk`
+      passed in `227.480s`;
+      `./bazel.sh test --test_output=errors //app-utils:app-utils-gps-pax-debug-test //app-test:app-test-gps-pax-debug-test //application-initializer:application-initializer-gps-pax-debug-test`
+      passed in `16.418s` with 3/3 test targets passing.
+      PAX `git status --short` remained on the accepted dirty baseline only,
+      and PAX `git diff --check` passed.
+      `reports/scripts/verify-pax-size-guard.sh --mode preserving` passed with
+      unchanged counts: bucketCount 11, pinfileCount 11, totalArtifactRoots
+      1945.
+    - Next action: final local commit. Keep
+      `reports/DEPENDENCY-PINNING-MAP.md` untracked unless the maintainer
+      explicitly asks to include it.
 
 - 2026-06-29 +08 HISTORICAL - KSP relocatability + Items 32/33 start:
   - Grazel is on `arun/dependencies-refactor` at local commit `c8dcdf4`

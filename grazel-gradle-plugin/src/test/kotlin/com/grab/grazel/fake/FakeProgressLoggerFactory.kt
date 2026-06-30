@@ -5,19 +5,24 @@ import org.gradle.internal.logging.progress.ProgressLoggerFactory
 import org.gradle.internal.operations.BuildOperationDescriptor
 
 class FakeProgressLoggerFactory : ProgressLoggerFactory {
-    override fun newOperation(loggerCategory: String?) = FakeProgressLogger()
+    val operations = mutableListOf<FakeProgressLogger>()
 
-    override fun newOperation(loggerCategory: Class<*>?) = FakeProgressLogger()
+    override fun newOperation(loggerCategory: String?) = newLogger()
+
+    override fun newOperation(loggerCategory: Class<*>?) = newLogger()
 
     override fun newOperation(
         loggerCategory: Class<*>?,
         buildOperationDescriptor: BuildOperationDescriptor?
-    ): ProgressLogger = FakeProgressLogger()
+    ): ProgressLogger = newLogger()
 
     override fun newOperation(
         loggerClass: Class<*>?,
         parent: ProgressLogger?
-    ) = FakeProgressLogger()
+    ) = newLogger()
+
+    private fun newLogger(): FakeProgressLogger =
+        FakeProgressLogger().also(operations::add)
 }
 
 class FakeProgressLogger : ProgressLogger {

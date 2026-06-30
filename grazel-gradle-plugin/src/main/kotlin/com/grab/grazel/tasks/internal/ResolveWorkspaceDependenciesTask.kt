@@ -22,8 +22,10 @@ import com.grab.grazel.gradle.dependencies.AggregatedDependencyRootMetadata
 import com.grab.grazel.gradle.dependencies.DeclaredDependencyMetadata
 import com.grab.grazel.gradle.dependencies.model.ResolveDependenciesResult
 import com.grab.grazel.gradle.dependencies.model.ResolveDependenciesResult.Companion.Scope.KSP
+import com.grab.grazel.di.GradleServices
 import com.grab.grazel.util.fromJson
 import com.grab.grazel.util.logHeap
+import com.grab.grazel.util.withProgress
 import com.grab.grazel.util.writeJson
 import org.gradle.api.DefaultTask
 import org.gradle.api.Project
@@ -77,18 +79,30 @@ internal abstract class ResolveWorkspaceDependenciesTask : DefaultTask() {
                 "metadata count (${rootMetadata.size})"
         }
 
-        val resolver = AggregatedDependencyResolver(
-            logger = logger,
-            declaredDependencyMetadata = fromJson<DeclaredDependencyMetadata>(
-                declaredDependencyMetadata.get()
-            ),
-            precomputedKspDependencies = fromJson<ResolveDependenciesResult>(
-                kspDependencies.get()
-            ).dependencies.getOrDefault(KSP.name, emptySet()),
-            workspaceDependencyRoots = rootComponents.zip(rootMetadata)
-                .map { (root, metadata) -> AggregatedDependencyRoot(root, metadata) }
+        val startedAt = System.nanoTime()
+        val results = GradleServices.from(project).progressLoggerFactory.withProgress(
+            "resolving workspace dependencies"
+        ) { reporter ->
+            AggregatedDependencyResolver(
+                logger = logger,
+                reporter = reporter,
+                declaredDependencyMetadata = fromJson<DeclaredDependencyMetadata>(
+                    declaredDependencyMetadata.get()
+                ),
+                precomputedKspDependencies = fromJson<ResolveDependenciesResult>(
+                    kspDependencies.get()
+                ).dependencies.getOrDefault(KSP.name, emptySet()),
+                workspaceDependencyRoots = rootComponents.zip(rootMetadata)
+                    .map { (root, metadata) -> AggregatedDependencyRoot(root, metadata) }
+            ).resolve()
+        }
+        val elapsedMs = (System.nanoTime() - startedAt) / 1_000_000
+        val dependencyCount = results.sumOf { result ->
+            result.dependencies.values.sumOf { dependencies -> dependencies.size }
+        }
+        logger.quiet(
+            "Resolved $dependencyCount deps across ${rootMetadata.size} roots in ${elapsedMs}ms"
         )
-        val results = resolver.resolve()
 
         logger.logHeap("ResolveWorkspaceDeps:resolved")
         workspaceDependencyResults.get().asFile.parentFile.mkdirs()
