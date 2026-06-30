@@ -21,6 +21,8 @@ import com.grab.grazel.di.GrazelComponent
 import com.grab.grazel.gradle.MigrationChecker
 import com.grab.grazel.gradle.dependencies.DefaultDependencyResolutionService
 import com.grab.grazel.gradle.dependencies.WorkspacePlanService
+import com.grab.grazel.gradle.dependencies.WorkspaceRenderPlanService
+import com.grab.grazel.gradle.dependencies.WorkspaceTargetTagPlanService
 import com.grab.grazel.gradle.isAndroid
 import com.grab.grazel.gradle.isJava
 import com.grab.grazel.gradle.isKotlin
@@ -61,6 +63,8 @@ constructor(
     private val migrationChecker: Lazy<MigrationChecker>,
     private val bazelFileBuilder: Lazy<ProjectBazelFileBuilder.Factory>,
     private val workspacePlanService: GradleProvider<WorkspacePlanService>,
+    private val workspaceRenderPlanService: GradleProvider<WorkspaceRenderPlanService>,
+    private val workspaceTargetTagPlanService: GradleProvider<WorkspaceTargetTagPlanService>,
     objectFactory: ObjectFactory,
     private val layout: ProjectLayout,
     private val execOperations: ExecOperations,
@@ -77,6 +81,9 @@ constructor(
 
     @get:InputFile
     val workspaceRenderPlan: RegularFileProperty = project.objects.fileProperty()
+
+    @get:InputFile
+    val targetTagPlan: RegularFileProperty = project.objects.fileProperty()
 
     @get:InputFile
     @get:PathSensitive(PathSensitivity.RELATIVE)
@@ -107,8 +114,10 @@ constructor(
             .init(workspaceDependencies.get().asFile)
         workspacePlanService.get()
             .initPlan(workspacePlan.get().asFile)
-        workspacePlanService.get()
+        workspaceRenderPlanService.get()
             .initRenderPlan(workspaceRenderPlan.get().asFile)
+        workspaceTargetTagPlanService.get()
+            .initTagPlan(targetTagPlan.get().asFile)
 
         if (migrationChecker.get().canMigrate(project)) {
             val projectBazelFileBuilder = bazelFileBuilder.get().create(project)
@@ -168,6 +177,8 @@ constructor(
                 grazelComponent.migrationChecker(),
                 grazelComponent.projectBazelFileBuilderFactory(),
                 grazelComponent.workspacePlanService(),
+                grazelComponent.workspaceRenderPlanService(),
+                grazelComponent.workspaceTargetTagPlanService(),
             ).apply {
                 configure {
                     group = GRAZEL_TASK_GROUP

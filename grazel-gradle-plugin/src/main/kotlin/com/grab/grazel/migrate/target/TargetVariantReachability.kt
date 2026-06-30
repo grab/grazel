@@ -18,7 +18,7 @@ package com.grab.grazel.migrate.target
 
 import com.android.build.gradle.api.BaseVariant
 import com.grab.grazel.gradle.dependencies.DefaultDependencyResolutionService
-import com.grab.grazel.gradle.dependencies.WorkspacePlanService
+import com.grab.grazel.gradle.dependencies.WorkspaceRenderPlanService
 import com.grab.grazel.gradle.variant.MatchedVariant
 import com.grab.grazel.gradle.variant.DEFAULT_VARIANT
 import com.grab.grazel.util.GradleProvider
@@ -94,10 +94,10 @@ internal fun reachableBucketPredicate(
 internal fun isReachableJvmProject(
     project: Project,
     dependencyResolutionService: GradleProvider<DefaultDependencyResolutionService>,
-    workspacePlanService: GradleProvider<WorkspacePlanService>
+    workspaceRenderPlanService: GradleProvider<WorkspaceRenderPlanService>
 ): Boolean {
     val service = dependencyResolutionService.get()
     return !service.hasMainBucketReachability() ||
         service.isReachableMainBucket(project.path, DEFAULT_VARIANT) ||
-        workspacePlanService.get().isReferencedProjectPath(project.path)
+        workspaceRenderPlanService.get().isReferencedProjectPath(project.path)
 }

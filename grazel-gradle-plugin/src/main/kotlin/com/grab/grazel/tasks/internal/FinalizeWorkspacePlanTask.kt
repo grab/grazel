@@ -17,6 +17,7 @@
 package com.grab.grazel.tasks.internal
 
 import com.grab.grazel.gradle.dependencies.WorkspacePlanService
+import com.grab.grazel.gradle.dependencies.WorkspaceRenderPlanService
 import com.grab.grazel.gradle.dependencies.WorkspaceRenderPlanBuilder
 import com.grab.grazel.gradle.dependencies.asRenderPlan
 import com.grab.grazel.gradle.dependencies.model.TargetReferenceFacts
@@ -52,6 +53,9 @@ internal abstract class FinalizeWorkspacePlanTask : DefaultTask() {
     @get:Internal
     abstract val workspacePlanService: Property<WorkspacePlanService>
 
+    @get:Internal
+    abstract val workspaceRenderPlanService: Property<WorkspaceRenderPlanService>
+
     @get:OutputFile
     abstract val workspaceRenderPlan: RegularFileProperty
 
@@ -74,7 +78,7 @@ internal abstract class FinalizeWorkspacePlanTask : DefaultTask() {
         )
         workspaceRenderPlan.get().asFile.parentFile.mkdirs()
         writeJson(renderPlan, workspaceRenderPlan.get())
-        workspacePlanService.get().populateRenderPlan(renderPlan)
+        workspaceRenderPlanService.get().populateRenderPlan(renderPlan)
         logger.logHeap("FinalizeWorkspacePlan:done")
     }
 
@@ -84,6 +88,7 @@ internal abstract class FinalizeWorkspacePlanTask : DefaultTask() {
         internal fun register(
             rootProject: Project,
             workspacePlanService: GradleProvider<WorkspacePlanService>,
+            workspaceRenderPlanService: GradleProvider<WorkspaceRenderPlanService>,
             configureAction: FinalizeWorkspacePlanTask.() -> Unit = {}
         ): TaskProvider<FinalizeWorkspacePlanTask> {
             return rootProject.tasks.register<FinalizeWorkspacePlanTask>(TASK_NAME) {
@@ -91,6 +96,7 @@ internal abstract class FinalizeWorkspacePlanTask : DefaultTask() {
                     rootProject.layout.buildDirectory.file("grazel/workspace-render-plan.json")
                 )
                 this.workspacePlanService.set(workspacePlanService)
+                this.workspaceRenderPlanService.set(workspaceRenderPlanService)
                 configureAction(this)
             }
         }

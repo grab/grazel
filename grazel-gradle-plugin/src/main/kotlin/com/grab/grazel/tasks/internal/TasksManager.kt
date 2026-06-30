@@ -85,11 +85,10 @@ constructor(
             workspacePlanService = grazelComponent.workspacePlanService()
         ) {
             workspaceDependencies.set(computeWorkspaceDependenciesTask.flatMap { it.workspaceDependencies })
-            targetTagPlan.set(collectWorkspaceTargetTagPlanTask.flatMap { it.targetTagPlan })
             configuredOverrideTargets.set(
                 grazelComponent.extension().rules.mavenInstall.overrideTargetLabels
             )
-            dependsOn(collectWorkspaceTargetTagPlanTask)
+            dependsOn(computeWorkspaceDependenciesTask)
         }
 
         val analyzeVariantCompressionTask = AnalyzeVariantCompressionTask.register(
@@ -97,8 +96,8 @@ constructor(
             grazelComponent = grazelComponent
         ) {
             workspaceDependencies.set(computeWorkspaceDependenciesTask.flatMap { it.workspaceDependencies })
-            workspacePlan.set(computeWorkspacePlanTask.flatMap { it.workspacePlan })
-            dependsOn(computeWorkspacePlanTask)
+            targetTagPlan.set(collectWorkspaceTargetTagPlanTask.flatMap { it.targetTagPlan })
+            dependsOn(collectWorkspaceTargetTagPlanTask)
         }
 
         val collectTargetMavenRepoReferencesTask = CollectTargetMavenRepoReferencesTask.register(
@@ -106,14 +105,15 @@ constructor(
             grazelComponent = grazelComponent
         ) {
             workspaceDependencies.set(computeWorkspaceDependenciesTask.flatMap { it.workspaceDependencies })
-            workspacePlan.set(computeWorkspacePlanTask.flatMap { it.workspacePlan })
+            targetTagPlan.set(collectWorkspaceTargetTagPlanTask.flatMap { it.targetTagPlan })
             dependencyResolutionService.set(grazelComponent.dependencyResolutionService())
             dependsOn(analyzeVariantCompressionTask)
         }
 
         val finalizeWorkspacePlanTask = FinalizeWorkspacePlanTask.register(
             rootProject = rootProject,
-            workspacePlanService = grazelComponent.workspacePlanService()
+            workspacePlanService = grazelComponent.workspacePlanService(),
+            workspaceRenderPlanService = grazelComponent.workspaceRenderPlanService()
         ) {
             workspacePlan.set(computeWorkspacePlanTask.flatMap { it.workspacePlan })
             targetMavenRepoReferences.set(
@@ -151,6 +151,7 @@ constructor(
                 workspaceDependencies.set(computeWorkspaceDependenciesTask.flatMap { it.workspaceDependencies })
                 workspacePlan.set(computeWorkspacePlanTask.flatMap { it.workspacePlan })
                 workspaceRenderPlan.set(finalizeWorkspacePlanTask.flatMap { it.workspaceRenderPlan })
+                targetTagPlan.set(collectWorkspaceTargetTagPlanTask.flatMap { it.targetTagPlan })
                 buildifierScript.set(buildifierScriptProvider)
                 dependsOn(finalizeWorkspacePlanTask)
                 dependsOn(generateBuildifierScriptTask)

@@ -21,8 +21,6 @@ import com.grab.grazel.gradle.dependencies.model.CandidateMavenRepo
 import com.grab.grazel.gradle.dependencies.model.CandidateMavenRepoKind.VARIANT
 import com.grab.grazel.gradle.dependencies.model.OverrideTarget
 import com.grab.grazel.gradle.dependencies.model.ResolvedDependency
-import com.grab.grazel.gradle.dependencies.model.TargetTagKey
-import com.grab.grazel.gradle.dependencies.model.TargetTagPlan
 import com.grab.grazel.gradle.dependencies.model.WorkspaceDependencies
 import com.grab.grazel.gradle.dependencies.model.WorkspacePlan
 import com.grab.grazel.gradle.variant.DEFAULT_VARIANT
@@ -276,27 +274,6 @@ class WorkspacePlanBuilderTest {
             plan.repoPlan.getValue("ksp_maven").pinInputs.map(ResolvedDependency::id)
         )
         assertEquals(setOf("ksp_maven"), renderPlan.materializedRepoNames)
-    }
-
-    @Test
-    fun `workspace plan carries precomputed target tag plan`() {
-        val targetTagPlan = listOf(
-            TargetTagPlan(
-                key = TargetTagKey(
-                    variantId = ":lib:debugAndroidBuild",
-                    variantType = "AndroidBuild",
-                    targetKind = "android_library"
-                ),
-                tags = listOf("@maven//:com_example_root", "@maven//:com_example_transitive")
-            )
-        )
-
-        val plan = WorkspacePlanBuilder().build(
-            workspaceDependencies = WorkspaceDependencies(variantDeps = mapOf(DEFAULT_VARIANT to emptyList())),
-            targetTagPlan = targetTagPlan
-        )
-
-        assertEquals(targetTagPlan, plan.tagPlan)
     }
 
     private fun dependency(id: String): ResolvedDependency =

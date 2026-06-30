@@ -59,6 +59,20 @@ internal interface DependenciesModule {
             @RootProject rootProject: Project
         ): GradleProvider<@JvmSuppressWildcards WorkspacePlanService> =
             WorkspacePlanService.register(rootProject)
+
+        @Singleton
+        @Provides
+        fun workspaceRenderPlanService(
+            @RootProject rootProject: Project
+        ): GradleProvider<@JvmSuppressWildcards WorkspaceRenderPlanService> =
+            WorkspaceRenderPlanService.register(rootProject)
+
+        @Singleton
+        @Provides
+        fun workspaceTargetTagPlanService(
+            @RootProject rootProject: Project
+        ): GradleProvider<@JvmSuppressWildcards WorkspaceTargetTagPlanService> =
+            WorkspaceTargetTagPlanService.register(rootProject)
     }
 }
 

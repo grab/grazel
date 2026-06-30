@@ -22,8 +22,8 @@ import com.grab.grazel.gradle.isAndroidApplication
 import com.grab.grazel.gradle.isAndroidTest
 import com.grab.grazel.gradle.isKotlin
 import com.grab.grazel.gradle.dependencies.DefaultDependencyResolutionService
-import com.grab.grazel.gradle.dependencies.WorkspacePlanService
 import com.grab.grazel.gradle.dependencies.TargetReferenceFactsCollector
+import com.grab.grazel.gradle.dependencies.WorkspaceRenderPlanService
 import com.grab.grazel.gradle.dependencies.merged
 import com.grab.grazel.gradle.dependencies.model.TargetReferenceFacts
 import com.grab.grazel.gradle.variant.DefaultVariantCompressionService
@@ -68,7 +68,7 @@ constructor(
     private val variantMatcher: VariantMatcher,
     private val variantCompressionService: GradleProvider<DefaultVariantCompressionService>,
     private val dependencyResolutionService: GradleProvider<DefaultDependencyResolutionService>,
-    private val workspacePlanService: GradleProvider<WorkspacePlanService>
+    private val workspaceRenderPlanService: GradleProvider<WorkspaceRenderPlanService>
 ) {
 
     fun collect(project: Project): TargetReferenceFacts =
@@ -91,7 +91,7 @@ constructor(
 
     private fun androidBinaryFacts(project: Project): TargetReferenceFacts {
         val isReachableBucket = reachableBucketPredicate(project, dependencyResolutionService)
-        val referencedTargetNames = workspacePlanService.get().referencedTargetNames(project.path)
+        val referencedTargetNames = workspaceRenderPlanService.get().referencedTargetNames(project.path)
         return variantMatcher.matchedVariants(
             project = project,
             variantType = VariantType.AndroidBuild,
@@ -131,7 +131,7 @@ constructor(
 
     private fun standaloneAndroidTestFacts(project: Project): TargetReferenceFacts {
         val isReachableBucket = reachableBucketPredicate(project, dependencyResolutionService)
-        val referencedTargetNames = workspacePlanService.get().referencedTargetNames(project.path)
+        val referencedTargetNames = workspaceRenderPlanService.get().referencedTargetNames(project.path)
         return variantMatcher.matchedVariants(
             project = project,
             variantType = VariantType.AndroidBuild,
@@ -155,7 +155,7 @@ constructor(
     }
 
     private fun kotlinFacts(project: Project): TargetReferenceFacts {
-        if (!isReachableJvmProject(project, dependencyResolutionService, workspacePlanService)) {
+        if (!isReachableJvmProject(project, dependencyResolutionService, workspaceRenderPlanService)) {
             return TargetReferenceFacts()
         }
         val projectData = kotlinProjectDataExtractor.extract(project)

@@ -20,11 +20,11 @@ import com.grab.grazel.GrazelExtension
 import com.grab.grazel.bazel.starlark.BazelDependency
 import com.grab.grazel.extension.KotlinExtension
 import com.grab.grazel.gradle.dependencies.DefaultDependencyGraphsService
-import com.grab.grazel.gradle.dependencies.WorkspacePlanService
 import com.grab.grazel.gradle.dependencies.DependenciesDataSource
 import com.grab.grazel.gradle.dependencies.DependencyGraphs
 import com.grab.grazel.gradle.dependencies.GradleDependencyToBazelDependency
 import com.grab.grazel.gradle.dependencies.TargetTagKinds
+import com.grab.grazel.gradle.dependencies.WorkspaceTargetTagPlanService
 import com.grab.grazel.gradle.hasCompose
 import com.grab.grazel.gradle.variant.AndroidVariantDataSource
 import com.grab.grazel.gradle.variant.DefaultVariantCompressionService
@@ -64,7 +64,7 @@ constructor(
     private val gradleDependencyToBazelDependency: GradleDependencyToBazelDependency,
     private val testSizeCalculator: TestSizeCalculator,
     private val variantCompressionService: GradleProvider<DefaultVariantCompressionService>,
-    private val workspacePlanService: GradleProvider<WorkspacePlanService>
+    private val workspaceTargetTagPlanService: GradleProvider<WorkspaceTargetTagPlanService>
 ) : AndroidUnitTestDataExtractor {
 
     private val projectDependencyGraphs: DependencyGraphs
@@ -124,7 +124,7 @@ constructor(
 
         val tags = if (kotlinExtension.enabledTransitiveReduction) {
             val localTags = calculateDirectDependencyTags(name, deps)
-            val mavenTags = workspacePlanService
+            val mavenTags = workspaceTargetTagPlanService
                 .get()
                 .tagsFor(
                     variantId = variantKey.variantId,

@@ -20,8 +20,7 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 internal data class WorkspacePlan(
-    val repoPlan: Map<String, CandidateMavenRepo> = emptyMap(),
-    val tagPlan: List<TargetTagPlan> = emptyList()
+    val repoPlan: Map<String, CandidateMavenRepo> = emptyMap()
 )
 
 @Serializable

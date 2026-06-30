@@ -18,7 +18,6 @@ package com.grab.grazel.tasks.internal
 
 import com.grab.grazel.gradle.dependencies.WorkspacePlanService
 import com.grab.grazel.gradle.dependencies.WorkspacePlanBuilder
-import com.grab.grazel.gradle.dependencies.model.TargetTagPlan
 import com.grab.grazel.gradle.dependencies.model.WorkspaceDependencies
 import com.grab.grazel.util.GradleProvider
 import com.grab.grazel.util.fromJson
@@ -33,7 +32,6 @@ import org.gradle.api.tasks.CacheableTask
 import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.InputFile
 import org.gradle.api.tasks.Internal
-import org.gradle.api.tasks.Optional
 import org.gradle.api.tasks.OutputFile
 import org.gradle.api.tasks.PathSensitive
 import org.gradle.api.tasks.PathSensitivity
@@ -48,11 +46,6 @@ internal abstract class ComputeWorkspacePlanTask : DefaultTask() {
     @get:InputFile
     @get:PathSensitive(PathSensitivity.RELATIVE)
     abstract val workspaceDependencies: RegularFileProperty
-
-    @get:InputFile
-    @get:Optional
-    @get:PathSensitive(PathSensitivity.RELATIVE)
-    abstract val targetTagPlan: RegularFileProperty
 
     @get:Input
     abstract val configuredOverrideTargets: MapProperty<String, String>
@@ -77,10 +70,7 @@ internal abstract class ComputeWorkspacePlanTask : DefaultTask() {
         ).build(
             workspaceDependencies = fromJson<WorkspaceDependencies>(
                 workspaceDependencies.get()
-            ),
-            targetTagPlan = targetTagPlan.orNull
-                ?.let { file -> fromJson<List<TargetTagPlan>>(file) }
-                .orEmpty()
+            )
         )
         workspacePlan.get().asFile.parentFile.mkdirs()
         writeJson(plan, workspacePlan.get())

@@ -20,7 +20,7 @@ import com.grab.grazel.gradle.isAndroid
 import com.grab.grazel.gradle.isAndroidTest
 import com.grab.grazel.gradle.isKotlin
 import com.grab.grazel.gradle.dependencies.DefaultDependencyResolutionService
-import com.grab.grazel.gradle.dependencies.WorkspacePlanService
+import com.grab.grazel.gradle.dependencies.WorkspaceRenderPlanService
 import com.grab.grazel.migrate.BazelTarget
 import com.grab.grazel.migrate.TargetBuilder
 import com.grab.grazel.migrate.kotlin.DefaultKotlinProjectDataExtractor
@@ -59,11 +59,11 @@ constructor(
     private val projectDataExtractor: KotlinProjectDataExtractor,
     private val kotlinUnitTestDataExtractor: KotlinUnitTestDataExtractor,
     private val dependencyResolutionService: GradleProvider<DefaultDependencyResolutionService>,
-    private val workspacePlanService: GradleProvider<WorkspacePlanService>,
+    private val workspaceRenderPlanService: GradleProvider<WorkspaceRenderPlanService>,
 ) : TargetBuilder {
 
     override fun build(project: Project): List<BazelTarget> {
-        if (!isReachableJvmProject(project, dependencyResolutionService, workspacePlanService)) return emptyList()
+        if (!isReachableJvmProject(project, dependencyResolutionService, workspaceRenderPlanService)) return emptyList()
         val projectData = projectDataExtractor.extract(project)
         val ktLibTargets = projectData.toKotlinLibraryTarget()
         val unitTestsTargets = kotlinUnitTestDataExtractor

@@ -13,7 +13,6 @@ import com.grab.grazel.gradle.dependencies.TargetTagKinds
 import com.grab.grazel.gradle.dependencies.model.TargetTagKey
 import com.grab.grazel.gradle.dependencies.model.TargetTagPlan
 import com.grab.grazel.gradle.dependencies.model.WorkspaceDependencies
-import com.grab.grazel.gradle.dependencies.model.WorkspacePlan
 import com.grab.grazel.gradle.variant.DEFAULT_VARIANT
 import com.grab.grazel.gradle.variant.MatchedVariant
 import com.grab.grazel.util.addGrazelExtension
@@ -261,21 +260,19 @@ class DefaultAndroidLibraryDataExtractorTest {
     }
 
     @Test
-    fun `extract uses workspace plan for maven tag labels`() {
+    fun `extract uses target tag plan for maven tag labels`() {
         configure()
         rootProject.the<com.grab.grazel.GrazelExtension>()
             .rules.kotlin.enabledTransitiveReduction = true
-        grazelComponent.workspacePlanService().get().populatePlan(
-            WorkspacePlan(
-                tagPlan = listOf(
-                    TargetTagPlan(
-                        key = TargetTagKey(
-                            variantId = ":android:debugAndroidBuild",
-                            variantType = "AndroidBuild",
-                            targetKind = TargetTagKinds.ANDROID_LIBRARY
-                        ),
-                        tags = listOf("@maven//:com_example_planned")
-                    )
+        grazelComponent.workspaceTargetTagPlanService().get().populateTagPlan(
+            listOf(
+                TargetTagPlan(
+                    key = TargetTagKey(
+                        variantId = ":android:debugAndroidBuild",
+                        variantType = "AndroidBuild",
+                        targetKind = TargetTagKinds.ANDROID_LIBRARY
+                    ),
+                    tags = listOf("@maven//:com_example_planned")
                 )
             )
         )

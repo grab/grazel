@@ -6,8 +6,9 @@ evidence in item-specific logs so context compaction can recover state quickly.
 ## Active State
 
 - 2026-07-01 CURRENT TRUTH - Item34/35 goal:
-  - Grazel is on `arun/dependencies-refactor` at local commit `2a780b5`
-    (`refactor: tighten item33 cleanup`). Do not push.
+  - Grazel is on `arun/dependencies-refactor` at local commit `bfddc28`
+    (`docs: align dependency refactor status for item34`). Do not push.
+    Item34 source changes are in progress and uncommitted.
   - Current goal order: status/docs truth checkpoint -> Item34 workspace tag
     plan service shape -> Item35 progress reporting -> simplify/adversarial
     review -> full Grazel/PAX verification.
@@ -25,6 +26,22 @@ evidence in item-specific logs so context compaction can recover state quickly.
   - Console/log output may change only for Item35 progress/summary reporting.
     Generated `BUILD.bazel`, `WORKSPACE`, and pin JSON output must remain
     empty-diff.
+  - Item34 checkpoint so far:
+    - Split `WorkspacePlanService` into plan-only service plus
+      `WorkspaceRenderPlanService` and `WorkspaceTargetTagPlanService`.
+    - Removed `TargetTagPlan` pass-through from `WorkspacePlan` and
+      `ComputeWorkspacePlanTask`; target tag lookup now hydrates directly from
+      `target-tag-plan.json` in compression analysis, target-reference
+      collection, and project BUILD generation.
+    - Local focused compile passed:
+      `./gradlew :grazel-gradle-plugin:compileKotlin :grazel-gradle-plugin:compileTestKotlin --console=plain --no-daemon`.
+    - Focused tests passed after fixing a test-only missing parent directory:
+      `./gradlew :grazel-gradle-plugin:test --tests "com.grab.grazel.tasks.internal.WorkspacePlanTasksTest" --tests "com.grab.grazel.gradle.dependencies.WorkspacePlanBuilderTest" --tests "com.grab.grazel.migrate.android.DefaultAndroidLibraryDataExtractorTest.extract uses target tag plan for maven tag labels" --console=plain --no-daemon`.
+    - Local generation passed:
+      `./gradlew migrateToBazel --console=plain --no-daemon`.
+      `git diff --name-only -- '*.bazel' 'WORKSPACE' 'maven_install.json' 'maven_install_*.json'`
+      returned empty, so committed generated Bazel output is unchanged.
+      `git diff --check` passed.
 
 - 2026-06-29 +08 HISTORICAL - KSP relocatability + Items 32/33 start:
   - Grazel is on `arun/dependencies-refactor` at local commit `c8dcdf4`

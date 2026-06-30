@@ -21,11 +21,11 @@ import com.android.build.gradle.api.AndroidSourceSet
 import com.grab.grazel.GrazelExtension
 import com.grab.grazel.bazel.starlark.BazelDependency
 import com.grab.grazel.gradle.dependencies.DefaultDependencyGraphsService
-import com.grab.grazel.gradle.dependencies.WorkspacePlanService
 import com.grab.grazel.gradle.dependencies.DependenciesDataSource
 import com.grab.grazel.gradle.dependencies.DependencyGraphs
 import com.grab.grazel.gradle.dependencies.GradleDependencyToBazelDependency
 import com.grab.grazel.gradle.dependencies.TargetTagKinds
+import com.grab.grazel.gradle.dependencies.WorkspaceTargetTagPlanService
 import com.grab.grazel.gradle.variant.VariantGraphKey
 import com.grab.grazel.gradle.variant.VariantType
 import com.grab.grazel.gradle.hasCompose
@@ -60,7 +60,7 @@ internal class DefaultAndroidInstrumentationBinaryDataExtractor
     private val manifestValuesBuilder: ManifestValuesBuilder,
     private val keyStoreExtractor: KeyStoreExtractor,
     private val grazelExtension: GrazelExtension,
-    private val workspacePlanService: GradleProvider<WorkspacePlanService>,
+    private val workspaceTargetTagPlanService: GradleProvider<WorkspaceTargetTagPlanService>,
 ) : AndroidInstrumentationBinaryDataExtractor {
     private val projectDependencyGraphs: DependencyGraphs get() = dependencyGraphsService.get().get()
 
@@ -148,7 +148,7 @@ internal class DefaultAndroidInstrumentationBinaryDataExtractor
                 self = "${project.name}${matchedVariant.nameSuffix}-android-test",
                 deps = deps
             )
-            val mavenTags = workspacePlanService
+            val mavenTags = workspaceTargetTagPlanService
                 .get()
                 .tagsFor(
                     variantId = variantKey.variantId,

@@ -20,8 +20,8 @@ import com.grab.grazel.bazel.starlark.BazelDependency.ProjectDependency
 import com.grab.grazel.di.GrazelComponent
 import com.grab.grazel.gradle.dependencies.DefaultDependencyGraphsService
 import com.grab.grazel.gradle.dependencies.DefaultDependencyResolutionService
-import com.grab.grazel.gradle.dependencies.WorkspacePlanService
 import com.grab.grazel.gradle.dependencies.TopologicalSorter
+import com.grab.grazel.gradle.dependencies.WorkspaceTargetTagPlanService
 import com.grab.grazel.gradle.isAndroidLibrary
 import com.grab.grazel.gradle.variant.DefaultVariantCompressionService
 import com.grab.grazel.gradle.variant.VariantCompressionDecision.Compressed
@@ -87,14 +87,14 @@ constructor(
     private val variantCompressor: Lazy<VariantCompressor>,
     private val dependencyGraphsService: GradleProvider<DefaultDependencyGraphsService>,
     private val variantCompressionService: GradleProvider<DefaultVariantCompressionService>,
-    private val workspacePlanService: GradleProvider<WorkspacePlanService>
+    private val workspaceTargetTagPlanService: GradleProvider<WorkspaceTargetTagPlanService>
 ) : DefaultTask() {
 
     @get:InputFile
     val workspaceDependencies: RegularFileProperty = project.objects.fileProperty()
 
     @get:InputFile
-    val workspacePlan: RegularFileProperty = project.objects.fileProperty()
+    val targetTagPlan: RegularFileProperty = project.objects.fileProperty()
 
     @get:OutputFile
     val compressionResultsFile: RegularFileProperty = project.objects.fileProperty()
@@ -109,9 +109,9 @@ constructor(
         dependencyResolutionService
             .get()
             .init(workspaceDependencies.get().asFile)
-        workspacePlanService
+        workspaceTargetTagPlanService
             .get()
-            .initPlan(workspacePlan.get().asFile)
+            .initTagPlan(targetTagPlan.get().asFile)
 
         val graphs = dependencyGraphsService.get().get()
         val orderedProjects = TopologicalSorter.sort(graphs)
@@ -225,7 +225,7 @@ constructor(
                 grazelComponent.variantCompressor(),
                 grazelComponent.dependencyGraphsService(),
                 grazelComponent.variantCompressionService(),
-                grazelComponent.workspacePlanService()
+                grazelComponent.workspaceTargetTagPlanService()
             ).apply {
                 configure {
                     group = GRAZEL_TASK_GROUP

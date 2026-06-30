@@ -22,11 +22,11 @@ import com.grab.grazel.GrazelExtension
 import com.grab.grazel.bazel.rules.Multidex
 import com.grab.grazel.bazel.starlark.BazelDependency
 import com.grab.grazel.gradle.dependencies.DefaultDependencyGraphsService
-import com.grab.grazel.gradle.dependencies.WorkspacePlanService
 import com.grab.grazel.gradle.dependencies.DependenciesDataSource
 import com.grab.grazel.gradle.dependencies.DependencyGraphs
 import com.grab.grazel.gradle.dependencies.GradleDependencyToBazelDependency
 import com.grab.grazel.gradle.dependencies.TargetTagKinds
+import com.grab.grazel.gradle.dependencies.WorkspaceTargetTagPlanService
 import com.grab.grazel.gradle.hasCompose
 import com.grab.grazel.gradle.hasCrashlytics
 import com.grab.grazel.gradle.hasDatabinding
@@ -63,7 +63,7 @@ constructor(
     private val grazelExtension: GrazelExtension,
     private val dependenciesDataSource: DependenciesDataSource,
     private val dependencyGraphsService: GradleProvider<DefaultDependencyGraphsService>,
-    private val workspacePlanService: GradleProvider<WorkspacePlanService>,
+    private val workspaceTargetTagPlanService: GradleProvider<WorkspaceTargetTagPlanService>,
     private val gradleDependencyToBazelDependency: GradleDependencyToBazelDependency,
 ) : AndroidLibraryDataExtractor {
 
@@ -141,7 +141,7 @@ constructor(
                 self = project.name,
                 deps = deps
             )
-            val mavenTags = workspacePlanService
+            val mavenTags = workspaceTargetTagPlanService
                 .get()
                 .tagsFor(
                     variantId = variantKey.variantId,

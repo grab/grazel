@@ -17,9 +17,7 @@
 package com.grab.grazel.gradle.dependencies
 
 import com.grab.grazel.di.qualifiers.RootProject
-import com.grab.grazel.gradle.dependencies.model.TargetTagKey
 import com.grab.grazel.gradle.dependencies.model.WorkspacePlan
-import com.grab.grazel.gradle.dependencies.model.WorkspaceRenderPlan
 import com.grab.grazel.util.fromJson
 import org.gradle.api.Project
 import org.gradle.api.services.BuildService
@@ -29,19 +27,10 @@ import java.io.File
 internal abstract class WorkspacePlanService : BuildService<BuildServiceParameters.None>, AutoCloseable {
     private val lock = Any()
     private var workspacePlan: WorkspacePlan? = null
-    private var workspaceRenderPlan: WorkspaceRenderPlan? = null
-    private var targetTagsByKey: Map<TargetTagKey, List<String>>? = null
 
     fun populatePlan(workspacePlan: WorkspacePlan) {
         synchronized(lock) {
             this.workspacePlan = workspacePlan
-            targetTagsByKey = null
-        }
-    }
-
-    fun populateRenderPlan(workspaceRenderPlan: WorkspaceRenderPlan) {
-        synchronized(lock) {
-            this.workspaceRenderPlan = workspaceRenderPlan
         }
     }
 
@@ -49,61 +38,14 @@ internal abstract class WorkspacePlanService : BuildService<BuildServiceParamete
         return synchronized(lock) {
             if (workspacePlan == null) {
                 workspacePlan = fromJson(workspacePlanJson)
-                targetTagsByKey = null
             }
             workspacePlan!!
         }
     }
 
-    fun initRenderPlan(workspaceRenderPlanJson: File): WorkspaceRenderPlan {
-        return synchronized(lock) {
-            if (workspaceRenderPlan == null) {
-                workspaceRenderPlan = fromJson(workspaceRenderPlanJson)
-            }
-            workspaceRenderPlan!!
-        }
-    }
-
-    fun tagsFor(
-        variantId: String,
-        variantType: String,
-        targetKind: String
-    ): List<String>? {
-        return synchronized(lock) {
-            tagsByKey()[TargetTagKey(
-                variantId = variantId,
-                variantType = variantType,
-                targetKind = targetKind
-            )]
-        }
-    }
-
-    fun isReferencedProjectPath(projectPath: String): Boolean =
-        synchronized(lock) {
-            projectPath in workspaceRenderPlan?.referencedProjectPaths.orEmpty()
-        }
-
-    fun referencedTargetNames(projectPath: String): Set<String> =
-        synchronized(lock) {
-            workspaceRenderPlan
-                ?.referencedProjectTargets
-                .orEmpty()[projectPath]
-                .orEmpty()
-        }
-
-    fun isReferencedTarget(projectPath: String, targetName: String): Boolean =
-        synchronized(lock) {
-            targetName in workspaceRenderPlan
-                ?.referencedProjectTargets
-                .orEmpty()[projectPath]
-                .orEmpty()
-        }
-
     override fun close() {
         synchronized(lock) {
             workspacePlan = null
-            workspaceRenderPlan = null
-            targetTagsByKey = null
         }
     }
 
@@ -114,14 +56,5 @@ internal abstract class WorkspacePlanService : BuildService<BuildServiceParamete
             .gradle
             .sharedServices
             .registerIfAbsent(SERVICE_NAME, WorkspacePlanService::class.java) {}
-    }
-
-    private fun tagsByKey(): Map<TargetTagKey, List<String>> {
-        targetTagsByKey?.let { tags -> return tags }
-        return workspacePlan
-            ?.tagPlan
-            .orEmpty()
-            .associate { tagPlan -> tagPlan.key to tagPlan.tags }
-            .also { tags -> targetTagsByKey = tags }
     }
 }

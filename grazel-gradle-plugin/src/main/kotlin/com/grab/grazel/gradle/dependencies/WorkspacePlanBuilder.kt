@@ -20,7 +20,6 @@ import com.grab.grazel.gradle.dependencies.model.CandidateMavenRepo
 import com.grab.grazel.gradle.dependencies.model.CandidateMavenRepoKind.AGGREGATED
 import com.grab.grazel.gradle.dependencies.model.CandidateMavenRepoKind.VARIANT
 import com.grab.grazel.gradle.dependencies.model.ResolvedDependency
-import com.grab.grazel.gradle.dependencies.model.TargetTagPlan
 import com.grab.grazel.gradle.dependencies.model.WorkspaceDependencies
 import com.grab.grazel.gradle.dependencies.model.WorkspacePlan
 import com.grab.grazel.migrate.dependencies.toMavenRepoName
@@ -29,8 +28,7 @@ internal class WorkspacePlanBuilder(
     private val configuredOverrideTargets: Map<String, String> = emptyMap()
 ) {
     fun build(
-        workspaceDependencies: WorkspaceDependencies,
-        targetTagPlan: List<TargetTagPlan> = emptyList()
+        workspaceDependencies: WorkspaceDependencies
     ): WorkspacePlan {
         val rootArtifactsByVariant = workspaceDependencies.mavenInstallRootArtifactsByVariant()
         val variantRepos = workspaceDependencies.variantDeps
@@ -59,10 +57,9 @@ internal class WorkspacePlanBuilder(
                     kind = AGGREGATED,
                     pinInputs = sortedArtifacts
                 )
-            }
+        }
         return WorkspacePlan(
-            repoPlan = variantRepos + aggregatedRepos,
-            tagPlan = targetTagPlan
+            repoPlan = variantRepos + aggregatedRepos
         )
     }
 }

@@ -24,6 +24,8 @@ import com.grab.grazel.gradle.dependencies.ProjectReachabilityGroup
 import com.grab.grazel.gradle.dependencies.TargetReferenceFactsCollector
 import com.grab.grazel.gradle.dependencies.WorkspacePlanBuilder
 import com.grab.grazel.gradle.dependencies.WorkspacePlanService
+import com.grab.grazel.gradle.dependencies.WorkspaceRenderPlanService
+import com.grab.grazel.gradle.dependencies.WorkspaceTargetTagPlanService
 import com.grab.grazel.gradle.dependencies.WorkspaceTargetTagPlanCollector
 import com.grab.grazel.gradle.dependencies.model.ResolvedDependency
 import com.grab.grazel.gradle.dependencies.model.TargetTagKey
@@ -49,10 +51,6 @@ class WorkspacePlanTasksTest {
             .buildDirectory
             .file("grazel/test-dependencies.json")
             .get()
-        val targetTagPlanFile = rootProject.layout
-            .buildDirectory
-            .file("grazel/test-target-tag-plan.json")
-            .get()
         workspaceDependenciesFile.asFile.parentFile.mkdirs()
         writeJson(
             WorkspaceDependencies(
@@ -62,17 +60,6 @@ class WorkspacePlanTasksTest {
             ),
             workspaceDependenciesFile
         )
-        val targetTagPlan = listOf(
-            TargetTagPlan(
-                key = TargetTagKey(
-                    variantId = ":lib:debugAndroidBuild",
-                    variantType = "AndroidBuild",
-                    targetKind = "android_library"
-                ),
-                tags = listOf("@maven//:com_example_debug")
-            )
-        )
-        writeJson(targetTagPlan, targetTagPlanFile)
 
         val workspacePlanService = WorkspacePlanService.register(rootProject)
         val task = ComputeWorkspacePlanTask.register(
@@ -80,7 +67,6 @@ class WorkspacePlanTasksTest {
             workspacePlanService = workspacePlanService
         ) {
             workspaceDependencies.set(workspaceDependenciesFile)
-            this.targetTagPlan.set(targetTagPlanFile)
         }.get()
 
         task.action()
@@ -89,14 +75,6 @@ class WorkspacePlanTasksTest {
         assertEquals(
             listOf("com.example:debug:1.0.0"),
             writtenPlan.repoPlan.getValue("debug_maven").pinInputs.map(ResolvedDependency::id)
-        )
-        assertEquals(
-            listOf("@maven//:com_example_debug"),
-            workspacePlanService.get().tagsFor(
-                variantId = ":lib:debugAndroidBuild",
-                variantType = "AndroidBuild",
-                targetKind = "android_library"
-            )
         )
     }
 
@@ -140,21 +118,13 @@ class WorkspacePlanTasksTest {
     }
 
     @Test
-    fun `compute workspace plan task reads target tag plan json`() {
+    fun `workspace target tag plan service reads target tag plan json`() {
         val rootProject = buildProject("root")
-        val workspaceDependenciesFile = rootProject.layout
-            .buildDirectory
-            .file("grazel/test-dependencies.json")
-            .get()
         val targetTagPlanFile = rootProject.layout
             .buildDirectory
             .file("grazel/test-target-tag-plan.json")
             .get()
-        workspaceDependenciesFile.asFile.parentFile.mkdirs()
-        writeJson(
-            WorkspaceDependencies(variantDeps = mapOf("default" to emptyList())),
-            workspaceDependenciesFile
-        )
+        targetTagPlanFile.asFile.parentFile.mkdirs()
         val targetTagPlan = listOf(
             TargetTagPlan(
                 key = TargetTagKey(
@@ -167,19 +137,18 @@ class WorkspacePlanTasksTest {
         )
         writeJson(targetTagPlan, targetTagPlanFile)
 
-        val workspacePlanService = WorkspacePlanService.register(rootProject)
-        val task = ComputeWorkspacePlanTask.register(
-            rootProject = rootProject,
-            workspacePlanService = workspacePlanService
-        ) {
-            workspaceDependencies.set(workspaceDependenciesFile)
-            this.targetTagPlan.set(targetTagPlanFile)
-        }.get()
+        val service = WorkspaceTargetTagPlanService.register(rootProject).get()
 
-        task.action()
+        service.initTagPlan(targetTagPlanFile.asFile)
 
-        val writtenPlan = fromJson<WorkspacePlan>(task.workspacePlan.get())
-        assertEquals(targetTagPlan, writtenPlan.tagPlan)
+        assertEquals(
+            listOf("@maven//:com_example_root"),
+            service.tagsFor(
+                variantId = ":lib:debugAndroidBuild",
+                variantType = "AndroidBuild",
+                targetKind = "android_library"
+            )
+        )
     }
 
     @Test
@@ -221,9 +190,11 @@ class WorkspacePlanTasksTest {
         }
 
         val workspacePlanService = WorkspacePlanService.register(rootProject)
+        val workspaceRenderPlanService = WorkspaceRenderPlanService.register(rootProject)
         val task = FinalizeWorkspacePlanTask.register(
             rootProject = rootProject,
-            workspacePlanService = workspacePlanService
+            workspacePlanService = workspacePlanService,
+            workspaceRenderPlanService = workspaceRenderPlanService
         ) {
             workspacePlan.set(workspacePlanFile)
             targetMavenRepoReferences.set(targetMavenRepoReferencesFile)
@@ -247,11 +218,11 @@ class WorkspacePlanTasksTest {
             ),
             writtenRenderPlan.referencedProjectTargets
         )
-        assertTrue(workspacePlanService.get().isReferencedProjectPath(":lint:custom-lint-rules"))
-        assertTrue(workspacePlanService.get().isReferencedTarget(":ui-tests", "ui-tests-gps-pax-debug_lib"))
+        assertTrue(workspaceRenderPlanService.get().isReferencedProjectPath(":lint:custom-lint-rules"))
+        assertTrue(workspaceRenderPlanService.get().isReferencedTarget(":ui-tests", "ui-tests-gps-pax-debug_lib"))
         assertEquals(
             setOf("ui-tests-gps-pax-debug_lib"),
-            workspacePlanService.get().referencedTargetNames(":ui-tests")
+            workspaceRenderPlanService.get().referencedTargetNames(":ui-tests")
         )
     }
 
@@ -260,7 +231,7 @@ class WorkspacePlanTasksTest {
         val rootProject = buildProject("root")
         val appProject = buildProject("app", rootProject)
         val uiTestsProject = buildProject("ui-tests", rootProject)
-        val workspacePlanService = WorkspacePlanService.register(rootProject).get()
+        val workspaceRenderPlanService = WorkspaceRenderPlanService.register(rootProject).get()
 
         val references: TargetReferenceFacts = collectTargetMavenRepoReferencesByGroup(
             projectGroups = listOf(uiTestsProject, appProject).map { project ->
@@ -273,7 +244,7 @@ class WorkspacePlanTasksTest {
                         TargetReferenceFactsCollector.from(
                             deps = listOf(ProjectDependency(appProject, suffix = "-gps-pax-debug"))
                         )
-                    ":app" -> if (workspacePlanService.isReferencedTarget(":app", "app-gps-pax-debug")) {
+                    ":app" -> if (workspaceRenderPlanService.isReferencedTarget(":app", "app-gps-pax-debug")) {
                         TargetReferenceFactsCollector.from(
                             deps = listOf(
                                 MavenDependency(
@@ -289,7 +260,7 @@ class WorkspacePlanTasksTest {
                     else -> TargetReferenceFactsCollector.from()
                 }
             },
-            workspacePlanService = workspacePlanService
+            workspaceRenderPlanService = workspaceRenderPlanService
         )
 
         assertEquals(setOf("debug_maven"), references.repoNames)
@@ -303,7 +274,7 @@ class WorkspacePlanTasksTest {
         val appProject = buildProject("app", rootProject)
         val libProject = buildProject("lib", rootProject)
         val uiTestsProject = buildProject("ui-tests", rootProject)
-        val workspacePlanService = WorkspacePlanService.register(rootProject).get()
+        val workspaceRenderPlanService = WorkspaceRenderPlanService.register(rootProject).get()
         val callsByProject = mutableMapOf<String, Int>()
 
         val references: TargetReferenceFacts = collectTargetMavenRepoReferencesByGroup(
@@ -318,7 +289,7 @@ class WorkspacePlanTasksTest {
                         TargetReferenceFactsCollector.from(
                             deps = listOf(ProjectDependency(appProject, suffix = "-gps-pax-debug"))
                         )
-                    ":app" -> if (workspacePlanService.isReferencedTarget(":app", "app-gps-pax-debug")) {
+                    ":app" -> if (workspaceRenderPlanService.isReferencedTarget(":app", "app-gps-pax-debug")) {
                         TargetReferenceFactsCollector.from(
                             deps = listOf(
                                 MavenDependency(
@@ -332,7 +303,7 @@ class WorkspacePlanTasksTest {
                     } else {
                         TargetReferenceFactsCollector.from()
                     }
-                    ":lib" -> if (workspacePlanService.isReferencedTarget(":lib", "lib-gps-pax-debug")) {
+                    ":lib" -> if (workspaceRenderPlanService.isReferencedTarget(":lib", "lib-gps-pax-debug")) {
                         TargetReferenceFactsCollector.from(
                             deps = listOf(
                                 MavenDependency(
@@ -348,7 +319,7 @@ class WorkspacePlanTasksTest {
                     else -> TargetReferenceFactsCollector.from()
                 }
             },
-            workspacePlanService = workspacePlanService
+            workspaceRenderPlanService = workspaceRenderPlanService
         )
 
         assertEquals(setOf("debug_maven", "lint_maven"), references.repoNames)

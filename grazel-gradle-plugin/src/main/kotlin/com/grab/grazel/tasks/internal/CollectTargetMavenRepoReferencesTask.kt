@@ -23,7 +23,8 @@ import com.grab.grazel.gradle.dependencies.DefaultDependencyGraphsService
 import com.grab.grazel.gradle.dependencies.DefaultDependencyResolutionService
 import com.grab.grazel.gradle.dependencies.ProjectReachabilityGroup
 import com.grab.grazel.gradle.dependencies.ProjectReachabilityOrder
-import com.grab.grazel.gradle.dependencies.WorkspacePlanService
+import com.grab.grazel.gradle.dependencies.WorkspaceRenderPlanService
+import com.grab.grazel.gradle.dependencies.WorkspaceTargetTagPlanService
 import com.grab.grazel.gradle.dependencies.asRenderPlan
 import com.grab.grazel.gradle.dependencies.mergeTargetReferenceFacts
 import com.grab.grazel.gradle.dependencies.model.TargetReferenceFacts
@@ -57,7 +58,8 @@ constructor(
     private val migrationChecker: Lazy<MigrationChecker>,
     private val targetReferenceFactsExtractor: Lazy<TargetReferenceFactsExtractor>,
     private val dependencyGraphsService: GradleProvider<DefaultDependencyGraphsService>,
-    private val workspacePlanService: GradleProvider<WorkspacePlanService>,
+    private val workspaceRenderPlanService: GradleProvider<WorkspaceRenderPlanService>,
+    private val workspaceTargetTagPlanService: GradleProvider<WorkspaceTargetTagPlanService>,
     objectFactory: ObjectFactory,
     layout: ProjectLayout
 ) : DefaultTask() {
@@ -68,7 +70,7 @@ constructor(
 
     @get:InputFile
     @get:PathSensitive(PathSensitivity.RELATIVE)
-    val workspacePlan: RegularFileProperty = objectFactory.fileProperty()
+    val targetTagPlan: RegularFileProperty = objectFactory.fileProperty()
 
     @get:Internal
     val dependencyResolutionService: Property<DefaultDependencyResolutionService> =
@@ -83,7 +85,7 @@ constructor(
     fun action() {
         logger.logHeap("CollectTargetMavenRepoReferences:start")
         dependencyResolutionService.get().init(workspaceDependencies.get().asFile)
-        workspacePlanService.get().initPlan(workspacePlan.get().asFile)
+        workspaceTargetTagPlanService.get().initTagPlan(targetTagPlan.get().asFile)
 
         val reachabilityGroups = ProjectReachabilityOrder
             .consumersFirstGroups(
@@ -101,7 +103,7 @@ constructor(
             projectGroups = orderedGroups,
             canMigrate = { subproject -> migrationChecker.get().canMigrate(subproject) },
             factsForProject = { subproject -> targetReferenceFactsExtractor.get().collect(subproject) },
-            workspacePlanService = workspacePlanService.get()
+            workspaceRenderPlanService = workspaceRenderPlanService.get()
         )
 
         writeJson(targetReferences, targetMavenRepoReferences.get())
@@ -120,7 +122,8 @@ constructor(
             grazelComponent.migrationChecker(),
             grazelComponent.targetReferenceFactsExtractor(),
             grazelComponent.dependencyGraphsService(),
-            grazelComponent.workspacePlanService(),
+            grazelComponent.workspaceRenderPlanService(),
+            grazelComponent.workspaceTargetTagPlanService(),
             rootProject.objects,
             rootProject.layout
         ).apply {
@@ -137,17 +140,17 @@ internal fun collectTargetMavenRepoReferencesByGroup(
     projectGroups: Iterable<ProjectReachabilityGroup>,
     canMigrate: (Project) -> Boolean,
     factsForProject: (Project) -> TargetReferenceFacts,
-    workspacePlanService: WorkspacePlanService
+    workspaceRenderPlanService: WorkspaceRenderPlanService
 ): TargetReferenceFacts {
     val referenceFacts = collectTargetMavenRepoReferencesSinglePass(
         projectGroups = projectGroups,
         canMigrate = canMigrate,
         factsForProject = factsForProject,
-        workspacePlanService = workspacePlanService
+        workspaceRenderPlanService = workspaceRenderPlanService
     )
     val references = referenceFacts.normalized()
 
-    workspacePlanService.populateRenderPlan(references.asRenderPlan())
+    workspaceRenderPlanService.populateRenderPlan(references.asRenderPlan())
     return references
 }
 
@@ -155,7 +158,7 @@ private fun collectTargetMavenRepoReferencesSinglePass(
     projectGroups: Iterable<ProjectReachabilityGroup>,
     canMigrate: (Project) -> Boolean,
     factsForProject: (Project) -> TargetReferenceFacts,
-    workspacePlanService: WorkspacePlanService
+    workspaceRenderPlanService: WorkspaceRenderPlanService
 ): TargetReferenceFacts {
     var accumulated = TargetReferenceFacts()
     projectGroups.forEach { group ->
@@ -165,7 +168,7 @@ private fun collectTargetMavenRepoReferencesSinglePass(
                 project = project,
                 canMigrate = canMigrate,
                 factsForProject = factsForProject,
-                workspacePlanService = workspacePlanService
+                workspaceRenderPlanService = workspaceRenderPlanService
             )
         }
     }
@@ -178,9 +181,9 @@ private fun collectProjectReferences(
     project: Project,
     canMigrate: (Project) -> Boolean,
     factsForProject: (Project) -> TargetReferenceFacts,
-    workspacePlanService: WorkspacePlanService
+    workspaceRenderPlanService: WorkspaceRenderPlanService
 ): TargetReferenceFacts {
-    workspacePlanService.populateRenderPlan(accumulated.asRenderPlan())
+    workspaceRenderPlanService.populateRenderPlan(accumulated.asRenderPlan())
     if (!canMigrate(project)) {
         return accumulated
     }
