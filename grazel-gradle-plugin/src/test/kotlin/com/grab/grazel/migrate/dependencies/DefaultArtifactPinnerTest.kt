@@ -140,8 +140,9 @@ class DefaultArtifactPinnerTest {
 
         rootProject.file("maven_install.json").delete()
 
+        val workerExecutor = FakeWorkerExecutor()
         val gradleServices = GradleServices.from(rootProject).copy(
-            workerExecutor = FakeWorkerExecutor()
+            workerExecutor = workerExecutor
         )
         val annotation = ResolvedDependency.from("androidx.annotation:annotation:1.1.0:maven:false:null")
         assertTrue("Pinning is done and maven install json is generated") {
@@ -149,6 +150,7 @@ class DefaultArtifactPinnerTest {
                 workspace,
                 workspacePlan = workspacePlan("maven" to listOf(annotation)),
                 workspaceRenderPlan = WorkspaceRenderPlan(materializedRepoNames = setOf("maven")),
+                mavenInstallRepositoryInputs = MavenInstallRepositoryInputs(emptyMap()),
                 gradleServices = gradleServices,
                 logger = rootProject.logger,
             )
@@ -163,6 +165,7 @@ class DefaultArtifactPinnerTest {
         assertTrue("pinned macro call is activated") {
             "maven_pinned_maven_install()" in activatedWorkspace
         }
+        assertEquals(1, workerExecutor.workQueue.awaitCount)
     }
 
     @Test
@@ -263,6 +266,7 @@ class DefaultArtifactPinnerTest {
                 workspace,
                 workspacePlan = workspacePlan("full_paid_debug_maven" to listOf(overrideCarrier)),
                 workspaceRenderPlan = WorkspaceRenderPlan(materializedRepoNames = emptySet()),
+                mavenInstallRepositoryInputs = MavenInstallRepositoryInputs(emptyMap()),
                 gradleServices = gradleServices,
                 logger = rootProject.logger,
             )

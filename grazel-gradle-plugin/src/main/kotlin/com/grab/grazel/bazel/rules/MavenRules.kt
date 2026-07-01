@@ -33,14 +33,36 @@ sealed class MavenRepository : AssigneeBuilder {
         val username: String? = null,
         val password: String? = null
     ) : MavenRepository() {
-        override fun build() = when {
-            username == null || password == null -> StringStatement(url.quote)
-            else -> StringStatement(
-                url.split("://").joinToString(separator = "://$username:$password@").quote
-            )
+        override fun build() = StringStatement(urlWithCredentials().quote)
+
+        internal fun repositoryInputSpec(): String =
+            repositoryInputSpec(urlWithCredentials())
+
+        private fun urlWithCredentials(): String {
+            return when {
+                username == null || password == null -> url
+                else -> url.split("://").joinToString(separator = "://$username:$password@")
+            }
         }
     }
 }
+
+internal fun repositoryInputSpec(url: String): String =
+    """{ "repo_url": "${url.rjeJsonEscaped()}" }"""
+
+private fun String.rjeJsonEscaped(): String =
+    buildString {
+        this@rjeJsonEscaped.forEach { char ->
+            when (char) {
+                '"' -> append("\\\"")
+                '\\' -> append("\\\\")
+                '\r' -> append("\\r")
+                '\n' -> append("\\n")
+                '\t' -> append("\\t")
+                else -> append(char)
+            }
+        }
+    }
 
 /**
  * External variables usually followed by the given array like `repository = EXTERNAL + [ ... ]`

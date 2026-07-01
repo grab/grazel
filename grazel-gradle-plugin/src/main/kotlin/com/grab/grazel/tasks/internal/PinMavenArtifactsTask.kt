@@ -18,15 +18,27 @@ package com.grab.grazel.tasks.internal
 
 import com.grab.grazel.di.GradleServices
 import com.grab.grazel.di.GrazelComponent
+import com.grab.grazel.gradle.dependencies.LocalMavenProxyService
+import com.grab.grazel.gradle.dependencies.LocalMavenResolvedFactsBuilder
+import com.grab.grazel.gradle.dependencies.model.ResolvedDependency
 import com.grab.grazel.gradle.dependencies.model.WorkspacePlan
 import com.grab.grazel.gradle.dependencies.model.WorkspaceRenderPlan
+import com.grab.grazel.gradle.dependencies.model.allDependencies
 import com.grab.grazel.migrate.dependencies.ArtifactPinner
+import com.grab.grazel.migrate.dependencies.LocalMavenResolutionPinContext
+import com.grab.grazel.migrate.dependencies.MavenInstallRepositoryInputs
 import com.grab.grazel.util.fromJson
+import com.grab.grazel.util.GradleProvider
 import dagger.Lazy
 import org.gradle.api.DefaultTask
 import org.gradle.api.Project
+import org.gradle.api.artifacts.Configuration
 import org.gradle.api.file.RegularFileProperty
+import org.gradle.api.provider.ListProperty
+import org.gradle.api.provider.Property
+import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.InputFile
+import org.gradle.api.tasks.Internal
 import org.gradle.api.tasks.PathSensitive
 import org.gradle.api.tasks.PathSensitivity
 import org.gradle.api.tasks.TaskAction
@@ -40,6 +52,7 @@ internal open class PinMavenArtifactsTask
 constructor(
     private val artifactPinner: Lazy<ArtifactPinner>,
     private val gradleServices: GradleServices,
+    private val localMavenProxyService: GradleProvider<LocalMavenProxyService>,
 ) : DefaultTask() {
 
     init {
@@ -59,15 +72,51 @@ constructor(
     @get:PathSensitive(PathSensitivity.RELATIVE)
     val workspaceRenderPlan: RegularFileProperty = gradleServices.objectFactory.fileProperty()
 
+    @get:InputFile
+    @get:PathSensitive(PathSensitivity.RELATIVE)
+    val mavenInstallRepositoryInputs: RegularFileProperty = gradleServices.objectFactory.fileProperty()
+
+    @get:Input
+    val localMavenResolutionEnabled: Property<Boolean> = gradleServices.objectFactory
+        .property(Boolean::class.java)
+        .convention(false)
+
+    @get:Internal
+    val localMavenResolutionRootConfigurations: ListProperty<Configuration> = gradleServices
+        .objectFactory
+        .listProperty(Configuration::class.java)
+        .convention(emptyList())
+
     @TaskAction
     fun action() {
         artifactPinner.get().pinArtifacts(
             workspaceFile = workspaceFile.get().asFile,
             workspacePlan = fromJson<WorkspacePlan>(workspacePlan.get()),
             workspaceRenderPlan = fromJson<WorkspaceRenderPlan>(workspaceRenderPlan.get()),
+            mavenInstallRepositoryInputs = fromJson<MavenInstallRepositoryInputs>(mavenInstallRepositoryInputs.get()),
             gradleServices = gradleServices,
             logger = logger,
+            localMavenResolutionContextFactory = localMavenResolutionContextFactory(),
         )
+    }
+
+    private fun localMavenResolutionContextFactory():
+        ((Map<String, List<ResolvedDependency>>) -> LocalMavenResolutionPinContext)? {
+        if (!localMavenResolutionEnabled.get()) return null
+        return { pinnableRepos ->
+            val service = localMavenProxyService.get()
+            val facts = LocalMavenResolvedFactsBuilder(project).build(
+                configurations = localMavenResolutionRootConfigurations.get(),
+                additionalGavs = localMavenResolutionFactGavs(pinnableRepos)
+            )
+            service.configure(facts)
+            LocalMavenResolutionPinContext(
+                repositoryRewrite = service.repositoryRewrite(),
+                metadataOnlyShortIds = facts.metadataOnlyGavs
+                    .mapTo(sortedSetOf()) { gav -> gav.substringBeforeLast(":") },
+                stats = service::stats
+            )
+        }
     }
 
     companion object {
@@ -80,11 +129,34 @@ constructor(
         ) = rootProject.tasks.register<PinMavenArtifactsTask>(
             TASK_NAME,
             grazelComponent.artifactPinner(),
-            GradleServices.from(rootProject)
+            GradleServices.from(rootProject),
+            grazelComponent.localMavenProxyService()
         ).apply {
             configure {
+                localMavenResolutionEnabled.set(
+                    grazelComponent.extension().experiments.localMavenResolution
+                )
                 configureTask()
+            }
+            rootProject.afterEvaluate {
+                if (grazelComponent.extension().experiments.localMavenResolution.get()) {
+                    configure {
+                        usesService(grazelComponent.localMavenProxyService())
+                    }
+                }
             }
         }
     }
+}
+
+internal fun localMavenResolutionFactGavs(
+    pinnableRepos: Map<String, List<ResolvedDependency>>
+): Set<String> {
+    val gavs = sortedSetOf<String>()
+    pinnableRepos.values.flatten().forEach { dependency ->
+        dependency.allDependencies.forEach { resolvedDependency ->
+            gavs += resolvedDependency.id
+        }
+    }
+    return gavs
 }

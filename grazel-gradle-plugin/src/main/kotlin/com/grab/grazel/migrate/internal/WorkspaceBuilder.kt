@@ -18,9 +18,6 @@ package com.grab.grazel.migrate.internal
 
 import com.android.build.gradle.BaseExtension
 import com.grab.grazel.GrazelExtension
-import com.grab.grazel.bazel.rules.DAGGER_ARTIFACTS
-import com.grab.grazel.bazel.rules.DAGGER_REPOSITORIES
-import com.grab.grazel.bazel.rules.GRAB_BAZEL_COMMON_ARTIFACTS
 import com.grab.grazel.bazel.rules.androidNdkRepository
 import com.grab.grazel.bazel.rules.androidSdkRepository
 import com.grab.grazel.bazel.rules.bazelCommonRepository
@@ -46,6 +43,9 @@ import com.grab.grazel.gradle.isAndroidApplication
 import com.grab.grazel.migrate.BazelFileBuilder
 import com.grab.grazel.migrate.android.parseCompileSdkVersion
 import com.grab.grazel.migrate.dependencies.MavenInstallArtifactsCalculator
+import com.grab.grazel.migrate.dependencies.MavenInstallData
+import com.grab.grazel.migrate.dependencies.mavenInstallExternalInputs
+import com.grab.grazel.migrate.dependencies.repositoryInputSpecs
 import org.gradle.api.Project
 import org.gradle.kotlin.dsl.the
 import javax.inject.Inject
@@ -104,33 +104,35 @@ internal class WorkspaceBuilder(
         toolsAndroid()
     }
 
+    fun mavenInstallRepositoryInputs(): Map<String, List<String>> =
+        mavenInstallData.associate { data -> data.name to data.repositoryInputSpecs() }
+
+    private val mavenInstallData: Set<MavenInstallData> by lazy {
+        val externalInputs = mavenInstallExternalInputs(gradleProjectInfo.hasDagger)
+        mavenInstallArtifactsCalculator.get(
+            rootProject.layout,
+            workspacePlan,
+            externalInputs.artifacts,
+            externalInputs.repositories,
+            materializedMavenRepos = materializedMavenRepos,
+        )
+    }
+
     private fun StatementsBuilder.buildJvmRules() {
         val hasDagger = gradleProjectInfo.hasDagger
-        val externalArtifacts = mutableListOf<String>()
-        val externalRepositories = mutableListOf<String>()
 
         if (hasDagger) {
             daggerWorkspaceRules(grazelExtension.rules.dagger)
             loadDaggerArtifactsAndRepositories()
-            // Dagger artifacts stay explicit until annotation processor workspace config is generalized.
-            externalArtifacts += DAGGER_ARTIFACTS
-            externalRepositories += DAGGER_REPOSITORIES
         }
 
         loadBazelCommonArtifacts(grazelExtension.rules.bazelCommon.repository.name)
-        externalArtifacts += GRAB_BAZEL_COMMON_ARTIFACTS
 
         val mavenInstall = grazelExtension.rules.mavenInstall.apply {
             add(repository)
             setupMavenInstall()
         }
-        mavenInstallArtifactsCalculator.get(
-            rootProject.layout,
-            workspacePlan,
-            externalArtifacts.toSortedSet(),
-            externalRepositories.toSortedSet(),
-            materializedMavenRepos = materializedMavenRepos,
-        ).forEach { mavenInstallData ->
+        mavenInstallData.forEach { mavenInstallData ->
             mavenInstall(
                 name = mavenInstallData.name,
                 rulesJvmExternalName = mavenInstall.repository.name,

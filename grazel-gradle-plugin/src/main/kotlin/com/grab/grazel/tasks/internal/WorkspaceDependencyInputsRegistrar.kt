@@ -35,7 +35,8 @@ internal object WorkspaceDependencyInputsRegistrar {
         variantBuilderProvider: Lazy<VariantBuilder>,
         migrationChecker: Lazy<MigrationChecker>,
         declaredDependencyMetadataAggregationMode: Provider<DeclaredDependencyMetadataAggregationMode>,
-        computeTask: TaskProvider<ComputeWorkspaceDependenciesTask>
+        computeTask: TaskProvider<ComputeWorkspaceDependenciesTask>,
+        pinMavenArtifactsTask: TaskProvider<PinMavenArtifactsTask>? = null,
     ) {
         val variantsByProject = collectVariantsByProject(
             rootProject = rootProject,
@@ -97,6 +98,11 @@ internal object WorkspaceDependencyInputsRegistrar {
                         rootProject = rootProject,
                         rootInput = rootInput
                     )
+                }
+            }
+            pinMavenArtifactsTask?.configure {
+                rootInputs.forEach { rootInput ->
+                    localMavenResolutionRootConfigurations.add(rootInput.configuration)
                 }
             }
             val mode = declaredDependencyMetadataAggregationMode.get()

@@ -40,6 +40,7 @@ import org.gradle.process.ExecResult
 import org.gradle.workers.WorkAction
 import org.gradle.workers.WorkParameters
 import java.io.File
+import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -49,8 +50,10 @@ internal interface ArtifactPinner {
         workspaceFile: File,
         workspacePlan: WorkspacePlan,
         workspaceRenderPlan: WorkspaceRenderPlan,
+        mavenInstallRepositoryInputs: MavenInstallRepositoryInputs = MavenInstallRepositoryInputs(emptyMap()),
         gradleServices: GradleServices,
         logger: Logger,
+        localMavenResolutionContextFactory: ((Map<String, List<ResolvedDependency>>) -> LocalMavenResolutionPinContext)? = null,
     ): Boolean
 
     /**
@@ -219,8 +222,10 @@ constructor(
         workspaceFile: File,
         workspacePlan: WorkspacePlan,
         workspaceRenderPlan: WorkspaceRenderPlan,
+        mavenInstallRepositoryInputs: MavenInstallRepositoryInputs,
         gradleServices: GradleServices,
         logger: Logger,
+        localMavenResolutionContextFactory: ((Map<String, List<ResolvedDependency>>) -> LocalMavenResolutionPinContext)?,
     ): Boolean {
         val progressLoggerFactory = gradleServices.progressLoggerFactory
 
@@ -241,45 +246,74 @@ constructor(
         val layout = gradleServices.layout
 
         if (shouldRun) {
+            val localMavenStartNanos = System.nanoTime()
+            val localMavenContext = localMavenResolutionContextFactory?.invoke(allRepos)
+            val localMavenWorkspace = localMavenContext?.let { context ->
+                LocalMavenPinningWorkspace(
+                    workspaceFile = workspaceFile,
+                    rootDirectory = layout.projectDirectory.asFile,
+                    repositoryRewrite = context.repositoryRewrite,
+                    repositoryInputs = mavenInstallRepositoryInputs,
+                    metadataOnlyShortIds = context.metadataOnlyShortIds
+                )
+            }
             logger.quiet("Repinning all artifacts".ansiCyan)
-            val pinScripts = allRepos.mapValues { (mavenRepoName, _) ->
-                val scriptPath = layout
-                    .buildDirectory
-                    .file("grazel/maven/${mavenRepoName}_pin.sh").apply {
-                        get().asFile.parentFile.mkdirs()
-                    }
+            val generatePinScripts = {
+                allRepos.mapValues { (mavenRepoName, _) ->
+                    val scriptPath = layout
+                        .buildDirectory
+                        .file("grazel/maven/${mavenRepoName}_pin.sh").apply {
+                            get().asFile.parentFile.mkdirs()
+                        }
 
-                val pinningTarget = determinePinningTarget(layout, mavenRepoName)
-                val args = listOf(
-                    pinningTarget,
-                    "--script_path=${scriptPath.get().asFile.absolutePath}",
-                )
+                    val pinningTarget = determinePinningTarget(layout, mavenRepoName)
+                    val args = listOf(
+                        pinningTarget,
+                        "--script_path=${scriptPath.get().asFile.absolutePath}",
+                    )
 
-                progressLogger.progress("Pinning $mavenRepoName")
+                    progressLogger.progress("Pinning $mavenRepoName")
 
-                val outputStream = BazelLogParsingOutputStream(
-                    logger = logger,
-                    level = QUIET,
-                    progressLogger = progressLogger,
-                    mavenRepo = mavenRepoName,
-                )
+                    val outputStream = BazelLogParsingOutputStream(
+                        logger = logger,
+                        level = QUIET,
+                        progressLogger = progressLogger,
+                        mavenRepo = mavenRepoName,
+                    )
 
-                val result = gradleServices.execOperations.bazelCommand(
-                    logger = logger,
-                    command = "run",
-                    *args.toTypedArray(),
-                    ignoreExit = true,
-                    errorOutputStream = outputStream
-                )
-                scriptPath to result
-            }.values
+                    val result = gradleServices.execOperations.bazelCommand(
+                        logger = logger,
+                        command = "run",
+                        *args.toTypedArray(),
+                        ignoreExit = true,
+                        errorOutputStream = outputStream
+                    )
+                    scriptPath to result
+                }.values
+            }
+            val pinScripts = localMavenWorkspace?.withProxyRepositories(generatePinScripts) ?: generatePinScripts()
             val isSuccess = pinScripts.all { it.second.isSuccess }
             if (isSuccess) {
                 pin(workspaceFile)
+                val workQueue = gradleServices.workerExecutor.noIsolation()
                 pinScripts.forEach { (script, _) ->
-                    gradleServices.workerExecutor
-                        .noIsolation()
-                        .submit(PinningWorkAction::class.java) { pinScript.set(script) }
+                    workQueue.submit(PinningWorkAction::class.java) { pinScript.set(script) }
+                }
+                workQueue.await()
+                localMavenWorkspace?.reconstructActiveLockfiles(allRepos.keys)
+                if (localMavenContext != null) {
+                    validateLocalMavenReconstruction(
+                        workspaceFile = workspaceFile,
+                        gradleServices = gradleServices,
+                        parentProgress = progressLogger,
+                        logger = logger,
+                        pinnableRepos = allRepos
+                    )
+                    logLocalMavenResolutionSummary(
+                        logger = logger,
+                        stats = localMavenContext.stats(),
+                        elapsedNanos = System.nanoTime() - localMavenStartNanos
+                    )
                 }
                 progressLogger.completed()
                 return true
@@ -291,6 +325,44 @@ constructor(
             logger.quiet("Skipping pinning artifacts as they are up-to-date".ansiGreen)
             return true
         }
+    }
+
+    private fun validateLocalMavenReconstruction(
+        workspaceFile: File,
+        gradleServices: GradleServices,
+        parentProgress: ProgressLogger,
+        logger: Logger,
+        pinnableRepos: Map<String, List<ResolvedDependency>>,
+    ) {
+        val stillRequiresPinning = shouldRunPinning(
+            workspaceFile = workspaceFile,
+            gradleServices = gradleServices,
+            parentProgress = parentProgress,
+            logger = logger,
+            pinnableRepos = pinnableRepos,
+            logOutput = true
+        )
+        if (stillRequiresPinning) {
+            throw RuntimeException(
+                "Local Maven resolution reconstructed lockfiles were rejected by " +
+                    "rules_jvm_external 6.10 signature validation. Disable " +
+                    "experiments.localMavenResolution or fix the lockfile reconstruction."
+            )
+        }
+    }
+
+    private fun logLocalMavenResolutionSummary(
+        logger: Logger,
+        stats: LocalMavenProxyStats,
+        elapsedNanos: Long,
+    ) {
+        logger.quiet(
+            "Local Maven resolution served ${stats.artifactHits} artifacts from Gradle index, " +
+                "${stats.gradlePomHits} POMs from Gradle cache, " +
+                "${stats.originFallbacks} unknown metadata POMs from origin, " +
+                "${stats.alternateArtifactMisses} known alternate artifact misses, in " +
+                "${TimeUnit.NANOSECONDS.toMillis(elapsedNanos)}ms".ansiGreen
+        )
     }
 
     override fun ensureSafeToRun(

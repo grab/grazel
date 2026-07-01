@@ -85,7 +85,11 @@ internal data class RepositoryWithAuth(
 ) : Serializable
 
 internal sealed interface RepositoryAuth : Serializable {
-    object None : RepositoryAuth
+    object None : RepositoryAuth {
+        @Suppress("unused")
+        private fun readResolve(): Any = None
+    }
+
     data class Basic(val username: String, val password: String) : RepositoryAuth
     data class Header(val name: String, val value: String) : RepositoryAuth
 }

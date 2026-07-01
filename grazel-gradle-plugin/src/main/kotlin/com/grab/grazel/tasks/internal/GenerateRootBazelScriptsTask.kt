@@ -25,6 +25,7 @@ import com.grab.grazel.gradle.MigrationChecker
 import com.grab.grazel.gradle.dependencies.DefaultDependencyResolutionService
 import com.grab.grazel.gradle.dependencies.model.WorkspacePlan
 import com.grab.grazel.gradle.dependencies.model.WorkspaceRenderPlan
+import com.grab.grazel.migrate.dependencies.MavenInstallRepositoryInputs
 import com.grab.grazel.migrate.internal.RootBazelFileBuilder
 import com.grab.grazel.migrate.internal.WorkspaceBuilder
 import com.grab.grazel.util.BUILD_BAZEL
@@ -33,6 +34,7 @@ import com.grab.grazel.util.WORKSPACE
 import com.grab.grazel.util.ansiGreen
 import com.grab.grazel.util.fromJson
 import com.grab.grazel.util.logHeap
+import com.grab.grazel.util.writeJson
 import dagger.Lazy
 import org.gradle.api.DefaultTask
 import org.gradle.api.Project
@@ -92,6 +94,11 @@ constructor(
         .fileProperty()
         .convention(layout.projectDirectory.file(BUILD_BAZEL))
 
+    @get:OutputFile
+    val mavenInstallRepositoryInputs: RegularFileProperty = objectFactory
+        .fileProperty()
+        .convention(layout.buildDirectory.file("grazel/maven/maven-install-repository-inputs.json"))
+
     @get:Internal
     val stagedBuildBazel: RegularFileProperty = objectFactory
         .fileProperty()
@@ -117,12 +124,18 @@ constructor(
         val gradleProjectInfo: GradleProjectInfo = gradleProjectInfoFactory.get()
             .create(workspaceDependencyModel)
 
-        workspaceBuilderFactory.get().create(
+        val workspaceBuilder = workspaceBuilderFactory.get().create(
             projectsToMigrate = projectsToMigrate,
             gradleProjectInfo = gradleProjectInfo,
             workspacePlan = workspacePlanModel,
             materializedMavenRepos = workspaceRenderPlan.materializedRepoNames,
-        ).build().writeToFile(workspaceFile.get().asFile)
+        )
+        workspaceBuilder.build().writeToFile(workspaceFile.get().asFile)
+        mavenInstallRepositoryInputs.get().asFile.parentFile.mkdirs()
+        writeJson(
+            MavenInstallRepositoryInputs(workspaceBuilder.mavenInstallRepositoryInputs()),
+            mavenInstallRepositoryInputs.get()
+        )
         formatWithBuildifier(
             buildifierScript = buildifierScript.get().asFile,
             source = workspaceFile.get().asFile,

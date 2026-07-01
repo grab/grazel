@@ -54,6 +54,18 @@ class ExperimentsExtensionTest {
     }
 
     @Test
+    fun `local maven resolution defaults off and can be enabled`() {
+        val project = ProjectBuilder.builder().build()
+        val extension = ExperimentsExtension(project.objects)
+
+        assertFalse(extension.localMavenResolution.get())
+
+        extension.localMavenResolution.set(true)
+
+        assertTrue(extension.localMavenResolution.get())
+    }
+
+    @Test
     fun `limit dependency resolution parallelism remains as a compatibility no-op`() {
         val project = ProjectBuilder.builder().build()
         val extension = ExperimentsExtension(project.objects)

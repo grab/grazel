@@ -17,6 +17,7 @@
 package com.grab.grazel.migrate.dependencies
 
 import com.grab.grazel.gradle.dependencies.PomFileResolver
+import com.grab.grazel.gradle.dependencies.MavenArtifactFileResolver
 import com.sun.net.httpserver.HttpServer
 import org.junit.Rule
 import org.junit.Test
@@ -82,6 +83,27 @@ class LocalMavenProxyServerTest {
     }
 
     @Test
+    fun `does not route pom requests through the artifact resolver`() {
+        val pom = temporaryFolder.newFile("library-1.0.pom")
+        pom.writeText("<project/>")
+
+        newProxy(
+            artifactFileResolver = object : MavenArtifactFileResolver {
+                override fun resolveArtifact(path: String): File? =
+                    error("POM requests must not use the artifact resolver")
+            },
+            pomFileResolver = object : PomFileResolver {
+                override fun resolvePom(gav: String): File? = pom
+            }
+        ).use { proxy ->
+            val response = get("${proxy.baseUrl()}/r/0/com/example/library/1.0/library-1.0.pom")
+
+            assertEquals(200, response.code)
+            assertEquals("<project/>", response.body)
+        }
+    }
+
+    @Test
     fun `falls back unknown poms to origin with auth and caches the response`() {
         FixtureOriginServer(
             responses = mapOf("com/example/parent/1.0/parent-1.0.pom" to "<parent/>"),
@@ -100,6 +122,49 @@ class LocalMavenProxyServerTest {
 
                 assertEquals("<parent/>", get(url).body)
                 assertEquals("<parent/>", get(url).body)
+
+                assertEquals(1, origin.requests.get())
+                assertEquals(1, proxy.stats().originFallbacks)
+                assertEquals(1, proxy.stats().writeThroughCacheHits)
+            }
+        }
+    }
+
+    @Test
+    fun `falls back known component poms to origin when the lazy resolver misses`() {
+        FixtureOriginServer(
+            responses = mapOf("com/example/library/1.0/library-1.0.pom" to "<project/>")
+        ).use { origin ->
+            newProxy(
+                knownComponentGavs = setOf("com.example:library:1.0"),
+                pomFileResolver = object : PomFileResolver {
+                    override fun resolvePom(gav: String): File? = null
+                },
+                repositories = listOf(proxyOrigin(url = origin.baseUrl))
+            ).use { proxy ->
+                val response = get("${proxy.baseUrl()}/r/0/com/example/library/1.0/library-1.0.pom")
+
+                assertEquals(200, response.code)
+                assertEquals("<project/>", response.body)
+                assertEquals(1, origin.requests.get())
+                assertEquals(1, proxy.stats().originFallbacks)
+                assertEquals(0, proxy.stats().knownPomFailures)
+            }
+        }
+    }
+
+    @Test
+    fun `falls back maven metadata to origin and caches the response`() {
+        FixtureOriginServer(
+            responses = mapOf("com/example/library/maven-metadata.xml" to "<metadata/>")
+        ).use { origin ->
+            newProxy(
+                repositories = listOf(proxyOrigin(url = origin.baseUrl))
+            ).use { proxy ->
+                val url = "${proxy.baseUrl()}/r/0/com/example/library/maven-metadata.xml"
+
+                assertEquals("<metadata/>", get(url).body)
+                assertEquals("<metadata/>", get(url).body)
 
                 assertEquals(1, origin.requests.get())
                 assertEquals(1, proxy.stats().originFallbacks)
@@ -161,18 +226,113 @@ class LocalMavenProxyServerTest {
     }
 
     @Test
-    fun `fails closed when a resolved artifact is missing from the Gradle artifact index`() {
+    fun `does not fall back to origin for alternate artifact probes when Gradle has a concrete artifact`() {
+        val resolvedArtifact = temporaryFolder.newFile("library-1.0.aar")
+        resolvedArtifact.writeText("gradle-aar")
+        FixtureOriginServer(
+            responses = mapOf("com/example/library/1.0/library-1.0.jar" to "origin-jar")
+        ).use { origin ->
+            newProxy(
+                artifactIndex = mapOf("com/example/library/1.0/library-1.0.aar" to resolvedArtifact),
+                knownComponentGavs = setOf("com.example:library:1.0"),
+                repositories = listOf(proxyOrigin(url = origin.baseUrl))
+            ).use { proxy ->
+                val response = get("${proxy.baseUrl()}/r/0/com/example/library/1.0/library-1.0.jar")
+
+                assertEquals(404, response.code)
+                assertEquals(0, origin.requests.get())
+                assertEquals(1, proxy.stats().alternateArtifactMisses)
+            }
+        }
+    }
+
+    @Test
+    fun `falls back known concrete component artifact to origin when exact same type is absent from Gradle`() {
+        val resolvedClassifierArtifact = temporaryFolder.newFile("library-1.0-tests.jar")
+        resolvedClassifierArtifact.writeText("gradle-tests-jar")
+        FixtureOriginServer(
+            responses = mapOf("com/example/library/1.0/library-1.0.jar" to "origin-jar")
+        ).use { origin ->
+            newProxy(
+                artifactIndex = mapOf(
+                    "com/example/library/1.0/library-1.0-tests.jar" to resolvedClassifierArtifact
+                ),
+                knownComponentGavs = setOf("com.example:library:1.0"),
+                repositories = listOf(proxyOrigin(url = origin.baseUrl))
+            ).use { proxy ->
+                val response = get("${proxy.baseUrl()}/r/0/com/example/library/1.0/library-1.0.jar")
+
+                assertEquals(200, response.code)
+                assertEquals("origin-jar", response.body)
+                assertEquals(1, origin.requests.get())
+                assertEquals(1, proxy.stats().originFallbacks)
+                assertEquals(0, proxy.stats().alternateArtifactMisses)
+            }
+        }
+    }
+
+    @Test
+    fun `falls back known metadata-only component artifacts to origin`() {
+        FixtureOriginServer(
+            responses = mapOf("com/example/library/1.0/library-1.0.aar" to "origin-aar")
+        ).use { origin ->
+            newProxy(
+                knownComponentGavs = setOf("com.example:library:1.0"),
+                repositories = listOf(proxyOrigin(url = origin.baseUrl))
+            ).use { proxy ->
+                val url = "${proxy.baseUrl()}/r/0/com/example/library/1.0/library-1.0.aar"
+
+                assertEquals("origin-aar", get(url).body)
+
+                assertEquals(1, origin.requests.get())
+                assertEquals(1, proxy.stats().originFallbacks)
+                assertEquals(0, proxy.stats().alternateArtifactMisses)
+            }
+        }
+    }
+
+    @Test
+    fun `serves unknown closure artifacts from the Gradle module cache before origin`() {
+        val cachedArtifact = temporaryFolder.newFile("library-1.0.jar")
+        cachedArtifact.writeText("cached-jar")
+        FixtureOriginServer(
+            responses = mapOf("com/example/library/1.0/library-1.0.jar" to "origin-jar")
+        ).use { origin ->
+            newProxy(
+                artifactFileResolver = object : MavenArtifactFileResolver {
+                    override fun resolveArtifact(path: String): File? {
+                        assertEquals("com/example/library/1.0/library-1.0.jar", path)
+                        return cachedArtifact
+                    }
+                },
+                repositories = listOf(proxyOrigin(url = origin.baseUrl))
+            ).use { proxy ->
+                val response = get("${proxy.baseUrl()}/r/0/com/example/library/1.0/library-1.0.jar")
+
+                assertEquals(200, response.code)
+                assertEquals("cached-jar", response.body)
+                assertEquals(0, origin.requests.get())
+                assertEquals(1, proxy.stats().artifactHits)
+            }
+        }
+    }
+
+    @Test
+    fun `falls back unknown closure artifacts to origin and caches the response`() {
         FixtureOriginServer(
             responses = mapOf("com/example/library/1.0/library-1.0.jar" to "origin-jar")
         ).use { origin ->
             newProxy(
                 repositories = listOf(proxyOrigin(url = origin.baseUrl))
             ).use { proxy ->
-                val response = get("${proxy.baseUrl()}/r/0/com/example/library/1.0/library-1.0.jar")
+                val url = "${proxy.baseUrl()}/r/0/com/example/library/1.0/library-1.0.jar"
 
-                assertEquals(500, response.code)
-                assertEquals(0, origin.requests.get())
-                assertEquals(1, proxy.stats().hardArtifactMisses)
+                assertEquals("origin-jar", get(url).body)
+                assertEquals("origin-jar", get(url).body)
+
+                assertEquals(1, origin.requests.get())
+                assertEquals(1, proxy.stats().originFallbacks)
+                assertEquals(1, proxy.stats().writeThroughCacheHits)
             }
         }
     }
@@ -193,6 +353,8 @@ class LocalMavenProxyServerTest {
 
     private fun newProxy(
         artifactIndex: Map<String, File> = emptyMap(),
+        artifactFileResolver: MavenArtifactFileResolver = MavenArtifactFileResolver.None,
+        knownComponentGavs: Set<String> = emptySet(),
         pomFileResolver: PomFileResolver = object : PomFileResolver {
             override fun resolvePom(gav: String): File? = null
         },
@@ -204,6 +366,8 @@ class LocalMavenProxyServerTest {
         ).apply {
             configure(
                 artifactIndex = artifactIndex,
+                artifactFileResolver = artifactFileResolver,
+                knownComponentGavs = knownComponentGavs,
                 pomFileResolver = pomFileResolver
             )
         }

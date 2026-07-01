@@ -41,6 +41,11 @@ fun StatementsBuilder.daggerWorkspaceRules(
 
 internal const val DAGGER_REPOSITORIES = "DAGGER_REPOSITORIES"
 internal const val DAGGER_ARTIFACTS = "DAGGER_ARTIFACTS"
+internal val DAGGER_REPOSITORY_URLS = listOf(
+    "https://maven.google.com",
+    "https://repo1.maven.org/maven2",
+    "https://oss.sonatype.org/content/repositories/snapshots",
+)
 
 fun StatementsBuilder.loadDaggerArtifactsAndRepositories() {
     load("@dagger//:workspace_defs.bzl", DAGGER_ARTIFACTS, DAGGER_REPOSITORIES)

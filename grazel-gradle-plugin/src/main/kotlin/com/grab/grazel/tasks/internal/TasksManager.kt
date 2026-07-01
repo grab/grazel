@@ -61,6 +61,8 @@ constructor(
             dependencyResolutionService = grazelComponent.dependencyResolutionService()
         )
 
+        val pinArtifactsTask = PinMavenArtifactsTask.register(rootProject, grazelComponent)
+
         WorkspaceDependencyInputsRegistrar.register(
             rootProject = rootProject,
             variantBuilderProvider = grazelComponent.variantBuilder(),
@@ -69,7 +71,8 @@ constructor(
                 .extension()
                 .experiments
                 .declaredDependencyMetadataAggregationMode,
-            computeTask = computeWorkspaceDependenciesTask
+            computeTask = computeWorkspaceDependenciesTask,
+            pinMavenArtifactsTask = pinArtifactsTask
         )
 
         val collectWorkspaceTargetTagPlanTask = CollectWorkspaceTargetTagPlanTask.register(
@@ -176,10 +179,13 @@ constructor(
             dependsOn(generateBuildifierScriptTask)
         }
 
-        val pinArtifactsTask = PinMavenArtifactsTask.register(rootProject, grazelComponent) {
+        pinArtifactsTask.configure {
             workspaceFile.set(rootGenerateBazelScriptsTasks.flatMap { it.workspaceFile })
             workspacePlan.set(computeWorkspacePlanTask.flatMap { it.workspacePlan })
             workspaceRenderPlan.set(finalizeWorkspacePlanTask.flatMap { it.workspaceRenderPlan })
+            mavenInstallRepositoryInputs.set(
+                rootGenerateBazelScriptsTasks.flatMap { it.mavenInstallRepositoryInputs }
+            )
         }
 
         val migrateTask = migrateToBazelTask().apply {

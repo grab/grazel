@@ -23,6 +23,7 @@ import com.grab.grazel.migrate.dependencies.LocalMavenProxyAuth
 import com.grab.grazel.migrate.dependencies.LocalMavenProxyOrigin
 import com.grab.grazel.migrate.dependencies.LocalMavenProxyServer
 import com.grab.grazel.migrate.dependencies.LocalMavenProxyStats
+import com.grab.grazel.migrate.dependencies.MavenInstallRepositoryRewrite
 import org.gradle.api.Project
 import org.gradle.api.file.DirectoryProperty
 import org.gradle.api.provider.ListProperty
@@ -39,6 +40,8 @@ internal abstract class LocalMavenProxyService :
         synchronized(lock) {
             activeServer().configure(
                 artifactIndex = facts.artifactIndex,
+                artifactFileResolver = facts.artifactFileResolver,
+                knownComponentGavs = facts.knownComponentGavs,
                 pomFileResolver = facts.pomFileResolver
             )
         }
@@ -50,6 +53,18 @@ internal abstract class LocalMavenProxyService :
 
     fun stats(): LocalMavenProxyStats = synchronized(lock) {
         server?.stats() ?: LocalMavenProxyStats()
+    }
+
+    fun repositoryRewrite(): MavenInstallRepositoryRewrite = synchronized(lock) {
+        val baseUrl = activeServer().baseUrl().trimEnd('/')
+        MavenInstallRepositoryRewrite(
+            proxyToCanonicalUrl = parameters.repositories
+                .get()
+                .mapIndexed { index, repository ->
+                    "$baseUrl/r/$index/" to repository.url
+                }
+                .toMap()
+        )
     }
 
     private fun activeServer(): LocalMavenProxyServer {
@@ -104,6 +119,6 @@ private fun RepositoryWithAuth.toProxyOrigin(): LocalMavenProxyOrigin =
                 value = repositoryAuth.value
             )
 
-            RepositoryAuth.None -> LocalMavenProxyAuth.None
+            is RepositoryAuth.None -> LocalMavenProxyAuth.None
         }
     )

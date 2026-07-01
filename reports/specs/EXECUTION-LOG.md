@@ -2775,3 +2775,309 @@ evidence in item-specific logs so context compaction can recover state quickly.
   - The service is intentionally dormant until Item 38 wires pinner execution.
     Item 38 must prove PAX cold pinning, stats output, and lockfile reuse with
     the experiment flag enabled.
+
+## 2026-07-01 - Item 38 pin integration in progress checkpoint
+
+- Active detailed log:
+  - `reports/specs/execution-log/item38-local-maven-resolution-pin-integration.md`
+- Persisted decisions:
+  - PAX repository configuration must transfer to the proxy through Gradle's
+    existing repository model and the proxy-only `RepositoryWithAuth` facts.
+    Because the proxy reads Gradle repository/auth data, this should be
+    compatible with PAX, but verification must prove it. No PAX-only repository
+    hacks.
+  - Use the Grazel repo itself as the first flag-on proxy test before full PAX
+    verification.
+  - The pinner must start/hydrate the proxy only after `shouldRunPinning`
+    decides repin is required; skip path should remain cheap.
+  - Root configurations for proxy fact hydration must come from the existing
+    variant-owned root input planning in `WorkspaceDependencyInputsRegistrar`,
+    not ad hoc configuration-name reconstruction in the pinner.
+- Implemented so far:
+  - Pure Kotlin lockfile reconstruction and WORKSPACE repository rewrite seams
+    with focused tests.
+  - Local pinning workspace helper.
+  - Explicit pin worker `await()` before reconstruction.
+  - Initial task/service wiring for flag-on local Maven resolution.
+- Verification so far:
+  - Focused Item38 tests passed:
+    `./gradlew :grazel-gradle-plugin:test --tests "com.grab.grazel.migrate.dependencies.DefaultArtifactPinnerTest.assert maven install json generation is successful" --tests "com.grab.grazel.migrate.dependencies.LocalMavenPinningWorkspaceTest" --tests "com.grab.grazel.migrate.dependencies.MavenInstallWorkspaceRepositoryRewriterTest" --tests "com.grab.grazel.migrate.dependencies.MavenInstallLockfileReconstructorTest" --console=plain --no-daemon`
+- Next gates:
+  - Finish real pinner validation/error behavior.
+  - Run Grazel flag-off generated-output gate.
+  - Run Grazel flag-on cold/changed pinning as first proxy integration test.
+  - Run simplify-pass after the large Item38 slice is locally green.
+  - Then run PAX from the clean committed baseline; never commit PAX.
+
+## 2026-07-01 - Item 38 forced proxy pin green
+
+- Detailed log updated:
+  - `reports/specs/execution-log/item38-local-maven-resolution-pin-integration.md`
+- Root cause resolved:
+  - RJE rejected reconstructed lockfiles because JSON null shasums were being
+    read with `jsonPrimitive.content`, turning Starlark `None` into the string
+    `"null"`. This propagated through metadata artifacts and changed many
+    resolved hashes.
+  - The reconstructor now preserves JSON null as Kotlin null/Starlark `None`
+    for shasums and uses Bazel's documented first-entry `dict.popitem()`
+    behavior when porting RJE's manual traversal.
+- Evidence:
+  - Forced Grazel flag-on repin passed:
+    `./gradlew pinMavenArtifacts --console=plain --no-daemon --stacktrace`
+    after intentionally corrupting only root `maven_install.json` hash and
+    temporarily enabling `experiments.localMavenResolution`.
+  - Successful run summary:
+    `Local Maven resolution served 189 artifacts from Gradle index, 113 POMs
+    from Gradle cache, 0 unknown metadata POMs from origin, 210 known alternate
+    artifact misses, 0 artifact misses, in 19913ms`.
+  - Focused tests passed:
+    `./gradlew :grazel-gradle-plugin:test --tests "com.grab.grazel.migrate.dependencies.LocalMavenProxyServerTest" --tests "com.grab.grazel.migrate.dependencies.LocalMavenPinningWorkspaceTest" --tests "com.grab.grazel.migrate.dependencies.MavenInstallLockfileReconstructorTest" --tests "com.grab.grazel.migrate.dependencies.MavenInstallWorkspaceRepositoryRewriterTest" --tests "com.grab.grazel.tasks.internal.PinMavenArtifactsTaskTest" --console=plain --no-daemon`.
+- Cleanup:
+  - Restored generated lockfiles from `build/item38-lockfile-baseline`.
+  - Removed temporary root `build.gradle` flag-on mutation; experiment remains
+    default-off.
+- Next gates:
+  - simplify-pass for Item38.
+  - PAX migrate/build/test from the committed clean baseline; do not commit PAX.
+
+## 2026-07-01 - Item 38 local gates before simplify pass
+
+- Flag-off local gate:
+  - Resource checkpoint: about 34GiB free; no cleanup needed.
+  - `./gradlew migrateToBazel --console=plain --no-daemon` passed with
+    `experiments.localMavenResolution` default-off and pinning skipped as
+    up-to-date.
+  - Generated BUILD/WORKSPACE/json diff was empty after the run.
+  - `git diff --check` passed.
+- Unit test gate:
+  - `./gradlew :grazel-gradle-plugin:test --console=plain --no-daemon` passed.
+- Active:
+  - Running simplify-pass over Item38 via four subagents: reuse,
+    simplification, efficiency, and altitude.
+
+## 2026-07-01 - Item 38 repository signature correction
+
+- Detailed log updated:
+  - `reports/specs/execution-log/item38-local-maven-resolution-pin-integration.md`
+- Root cause:
+  - Earlier forced-pin work fixed null shasums, but RJE still rejected
+    reconstructed lockfiles when the repository input signature was recomputed
+    from lockfile output URL keys.
+  - RJE signs `repository_ctx.attr.repositories`, i.e. the effective list of
+    JSON repository input strings after Starlark variable expansion. Lockfile
+    output repository keys omit configured repositories that served no artifacts
+    and cannot be used for that input hash.
+- Fix:
+  - `GenerateRootBazelScriptsTask` now writes
+    `build/grazel/maven/maven-install-repository-inputs.json`, a typed sidecar
+    generated from the exact `MavenInstallData` set used to render `WORKSPACE`.
+  - `PinMavenArtifactsTask` consumes that sidecar as an `@InputFile`.
+  - Local lockfile reconstruction hashes the supplied per-repo canonical
+    repository input strings and fails closed if an active repo is missing.
+- Verification:
+  - Focused tests passed:
+    `./gradlew :grazel-gradle-plugin:test --tests "com.grab.grazel.migrate.dependencies.MavenInstallLockfileReconstructorTest" --tests "com.grab.grazel.migrate.dependencies.LocalMavenPinningWorkspaceTest" --tests "com.grab.grazel.migrate.dependencies.DefaultArtifactPinnerTest" --console=plain --no-daemon`.
+  - Forced flag-on local proxy repin passed:
+    `./gradlew pinMavenArtifacts --console=plain --no-daemon --stacktrace`.
+  - RJE validation accepted all repos after reconstruction; summary:
+    `189 artifacts from Gradle index, 113 POMs from Gradle cache, 0 origin POM
+    fallbacks, 210 alternate artifact misses, 21433ms`.
+- Cleanup:
+  - Restored all checked-in lockfiles from `build/item38-lockfile-baseline`.
+  - Removed the temporary root `build.gradle` flag-on mutation.
+- Next:
+  - Run default-off generated-output/local gates again after this correction.
+  - Continue simplify/review and PAX verification for Item38.
+
+## 2026-07-01 - Item 38 simplify-pass cleanup
+
+- Ran the required four-agent simplify-pass over the current Item38 diff:
+  reuse, simplification, efficiency, and altitude.
+- Applied behavior-preserving findings:
+  - `MavenRules.DefaultMavenRepository.build()` now uses the same
+    credentialed URL helper as repository-input sidecar generation.
+  - Local lockfile reconstruction now requires canonical repository input
+    strings; the old production fallback that re-derived them from lockfile
+    output repository keys was removed.
+  - `LocalMavenPinningWorkspace` now scopes proxy WORKSPACE rewrites with
+    `withProxyRepositories { ... }` so canonical restoration is owned by the
+    workspace helper instead of caller-managed nullable state.
+  - Gradle local Maven facts now expose neutral `metadataOnlyGavs`; the pinner
+    layer translates those to override-target short IDs.
+  - `GradleModuleCacheFileResolver` now caches Gradle module-cache file
+    listings by coordinates to avoid repeated directory scans for alternate
+    artifact path probes.
+  - Reconstructor tests now share setup and pass canonical repository input
+    facts explicitly.
+- Deferred/rejected findings:
+  - Full RJE lockfile hash/rendering is intentionally version-coupled for this
+    experiment; correctness is guarded by focused tests and live RJE
+    validation. A future item can wrap this as an explicit RJE-version seam.
+  - Replacing the proxy WORKSPACE regex rewrite with a structured proxy render
+    mode is a broader renderer/pinner seam refactor, not a safe simplify-pass
+    change after the hash path was verified.
+  - Moving local Maven facts to an upstream serialized task output is a larger
+    task-boundary/cacheability design item. Current Item38 keeps the flag-on
+    path inside pinning for a first-level proxy experiment.
+  - Batching post-reconstruction RJE validation was deferred; the extra
+    validation is intentionally strict while the experiment is still new.
+- Verification:
+  - `git diff --check` passed before focused tests.
+  - Focused tests passed:
+    `./gradlew :grazel-gradle-plugin:test --tests "com.grab.grazel.migrate.dependencies.MavenInstallLockfileReconstructorTest" --tests "com.grab.grazel.migrate.dependencies.LocalMavenPinningWorkspaceTest" --tests "com.grab.grazel.migrate.dependencies.DefaultArtifactPinnerTest" --tests "com.grab.grazel.gradle.dependencies.LocalMavenResolvedFactsTest" --console=plain --no-daemon`.
+- Next:
+  - Rerun default-off `migrateToBazel` generated-output gate.
+  - Rerun forced flag-on local proxy pin gate because proxy lifecycle was
+    simplified.
+  - Then proceed to PAX verification from the clean committed PAX baseline.
+
+## 2026-07-01 - Item 38 post-cleanup local gates
+
+- Default-off generated-output gate:
+  - Resource checkpoint: about 28GiB free; no cleanup performed.
+  - `./gradlew migrateToBazel --console=plain --no-daemon` passed.
+  - Generated BUILD/WORKSPACE/json/downloader/databinding diff was empty.
+  - `git diff --check` passed.
+- Forced flag-on local proxy pin gate:
+  - Temporarily enabled `experiments.localMavenResolution` in root
+    `build.gradle`.
+  - Corrupted only `maven_install.json.__INPUT_ARTIFACTS_HASH.repositories` to
+    force pinning.
+  - `./gradlew pinMavenArtifacts --console=plain --no-daemon --stacktrace`
+    passed after the scoped proxy rewrite cleanup.
+  - RJE validation accepted reconstructed lockfiles for all active repos.
+  - Summary:
+    `Local Maven resolution served 189 artifacts from Gradle index, 113 POMs
+    from Gradle cache, 0 unknown metadata POMs from origin, 210 known alternate
+    artifact misses, in 24639ms`.
+  - Restored temporary root `build.gradle` flag and all checked-in lockfiles
+    from `build/item38-lockfile-baseline`.
+  - Generated-output diff is empty again; `git diff --check` passed.
+- Next:
+  - Run broader local plugin tests if resources allow.
+  - Run PAX migrate/build/test from the committed clean PAX baseline; do not
+    commit PAX.
+
+## 2026-07-01 - Item 38 broader local unit gate
+
+- `./gradlew :grazel-gradle-plugin:test --console=plain --no-daemon` passed
+  after simplify-pass cleanup.
+- Known noisy output observed but not new:
+  - configuration-time resolution warnings in legacy tests,
+  - compression fallback messages in extractor tests,
+  - expected pinner out-of-date error output inside pinner tests.
+- Next:
+  - Run PAX verification from `/Users/arun.sampathkumar/work/pax-android`
+    clean baseline.
+
+## 2026-07-01 - Item 38 PAX migrate gate
+
+- PAX baseline:
+  - Repo: `/Users/arun.sampathkumar/work/pax-android`.
+  - Branch: `arun/grazel-refactor`.
+  - Commit: `d4105d1f64bd2f1930e1030e42647a214002c48d`.
+  - Worktree was clean before running migrate.
+- Resource checkpoint before migrate:
+  - `/System/Volumes/Data` had about 27GiB free.
+  - PAX `bazel-cache` was about 14G.
+  - `/private/var/tmp/_bazel_arun.sampathkumar` was about 59G.
+  - No cleanup before migrate; under the 90G private-root threshold.
+- Command:
+  - `cd /Users/arun.sampathkumar/work/pax-android`
+  - `./gradlew migrateToBazel --no-daemon --console=plain --stacktrace --rerun-tasks`
+- Result:
+  - Passed in 13m 3s.
+  - Pinning skipped as up to date.
+  - Observed task timings:
+    - `mergeDeclaredDependencyMetadata`: 2327 projects across 2327 shards in
+      731ms.
+    - `resolveWorkspaceDependencies`: 496 deps across 2451 roots in 23800ms.
+    - `collectWorkspaceTargetTagPlan`: 17090 targets in 19594ms.
+    - `analyzeVariantCompression`: 2096 projects in 56660ms.
+    - `collectTargetMavenRepoReferences`: 2327 modules in 38402ms.
+  - PAX `git status --short`, `git diff --check`, and `git diff --stat` were
+    empty after migrate. The committed PAX baseline did not move.
+- Disk cleanup before Bazel gates:
+  - After migrate, `/System/Volumes/Data` dropped to about 11GiB free.
+  - Ran `./bazel.sh shutdown` and `./bazel.sh clean --expunge` in PAX first.
+  - The wrapper clean returned successfully but left many stale Bazel output
+    bases; free space only rose to about 16GiB.
+  - Confirmed stale Bazel servers from temporary JUnit workspaces, stopped
+    them with `pkill -f "workspace_directory=/private/var/folders/.*/T/junit"`,
+    then ran `bazelisk shutdown` in Grazel.
+  - Removed stale `/private/var/tmp/_bazel_arun.sampathkumar`. Some protected
+    files emitted permission errors, but cleanup reclaimed the stale output
+    roots.
+  - Final cleanup checkpoint: about 73GiB free and the private Bazel root down
+    to about 294M. PAX `bazel-cache` was preserved.
+- Next:
+  - Run PAX APK build gate.
+  - Run PAX focused Bazel test gate.
+  - Keep PAX uncommitted and verify generated diff remains empty.
+
+## 2026-07-01 - Item 38 PAX APK build gate
+
+- Pre-build state:
+  - PAX generated diff remained empty after migrate.
+  - Disk was healthy after cleanup: about 73-75GiB free.
+- Command:
+  - `cd /Users/arun.sampathkumar/work/pax-android`
+  - `./bazel.sh build --verbose_failures //app:app-gps-pax-debug.apk //app:app-gps-pax-debug-android-test.apk`
+- Result:
+  - Passed.
+  - First attempt hit a transient remote-cache missing blob for
+    `food-root-gps-pax-debug-stubs_r.srcjar`.
+  - The PAX wrapper retried automatically and the retry completed
+    successfully.
+  - Final successful invocation reported:
+    - elapsed time: 471.860s.
+    - 50452 total actions.
+    - 42091 disk cache hits, 1634 remote cache hits.
+- Post-build checks:
+  - PAX `git status --short` was empty.
+  - PAX `git diff --check` passed.
+  - `/System/Volumes/Data` had about 75GiB free.
+  - `/private/var/tmp/_bazel_arun.sampathkumar` was about 4.0G.
+- Next:
+  - Run focused PAX Bazel test gate.
+
+## 2026-07-01 - Item 38 PAX focused test gate
+
+- Command:
+  - `cd /Users/arun.sampathkumar/work/pax-android`
+  - `./bazel.sh test --test_output=errors //app-utils:app-utils-gps-pax-debug-test //app-test:app-test-gps-pax-debug-test //application-initializer:application-initializer-gps-pax-debug-test`
+- Result:
+  - Passed.
+  - Reported `Executed 0 out of 3 tests: 3 tests pass`.
+  - Elapsed time: 20.232s.
+  - 11701 total actions, 9857 disk cache hits.
+- Post-test checks:
+  - PAX `git status --short` was empty.
+  - PAX `git diff --check` passed.
+  - Disk remained healthy: about 75GiB free and private Bazel root about 4.0G.
+- Item38 PAX status:
+  - PAX migrate passed.
+  - PAX debug APK and android-test APK build passed.
+  - PAX focused Bazel tests passed.
+  - PAX committed generated baseline did not move.
+
+## 2026-07-01 - Item 38 final local guards
+
+- `git diff --check` passed.
+- `git diff --check master...HEAD` passed.
+- `reports/scripts/verify-default-task-graph.sh` passed.
+- `reports/scripts/verify-sample-bucket-labels.sh` result:
+  - Failed on the known documented pre-existing waiver:
+    `WORKSPACE must not union one-sided appcompat exclude onto androidx.constraintlayout:constraintlayout`.
+  - Investigation:
+    - `WORKSPACE` was not dirty.
+    - `HEAD:WORKSPACE` already contains both
+      `androidx.appcompat:appcompat` and `androidx.core:core` exclusions on
+      `androidx.constraintlayout:constraintlayout`.
+    - This exact failure is already recorded in the execution logs and review
+      guide as a pre-existing/local waiver, not an Item38 regression.
+- `reports/scripts/verify-pax-size-guard.sh --mode preserving` passed:
+  - `bucketCount`: baseline 11, current 11.
+  - `pinfileCount`: baseline 11, current 11.
+  - `totalArtifactRoots`: baseline 1945, current 1945.
+  - Per-repo artifact deltas: none.

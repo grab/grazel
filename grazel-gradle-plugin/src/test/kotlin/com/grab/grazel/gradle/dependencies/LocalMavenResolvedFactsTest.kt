@@ -29,7 +29,6 @@ import org.junit.Test
 import org.junit.rules.TemporaryFolder
 import java.io.File
 import kotlin.test.assertEquals
-import kotlin.test.assertFailsWith
 import kotlin.test.assertNull
 
 class LocalMavenResolvedFactsTest {
@@ -52,6 +51,47 @@ class LocalMavenResolvedFactsTest {
             mapOf(
                 "com/example/library/1.2.3/library-1.2.3-classifier.jar" to jar,
                 "com/example/android/android/4.5.6/android-4.5.6.aar" to aar
+            ),
+            index
+        )
+    }
+
+    @Test
+    fun `artifact index aliases non maven physical file name to canonical maven path`() {
+        val aar = temporaryFolder.newFile("ui-release.aar")
+        val index = ResolvedArtifactIndexBuilder.indexArtifacts(
+            artifacts = listOf(
+                fakeArtifact("androidx.compose.ui", "ui-android", "1.7.8", aar)
+            )
+        )
+
+        assertEquals(
+            mapOf(
+                "androidx/compose/ui/ui-android/1.7.8/ui-android-1.7.8.aar" to aar,
+                "androidx/compose/ui/ui-android/1.7.8/ui-release.aar" to aar
+            ),
+            index
+        )
+    }
+
+    @Test
+    fun `module cache index adds maven layout files for resolved components`() {
+        val gradleHome = temporaryFolder.newFolder("gradle-home")
+        val cacheDirectory = File(
+            gradleHome,
+            "caches/modules-2/files-2.1/androidx.compose.ui/ui-android/1.7.8/hash"
+        ).apply { mkdirs() }
+        val aar = cacheDirectory.resolve("ui-release.aar").apply { writeText("aar") }
+        val module = cacheDirectory.resolve("ui-android-1.7.8.module").apply { writeText("module") }
+
+        val index = GradleModuleCacheFileIndexBuilder(gradleHome)
+            .index(listOf("androidx.compose.ui:ui-android:1.7.8"))
+
+        assertEquals(
+            mapOf(
+                "androidx/compose/ui/ui-android/1.7.8/ui-android-1.7.8.aar" to aar,
+                "androidx/compose/ui/ui-android/1.7.8/ui-android-1.7.8.module" to module,
+                "androidx/compose/ui/ui-android/1.7.8/ui-release.aar" to aar
             ),
             index
         )
@@ -107,20 +147,14 @@ class LocalMavenResolvedFactsTest {
     }
 
     @Test
-    fun `pom resolver fails when known component has no pom file`() {
+    fun `pom resolver returns null when known component has no pom file`() {
         val component = fakeComponent("com.example", "broken", "1.0")
         val resolver = GradlePomFileResolver(
             componentIdsByGav = mapOf("com.example:broken:1.0" to component),
             queryPom = { null }
         )
 
-        val failure = assertFailsWith<IllegalStateException> {
-            resolver.resolvePom("com.example:broken:1.0")
-        }
-        assertEquals(
-            "Gradle resolved component com.example:broken:1.0 did not provide a Maven POM",
-            failure.message
-        )
+        assertNull(resolver.resolvePom("com.example:broken:1.0"))
     }
 
     private fun fakeArtifact(

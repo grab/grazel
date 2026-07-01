@@ -16,7 +16,10 @@
 
 package com.grab.grazel.migrate.dependencies
 
+import com.grab.grazel.gradle.dependencies.MavenArtifactFileResolver
+import com.grab.grazel.gradle.dependencies.MavenPath
 import com.grab.grazel.gradle.dependencies.PomFileResolver
+import com.grab.grazel.gradle.dependencies.isConcreteArtifactPath
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.engine.cio.CIO as ClientCIO
@@ -46,7 +49,7 @@ import kotlin.io.path.moveTo
 
 internal data class LocalMavenProxyStats(
     val artifactHits: Long = 0,
-    val hardArtifactMisses: Long = 0,
+    val alternateArtifactMisses: Long = 0,
     val gradlePomHits: Long = 0,
     val knownPomFailures: Long = 0,
     val originFallbacks: Long = 0,
@@ -83,6 +86,9 @@ internal class LocalMavenProxyServer(
         }
     }
     private var artifactIndex: Map<String, File> = emptyMap()
+    private var artifactFileResolver: MavenArtifactFileResolver = MavenArtifactFileResolver.None
+    private var knownComponentGavs: Set<String> = emptySet()
+    private var concreteArtifactExtensionsByGav: Map<String, Set<String>> = emptyMap()
     private var pomFileResolver: PomFileResolver = object : PomFileResolver {
         override fun resolvePom(gav: String): File? = null
     }
@@ -91,10 +97,25 @@ internal class LocalMavenProxyServer(
 
     fun configure(
         artifactIndex: Map<String, File>,
+        artifactFileResolver: MavenArtifactFileResolver = MavenArtifactFileResolver.None,
+        knownComponentGavs: Set<String>,
         pomFileResolver: PomFileResolver,
     ) {
         synchronized(lock) {
             this.artifactIndex = artifactIndex
+            this.artifactFileResolver = artifactFileResolver
+            this.knownComponentGavs = knownComponentGavs
+            this.concreteArtifactExtensionsByGav = artifactIndex.keys
+                .asSequence()
+                .filter { path -> path.isConcreteArtifactPath() }
+                .mapNotNull { path ->
+                    path.toGavOrNull()?.let { gav -> gav to path.artifactExtension() }
+                }
+                .groupBy(
+                    keySelector = { (gav, _) -> gav },
+                    valueTransform = { (_, extension) -> extension }
+                )
+                .mapValues { (_, extensions) -> extensions.toSet() }
             this.pomFileResolver = pomFileResolver
         }
     }
@@ -151,6 +172,9 @@ internal class LocalMavenProxyServer(
         if (path.isChecksumPath()) {
             return serveChecksum(repoIndex, path)
         }
+        if (path.isPomPath()) {
+            return servePom(repoIndex, path, countContentHit)
+        }
         artifactIndex[path]?.let { file ->
             return fileResponse(
                 status = HttpStatusCode.OK,
@@ -162,14 +186,33 @@ internal class LocalMavenProxyServer(
                 }
             )
         }
-        if (path.isPomPath()) {
-            return servePom(repoIndex, path, countContentHit)
+        artifactFileResolver.resolveArtifact(path)?.let { file ->
+            return fileResponse(
+                status = HttpStatusCode.OK,
+                file = file,
+                onServed = {
+                    if (countContentHit) {
+                        counters.artifactHits.incrementAndGet()
+                    }
+                }
+            )
         }
-        counters.hardArtifactMisses.incrementAndGet()
-        return ServedResponse.Bytes(
-            HttpStatusCode.InternalServerError,
-            "Missing Gradle-resolved artifact $path".toByteArray()
-        )
+        if (path.isMavenMetadataPath()) {
+            return serveFromCacheOrOrigin(repoIndex, path)
+        }
+        if (path.isKnownAlternateArtifactProbe()) {
+            counters.alternateArtifactMisses.incrementAndGet()
+            return ServedResponse.Bytes(HttpStatusCode.NotFound, ByteArray(0))
+        }
+        return serveFromCacheOrOrigin(repoIndex, path)
+    }
+
+    private fun String.isKnownAlternateArtifactProbe(): Boolean {
+        val gav = toGavOrNull() ?: return false
+        val concreteExtensions = concreteArtifactExtensionsByGav[gav].orEmpty()
+        return gav in knownComponentGavs &&
+            concreteExtensions.isNotEmpty() &&
+            artifactExtension() !in concreteExtensions
     }
 
     private suspend fun serveChecksum(repoIndex: Int, checksumPath: String): ServedResponse {
@@ -317,7 +360,7 @@ internal class LocalMavenProxyServer(
 
     private class LocalMavenProxyCounters {
         val artifactHits = AtomicLong()
-        val hardArtifactMisses = AtomicLong()
+        val alternateArtifactMisses = AtomicLong()
         val gradlePomHits = AtomicLong()
         val knownPomFailures = AtomicLong()
         val originFallbacks = AtomicLong()
@@ -328,7 +371,7 @@ internal class LocalMavenProxyServer(
 
         fun snapshot(): LocalMavenProxyStats = LocalMavenProxyStats(
             artifactHits = artifactHits.get(),
-            hardArtifactMisses = hardArtifactMisses.get(),
+            alternateArtifactMisses = alternateArtifactMisses.get(),
             gradlePomHits = gradlePomHits.get(),
             knownPomFailures = knownPomFailures.get(),
             originFallbacks = originFallbacks.get(),
@@ -356,6 +399,11 @@ private sealed interface ServedResponse {
 
 private fun String.isPomPath(): Boolean = endsWith(".pom")
 
+private fun String.isMavenMetadataPath(): Boolean = endsWith("/maven-metadata.xml")
+
+private fun String.isConcreteArtifactPath(): Boolean =
+    isConcreteArtifactPath(this)
+
 private fun String.isChecksumPath(): Boolean =
     endsWith(".sha1") || endsWith(".md5") || endsWith(".sha256")
 
@@ -363,13 +411,15 @@ private fun String.removeChecksumSuffix(): String =
     substringBeforeLast(".")
 
 private fun String.toGav(): String {
-    val parts = split("/")
-    require(parts.size >= 4) { "Cannot derive GAV from Maven path $this" }
-    val version = parts[parts.lastIndex - 1]
-    val artifact = parts[parts.lastIndex - 2]
-    val group = parts.dropLast(3).joinToString(".")
-    return "$group:$artifact:$version"
+    return toGavOrNull() ?: error("Cannot derive GAV from Maven path $this")
 }
+
+private fun String.toGavOrNull(): String? {
+    return MavenPath.parse(this)?.coordinates?.gav
+}
+
+private fun String.artifactExtension(): String =
+    substringAfterLast('.', missingDelimiterValue = "")
 
 private fun digestResponse(algorithmSuffix: String, response: ServedResponse): String {
     val digest = messageDigest(algorithmSuffix)

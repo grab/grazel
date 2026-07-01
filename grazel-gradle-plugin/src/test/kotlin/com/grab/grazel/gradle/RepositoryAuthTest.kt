@@ -22,6 +22,10 @@ import org.gradle.api.credentials.HttpHeaderCredentials
 import org.gradle.kotlin.dsl.credentials
 import org.gradle.kotlin.dsl.repositories
 import org.junit.Test
+import java.io.ByteArrayInputStream
+import java.io.ByteArrayOutputStream
+import java.io.ObjectInputStream
+import java.io.ObjectOutputStream
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
 
@@ -73,5 +77,30 @@ class RepositoryAuthTest {
             dataSource.supportedRepositories.map { repository -> repository.name }
         )
         assertEquals(listOf("header"), dataSource.unsupportedRepositoryNames)
+    }
+
+    @Test
+    fun `none auth survives serialization boundary as singleton`() {
+        val repository = RepositoryWithAuth(
+            name = "public",
+            url = "https://public.example.com/maven",
+            auth = RepositoryAuth.None
+        )
+
+        val restored = roundTrip(repository)
+
+        assertEquals(RepositoryAuth.None, restored.auth)
+    }
+
+    private fun roundTrip(repository: RepositoryWithAuth): RepositoryWithAuth {
+        val bytes = ByteArrayOutputStream().use { byteStream ->
+            ObjectOutputStream(byteStream).use { output ->
+                output.writeObject(repository)
+            }
+            byteStream.toByteArray()
+        }
+        return ObjectInputStream(ByteArrayInputStream(bytes)).use { input ->
+            input.readObject() as RepositoryWithAuth
+        }
     }
 }

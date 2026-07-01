@@ -68,4 +68,7 @@ data class ExperimentsExtension(private val objects: ObjectFactory) {
         .property<DeclaredDependencyMetadataAggregationMode>()
         .convention(DeclaredDependencyMetadataAggregationMode.PROJECT_TASK_FANOUT)
 
+    val localMavenResolution: Property<Boolean> = objects
+        .property<Boolean>()
+        .convention(false)
 }
