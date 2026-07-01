@@ -113,8 +113,11 @@ intended output change).
 | **25** | Merge generate + format into one task per scope | completed | **preserving (empty-diff)** | Collapse the per-project and root generate/format task pairs into one `@UntrackedTask` each; extract a shared `formatWithBuildifier` helper; delete `FormatBazelFileTask`; rewire post/pin/migrate edges. Accepts losing format `@CacheableTask` (~6s/run on PAX; generate already untracked) | 27 |
 | **28** | Hard source-shape inventory remediation | completed | **preserving (empty-diff)** | Correct the under-enforced Item 24/27 source-shape pass with a committed per-file inventory, mandatory suspicious-pattern scan, row-level subagent reconciliation, and hard no-pending exit gate | 25 |
 | **33** | Move declared-metadata config-role logic into the variant layer | completed | **preserving (empty-diff)** | Relocate AGP access + config-name classification (`isDeclarationBucket`, suffix/fragment lists, `declarationBucketName`, `isCompileOnlyDeclaration`) out of `DeclaredDependencyMetadataCollector` into `gradle.variant`; collector consumes typed `declaredDependencyConfigurations`/`compileOnlyDeclaredDependencyConfigurations`. Verbatim move; merging the 3 divergent classifiers is a deferred follow-up | 26, 29, 30 |
-| **34** | Workspace tag plan: service shape & packaging cleanup | approved | **preserving (empty-diff)** | De-passenger the tag plan (stop routing through `WorkspacePlanBuilder`/`ComputeWorkspacePlanTask`; single `target-tag-plan.json` home); split `WorkspacePlanService` into read-only tag index + mutable render-plan service (isolate the consumer-first back-edge); optionally type `TargetTagKey`. Accepts the `@UntrackedTask`/live-variant-model coupling (out of scope) | — |
-| **35** | User-facing progress reporting for the new tasks | approved | **preserving (empty-diff)** | Add a pure-JVM `ProgressReporter` `fun interface` + a `ProgressLoggerFactory.withProgress` adapter; thread a **required** reporter into the heavy N-of-M tasks (resolve / declared-metadata / tag-plan / maven-refs / compression / ksp / merge) for a transient single-line per-module ticker, plus a permanent `logger.quiet` summary. Two channels kept strictly separate (progress vs `quiet` summary vs untouched `info`/`warn` diagnostics); module granularity only; Gradle API stays out of pure-JVM code via the lambda boundary | — |
+| **34** | Workspace tag plan: service shape & packaging cleanup | completed | **preserving (empty-diff)** | De-passenger the tag plan (stop routing through `WorkspacePlanBuilder`/`ComputeWorkspacePlanTask`; single `target-tag-plan.json` home); split `WorkspacePlanService` into read-only tag index + mutable render-plan service (isolate the consumer-first back-edge); optionally type `TargetTagKey`. Accepts the `@UntrackedTask`/live-variant-model coupling (out of scope) | — |
+| **35** | User-facing progress reporting for the new tasks | completed | **preserving (empty-diff)** | Add a pure-JVM `ProgressReporter` `fun interface` + a `ProgressLoggerFactory.withProgress` adapter; thread a **required** reporter into the heavy N-of-M tasks (resolve / declared-metadata / tag-plan / maven-refs / compression / ksp / merge) for a transient single-line per-module ticker, plus a permanent `logger.quiet` summary. Two channels kept strictly separate (progress vs `quiet` summary vs untouched `info`/`warn` diagnostics); module granularity only; Gradle API stays out of pure-JVM code via the lambda boundary | — |
+| **36** | Local Maven resolution: Gradle-model facts | approved | **preserving (empty-diff)** | First of the `experiments { localMavenResolution }` feature (in-process migration-time Maven proxy serving Gradle's resolved artifacts to rje's pin so it never re-resolves). Add additive `Repository.auth: RepositoryAuth {None/Basic/Header}` (no change to `isSupported()`/rendered repos), `LocalMavenResolvedFacts` in `gradle/dependencies`, a `Map<mavenPath, File>` artifact index from root resolved artifacts, and a lazy-memoized `PomFileResolver`. Gradle live types stay private to the facts layer; facts only; wired to nothing that renders | — |
+| **37** | Local Maven resolution: proxy BuildService + Ktor server | approved | **preserving (dormant)** | Gradle `BuildService` hosting embedded Ktor CIO on an ephemeral port (lazy-start/`close()`-stop); serves HTTP over Item 36 facts only: artifact index → lazy POM resolver → checksums → metadata-only origin fallback (auth replay) → write-through `build/grazel/maven-proxy/`. No Gradle live objects in route handlers. Constructible + HTTP-testable but NOT wired into the pin flow | 36 |
+| **38** | Local Maven resolution: pin integration + lockfile reconstruction | approved | **OUTPUT-PATH, hard-gated** | Behind `experiments { localMavenResolution }` (off ⇒ byte-identical to today): force/exercise cold or changed pinning, swap `maven_install` repos → proxy localhost for the pin, then reconstruct each lockfile to canonical — rewrite URLs + recompute rje 6.10's `__INPUT_ARTIFACTS_HASH`/`__RESOLVED_ARTIFACTS_HASH` in pure Kotlin (`hash()`==`String.hashCode()`, Starlark `repr`, topo fold). In-flow `bazel --nobuild` validation; **hard-fail** on mismatch or missing Gradle-resolved artifact. Gate: lockfiles byte-identical to vanilla network pin (sample + clean committed PAX baseline). rje-6.10 version coupling documented | 36, 37 |
 
 **Completed prerequisite chain:** 23 → 26 → 24 → 27 → 25.
 Item 23 removes the stale target-reference compatibility path first. Item 26 then fixes the
@@ -131,8 +134,9 @@ review over the entire diff and fixes confirmed maintainability/correctness find
 formatting work starts. Item 25 runs last so the generate/format task-graph reshape is the final
 preserving task-graph cleanup.
 
-**Current active execution order:** status/docs truth checkpoint → Item 34 → Item 35 →
-simplify/adversarial review → final Grazel/PAX gates.
+**Current active execution order:** status/docs truth checkpoint → Item 36 → Item 37 → Item 38 →
+simplify/adversarial review → final Grazel/PAX gates. Items 34 and 35 are completed and should not
+be re-opened unless current code regresses from their accepted shape.
 
 Items 30, 29, 31, 32, 28, and 33 are completed prerequisite work. Do not re-open them as active
 implementation unless current code regresses from the recorded accepted shape. Item 32 is already
@@ -140,11 +144,13 @@ true source-project declared-metadata fanout: shard tasks are owned by source pr
 `mergeDeclaredDependencyMetadata` consumes their file outputs.
 
 **Current next-goal hard exit gate:** do not stop after any single item appears green. The goal is
-complete only when stale status/docs are corrected; Item 34 and Item 35 have met acceptance
-criteria or have maintainer-quality explicit waivers; generated output is empty-diff; PAX migrate
-leaves the accepted baseline unchanged; required PAX APK builds and focused test gates pass;
-task-graph checks pass; simplify/adversarial findings are fixed or rejected with concrete code
-evidence; execution logs record decisions, commands, failures, and remaining risks.
+complete only when Items 36 and 37 are preserving/empty-diff and Item 38 proves the flag-off inert
+path plus the flag-on cold/changed pin path. PAX starts from the maintainer-committed clean baseline
+and must not be committed by Codex. Item 38 must show byte-identical reconstructed lockfiles against
+vanilla pin baselines, no localhost survives, missing Gradle-resolved artifacts hard-fail, unknown
+parent/BOM metadata fallback is counted, PAX migrate/build/test gates pass, size guard passes,
+simplify/adversarial findings are fixed or rejected with concrete code evidence, and execution logs
+record decisions, commands, proxy stats, failures, and remaining risks.
 
 **Post-Item-19 cleanup:** Item 23 is a small preserving cleanup discovered after the Item 19
 cutover. It removes the old `BazelTarget` reference collector from production source and collapses

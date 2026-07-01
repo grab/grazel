@@ -2660,3 +2660,35 @@ evidence in item-specific logs so context compaction can recover state quickly.
   later step explicitly needs it.
 - Resource checkpoint: about `43GiB` free on `/System/Volumes/Data`; no cleanup
   needed before local doc/status work.
+
+## 2026-07-01 - Item 36/37/38 local Maven resolution goal start
+
+- Current Grazel branch/status at goal start:
+  `arun/dependencies-refactor` at `7abc85d`
+  (`Improve task progress message format`).
+- Current PAX regression workspace:
+  `/Users/arun.sampathkumar/work/pax-android`, branch `arun/grazel-refactor`,
+  commit `d4105d1f64bd`, clean status. This committed PAX state is the
+  regression baseline for Item 36-38. Do not commit PAX.
+- Active execution order for this goal:
+  status/docs truth checkpoint -> Item 36 -> Item 37 -> Item 38 ->
+  simplify/adversarial review -> final Grazel/PAX gates.
+- Approved spec/reference docs present and used as current truth:
+  - `reports/DEPENDENCY-PINNING-MAP.md`
+  - `reports/specs/2026-07-01-item36-local-maven-resolution-gradle-facts-design.md`
+  - `reports/specs/2026-07-01-item37-local-maven-resolution-proxy-service-design.md`
+  - `reports/specs/2026-07-01-item38-local-maven-resolution-pin-integration-design.md`
+  - `reports/specs/ALTITUDE-LAYERING-ROADMAP.md`
+- Durable decisions captured before code work:
+  - Gradle fact hydration belongs in `gradle/dependencies`.
+  - The proxy serves HTTP over hydrated facts only; it must not become a Gradle
+    API facade.
+  - `ArtifactPinner`/`PinMavenArtifactsTask` owns experiment-gated pin
+    orchestration.
+  - `MavenInstallLockfileReconstructor` remains pure Kotlin.
+  - Item 38 must force/exercise cold or changed pinning, not only the
+    already-pinned skip path.
+  - Missing Gradle-resolved artifacts and known-component POM failures are hard
+    failures; unknown parent/BOM metadata fallback is allowed only when counted.
+- Resource checkpoint: about `41GiB` free on `/System/Volumes/Data`; no cache
+  cleanup needed before local doc/status work.
