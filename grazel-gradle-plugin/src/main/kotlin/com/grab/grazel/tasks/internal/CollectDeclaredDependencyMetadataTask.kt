@@ -242,7 +242,7 @@ internal abstract class MergeDeclaredDependencyMetadataTask : DefaultTask() {
         ) { reporter ->
             DeclaredDependencyMetadataMerger.mergeShards(
                 shards.mapIndexed { index, shard ->
-                    reporter.report("merging shard (${index + 1}/${shards.size})")
+                    reporter.report("merging (${index + 1}/${shards.size}): ${shard.name}")
                     fromJson<DeclaredDependencyMetadata>(shard)
                 }
             )
@@ -320,7 +320,7 @@ internal fun collectDeclaredDependencyMetadata(
                     repeat(metadataSources.size) { index ->
                         val result = completedSnapshots.receive()
                         reporter.report(
-                            "snapshotting ${result.projectPath} (${index + 1}/${metadataSources.size})"
+                            "snapshotting (${index + 1}/${metadataSources.size}): ${result.projectPath}"
                         )
                         add(result.projectPath to result.metadata)
                     }

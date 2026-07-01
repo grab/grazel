@@ -209,7 +209,7 @@ class CollectDeclaredDependencyMetadataTaskTest {
         assertEquals(
             setOf(":library1", ":library2", ":library3", ":library4"),
             progressMessages.mapTo(mutableSetOf()) { message ->
-                message.substringAfter("snapshotting ").substringBefore(" (")
+                message.substringAfter(": ")
             }
         )
     }

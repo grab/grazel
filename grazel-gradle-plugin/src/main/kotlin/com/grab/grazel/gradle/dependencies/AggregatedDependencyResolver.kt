@@ -413,7 +413,7 @@ internal class AggregatedDependencyResolver(
             }
             rootsToResolve.forEachIndexed rootLoop@{ index, aggregatedRoot ->
                 val metadata = aggregatedRoot.metadata
-                reporter.report("resolving ${metadata.projectPath} (${index + 1}/${rootsToResolve.size})")
+                reporter.report("resolving (${index + 1}/${rootsToResolve.size}): ${metadata.projectPath}")
                 var mainProjectEdgeScope: MainProjectEdgeScope? = null
                 val reachableProjectPaths = when (metadata.kind) {
                     AggregatedDependencyRootKind.MAIN_HIERARCHY,

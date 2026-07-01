@@ -84,7 +84,7 @@ constructor(
             migratableProjects
                 .asSequence()
                 .flatMapIndexed { index, project ->
-                    reporter.report("tagging ${project.path} (${index + 1}/${migratableProjects.size})")
+                    reporter.report("tagging (${index + 1}/${migratableProjects.size}): ${project.path}")
                     targetTagPlans(project)
                 }
                 .filter { tagPlan -> tagPlan.tags.isNotEmpty() }

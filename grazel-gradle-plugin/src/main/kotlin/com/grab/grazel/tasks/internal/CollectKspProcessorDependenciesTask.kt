@@ -93,7 +93,7 @@ internal abstract class CollectKspProcessorDependenciesTask : DefaultTask() {
             roots
                 .asSequence()
                 .flatMapIndexed { index, root ->
-                    reporter.report("scanning KSP root (${index + 1}/${roots.size})")
+                    reporter.report("scanning (${index + 1}/${roots.size}): KSP root")
                     ResolvedComponentsVisitor().visit(
                         root = root,
                         logger = logger::info

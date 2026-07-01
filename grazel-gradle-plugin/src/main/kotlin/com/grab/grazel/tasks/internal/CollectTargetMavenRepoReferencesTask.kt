@@ -183,7 +183,7 @@ private fun collectTargetMavenRepoReferencesSinglePass(
     projectGroups.forEach { group ->
         accumulated = group.projects.fold(accumulated) { current, project ->
             visitedProjects += 1
-            reporter.report("collecting ${project.path} ($visitedProjects/$totalProjects)")
+            reporter.report("collecting ($visitedProjects/$totalProjects): ${project.path}")
             collectProjectReferences(
                 accumulated = current,
                 project = project,

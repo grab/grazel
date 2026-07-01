@@ -274,8 +274,8 @@ class WorkspacePlanTasksTest {
         assertEquals(mapOf(":app" to setOf("app-gps-pax-debug")), references.projectTargets)
         assertEquals(
             listOf(
-                "collecting :ui-tests (1/2)",
-                "collecting :app (2/2)"
+                "collecting (1/2): :ui-tests",
+                "collecting (2/2): :app"
             ),
             progressMessages
         )

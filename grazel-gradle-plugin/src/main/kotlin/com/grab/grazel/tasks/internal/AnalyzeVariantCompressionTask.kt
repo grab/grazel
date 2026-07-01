@@ -126,7 +126,7 @@ constructor(
             "analyzing variant compression"
         ) { reporter ->
             androidLibraryProjects.forEachIndexed { index, project ->
-                reporter.report("analyzing ${project.path} (${index + 1}/${androidLibraryProjects.size})")
+                reporter.report("analyzing (${index + 1}/${androidLibraryProjects.size}): ${project.path}")
                 try {
                     val compressionResult = analyzeProject(project)
                     variantCompressionService.get().register(project.path, compressionResult)
