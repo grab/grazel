@@ -19,7 +19,10 @@ package com.grab.grazel.gradle
 import com.grab.grazel.di.qualifiers.RootProject
 import org.gradle.api.Project
 import org.gradle.api.artifacts.repositories.ArtifactRepository
-import org.gradle.api.artifacts.repositories.PasswordCredentials
+import org.gradle.api.artifacts.repositories.MavenArtifactRepository
+import org.gradle.api.credentials.Credentials
+import org.gradle.api.credentials.HttpHeaderCredentials
+import org.gradle.api.credentials.PasswordCredentials
 import org.gradle.api.internal.artifacts.repositories.DefaultMavenArtifactRepository
 import org.gradle.api.internal.artifacts.repositories.DefaultMavenLocalArtifactRepository
 import org.gradle.api.provider.SetProperty
@@ -59,6 +62,11 @@ internal interface RepositoryDataSource {
      * Lazy alternative to [allRepositoriesByName] to avoid eager evaluation.
      */
     val allRepositoriesLazy: SetProperty<Repository>
+
+    /**
+     * Lazy repository origin facts including auth, intended for the local Maven proxy only.
+     */
+    val allRepositoriesWithAuthLazy: SetProperty<RepositoryWithAuth>
 }
 
 internal data class Repository(
@@ -67,6 +75,18 @@ internal data class Repository(
     val username: String?,
     val password: String?,
 ) : Serializable
+
+internal data class RepositoryWithAuth(
+    val name: String,
+    val url: String,
+    val auth: RepositoryAuth,
+) : Serializable
+
+internal sealed interface RepositoryAuth : Serializable {
+    object None : RepositoryAuth
+    data class Basic(val username: String, val password: String) : RepositoryAuth
+    data class Header(val name: String, val value: String) : RepositoryAuth
+}
 
 @Singleton
 internal class DefaultRepositoryDataSource @Inject constructor(
@@ -117,8 +137,22 @@ internal class DefaultRepositoryDataSource @Inject constructor(
                     Repository(
                         name = name,
                         url = repo.url.toString(),
-                        username = repo.credentials?.username,
-                        password = repo.credentials?.password
+                        username = repo.passwordCredentialsOrNull?.username,
+                        password = repo.passwordCredentialsOrNull?.password,
+                    )
+                }.toSet()
+            })
+    }
+    override val allRepositoriesWithAuthLazy: SetProperty<RepositoryWithAuth> by lazy {
+        rootProject
+            .objects
+            .setProperty<RepositoryWithAuth>()
+            .convention(rootProject.provider {
+                allRepositoriesByName.map { (name, repo) ->
+                    RepositoryWithAuth(
+                        name = name,
+                        url = repo.url.toString(),
+                        auth = repo.repositoryAuth
                     )
                 }.toSet()
             })
@@ -133,5 +167,38 @@ internal class DefaultRepositoryDataSource @Inject constructor(
         return if (credentials.isPresent) {
             credentials.get() is PasswordCredentials
         } else true
+    }
+
+    private val MavenArtifactRepository.repositoryAuth: RepositoryAuth
+        get() {
+            passwordCredentialsOrNull?.let { credentials ->
+                val username = credentials.username
+                val password = credentials.password
+                if (username != null && password != null) {
+                    return RepositoryAuth.Basic(username, password)
+                }
+            }
+            headerCredentialsOrNull?.let { credentials ->
+                val name = credentials.name
+                val value = credentials.value
+                if (name != null && value != null) {
+                    return RepositoryAuth.Header(name, value)
+                }
+            }
+            return RepositoryAuth.None
+        }
+
+    private val MavenArtifactRepository.passwordCredentialsOrNull: PasswordCredentials?
+        get() = credentialsOrNull(PasswordCredentials::class.java)
+
+    private val MavenArtifactRepository.headerCredentialsOrNull: HttpHeaderCredentials?
+        get() = credentialsOrNull(HttpHeaderCredentials::class.java)
+
+    private fun <T : Credentials> MavenArtifactRepository.credentialsOrNull(type: Class<T>): T? {
+        return try {
+            getCredentials(type)
+        } catch (_: Exception) {
+            null
+        }
     }
 }

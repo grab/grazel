@@ -2692,3 +2692,42 @@ evidence in item-specific logs so context compaction can recover state quickly.
     failures; unknown parent/BOM metadata fallback is allowed only when counted.
 - Resource checkpoint: about `41GiB` free on `/System/Volumes/Data`; no cache
   cleanup needed before local doc/status work.
+
+## 2026-07-01 - Item 36 Gradle facts implementation checkpoint
+
+- Implemented the first Item 36 fact layer:
+  - `RepositoryAuth` plus proxy-only `RepositoryWithAuth` facts in
+    `gradle/Repository.kt`.
+  - `LocalMavenResolvedFacts`, `ResolvedArtifactIndexBuilder`,
+    `ResolvedComponentIndexBuilder`, and lazy memoized `GradlePomFileResolver`
+    in `gradle/dependencies/LocalMavenResolvedFacts.kt`.
+- Important review decision:
+  - The spec said to add auth directly to `Repository`, but that model is an
+    existing `GenerateDownloaderConfigTask` input. To avoid fingerprinting
+    header tokens in a task that does not use them, legacy `Repository`
+    remains unchanged and auth is captured in the new proxy-only
+    `RepositoryWithAuth` model. This preserves Item 36 intent while keeping
+    existing generated-output and task-input behavior stable.
+- Subagent audit result:
+  - Altitude was acceptable: live Gradle types remain inside
+    `gradle/dependencies`; proxy/pinner-facing surface is files, strings, and
+    `PomFileResolver`.
+  - Medium finding fixed by splitting `RepositoryWithAuth` from `Repository`.
+  - Low test-depth finding addressed with external-vs-project component index
+    coverage.
+- Verification run:
+  - `./gradlew :grazel-gradle-plugin:test --tests "com.grab.grazel.gradle.RepositoryAuthTest" --tests "com.grab.grazel.gradle.dependencies.LocalMavenResolvedFactsTest" --console=plain --no-daemon`
+    passed.
+  - Resource checkpoint before generated-output check: about `41GiB` free,
+    memory pressured but no stale high-RAM `python3.12`; no cleanup needed.
+  - `./gradlew migrateToBazel --console=plain --no-daemon` passed.
+  - `./gradlew :grazel-gradle-plugin:test --console=plain --no-daemon`
+    passed.
+  - `git diff --check` passed.
+- Generated-output check:
+  - Local `migrateToBazel` left no generated BUILD/WORKSPACE/json drift beyond
+    the intended source/test code changes.
+- Remaining Item 36 risk:
+  - `LocalMavenResolvedFactsBuilder` is not yet wired into Item 37/38 runtime
+    flow. That is expected for Item 36; Item 37/38 must exercise real PAX cold
+    pinning and record artifact/component/POM counts.
