@@ -81,6 +81,8 @@ dependencies {
 
     implementation libs.kotlin.serialization
     implementation libs.kotlinx.coroutines.core.jvm
+    implementation libs.ktor.server.cio
+    implementation libs.ktor.client.cio
 
     testImplementation "org.jetbrains.kotlin:kotlin-test"
     testImplementation "org.jetbrains.kotlin:kotlin-test-junit"

@@ -2731,3 +2731,47 @@ evidence in item-specific logs so context compaction can recover state quickly.
   - `LocalMavenResolvedFactsBuilder` is not yet wired into Item 37/38 runtime
     flow. That is expected for Item 36; Item 37/38 must exercise real PAX cold
     pinning and record artifact/component/POM counts.
+
+## 2026-07-01 - Item 37 proxy service implementation checkpoint
+
+- Implemented dormant local Maven proxy service:
+  - Ktor CIO server/client dependency on plugin main classpath, pinned to
+    `2.3.13` for Kotlin `1.9.25` compatibility.
+  - Pure HTTP `LocalMavenProxyServer` over hydrated facts.
+  - Gradle `LocalMavenProxyService` wrapper under `gradle/dependencies`, exposed
+    through Dagger but not requested by any task yet.
+- Serve behavior covered by focused tests:
+  - artifact file hits,
+  - checksum generation,
+  - lazy known POM resolver hits,
+  - unknown POM origin fallback,
+  - basic/header auth replay,
+  - write-through cache,
+  - missing resolved artifact hard-fail,
+  - known POM failure hard-fail,
+  - same-path concurrent origin miss de-duplication.
+- Simplify pass was run for reuse, simplification, efficiency, and altitude:
+  - Removed duplicate intermediate proxy repository DTOs while retaining a
+    single explicit Gradle-service-model to HTTP-origin-model boundary mapping.
+  - Added proxy-owned origin/auth DTOs to keep HTTP replay independent from
+    Gradle repository models.
+  - Fixed efficiency issues by using coroutine `Mutex`, removing per-path mutex
+    entries after use, and streaming checksum digest input from files.
+  - Rejected JDK HTTP rewrite and stats removal because the approved Item 37
+    spec requires Ktor CIO and proxy stats for Item 38.
+  - Rejected eager POM materialization because the approved Item 36/37 design
+    requires lazy memoized POM resolution behind `PomFileResolver`; Item 38 must
+    configure it during task execution and not leak Gradle live types into HTTP
+    routes.
+- Verification so far:
+  - `./gradlew :grazel-gradle-plugin:test --tests "com.grab.grazel.migrate.dependencies.LocalMavenProxyServerTest" --console=plain --no-daemon`
+    passed.
+  - `./gradlew :grazel-gradle-plugin:test --console=plain --no-daemon`
+    passed.
+  - `./gradlew migrateToBazel --console=plain --no-daemon` passed after final
+    cleanup and left no generated-output drift.
+  - `git diff --check` passed after final cleanup.
+- Item 37 remaining risk:
+  - The service is intentionally dormant until Item 38 wires pinner execution.
+    Item 38 must prove PAX cold pinning, stats output, and lockfile reuse with
+    the experiment flag enabled.

@@ -25,7 +25,9 @@ import org.gradle.api.credentials.HttpHeaderCredentials
 import org.gradle.api.credentials.PasswordCredentials
 import org.gradle.api.internal.artifacts.repositories.DefaultMavenArtifactRepository
 import org.gradle.api.internal.artifacts.repositories.DefaultMavenLocalArtifactRepository
+import org.gradle.api.provider.ListProperty
 import org.gradle.api.provider.SetProperty
+import org.gradle.kotlin.dsl.listProperty
 import org.gradle.kotlin.dsl.setProperty
 import java.io.Serializable
 import javax.inject.Inject
@@ -66,7 +68,7 @@ internal interface RepositoryDataSource {
     /**
      * Lazy repository origin facts including auth, intended for the local Maven proxy only.
      */
-    val allRepositoriesWithAuthLazy: SetProperty<RepositoryWithAuth>
+    val allRepositoriesWithAuthLazy: ListProperty<RepositoryWithAuth>
 }
 
 internal data class Repository(
@@ -143,10 +145,10 @@ internal class DefaultRepositoryDataSource @Inject constructor(
                 }.toSet()
             })
     }
-    override val allRepositoriesWithAuthLazy: SetProperty<RepositoryWithAuth> by lazy {
+    override val allRepositoriesWithAuthLazy: ListProperty<RepositoryWithAuth> by lazy {
         rootProject
             .objects
-            .setProperty<RepositoryWithAuth>()
+            .listProperty<RepositoryWithAuth>()
             .convention(rootProject.provider {
                 allRepositoriesByName.map { (name, repo) ->
                     RepositoryWithAuth(
@@ -154,7 +156,7 @@ internal class DefaultRepositoryDataSource @Inject constructor(
                         url = repo.url.toString(),
                         auth = repo.repositoryAuth
                     )
-                }.toSet()
+                }
             })
     }
 

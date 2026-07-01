@@ -25,6 +25,7 @@ kotlin = "1.9.25"
 kotlin-dsl = "4.3.0"
 kotlin-serialization = "1.5.1"
 kotlinx-coroutines-core-jvm = "1.8.1"
+ktor = "2.3.13"
 lifecycle-viewmodel = "2.6.1"
 lint-api = "31.5.0-alpha02"
 mockito-kotlin = "1.6.0"
@@ -72,6 +73,8 @@ kotlin-gradle-plugin = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", v
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
 kotlin-serialization = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlin-serialization" }
 kotlinx-coroutines-core-jvm = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core-jvm", version.ref = "kotlinx-coroutines-core-jvm" }
+ktor-client-cio = { module = "io.ktor:ktor-client-cio-jvm", version.ref = "ktor" }
+ktor-server-cio = { module = "io.ktor:ktor-server-cio-jvm", version.ref = "ktor" }
 lint-api = { module = "com.android.tools.lint:lint-api", version.ref = "lint-api" }
 lint-checks = { module = "com.android.tools.lint:lint-checks", version.ref = "lint-api" }
 mockito-kotlin = { module = "com.nhaarman:mockito-kotlin", version.ref = "mockito-kotlin" }
