@@ -33,8 +33,6 @@ import com.grab.grazel.gradle.dependencies.WorkspacePlanService
 import com.grab.grazel.gradle.dependencies.DependenciesDataSource
 import com.grab.grazel.gradle.dependencies.DependenciesModule
 import com.grab.grazel.gradle.dependencies.WorkspaceRenderPlanService
-import com.grab.grazel.gradle.dependencies.WorkspaceTargetTagPlanService
-import com.grab.grazel.gradle.dependencies.WorkspaceTargetTagPlanCollector
 import com.grab.grazel.gradle.variant.AndroidVariantDataSource
 import com.grab.grazel.gradle.variant.DefaultVariantCompressionService
 import com.grab.grazel.gradle.variant.VariantBuilder
@@ -88,7 +86,6 @@ internal interface GrazelComponent {
     fun gradleProjectInfoFactory(): Lazy<DefaultGradleProjectInfo.Factory>
     fun artifactPinner(): Lazy<ArtifactPinner>
     fun dependenciesDataSource(): Lazy<DependenciesDataSource>
-    fun workspaceTargetTagPlanCollector(): Lazy<WorkspaceTargetTagPlanCollector>
     fun targetReferenceFactsExtractor(): Lazy<TargetReferenceFactsExtractor>
     fun mavenInstallArtifactsCalculator(): Lazy<MavenInstallArtifactsCalculator>
     fun androidVariantDataSource(): Lazy<AndroidVariantDataSource>
@@ -109,7 +106,6 @@ internal interface GrazelComponent {
     fun dependencyGraphsService(): GradleProvider<DefaultDependencyGraphsService>
     fun workspacePlanService(): GradleProvider<WorkspacePlanService>
     fun workspaceRenderPlanService(): GradleProvider<WorkspaceRenderPlanService>
-    fun workspaceTargetTagPlanService(): GradleProvider<WorkspaceTargetTagPlanService>
     fun localMavenProxyService(): GradleProvider<LocalMavenProxyService>
     fun variantCompressionService(): GradleProvider<DefaultVariantCompressionService>
     fun configurationDataSource(): Lazy<ConfigurationDataSource>

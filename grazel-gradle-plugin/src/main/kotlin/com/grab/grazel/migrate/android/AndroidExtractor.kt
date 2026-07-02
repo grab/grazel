@@ -25,8 +25,6 @@ import com.grab.grazel.gradle.dependencies.DefaultDependencyGraphsService
 import com.grab.grazel.gradle.dependencies.DependenciesDataSource
 import com.grab.grazel.gradle.dependencies.DependencyGraphs
 import com.grab.grazel.gradle.dependencies.GradleDependencyToBazelDependency
-import com.grab.grazel.gradle.dependencies.TargetTagKinds
-import com.grab.grazel.gradle.dependencies.WorkspaceTargetTagPlanService
 import com.grab.grazel.gradle.hasCompose
 import com.grab.grazel.gradle.hasCrashlytics
 import com.grab.grazel.gradle.hasDatabinding
@@ -38,7 +36,7 @@ import com.grab.grazel.gradle.variant.VariantType
 import com.grab.grazel.gradle.variant.getMigratableBuildVariants
 import com.grab.grazel.gradle.variant.nameSuffix
 import com.grab.grazel.migrate.android.SourceSetType.JAVA_KOTLIN
-import com.grab.grazel.migrate.dependencies.calculateDirectDependencyTags
+import com.grab.grazel.migrate.dependencies.calculateCompileFilterTags
 import com.grab.grazel.migrate.kotlin.kotlinParcelizeDeps
 import com.grab.grazel.util.GradleProvider
 import org.gradle.api.Project
@@ -63,7 +61,6 @@ constructor(
     private val grazelExtension: GrazelExtension,
     private val dependenciesDataSource: DependenciesDataSource,
     private val dependencyGraphsService: GradleProvider<DefaultDependencyGraphsService>,
-    private val workspaceTargetTagPlanService: GradleProvider<WorkspaceTargetTagPlanService>,
     private val gradleDependencyToBazelDependency: GradleDependencyToBazelDependency,
 ) : AndroidLibraryDataExtractor {
 
@@ -137,19 +134,14 @@ constructor(
             ?.let(project::relativePath)
 
         val tags = if (grazelExtension.rules.kotlin.enabledTransitiveReduction) {
-            val localTags = calculateDirectDependencyTags(
+            calculateCompileFilterTags(
                 self = project.name,
-                deps = deps
-            )
-            val mavenTags = workspaceTargetTagPlanService
-                .get()
-                .tagsFor(
-                    variantId = variantKey.variantId,
-                    variantType = variantKey.variantType.toString(),
-                    targetKind = TargetTagKinds.ANDROID_LIBRARY
+                directDependencies = deps,
+                transitiveMavenDependencies = dependenciesDataSource.collectTransitiveMavenDeps(
+                    project = project,
+                    variantKey = variantKey
                 )
-                .orEmpty()
-            (localTags + mavenTags).sorted()
+            )
         } else emptyList()
 
         val lintConfigs = lintConfigs(extension.lintOptions, project)
@@ -169,7 +161,7 @@ constructor(
             resValuesData = extension.extractResValue(matchedVariant),
             deps = deps.sorted(),
             plugins = plugins,
-            tags = tags.sorted(),
+            tags = tags,
             lintConfigData = lintConfigs
         )
     }

@@ -44,7 +44,6 @@ class DefaultTransitiveDependenciesStore : TransitiveDependenciesStore {
         val scopedCaches = variants.mapNotNull(variantCache::get)
         if (scopedCaches.isEmpty()) return null
         return scopedCaches.firstNotNullOfOrNull { scopedCache -> scopedCache[shortId] }
-            ?: emptySet()
     }
 
     override fun close() {

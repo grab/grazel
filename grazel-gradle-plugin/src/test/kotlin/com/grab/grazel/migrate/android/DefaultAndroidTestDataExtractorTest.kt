@@ -2,15 +2,20 @@ package com.grab.grazel.migrate.android
 
 import com.android.build.gradle.AppExtension
 import com.android.build.gradle.TestExtension
+import com.grab.grazel.GrazelExtension
 import com.grab.grazel.GrazelPluginTest
 import com.grab.grazel.buildProject
 import com.grab.grazel.gradle.ANDROID_APPLICATION_PLUGIN
 import com.grab.grazel.gradle.ANDROID_TEST_PLUGIN
 import com.grab.grazel.gradle.KOTLIN_ANDROID_PLUGIN
 import com.grab.grazel.gradle.dependencies.AndroidTestTargetProjectEdge
+import com.grab.grazel.gradle.dependencies.DefaultDependencyResolutionService
 import com.grab.grazel.gradle.dependencies.DependencyGraphNode
 import com.grab.grazel.gradle.dependencies.DependencyGraphSourceSet
 import com.grab.grazel.gradle.dependencies.DependencyGraphs
+import com.grab.grazel.gradle.dependencies.model.ResolvedDependency
+import com.grab.grazel.gradle.dependencies.model.WorkspaceDependencies
+import com.grab.grazel.gradle.variant.DEFAULT_VARIANT
 import com.grab.grazel.gradle.variant.MatchedVariant
 import com.grab.grazel.gradle.variant.VariantGraphKey
 import com.grab.grazel.gradle.variant.VariantType
@@ -19,6 +24,7 @@ import com.grab.grazel.util.addGrazelExtension
 import com.grab.grazel.util.createGrazelComponent
 import com.grab.grazel.util.initDependencyGraphsForTest
 import com.grab.grazel.util.doEvaluate
+import com.grab.grazel.util.GradleProvider
 import org.gradle.api.Project
 import org.gradle.kotlin.dsl.configure
 import org.gradle.kotlin.dsl.the
@@ -39,6 +45,7 @@ class DefaultAndroidTestDataExtractorTest : GrazelPluginTest() {
     private lateinit var androidLibraryDataExtractor: AndroidLibraryDataExtractor
     private lateinit var androidBinaryDataExtractor: AndroidBinaryDataExtractor
     private lateinit var dependencyGraphs: DependencyGraphs
+    private lateinit var dependencyResolutionService: GradleProvider<DefaultDependencyResolutionService>
 
     @get:Rule
     val temporaryFolder = TemporaryFolder()
@@ -96,6 +103,7 @@ class DefaultAndroidTestDataExtractorTest : GrazelPluginTest() {
                 }
                 targetProjectPath = ":app"
             }
+            dependencies.add("implementation", "com.example:standalone-test:1.0")
         }
 
         // Create test manifest
@@ -136,6 +144,19 @@ class DefaultAndroidTestDataExtractorTest : GrazelPluginTest() {
         androidLibraryDataExtractor = grazelComponent.androidLibraryDataExtractor().get()
         androidBinaryDataExtractor = grazelComponent.androidBinaryDataExtractor().get()
         androidTestDataExtractor = grazelComponent.androidTestDataExtractor().get()
+        dependencyResolutionService = grazelComponent.dependencyResolutionService()
+        dependencyResolutionService.get().populateCache(
+            WorkspaceDependencies(
+                variantDeps = mapOf(
+                    DEFAULT_VARIANT to listOf(
+                        ResolvedDependency.fromId("com.example:standalone-test:1.0", DEFAULT_VARIANT)
+                    )
+                ),
+                transitiveClasspath = mapOf(
+                    "com.example:standalone-test" to setOf("com.example:standalone-child")
+                )
+            )
+        )
     }
 
     private fun debugVariant(): MatchedVariant {
@@ -256,6 +277,23 @@ class DefaultAndroidTestDataExtractorTest : GrazelPluginTest() {
         assertNotNull(testData.associates)
         assertTrue(testData.associates.isNotEmpty(),
             "Expected associates to be populated")
+    }
+
+    @Test
+    fun `extract derives transitive maven tags from standalone test deps`() {
+        rootProject.the<GrazelExtension>().rules.kotlin.enabledTransitiveReduction = true
+
+        val variant = debugVariant()
+        val androidLibraryData = androidLibraryDataExtractor.extract(testProject, variant)
+        val androidBinaryData = androidBinaryDataExtractor.extract(testProject, variant)
+        val testData = androidTestDataExtractor.extract(testProject, variant, androidLibraryData, androidBinaryData)
+
+        assertTrue("@maven//:com_example_standalone_test" in testData.tags)
+        assertTrue("@maven//:com_example_standalone_child" in testData.tags)
+        assertTrue(
+            testData.tags.containsAll(androidLibraryData.tags.filterNot { tag -> tag.startsWith("@maven//:") }),
+            "Expected android test tags to retain non-Maven local tags from library extraction"
+        )
     }
 
     @Test

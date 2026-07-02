@@ -32,9 +32,6 @@ internal interface DependenciesModule {
     @Binds
     fun DefaultDependenciesDataSource.dependenciesDataSource(): DependenciesDataSource
 
-    @Binds
-    fun DefaultWorkspaceTargetTagPlanCollector.workspaceTargetTagPlanCollector(): WorkspaceTargetTagPlanCollector
-
     @Module
     companion object {
         @Provides
@@ -68,13 +65,6 @@ internal interface DependenciesModule {
             @RootProject rootProject: Project
         ): GradleProvider<@JvmSuppressWildcards WorkspaceRenderPlanService> =
             WorkspaceRenderPlanService.register(rootProject)
-
-        @Singleton
-        @Provides
-        fun workspaceTargetTagPlanService(
-            @RootProject rootProject: Project
-        ): GradleProvider<@JvmSuppressWildcards WorkspaceTargetTagPlanService> =
-            WorkspaceTargetTagPlanService.register(rootProject)
 
         @Singleton
         @Provides

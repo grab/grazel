@@ -4420,3 +4420,488 @@ evidence in item-specific logs so context compaction can recover state quickly.
 - Active item: Item 42 extractor-owned transitive tags. Expected output change
   is limited to removing Maven tags donated only by direct project
   dependencies; all other generated drift is stop-and-investigate.
+
+### Item 42 implementation checkpoint - extractor-owned tags
+
+- Committed approved Item 42 docs locally as
+  `7f10f765420f7afae74e8fc3963032a1430c158c`
+  (`Document extractor-owned Maven tag plan`).
+- Replaced extractor `WorkspaceTargetTagPlanService.tagsFor(...)` usage with
+  extractor-owned Maven compile-filter tag calculation from direct target deps
+  plus `DependenciesDataSource.collectTransitiveMavenDeps(...)`, backed by the
+  resolved `TransitiveDependenciesStore`.
+- Removed live production wiring for `CollectWorkspaceTargetTagPlanTask`,
+  `WorkspaceTargetTagPlanCollector`, `WorkspaceTargetTagPlanService`,
+  `TargetTagPlan`, `TargetTagKey`, and `target-tag-plan.json`.
+- Source-only scan passed with no live source/test/script hits:
+  `rg -n "WorkspaceTargetTagPlan|CollectWorkspaceTargetTagPlan|TargetTagPlan|TargetTagKey|TargetTagKinds|targetTagPlan|target-tag-plan|collectWorkspaceTargetTagPlan" grazel-gradle-plugin/src/main/kotlin grazel-gradle-plugin/src/test/kotlin grazel-gradle-plugin/src/functionalTest/kotlin reports/scripts`.
+- Focused tests passed:
+  `./gradlew :grazel-gradle-plugin:test --tests "com.grab.grazel.migrate.android.DefaultAndroidLibraryDataExtractorTest" --tests "com.grab.grazel.migrate.android.AndroidInstrumentationBinaryDataExtractorTest" --tests "com.grab.grazel.migrate.android.DefaultAndroidUnitTestDataExtractorTest" --tests "com.grab.grazel.tasks.internal.WorkspacePlanTasksTest" --console=plain --no-daemon`
+  in `9s`.
+- Full plugin unit test passed:
+  `./gradlew :grazel-gradle-plugin:test --console=plain --no-daemon`
+  in `41s`.
+- Current system check before broader Gradle/PAX gates: Data volume at `94%`
+  with about `28GiB` available; no stale Gradle/Bazel process cleanup was
+  needed. A broad `du` over the private Bazel output root was interrupted after
+  it ran too long; use targeted cleanup only if later PAX commands prove space
+  pressure.
+- Fresh Item 42 subagent audit found a real spec gap: extractor calls were using
+  `DependenciesDataSource.collectTransitiveMavenDeps(project, variantKey)`,
+  which re-walked variant configurations and still consulted variant-scoped
+  closure data instead of expanding from the already-selected direct Maven deps.
+  It also found standalone `com.android.test` data reused library tags.
+- Fixed by adding a selected-direct-Maven overload:
+  `collectTransitiveMavenDeps(directMavenDependencies: Iterable<MavenDependency>)`.
+  This overload expands only the supplied direct Maven deps plus
+  `getTransitiveDependencies(shortId)` global shortId closure, matching the
+  Item 42/master tradeoff. Android/Kotlin extractors now pass
+  `deps.filterIsInstance<MavenDependency>()` to that overload.
+- Standalone `AndroidTestDataExtractor` now calculates tags from its final
+  `combinedDeps` instead of reusing `androidLibraryData.tags`.
+- Added focused tests for selected-direct-Maven shortId expansion, Android
+  unit-test tags, standalone android-test tags, and Kotlin library/unit-test
+  extractor tags.
+- Corrected focused gate passed:
+  `./gradlew :grazel-gradle-plugin:test --tests "com.grab.grazel.gradle.DefaultDependenciesDataSourceTest.collectTransitiveMavenDeps expands selected direct maven deps by shortId only" --tests "com.grab.grazel.migrate.android.DefaultAndroidLibraryDataExtractorTest.extract derives transitive maven tag labels from own direct maven deps only" --tests "com.grab.grazel.migrate.android.AndroidInstrumentationBinaryDataExtractorTest.extract derives transitive maven tags from resolved store" --tests "com.grab.grazel.migrate.android.DefaultAndroidUnitTestDataExtractorTest.extract derives transitive maven tags from selected test deps" --tests "com.grab.grazel.migrate.android.DefaultAndroidTestDataExtractorTest.extract derives transitive maven tags from standalone test deps" --tests "com.grab.grazel.migrate.kotlin.KotlinDataExtractorTest" --console=plain --no-daemon`
+  in `14s`.
+
+### Item 42 correction checkpoint - master-like extractor tag roots
+
+- PAX debug APK build later exposed an under-collection bug in the selected-direct
+  overload: tag roots were derived from rendered Bazel deps after extractor
+  filtering. For databinding modules, Grazel intentionally filters
+  databinding-provided artifacts out of `deps`, but those live Gradle Maven
+  declarations still need to seed compile-filter tags.
+- Re-checked `master`: Android extractors called
+  `DependenciesDataSource.collectTransitiveMavenDeps(project, variantKey)` and
+  `DefaultDependenciesDataSource` expanded from the target variant's
+  `migratableConfigurations`, not from rendered Bazel deps. Decision: keep
+  Item 42 master-like on tag-root source. The inversion moved where transitive
+  values are computed, not the extractor/data-source responsibility split.
+- Removed the temporary selected-direct overload and its test. Extractors now
+  use the live Gradle project + `VariantGraphKey` helper again, while
+  `calculateCompileFilterTags(...)` still prevents direct project dependencies
+  from donating Maven tags.
+- Added/adjusted extractor regression coverage:
+  `DefaultAndroidLibraryDataExtractorTest.extract derives transitive maven tag labels from own direct maven deps only`
+  proves a direct project dependency's Maven closure is not donated, and
+  `extract derives maven tag labels from live Gradle declarations before dependency filtering`
+  proves databinding-filtered direct Maven artifacts can be absent from `deps`
+  but present in `tags`.
+- Focused gates passed after this correction:
+  `./gradlew :grazel-gradle-plugin:test --tests "com.grab.grazel.migrate.android.DefaultAndroidLibraryDataExtractorTest" --console=plain --no-daemon`
+  in `18s`, then
+  `./gradlew :grazel-gradle-plugin:test --tests "com.grab.grazel.migrate.android.DefaultAndroidLibraryDataExtractorTest" --tests "com.grab.grazel.gradle.DefaultDependenciesDataSourceTest" --tests "com.grab.grazel.migrate.android.AndroidInstrumentationBinaryDataExtractorTest" --tests "com.grab.grazel.migrate.android.DefaultAndroidUnitTestDataExtractorTest" --tests "com.grab.grazel.migrate.android.DefaultAndroidTestDataExtractorTest" --tests "com.grab.grazel.migrate.kotlin.KotlinDataExtractorTest" --console=plain --no-daemon`
+  in `15s`.
+
+### Item 42 PAX build gate - project-leaked annotation counterexample
+
+- PAX migrate after the master-like tag-root correction passed:
+  `./gradlew migrateToBazel --no-daemon --console=plain --stacktrace --rerun-tasks`
+  in `12m 12s`.
+  Timing notes: `resolveWorkspaceDependencies` resolved `496` deps across
+  `2451` roots in `22575ms`; `analyzeVariantCompression` processed `2096`
+  projects in `90992ms`; `collectTargetMavenRepoReferences` processed `2327`
+  modules in `43428ms`; the removed `collectWorkspaceTargetTagPlan` stage was
+  absent.
+- PAX generated-output diff after migrate was classified as tag shrink only:
+  `1848` changed `BUILD.bazel` files, `38` insertions, `775146` deletions.
+  A zero-context classifier found `0` added Maven tags, `775108` removed Maven
+  tags, and no structural generated-file drift. `git diff --check` in PAX
+  passed.
+- PAX debug APK/android-test APK build then failed at
+  `//deliveries/deliveries-menu-items:deliveries-menu-items-gps-pax-debug_kt`
+  because `PopulatedItemsHelper.kt` imports and uses
+  `androidx.annotation.VisibleForTesting`, but current Item 42 output removed
+  `@maven//:androidx_annotation_annotation` from that target's tags.
+- Root-cause evidence:
+  - The module's static `build.gradle` declares project dependencies and
+    `com.grab.logger:logsdk`, but no direct `androidx.annotation` dependency.
+  - The module's actual Gradle configuration set is `debugCompileClasspath` /
+    `releaseCompileClasspath`; the generated `gps-pax-debug` suffix is a
+    projected app/root variant name, not a Gradle configuration name.
+  - `dependencyInsight --dependency androidx.annotation --configuration
+    debugCompileClasspath` shows `androidx.annotation:annotation:1.3.0` is on
+    the Gradle compile classpath through databinding/lifecycle paths and
+    consistent-resolution constraints.
+  - `dependencies --configuration debugCompileClasspath` shows the annotation
+    is reached through direct project dependencies such as
+    `:food-screen:food-scheduled-order`, `:user-reviews`, `:grab-style`,
+    `:deliveries-sdk:deliveries-snackbar`, and
+    `:deliveries-sdk:deliveries-sdk-common-view`, plus classpath constraints.
+  - `deliveries/deliveries-menu-items/BUILD.bazel` from the committed PAX
+    baseline had `@maven//:androidx_annotation_annotation` in tags; current
+    generated output removed it under the Item 42 direct-Maven-only rule.
+- Interpretation:
+  This is not the earlier databinding-filtered-direct-Maven bug. It is a PAX
+  dependency-hygiene counterexample to the strict Item 42 rule: the target
+  source directly uses a Maven class that Gradle makes compile-visible through
+  project dependency leakage, while Item 42 intentionally forbids direct project
+  dependencies from donating Maven closure to the consuming target's tags.
+- PAX context:
+  `/Users/arun.sampathkumar/work/pax-android/build-logic/project/src/main/kotlin/deps/Dependencies.kt`
+  already contains targeted Bazel direct-dependency fixes, including adding
+  `androidx.annotation` when a module declares Grab Optional. That supports
+  treating this failure as a dependency-hygiene gap unless the maintainer
+  decides Item 42 must preserve project-leaked compile-visible Maven tags.
+- Compatibility scan over current PAX generated diff:
+  `1848` changed `BUILD.bazel` files; `151` removed
+  `@maven//:androidx_annotation_annotation`; `905` changed module directories
+  import `androidx.annotation`; only
+  `deliveries/deliveries-menu-items` both removed that tag and imports
+  `androidx.annotation`. This suggests the failure is a narrow PAX
+  dependency-hygiene gap, not a broad incompatibility with Item 42.
+- Local uncommitted PAX hygiene change for verification only:
+  added `implementation Libs.supportAndroidAnnotations` to
+  `deliveries/deliveries-menu-items/build.gradle`. Do not commit PAX. This is
+  intended to make the source's direct Maven usage explicit while preserving
+  Item 42's strict no-project-dependency-donation rule in Grazel.
+- Maintainer reminder: `androidx.annotation:annotation` should route to the
+  JVM target. Current PAX config did not include that override, so the local
+  verification-only PAX changes also add
+  `"androidx.annotation:annotation" : "@maven//:androidx_annotation_annotation_jvm"`
+  to `rules.mavenInstall.overrideTargetLabels`. Do not commit PAX.
+- PAX migrate after both local PAX hygiene changes passed:
+  `./gradlew migrateToBazel --no-daemon --console=plain --stacktrace --rerun-tasks`
+  in `10m 4s`.
+  Timing notes: `resolveWorkspaceDependencies` resolved `496` deps across
+  `2451` roots in `24613ms`; `analyzeVariantCompression` processed `2096`
+  projects in `96481ms`; `collectTargetMavenRepoReferences` processed `2327`
+  modules in `48756ms`; the removed `collectWorkspaceTargetTagPlan` stage was
+  absent.
+- Generated PAX `WORKSPACE` now maps
+  `"androidx.annotation:annotation"` to
+  `"@maven//:androidx_annotation_annotation_jvm"` in every materialized repo.
+  Generated `deliveries/deliveries-menu-items/BUILD.bazel` regained logical
+  `@maven//:androidx_annotation_annotation` tags from the new direct Maven
+  declaration, while still removing the project-dependency-donated Maven tag
+  closures.
+- PAX generated `BUILD.bazel` diff after the local PAX hygiene changes is
+  still classified as tag-only: `10` added Maven tags, `775102` removed Maven
+  tags, and `0` non-tag BUILD changes. The added tags are only
+  `@maven//:androidx_annotation_annotation`; they come from the local explicit
+  direct dependency added to `deliveries/deliveries-menu-items`. PAX
+  `git diff --check` passed.
+- Disk maintenance before PAX Bazel gates: root disk was at `97%` with only
+  `13GiB` free. `pax-android/bazel-cache` was `14G`; the private Bazel output
+  root was `37G`. Ran `bazelisk clean --expunge` in PAX first, then shut down
+  PAX/Grazel Bazel servers and removed stale
+  `/private/var/tmp/_bazel_arun.sampathkumar`. Removal hit some permission
+  denied read-only lint outputs but reduced the root to `643M` and recovered
+  space to `51GiB` free. PAX disk cache was preserved.
+- Focused PAX build of the previously failing target passed:
+  `./bazel.sh build --verbose_failures //deliveries/deliveries-menu-items:deliveries-menu-items-gps-pax-debug_kt`
+  in `144.060s` (`5936` actions; `4207` disk-cache hits, `8` remote-cache
+  hits). This verifies the `androidx.annotation.VisibleForTesting` failure is
+  addressed by the local direct dependency plus JVM override while preserving
+  strict Item 42 no-project-dependency-donation semantics.
+
+## 2026-07-03 03:36 +08 - Item 42 PAX full APK gate failure #2
+
+- PAX full APK build command:
+  `./bazel.sh build --verbose_failures //app:app-gps-pax-debug.apk //app:app-gps-pax-debug-android-test.apk`
+  failed after `623.884s` at
+  `//payment/payments-home/wallet-dashboard-widgets:wallet-dashboard-widgets-gps-pax-debug_kt`.
+- Initial symptom:
+  `androidx.annotation.VisibleForTesting.PROTECTED` was unresolved, with KAPT
+  stubs rendering `otherwise = null`, followed by missing generated Dagger
+  component classes.
+- Root cause investigation:
+  - The target's generated `BUILD.bazel` contains logical
+    `@maven//:androidx_annotation_annotation` tags.
+  - PAX `WORKSPACE` locally maps
+    `"androidx.annotation:annotation"` to
+    `"@maven//:androidx_annotation_annotation_jvm"` as required for the
+    annotation JVM override.
+  - The failed KAPT param file includes
+    `external/maven/androidx/annotation/annotation-jvm/1.9.1/header_annotation-jvm-1.9.1.jar`
+    in `--direct_dependencies`, so this is not a missing tag or missing
+    classpath entry.
+  - `javap` confirms `annotation-jvm-1.9.1.jar` contains
+    `VisibleForTesting.PROTECTED`, but the source used a static Kotlin import:
+    `import androidx.annotation.VisibleForTesting.PROTECTED`.
+  - The same module already uses qualified constants such as
+    `VisibleForTesting.PRIVATE`, which are compatible with the Kotlin-compiled
+    `annotation-jvm` artifact shape.
+- Local uncommitted PAX hygiene change for verification only:
+  in
+  `payment/payments-home/wallet-dashboard-widgets/src/main/java/com/grab/payments/wallet/dashboard/widgets/common/adapter/WalletHomeHorizontalListAdapter.kt`,
+  removed the static `PROTECTED` import and changed the three annotation
+  arguments to `VisibleForTesting.PROTECTED`. Do not commit PAX.
+- Focused verification passed:
+  `./bazel.sh build --verbose_failures //payment/payments-home/wallet-dashboard-widgets:wallet-dashboard-widgets-gps-pax-debug_kt`
+  in `7.056s` after the local source hygiene change.
+- Preventive PAX local hygiene after confirming the same pattern:
+  replaced the remaining static `VisibleForTesting.PRIVATE` imports with
+  qualified `VisibleForTesting.PRIVATE` in
+  `payment/payx-elevate/payx-elevate-widgets/.../NudgeContainerViewModel.kt`
+  and
+  `newface/newface-root/.../NewFaceViewModel.kt`. A repo scan now finds no
+  `import androidx.annotation.VisibleForTesting.<CONSTANT>` forms. Do not
+  commit PAX.
+- Interpretation:
+  This failure is also outside the strict Item 42 tag model. It is a PAX
+  source-compatibility issue exposed by the maintainer-required
+  `androidx.annotation:annotation -> annotation_jvm` override, not evidence
+  that project-dependency Maven closures should be donated into consumer tags.
+
+## 2026-07-03 04:26 +08 - Item 42 PAX full APK gate passed
+
+- Re-ran the required PAX APK gate after the local verification-only PAX
+  hygiene fixes:
+  `./bazel.sh build --verbose_failures //app:app-gps-pax-debug.apk //app:app-gps-pax-debug-android-test.apk`.
+- Result: passed. Bazel reported `INFO: Build completed successfully, 8787 total actions`.
+  Timing was `1461.572s` elapsed with `1079.72s` critical path.
+  Process summary: `2621` disk-cache hits, `235` remote-cache hits, `1174`
+  internal, `35` darwin-sandbox, `9` local, and `4713` worker actions.
+- This validates the strict Item 42 tag model for the app and android-test APK
+  build on PAX after exposing and fixing local PAX hygiene issues:
+  1. missing direct `androidx.annotation` dependency in
+     `deliveries/deliveries-menu-items`;
+  2. static `VisibleForTesting.<CONSTANT>` imports incompatible with the
+     maintainer-required `annotation_jvm` override.
+- Post-build resource check: the Data volume was back at `97%` used with
+  `14GiB` available. Bazel/worker processes were still resident from the
+  just-completed build. Before the next expensive gate, decide whether to clean
+  stale Bazel state or preserve cache for speed.
+
+## 2026-07-03 04:32 +08 - Item 42 PAX focused test gate passed
+
+- Ran the required focused PAX Bazel test gate:
+  `./bazel.sh test --test_output=errors //app-utils:app-utils-gps-pax-debug-test //app-test:app-test-gps-pax-debug-test //application-initializer:application-initializer-gps-pax-debug-test`.
+- Result: passed. Bazel reported `Executed 3 out of 3 tests: 3 tests pass`.
+  Timing was `158.074s` elapsed with `114.53s` critical path.
+  Process summary: `5663` actions with `3749` disk-cache hits, `875`
+  internal, `6` darwin-sandbox, `1` local, and `1032` worker actions.
+- Ran `git diff --check` in `/Users/arun.sampathkumar/work/pax-android`;
+  result: passed.
+- Interpretation:
+  PAX app APK, android-test APK, and the focused unit-test gate now pass with
+  the strict extractor-owned tag model and local verification-only PAX hygiene
+  changes. PAX remains intentionally dirty and must not be committed.
+
+## 2026-07-03 04:34 +08 - Item 42 final light guards
+
+- Ran final light guards after the PAX heavy gates:
+  - Grazel `git diff --check`: passed.
+  - Grazel `git diff --check master...HEAD`: passed.
+  - `reports/scripts/verify-pax-size-guard.sh --mode preserving`: passed.
+- PAX size guard output:
+  - `bucketCount`: baseline `11`, current `11`.
+  - `pinfileCount`: baseline `11`, current `11`.
+  - `totalArtifactRoots`: baseline `1945`, current `1945`.
+  - No per-repo artifact root deltas.
+- Started the required simplify-pass review over the current branch plus
+  working-tree diff with four parallel agents: reuse, simplification,
+  efficiency, and altitude. Review scope is quality only; no behavior-changing
+  suggestions should be applied without re-running the verified gates.
+
+## 2026-07-03 05:31 +08 - Item 42 simplify cleanup and post-cleanup guards
+
+- Simplify-pass findings:
+  - Reuse: broader JSON writer and target-reference extraction reuse
+    opportunities; not applied in Item 42 to avoid widening the verified slice.
+  - Simplification: broader partial-render-plan and planner simplification
+    opportunities; not applied in Item 42.
+  - Efficiency: repeated direct-Maven transitive closure collection and
+    redundant tag sorting in extractor paths; applied as local Item 42 cleanup.
+  - Altitude: no `WorkspaceTargetTagPlan` leftovers; remaining
+    `TargetReferenceFactsCollector`/override-label parsing concerns belong to
+    later target-reference/workspace rendering cleanup.
+- Applied behavior-preserving cleanup only:
+  - `ClasspathReduction` now builds compile-filter tags through a sorted set
+    instead of list concat + repeated sorting.
+  - Android/Kotlin extractors no longer redundantly sort tags after the shared
+    helper already returns sorted tags.
+  - `DefaultDependenciesDataSource.collectTransitiveMavenDeps` now memoizes by
+    `VariantGraphKey`, avoiding repeated closure walks for multiple targets in
+    the same project/variant.
+- Grazel verification after cleanup:
+  - Focused extractor tests passed:
+    `./gradlew :grazel-gradle-plugin:test --console=plain --no-daemon --tests '*DefaultAndroidLibraryDataExtractorTest' --tests '*DefaultAndroidUnitTestDataExtractorTest' --tests '*DefaultAndroidTestDataExtractorTest' --tests '*AndroidInstrumentationBinaryDataExtractorTest' --tests '*KotlinDataExtractorTest'`.
+  - Full plugin unit tests passed:
+    `./gradlew :grazel-gradle-plugin:test --console=plain --no-daemon`.
+  - Local migration passed:
+    `./gradlew migrateToBazel --console=plain --no-daemon`.
+  - `reports/scripts/verify-default-task-graph.sh`: passed.
+  - `reports/scripts/verify-sample-bucket-labels.sh`: failed with the known
+    pre-existing appcompat/constraintlayout exclude waiver, unchanged from
+    before Item 42.
+  - `git diff --check`: passed.
+  - `git diff --check master...HEAD`: passed.
+- Resource maintenance before the post-cleanup PAX run:
+  `/Users/arun.sampathkumar/work/pax-android` had low available space after the
+  full APK/test gates, so ran `bazelisk clean --expunge` in PAX. This preserved
+  `pax-android/bazel-cache` and freed enough disk for the rerun.
+- Post-cleanup PAX migrate verification:
+  - Ran
+    `./gradlew migrateToBazel --no-daemon --console=plain --stacktrace --rerun-tasks`
+    in `/Users/arun.sampathkumar/work/pax-android`.
+  - Result: passed in `10m 47s`.
+  - Key timings:
+    `mergeDeclaredDependencyMetadata`: `2327` projects across `2327` shards in
+    `637ms`;
+    `resolveWorkspaceDependencies`: `496` deps across `2451` roots in
+    `23335ms`;
+    `analyzeVariantCompression`: `2096` projects in `66760ms`;
+    `collectTargetMavenRepoReferences`: `2327` modules in `40681ms`.
+  - `collectWorkspaceTargetTagPlan` remains absent.
+  - PAX `git diff --check`: passed.
+  - `reports/scripts/verify-pax-size-guard.sh --mode preserving`: passed with
+    `bucketCount=11`, `pinfileCount=11`, `totalArtifactRoots=1945`, and no
+    per-repo artifact-root deltas.
+  - PAX BUILD diff shape is unchanged from the accepted Item 42 baseline:
+    `+10` Maven tag lines, `-775102` Maven tag lines, and `0` other BUILD
+    changed lines.
+- Interpretation:
+  The simplify cleanup did not change generated output shape or Maven repo
+  sizing. The earlier PAX app APK, android-test APK, and focused unit-test
+  gates still apply to this post-cleanup state because the generated BUILD
+  diff shape is byte-equivalent at the behavioral level checked by the tag and
+  size guards. PAX remains intentionally dirty and must not be committed.
+
+## 2026-07-03 post-compaction - Item 42 scoped closure regression fix
+
+- Maintainer clarification:
+  `androidx.annotation:annotation` is the logical Maven coordinate. Tags should
+  stay as `@maven//:androidx_annotation_annotation`; the override maps the
+  actual Bazel target to `@maven//:androidx_annotation_annotation_jvm` where
+  target labels are resolved. A tag for the distinct resolved coordinate
+  `androidx.annotation:annotation-jvm` may still legitimately appear as
+  `@maven//:androidx_annotation_annotation_jvm`; the rule is coordinate-level,
+  not a blanket ban on `_jvm` labels in tags.
+- PAX failure found after tightening tag collection:
+  `//pac/stability:stability-gps-pax-debug_kt` failed to compile because
+  `com.google.firebase.analytics.FirebaseAnalytics` was missing from the
+  compile-filter tags.
+- Root cause:
+  `:pac:stability` directly declares
+  `com.google.firebase:firebase-analytics:22.1.0`. Gradle resolves that root
+  with measurement transitives such as
+  `com.google.android.gms:play-services-measurement`,
+  `play-services-measurement-api`, `play-services-measurement-base`,
+  `play-services-measurement-impl`, `play-services-measurement-sdk`, and
+  `play-services-measurement-sdk-api`. The scoped transitive cache for the
+  selected variant existed but did not contain that direct root, and
+  `DefaultTransitiveDependenciesStore.get(variants, shortId)` incorrectly
+  treated the missing scoped entry as a known empty closure. That blocked the
+  global Gradle-resolved fallback.
+- Fix:
+  Missing scoped direct-root entries now return `null` so callers can fall back
+  to the global Gradle-resolved closure. Known scoped empty closures remain
+  empty. Added/updated regression coverage in
+  `DefaultDependenciesDataSourceTest` for scoped root hit, scoped root miss
+  fallback, known empty closure, bucket-specific roots, and override-target
+  logical Maven tags.
+- Verification after the fix:
+  - Focused `DefaultDependenciesDataSourceTest`: passed.
+  - Local `./gradlew migrateToBazel --console=plain --no-daemon`: passed.
+  - PAX `./gradlew migrateToBazel --no-daemon --console=plain --stacktrace --rerun-tasks`:
+    passed in `10m 24s`.
+  - PAX generated `pac/stability/BUILD.bazel` now contains the Firebase
+    analytics direct Maven tag plus its Gradle-resolved measurement transitive
+    tags.
+  - PAX `git diff --check`: passed.
+  - `reports/scripts/verify-pax-size-guard.sh --mode preserving`: passed with
+    `bucketCount=11`, `pinfileCount=11`, `totalArtifactRoots=1945`, and no
+    per-repo deltas.
+  - Focused PAX
+    `./bazel.sh build --verbose_failures //pac/stability:stability-gps-pax-debug_kt`:
+    passed in `2.419s`.
+  - PAX APK gate
+    `./bazel.sh build --verbose_failures //app:app-gps-pax-debug.apk //app:app-gps-pax-debug-android-test.apk`:
+    passed in `170.787s`.
+  - PAX focused test gate
+    `./bazel.sh test --test_output=errors //app-utils:app-utils-gps-pax-debug-test //app-test:app-test-gps-pax-debug-test //application-initializer:application-initializer-gps-pax-debug-test`:
+    passed; Bazel reported `Executed 0 out of 3 tests: 3 tests pass`.
+  - Full Grazel `./gradlew :grazel-gradle-plugin:test --console=plain --no-daemon`:
+    passed in `41s`.
+- Remaining required final light guards after this log entry:
+  local `migrateToBazel`, task-graph script, sample-bucket script with known
+  waiver if unchanged, and Grazel `git diff --check` checks.
+
+## 2026-07-03 post-compaction - Item 42 final local guards
+
+- Ran local `./gradlew migrateToBazel --console=plain --no-daemon` after the
+  scoped-cache fix. Result: passed in `9s`.
+- Ran `reports/scripts/verify-default-task-graph.sh`. Result: passed.
+- Ran `reports/scripts/verify-sample-bucket-labels.sh`. Result: failed only
+  with the known pre-existing waiver:
+  `WORKSPACE must not union one-sided appcompat exclude onto androidx.constraintlayout:constraintlayout`.
+- Ran Grazel `git diff --check`. Result: passed.
+- Ran Grazel `git diff --check master...HEAD`. Result: passed.
+- Ran `reports/scripts/verify-pax-size-guard.sh --mode preserving`. Result:
+  passed against PAX branch `arun/grazel-refactor`
+  `d4105d1f64bd2f1930e1030e42647a214002c48d` with
+  `bucketCount=11`, `pinfileCount=11`, `totalArtifactRoots=1945`, and no
+  per-repo deltas.
+- Current known waiver remains the sample bucket label script's
+  appcompat/constraintlayout exclude check. No new PAX size or generated-output
+  drift was introduced by the scoped-cache fix.
+
+## 2026-07-03 post-final-review - Item 42 compressed tag union fix
+
+- Final read-only adversarial review over `7f10f765...443331b4` found one real
+  medium issue: variant compression selected one representative
+  `AndroidLibraryData` and ignored tag differences. Since Item 42 moved tags
+  back to extractor output, two otherwise-equivalent variants could compress
+  while losing Maven tags from the non-representative variant's direct Maven
+  closure.
+- Fix:
+  `VariantCompressor` now keeps representative structural data but unions and
+  sorts tags across all variants represented by a compressed target. Full
+  cross-build-type compression also unions tags across the build-type targets.
+  This preserves compression while preventing compile-filter under-collection.
+- TDD evidence:
+  Added `VariantCompressorTest.compress unions tags from compressed variants`
+  and
+  `VariantCompressorTest.full compression unions tags from every compressed build type target`.
+  First focused run failed with exactly those two tests failing. After the
+  production fix, the focused
+  `./gradlew :grazel-gradle-plugin:test --tests 'com.grab.grazel.gradle.variant.VariantCompressorTest' --console=plain --no-daemon`
+  run passed in `20s`.
+- Remaining required gates after this fix:
+  full plugin unit tests, local `migrateToBazel`, task-graph/sample scripts,
+  PAX migrate/build/test, PAX size guard, and diff checks.
+- Maintainer clarification while PAX migrate was running:
+  `androidx.annotation:annotation` is a logical Maven coordinate whose compile
+  filter tag must remain `@maven//:androidx_annotation_annotation`. The
+  PAX/Grazel override target maps that coordinate to
+  `@maven//:androidx_annotation_annotation_jvm`; extractor-owned tags must not
+  rewrite the logical coordinate tag to the override target label.
+- Final verification after this fix:
+  - Full plugin
+    `./gradlew :grazel-gradle-plugin:test --console=plain --no-daemon`:
+    passed in `38s`.
+  - Local `./gradlew migrateToBazel --console=plain --no-daemon`: passed in
+    `9s`.
+  - `reports/scripts/verify-default-task-graph.sh`: passed.
+  - `reports/scripts/verify-sample-bucket-labels.sh`: failed only with the
+    known pre-existing waiver:
+    `WORKSPACE must not union one-sided appcompat exclude onto androidx.constraintlayout:constraintlayout`.
+  - Grazel `git diff --check` and `git diff --check master...HEAD`: passed.
+  - PAX
+    `./gradlew migrateToBazel --no-daemon --console=plain --stacktrace --rerun-tasks`:
+    passed in `11m 18s`.
+  - PAX `git diff --check`: passed.
+  - PAX generated diff shape remained the accepted baseline:
+    `1854 files changed, 68 insertions(+), 775167 deletions(-)`.
+  - `reports/scripts/verify-pax-size-guard.sh --mode preserving`: passed with
+    `bucketCount=11`, `pinfileCount=11`, `totalArtifactRoots=1945`, and no
+    per-repo deltas.
+  - Focused annotation scan confirmed `WORKSPACE` override_targets map
+    `androidx.annotation:annotation` to
+    `@maven//:androidx_annotation_annotation_jvm`, while generated tags still
+    contain logical `@maven//:androidx_annotation_annotation`. The only
+    generated `_jvm` BUILD tags found were backed by actual
+    `androidx.annotation:annotation-jvm` artifact entries.
+  - PAX APK gate
+    `./bazel.sh build --verbose_failures //app:app-gps-pax-debug.apk //app:app-gps-pax-debug-android-test.apk`:
+    passed in `163.792s`.
+  - PAX focused test gate
+    `./bazel.sh test --test_output=errors //app-utils:app-utils-gps-pax-debug-test //app-test:app-test-gps-pax-debug-test //application-initializer:application-initializer-gps-pax-debug-test`:
+    passed in `12.876s`; Bazel reported
+    `Executed 0 out of 3 tests: 3 tests pass`.
+  - Final review subagent was closed. Its only real finding was the compressed
+    variant tag under-collection issue fixed above.

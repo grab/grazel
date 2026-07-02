@@ -286,6 +286,71 @@ class VariantCompressorTest : GrazelPluginTest() {
     }
 
     @Test
+    fun `compress unions tags from compressed variants`() {
+        val variants = mapOf(
+            "freeDebug" to createData("library-free-debug", "freeDebug").copy(
+                tags = listOf("@maven//:com_example_free", "@maven//:com_example_shared")
+            ),
+            "paidDebug" to createData("library-paid-debug", "paidDebug").copy(
+                tags = listOf("@maven//:com_example_paid", "@maven//:com_example_shared")
+            )
+        )
+
+        val resultWithDecisions = compressor.compress(
+            variants = variants,
+            buildTypeFn = ::buildTypeFn,
+            dependencyVariantCompressionResults = emptyMap()
+        )
+
+        val compressedData = resultWithDecisions.result.dataForSuffix("-debug")
+
+        assertEquals(
+            listOf(
+                "@maven//:com_example_free",
+                "@maven//:com_example_paid",
+                "@maven//:com_example_shared"
+            ),
+            compressedData.tags
+        )
+    }
+
+    @Test
+    fun `full compression unions tags from every compressed build type target`() {
+        val variants = mapOf(
+            "freeDebug" to createData("library-free-debug", "freeDebug").copy(
+                tags = listOf("@maven//:com_example_free", "@maven//:com_example_debug")
+            ),
+            "paidDebug" to createData("library-paid-debug", "paidDebug").copy(
+                tags = listOf("@maven//:com_example_paid", "@maven//:com_example_debug")
+            ),
+            "freeRelease" to createData("library-free-release", "freeRelease").copy(
+                tags = listOf("@maven//:com_example_free", "@maven//:com_example_release")
+            ),
+            "paidRelease" to createData("library-paid-release", "paidRelease").copy(
+                tags = listOf("@maven//:com_example_paid", "@maven//:com_example_release")
+            )
+        )
+
+        val resultWithDecisions = compressor.compress(
+            variants = variants,
+            buildTypeFn = ::buildTypeFn,
+            dependencyVariantCompressionResults = emptyMap()
+        )
+
+        val compressedData = resultWithDecisions.result.dataForSuffix("")
+
+        assertEquals(
+            listOf(
+                "@maven//:com_example_debug",
+                "@maven//:com_example_free",
+                "@maven//:com_example_paid",
+                "@maven//:com_example_release"
+            ),
+            compressedData.tags
+        )
+    }
+
+    @Test
     fun `compress with no dependencies`() {
         val variants = mapOf(
             "freeDebug" to createData("library-free-debug", "freeDebug").copy(

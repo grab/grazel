@@ -24,8 +24,6 @@ import com.grab.grazel.gradle.dependencies.DefaultDependencyGraphsService
 import com.grab.grazel.gradle.dependencies.DependenciesDataSource
 import com.grab.grazel.gradle.dependencies.DependencyGraphs
 import com.grab.grazel.gradle.dependencies.GradleDependencyToBazelDependency
-import com.grab.grazel.gradle.dependencies.TargetTagKinds
-import com.grab.grazel.gradle.dependencies.WorkspaceTargetTagPlanService
 import com.grab.grazel.gradle.variant.VariantGraphKey
 import com.grab.grazel.gradle.variant.VariantType
 import com.grab.grazel.gradle.hasCompose
@@ -33,7 +31,7 @@ import com.grab.grazel.gradle.variant.AndroidVariantDataSource
 import com.grab.grazel.gradle.variant.MatchedVariant
 import com.grab.grazel.gradle.variant.getMigratableBuildVariants
 import com.grab.grazel.gradle.variant.nameSuffix
-import com.grab.grazel.migrate.dependencies.calculateDirectDependencyTags
+import com.grab.grazel.migrate.dependencies.calculateCompileFilterTags
 import com.grab.grazel.util.GradleProvider
 import org.gradle.api.Project
 import org.gradle.kotlin.dsl.getByType
@@ -60,7 +58,6 @@ internal class DefaultAndroidInstrumentationBinaryDataExtractor
     private val manifestValuesBuilder: ManifestValuesBuilder,
     private val keyStoreExtractor: KeyStoreExtractor,
     private val grazelExtension: GrazelExtension,
-    private val workspaceTargetTagPlanService: GradleProvider<WorkspaceTargetTagPlanService>,
 ) : AndroidInstrumentationBinaryDataExtractor {
     private val projectDependencyGraphs: DependencyGraphs get() = dependencyGraphsService.get().get()
 
@@ -94,6 +91,7 @@ internal class DefaultAndroidInstrumentationBinaryDataExtractor
             matchedVariant = matchedVariant,
             extension = extension,
             deps = deps,
+            variantKey = variantKey,
             sourceSetType = sourceSetType,
         )
     }
@@ -103,6 +101,7 @@ internal class DefaultAndroidInstrumentationBinaryDataExtractor
         matchedVariant: MatchedVariant,
         extension: BaseExtension,
         deps: List<BazelDependency>,
+        variantKey: VariantGraphKey,
         sourceSetType: SourceSetType,
     ): AndroidInstrumentationBinaryData {
 
@@ -145,25 +144,20 @@ internal class DefaultAndroidInstrumentationBinaryDataExtractor
 
         // Bazel 8 compatibility requires omitting minSdk unless the workaround is enabled.
         val minSdkVersion = if (grazelExtension.experiments.minSdkVersionWorkaround.get()) 0 else null
+        val name = "${project.name}${matchedVariant.nameSuffix}-android-test"
         val tags = if (grazelExtension.rules.kotlin.enabledTransitiveReduction) {
-            val variantKey = VariantGraphKey.from(project, matchedVariant, VariantType.AndroidTest)
-            val localTags = calculateDirectDependencyTags(
-                self = "${project.name}${matchedVariant.nameSuffix}-android-test",
-                deps = deps
-            )
-            val mavenTags = workspaceTargetTagPlanService
-                .get()
-                .tagsFor(
-                    variantId = variantKey.variantId,
-                    variantType = variantKey.variantType.toString(),
-                    targetKind = TargetTagKinds.ANDROID_INSTRUMENTATION
+            calculateCompileFilterTags(
+                self = name,
+                directDependencies = deps,
+                transitiveMavenDependencies = dependenciesDataSource.collectTransitiveMavenDeps(
+                    project = project,
+                    variantKey = variantKey
                 )
-                .orEmpty()
-            (localTags + mavenTags).sorted()
+            )
         } else emptyList()
 
         return AndroidInstrumentationBinaryData(
-            name = "${project.name}${matchedVariant.nameSuffix}-android-test",
+            name = name,
             associates = listOf(associate),
             customPackage = customPackage,
             targetPackage = matchedVariant.variant.applicationId.split(".test").first(),
@@ -178,7 +172,7 @@ internal class DefaultAndroidInstrumentationBinaryDataExtractor
             srcs = srcs,
             testInstrumentationRunner = testInstrumentationRunner,
             manifestValues = manifestValues,
-            tags = tags.sorted(),
+            tags = tags,
             compose = project.hasCompose,
             minSdkVersion = minSdkVersion,
         )

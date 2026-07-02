@@ -109,7 +109,7 @@ class AndroidInstrumentationBinaryDataExtractorTest : GrazelPluginTest() {
     }
 
     @Test
-    fun `extract does not derive transitive maven tags without workspace plan`() {
+    fun `extract derives transitive maven tags from resolved store`() {
         androidBinary.rootProject.the<GrazelExtension>()
             .rules.kotlin.enabledTransitiveReduction = true
         androidBinary.dependencies {
@@ -150,13 +150,9 @@ class AndroidInstrumentationBinaryDataExtractorTest : GrazelPluginTest() {
 
         Truth.assertThat(androidInstrumentationBinaryData.tags).containsAtLeast(
             "@maven//:com_example_runner",
+            "@maven//:com_example_runner_child",
+            "@maven//:com_example_runner_grandchild",
             "@self//${androidInstrumentationBinaryData.name}"
-        )
-        Truth.assertThat(androidInstrumentationBinaryData.tags).doesNotContain(
-            "@maven//:com_example_runner_child"
-        )
-        Truth.assertThat(androidInstrumentationBinaryData.tags).doesNotContain(
-            "@maven//:com_example_runner_grandchild"
         )
     }
 

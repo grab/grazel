@@ -25,7 +25,6 @@ import com.grab.grazel.gradle.dependencies.DefaultDependencyResolutionService
 import com.grab.grazel.gradle.dependencies.ProjectReachabilityGroup
 import com.grab.grazel.gradle.dependencies.ProjectReachabilityOrder
 import com.grab.grazel.gradle.dependencies.WorkspaceRenderPlanService
-import com.grab.grazel.gradle.dependencies.WorkspaceTargetTagPlanService
 import com.grab.grazel.gradle.dependencies.asRenderPlan
 import com.grab.grazel.gradle.dependencies.mergeTargetReferenceFacts
 import com.grab.grazel.gradle.dependencies.model.TargetReferenceFacts
@@ -62,7 +61,6 @@ constructor(
     private val targetReferenceFactsExtractor: Lazy<TargetReferenceFactsExtractor>,
     private val dependencyGraphsService: GradleProvider<DefaultDependencyGraphsService>,
     private val workspaceRenderPlanService: GradleProvider<WorkspaceRenderPlanService>,
-    private val workspaceTargetTagPlanService: GradleProvider<WorkspaceTargetTagPlanService>,
     objectFactory: ObjectFactory,
     layout: ProjectLayout
 ) : DefaultTask() {
@@ -70,10 +68,6 @@ constructor(
     @get:InputFile
     @get:PathSensitive(PathSensitivity.RELATIVE)
     val workspaceDependencies: RegularFileProperty = objectFactory.fileProperty()
-
-    @get:InputFile
-    @get:PathSensitive(PathSensitivity.RELATIVE)
-    val targetTagPlan: RegularFileProperty = objectFactory.fileProperty()
 
     @get:Internal
     val dependencyResolutionService: Property<DefaultDependencyResolutionService> =
@@ -88,7 +82,6 @@ constructor(
     fun action() {
         logger.logHeap("CollectTargetMavenRepoReferences:start")
         dependencyResolutionService.get().init(workspaceDependencies.get().asFile)
-        workspaceTargetTagPlanService.get().initTagPlan(targetTagPlan.get().asFile)
 
         val reachabilityGroups = ProjectReachabilityOrder
             .consumersFirstGroups(
@@ -137,7 +130,6 @@ constructor(
             grazelComponent.targetReferenceFactsExtractor(),
             grazelComponent.dependencyGraphsService(),
             grazelComponent.workspaceRenderPlanService(),
-            grazelComponent.workspaceTargetTagPlanService(),
             rootProject.objects,
             rootProject.layout
         ).apply {
@@ -146,7 +138,6 @@ constructor(
                 description = "Collect Maven repository references from target reference facts"
                 usesService(grazelComponent.dependencyGraphsService())
                 usesService(grazelComponent.workspaceRenderPlanService())
-                usesService(grazelComponent.workspaceTargetTagPlanService())
                 usesService(grazelComponent.dependencyResolutionService())
                 action(this)
             }

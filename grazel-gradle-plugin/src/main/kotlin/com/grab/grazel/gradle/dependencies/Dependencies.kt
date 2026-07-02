@@ -54,6 +54,7 @@ import org.gradle.api.artifacts.component.ModuleComponentIdentifier
 import org.gradle.api.internal.artifacts.DefaultResolvedDependency
 import java.io.File
 import java.util.*
+import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -160,6 +161,8 @@ internal class DefaultDependenciesDataSource @Inject constructor(
     private val MavenArtifact.isExcluded get() = artifactsConfig.excludedList.contains(id)
 
     private val MavenArtifact.isBom: Boolean get() = name.isBomArtifactName()
+
+    private val transitiveMavenDepsByVariant = ConcurrentHashMap<VariantGraphKey, Set<MavenDependency>>()
 
     override fun projectDependencies(
         project: Project, vararg variantTypes: VariantType
@@ -428,10 +431,10 @@ internal class DefaultDependenciesDataSource @Inject constructor(
     override fun collectTransitiveMavenDeps(
         project: Project,
         variantKey: VariantGraphKey
-    ): Set<MavenDependency> {
+    ): Set<MavenDependency> = transitiveMavenDepsByVariant.computeIfAbsent(variantKey) {
         val allVariants = variantBuilder.build(project)
         val grazelVariant = findGrazelVariantByKey(allVariants, variantKey)
-        return collectOwnTransitiveMavenDeps(
+        collectOwnTransitiveMavenDeps(
             project = project,
             variantKey = variantKey,
             allVariants = allVariants,
@@ -461,11 +464,16 @@ internal class DefaultDependenciesDataSource @Inject constructor(
 
         fun labelFor(shortId: String): MavenDependency {
             val (group, name) = shortId.split(":")
-            return resolutionService.getMavenDependency(
+            val dependency = resolutionService.getMavenDependency(
                 variants = labelLookupVariantHierarchy,
                 group = group,
                 name = name
-            ) ?: MavenDependency(group = group, name = name)
+            )
+            return MavenDependency(
+                repo = dependency?.repo ?: "maven",
+                group = group,
+                name = name
+            )
         }
 
         return grazelVariant
@@ -488,25 +496,12 @@ internal class DefaultDependenciesDataSource @Inject constructor(
                     )
                 val globalTransitiveDependencies = resolutionService
                     .getTransitiveDependencies(dep.shortId)
-                val transitiveDependencyShortIds = when {
-                    variantTransitiveDependencies == null -> globalTransitiveDependencies
-                    variantTransitiveDependencies.isEmpty() && directDependency.repo == "maven" ->
-                        globalTransitiveDependencies
-                    variantTransitiveDependencies.isEmpty() -> emptySet()
-                    else -> variantTransitiveDependencies + globalTransitiveDependencies
-                }
+                val transitiveDependencyShortIds = variantTransitiveDependencies
+                    ?: globalTransitiveDependencies
                 val transitiveDependencies = transitiveDependencyShortIds
                     .map(::labelFor)
                 buildList {
-                    if (
-                        variantTransitiveDependencies == null &&
-                        transitiveDependencies.isEmpty() &&
-                        directDependency.repo != "maven"
-                    ) {
-                        addAll(resolutionService.getMavenDependenciesInRepo(directDependency.repo))
-                    } else {
-                        transitiveDependencies.addTo(this)
-                    }
+                    transitiveDependencies.addTo(this)
                     add(directDependency)
                     if (project.hasKotlinAndroidExtensions) {
                         addAll(PARCELIZE_DEPS)

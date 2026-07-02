@@ -55,4 +55,31 @@ class ClasspathReductionTest {
             )
         }
     }
+
+    @Test
+    fun `compile filter tags use logical maven closure instead of direct override label`() {
+        val directDependencies = listOf(
+            MavenDependency(
+                group = "androidx.annotation",
+                name = "annotation-jvm"
+            )
+        )
+        val logicalClosure = listOf(
+            MavenDependency(
+                group = "androidx.annotation",
+                name = "annotation"
+            )
+        )
+
+        calculateCompileFilterTags(
+            self = "self",
+            directDependencies = directDependencies,
+            transitiveMavenDependencies = logicalClosure
+        ).truth {
+            containsExactly(
+                "@maven//:androidx_annotation_annotation",
+                "@self//self",
+            )
+        }
+    }
 }

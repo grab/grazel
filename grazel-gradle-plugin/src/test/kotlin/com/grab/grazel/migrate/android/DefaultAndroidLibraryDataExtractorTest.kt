@@ -9,9 +9,6 @@ import com.grab.grazel.gradle.KOTLIN_ANDROID_PLUGIN
 import com.grab.grazel.gradle.KOTLIN_KAPT
 import com.grab.grazel.gradle.dependencies.DefaultDependencyResolutionService
 import com.grab.grazel.gradle.dependencies.model.ResolvedDependency.Companion.fromId
-import com.grab.grazel.gradle.dependencies.TargetTagKinds
-import com.grab.grazel.gradle.dependencies.model.TargetTagKey
-import com.grab.grazel.gradle.dependencies.model.TargetTagPlan
 import com.grab.grazel.gradle.dependencies.model.WorkspaceDependencies
 import com.grab.grazel.gradle.variant.DEFAULT_VARIANT
 import com.grab.grazel.gradle.variant.MatchedVariant
@@ -20,7 +17,6 @@ import com.grab.grazel.util.createGrazelComponent
 import com.grab.grazel.util.doEvaluate
 import com.grab.grazel.util.initDependencyGraphsForTest
 import com.grab.grazel.util.truth
-import com.grab.grazel.util.writeJson
 import org.gradle.api.Project
 import org.gradle.api.provider.Provider
 import org.gradle.kotlin.dsl.configure
@@ -43,7 +39,8 @@ class DefaultAndroidLibraryDataExtractorTest {
     private fun configure(
         app: AppExtension.() -> Unit = {},
         lib: LibraryExtension.() -> Unit = {},
-        appDependencies: Project.() -> Unit = {}
+        appDependencies: Project.() -> Unit = {},
+        libraryDependencies: Project.() -> Unit = {}
     ) {
         rootProject = buildProject("root").also {
             it.addGrazelExtension()
@@ -85,6 +82,7 @@ class DefaultAndroidLibraryDataExtractorTest {
                 }
                 lib(this)
             }
+            libraryDependencies()
         }
 
         libraryProject.doEvaluate()
@@ -261,41 +259,16 @@ class DefaultAndroidLibraryDataExtractorTest {
     }
 
     @Test
-    fun `extract uses target tag plan for maven tag labels`() {
-        configure()
-        rootProject.the<com.grab.grazel.GrazelExtension>()
-            .rules.kotlin.enabledTransitiveReduction = true
-        val tagPlanFile = rootProject.layout.buildDirectory.file("grazel/test-target-tag-plan.json").get()
-        tagPlanFile.asFile.parentFile.mkdirs()
-        writeJson(
-            listOf(
-                TargetTagPlan(
-                    key = TargetTagKey(
-                        variantId = ":android:debugAndroidBuild",
-                        variantType = "AndroidBuild",
-                        targetKind = TargetTagKinds.ANDROID_LIBRARY
-                    ),
-                    tags = listOf("@maven//:com_example_planned")
-                )
-            ),
-            tagPlanFile
-        )
-        grazelComponent.workspaceTargetTagPlanService().get().initTagPlan(tagPlanFile.asFile)
-
-        val androidLibraryData = androidLibraryDataExtractor.extract(appProject, debugVariant())
-
-        androidLibraryData.tags.truth {
-            contains("@maven//:com_example_planned")
-            contains("@self//android")
-        }
-    }
-
-    @Test
-    fun `extract does not derive transitive maven tag labels without workspace plan`() {
+    fun `extract derives transitive maven tag labels from own direct maven deps only`() {
         configure(
             appDependencies = {
                 dependencies {
                     add("implementation", "com.example:root:1.0")
+                }
+            },
+            libraryDependencies = {
+                dependencies {
+                    add("implementation", "com.example:donated:1.0")
                 }
             }
         )
@@ -310,7 +283,10 @@ class DefaultAndroidLibraryDataExtractorTest {
                         fromId("com.example:child:1.0", DEFAULT_VARIANT)
                     )
                 ),
-                transitiveClasspath = mapOf("com.example:root" to setOf("com.example:child"))
+                transitiveClasspath = mapOf(
+                    "com.example:root" to setOf("com.example:child"),
+                    "com.example:donated" to setOf("com.example:donated-child")
+                )
             )
         )
 
@@ -318,11 +294,57 @@ class DefaultAndroidLibraryDataExtractorTest {
 
         androidLibraryData.tags.truth {
             contains("@maven//:com_example_root")
+            contains("@maven//:com_example_child")
             contains("@self//android")
+            doesNotContain("@maven//:com_example_donated")
+            doesNotContain("@maven//:com_example_donated_child")
         }
-        assertFalse(
-            androidLibraryData.tags.contains("@maven//:com_example_child"),
-            "Transitive Maven tags must come from WorkspacePlan, not extractor fallback"
+    }
+
+    @Test
+    fun `extract derives maven tag labels from live Gradle declarations before dependency filtering`() {
+        configure(
+            app = {
+                dataBinding.isEnabled = true
+            },
+            appDependencies = {
+                dependencies {
+                    add("implementation", "com.stepango.rxdatabindings:rxdatabindings:2.0.0")
+                    add("implementation", "androidx.databinding:databinding-runtime:8.6.1")
+                }
+            }
         )
+        rootProject.the<com.grab.grazel.GrazelExtension>()
+            .rules.kotlin.enabledTransitiveReduction = true
+        dependencyResolutionService.get().close()
+        dependencyResolutionService.get().populateCache(
+            WorkspaceDependencies(
+                variantDeps = mapOf(
+                    DEFAULT_VARIANT to listOf(
+                        fromId("com.stepango.rxdatabindings:rxdatabindings:2.0.0", DEFAULT_VARIANT),
+                        fromId("androidx.databinding:databinding-runtime:8.6.1", DEFAULT_VARIANT),
+                        fromId("androidx.databinding:databinding-common:8.6.1", DEFAULT_VARIANT)
+                    )
+                ),
+                transitiveClasspath = mapOf(
+                    "androidx.databinding:databinding-runtime" to setOf(
+                        "androidx.databinding:databinding-common"
+                    )
+                )
+            )
+        )
+
+        val androidLibraryData = androidLibraryDataExtractor.extract(appProject, debugVariant())
+
+        androidLibraryData.deps.map { it.toString() }.truth {
+            contains("@maven//:com_stepango_rxdatabindings_rxdatabindings")
+            doesNotContain("@maven//:androidx_databinding_databinding_runtime")
+            doesNotContain("@maven//:androidx_databinding_databinding_common")
+        }
+        androidLibraryData.tags.truth {
+            contains("@maven//:com_stepango_rxdatabindings_rxdatabindings")
+            contains("@maven//:androidx_databinding_databinding_runtime")
+            contains("@maven//:androidx_databinding_databinding_common")
+        }
     }
 }

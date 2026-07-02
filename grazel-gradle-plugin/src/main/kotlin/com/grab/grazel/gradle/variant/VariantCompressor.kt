@@ -265,7 +265,10 @@ internal class DefaultVariantCompressor @Inject constructor(
         // Derive compressed name from representative
         val representativeSuffix = normalizeVariantSuffix(representative.key)
         val baseName = representative.value.name.removeSuffix(representativeSuffix)
-        val compressedData = representative.value.copy(name = baseName + decision.suffix)
+        val compressedData = representative.value.copy(
+            name = baseName + decision.suffix,
+            tags = mergedTags(sortedVariants.map { it.value })
+        )
 
         // All variants map to the compressed suffix
         val variantMappings = decision.variants.keys.associateWith { decision.suffix }
@@ -403,7 +406,10 @@ internal class DefaultVariantCompressor @Inject constructor(
 
         // Update name to remove suffix
         val baseName = representativeData.name.removeSuffix(representativeSuffix)
-        val fullyCompressedData = representativeData.copy(name = baseName)
+        val fullyCompressedData = representativeData.copy(
+            name = baseName,
+            tags = mergedTags(flavorCompressed.targetsBySuffix.values)
+        )
 
         // All variants map to empty suffix
         val newVariantToSuffix = flavorCompressed.variantToSuffix.mapValues { "" }
@@ -475,4 +481,10 @@ internal class DefaultVariantCompressor @Inject constructor(
         val first = variants.first()
         return variants.drop(1).all { equivalenceChecker.areEquivalent(first, it) }
     }
+
+    private fun mergedTags(targets: Iterable<AndroidLibraryData>): List<String> =
+        targets
+            .flatMap { target -> target.tags }
+            .toSortedSet()
+            .toList()
 }

@@ -30,6 +30,7 @@ import com.grab.grazel.gradle.variant.MatchedVariant
 import com.grab.grazel.gradle.variant.VariantMatcher
 import com.grab.grazel.gradle.variant.getMigratableBuildVariants
 import com.grab.grazel.gradle.variant.nameSuffix
+import com.grab.grazel.migrate.dependencies.replaceMavenDependencyTags
 import org.gradle.api.Project
 import org.gradle.kotlin.dsl.getByType
 import javax.inject.Inject
@@ -259,6 +260,16 @@ constructor(
         // Bazel 8 compatibility requires omitting minSdk unless the workaround is enabled.
         val minSdkVersion = if (grazelExtension.experiments.minSdkVersionWorkaround.get()) 0 else null
 
+        val tags = if (grazelExtension.rules.kotlin.enabledTransitiveReduction) {
+            replaceMavenDependencyTags(
+                existingTags = androidLibraryData.tags,
+                mavenDependencies = dependenciesDataSource.collectTransitiveMavenDeps(
+                    project = testProject,
+                    variantKey = variantKey
+                )
+            )
+        } else emptyList()
+
         return AndroidTestData(
             name = androidLibraryData.name,
             srcs = androidLibraryData.srcs,
@@ -272,7 +283,7 @@ constructor(
             plugins = androidLibraryData.plugins,
             compose = androidLibraryData.compose,
             databinding = androidLibraryData.databinding,
-            tags = androidLibraryData.tags,
+            tags = tags,
             lintConfigData = androidLibraryData.lintConfigData,
             manifestValues = androidBinaryData.manifestValues,
             debugKey = debugKey,

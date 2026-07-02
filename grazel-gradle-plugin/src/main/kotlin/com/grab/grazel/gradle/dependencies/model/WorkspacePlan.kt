@@ -37,19 +37,6 @@ internal enum class CandidateMavenRepoKind {
 }
 
 @Serializable
-internal data class TargetTagPlan(
-    val key: TargetTagKey,
-    val tags: List<String>
-)
-
-@Serializable
-internal data class TargetTagKey(
-    val variantId: String,
-    val variantType: String,
-    val targetKind: String
-)
-
-@Serializable
 internal data class WorkspaceRenderPlan(
     val materializedRepoNames: Set<String> = emptySet(),
     val referencedProjectTargets: Map<String, Set<String>> = emptyMap()

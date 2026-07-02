@@ -32,7 +32,9 @@ import com.grab.grazel.gradle.dependencies.DefaultDependenciesDataSource
 import com.grab.grazel.gradle.dependencies.DefaultDependencyGraphsService
 import com.grab.grazel.gradle.dependencies.DefaultDependencyResolutionService
 import com.grab.grazel.gradle.dependencies.GradleDependencyToBazelDependency
-import com.grab.grazel.gradle.dependencies.WorkspaceTargetTagPlanService
+import com.grab.grazel.gradle.dependencies.model.ResolvedDependency
+import com.grab.grazel.gradle.dependencies.model.WorkspaceDependencies
+import com.grab.grazel.gradle.variant.DEFAULT_VARIANT
 import com.grab.grazel.gradle.variant.AndroidVariantsExtractor
 import com.grab.grazel.gradle.variant.DefaultAndroidVariantDataSource
 import com.grab.grazel.gradle.variant.DefaultAndroidVariantsExtractor
@@ -62,6 +64,8 @@ class DefaultAndroidUnitTestDataExtractorTest : GrazelPluginTest() {
     private lateinit var androidVariantsExtractor: AndroidVariantsExtractor
     private lateinit var gradleDependencyToBazelDependency: GradleDependencyToBazelDependency
     private lateinit var fakeVariantCompressionService: GradleProvider<DefaultVariantCompressionService>
+    private lateinit var dependencyResolutionService: GradleProvider<DefaultDependencyResolutionService>
+    private lateinit var extension: GrazelExtension
 
     @get:Rule
     val temporaryFolder = TemporaryFolder()
@@ -107,10 +111,11 @@ class DefaultAndroidUnitTestDataExtractorTest : GrazelPluginTest() {
         val variantDataSource = DefaultAndroidVariantDataSource(DefaultAndroidVariantsExtractor())
         val configurationDataSource = DefaultConfigurationDataSource(variantDataSource)
 
+        dependencyResolutionService = DefaultDependencyResolutionService.register(rootProject)
         val dependenciesDataSource = DefaultDependenciesDataSource(
             configurationDataSource = configurationDataSource,
             artifactsConfig = ArtifactsConfig(ignoredList = listOf(KOTLIN_STDLIB)),
-            dependencyResolutionService = DefaultDependencyResolutionService.register(rootProject),
+            dependencyResolutionService = dependencyResolutionService,
             variantBuilder = DefaultVariantBuilder(
                 DefaultAndroidVariantDataSource(
                     androidVariantsExtractor
@@ -126,7 +131,7 @@ class DefaultAndroidUnitTestDataExtractorTest : GrazelPluginTest() {
         val mockDependencyGraphsService: GradleProvider<DefaultDependencyGraphsService> =
             rootProject.provider { testDependencyGraphsService}
 
-        val extension = GrazelExtension(rootProject)
+        extension = GrazelExtension(rootProject)
         defaultAndroidUnitTestDataExtractor = DefaultAndroidUnitTestDataExtractor(
             dependenciesDataSource = dependenciesDataSource,
             dependencyGraphsService = mockDependencyGraphsService,
@@ -135,9 +140,37 @@ class DefaultAndroidUnitTestDataExtractorTest : GrazelPluginTest() {
             grazelExtension = extension,
             gradleDependencyToBazelDependency = gradleDependencyToBazelDependency,
             testSizeCalculator = TestSizeCalculator(extension),
-            variantCompressionService = fakeVariantCompressionService,
-            workspaceTargetTagPlanService = WorkspaceTargetTagPlanService.register(rootProject)
+            variantCompressionService = fakeVariantCompressionService
         )
+    }
+
+    @Test
+    fun `extract derives transitive maven tags from selected test deps`() {
+        extension.rules.kotlin.enabledTransitiveReduction = true
+        subProject.dependencies.add("testImplementation", "com.example:test-root:1.0")
+        dependencyResolutionService.get().populateCache(
+            WorkspaceDependencies(
+                variantDeps = mapOf(
+                    DEFAULT_VARIANT to listOf(
+                        ResolvedDependency.fromId("com.example:test-root:1.0", DEFAULT_VARIANT)
+                    )
+                ),
+                transitiveClasspath = mapOf(
+                    "com.example:test-root" to setOf("com.example:test-child")
+                )
+            )
+        )
+
+        subProject.doEvaluate()
+
+        val androidUnitTestData = defaultAndroidUnitTestDataExtractor.extract(
+            subProject,
+            debugUnitTestVariant(subProject)
+        )
+
+        Truth.assertThat(androidUnitTestData.tags).contains("@maven//:com_example_test_root")
+        Truth.assertThat(androidUnitTestData.tags).contains("@maven//:com_example_test_child")
+        Truth.assertThat(androidUnitTestData.tags).contains("@self//subproject-debug-unit-test-test")
     }
 
     @Test

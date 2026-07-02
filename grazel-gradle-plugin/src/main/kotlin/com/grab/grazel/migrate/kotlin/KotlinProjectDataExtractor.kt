@@ -25,8 +25,6 @@ import com.grab.grazel.gradle.dependencies.DependenciesDataSource
 import com.grab.grazel.gradle.dependencies.DependencyGraphs
 import com.grab.grazel.gradle.variant.VariantGraphKey
 import com.grab.grazel.gradle.dependencies.GradleDependencyToBazelDependency
-import com.grab.grazel.gradle.dependencies.TargetTagKinds
-import com.grab.grazel.gradle.dependencies.WorkspaceTargetTagPlanService
 import com.grab.grazel.gradle.variant.VariantType
 import com.grab.grazel.gradle.hasKotlinAndroidExtensions
 import com.grab.grazel.migrate.android.SourceSetType
@@ -37,7 +35,7 @@ import com.grab.grazel.migrate.android.SourceSetType.KOTLIN
 import com.grab.grazel.migrate.android.SourceSetType.RESOURCES
 import com.grab.grazel.migrate.android.filterSourceSetPaths
 import com.grab.grazel.migrate.android.lintConfigs
-import com.grab.grazel.migrate.dependencies.calculateDirectDependencyTags
+import com.grab.grazel.migrate.dependencies.calculateCompileFilterTags
 import com.grab.grazel.util.GradleProvider
 import org.gradle.api.NamedDomainObjectContainer
 import org.gradle.api.Project
@@ -59,7 +57,6 @@ internal class DefaultKotlinProjectDataExtractor
     private val dependencyGraphsService: GradleProvider<DefaultDependencyGraphsService>,
     private val grazelExtension: GrazelExtension,
     private val gradleDependencyToBazelDependency: GradleDependencyToBazelDependency,
-    private val workspaceTargetTagPlanService: GradleProvider<WorkspaceTargetTagPlanService>
 ) : KotlinProjectDataExtractor {
 
     private val kotlinExtension: KotlinExtension get() = grazelExtension.rules.kotlin
@@ -88,16 +85,14 @@ internal class DefaultKotlinProjectDataExtractor
         ) + androidJarDeps(project) + kotlinParcelizeDeps(project)
 
         val tags = if (kotlinExtension.enabledTransitiveReduction) {
-            val localTags = calculateDirectDependencyTags(self = name, deps = deps)
-            val mavenTags = workspaceTargetTagPlanService
-                .get()
-                .tagsFor(
-                    variantId = variantKey.variantId,
-                    variantType = variantKey.variantType.toString(),
-                    targetKind = TargetTagKinds.KOTLIN_LIBRARY
+            calculateCompileFilterTags(
+                self = name,
+                directDependencies = deps,
+                transitiveMavenDependencies = dependenciesDataSource.collectTransitiveMavenDeps(
+                    project = project,
+                    variantKey = variantKey
                 )
-                .orEmpty()
-            (localTags + mavenTags).sorted()
+            )
         } else emptyList()
 
         val plugins = dependenciesDataSource.collectKspPluginDeps(project, variantKey)

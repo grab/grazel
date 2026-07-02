@@ -75,14 +75,6 @@ constructor(
             pinMavenArtifactsTask = pinArtifactsTask
         )
 
-        val collectWorkspaceTargetTagPlanTask = CollectWorkspaceTargetTagPlanTask.register(
-            rootProject = rootProject,
-            grazelComponent = grazelComponent
-        ) {
-            workspaceDependencies.set(computeWorkspaceDependenciesTask.flatMap { it.workspaceDependencies })
-            dependsOn(computeWorkspaceDependenciesTask)
-        }
-
         val computeWorkspacePlanTask = ComputeWorkspacePlanTask.register(
             rootProject = rootProject,
             workspacePlanService = grazelComponent.workspacePlanService()
@@ -99,8 +91,7 @@ constructor(
             grazelComponent = grazelComponent
         ) {
             workspaceDependencies.set(computeWorkspaceDependenciesTask.flatMap { it.workspaceDependencies })
-            targetTagPlan.set(collectWorkspaceTargetTagPlanTask.flatMap { it.targetTagPlan })
-            dependsOn(collectWorkspaceTargetTagPlanTask)
+            dependsOn(computeWorkspaceDependenciesTask)
         }
 
         val collectTargetMavenRepoReferencesTask = CollectTargetMavenRepoReferencesTask.register(
@@ -108,7 +99,6 @@ constructor(
             grazelComponent = grazelComponent
         ) {
             workspaceDependencies.set(computeWorkspaceDependenciesTask.flatMap { it.workspaceDependencies })
-            targetTagPlan.set(collectWorkspaceTargetTagPlanTask.flatMap { it.targetTagPlan })
             dependencyResolutionService.set(grazelComponent.dependencyResolutionService())
             dependsOn(analyzeVariantCompressionTask)
         }
@@ -154,7 +144,6 @@ constructor(
                 workspaceDependencies.set(computeWorkspaceDependenciesTask.flatMap { it.workspaceDependencies })
                 workspacePlan.set(computeWorkspacePlanTask.flatMap { it.workspacePlan })
                 workspaceRenderPlan.set(finalizeWorkspacePlanTask.flatMap { it.workspaceRenderPlan })
-                targetTagPlan.set(collectWorkspaceTargetTagPlanTask.flatMap { it.targetTagPlan })
                 buildifierScript.set(buildifierScriptProvider)
                 dependsOn(finalizeWorkspacePlanTask)
                 dependsOn(generateBuildifierScriptTask)

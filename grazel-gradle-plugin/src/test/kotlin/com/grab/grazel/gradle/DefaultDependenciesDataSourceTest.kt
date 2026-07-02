@@ -32,6 +32,7 @@ import com.grab.grazel.gradle.variant.DEFAULT_VARIANT
 import com.grab.grazel.gradle.variant.Variant
 import com.grab.grazel.gradle.variant.VariantBuilder
 import com.grab.grazel.gradle.variant.VariantGraphKey
+import com.grab.grazel.gradle.dependencies.model.OverrideTarget
 import com.grab.grazel.gradle.dependencies.model.ResolvedDependency
 import com.grab.grazel.gradle.dependencies.model.WorkspaceDependencies
 import com.grab.grazel.gradle.variant.VariantType
@@ -559,7 +560,58 @@ class DefaultDependenciesDataSourceTest {
     }
 
     @Test
-    fun `collectTransitiveMavenDeps includes global root resolved closure in tags`() {
+    fun `collectTransitiveMavenDeps uses logical artifact label when dependency has override target`() {
+        configure(
+            configureProject = {
+                dependencies {
+                    add("implementation", "androidx.annotation:annotation:1.9.1")
+                }
+            }
+        )
+        dependencyResolutionService.populateCache(
+            WorkspaceDependencies(
+                variantDeps = mapOf(
+                    DEFAULT_VARIANT to listOf(
+                        ResolvedDependency.fromId(
+                            "androidx.annotation:annotation:1.9.1",
+                            "maven"
+                        ).copy(
+                            overrideTarget = OverrideTarget(
+                                artifactShortId = "androidx.annotation:annotation",
+                                label = BazelDependency.MavenDependency(
+                                    repo = "maven",
+                                    group = "androidx.annotation",
+                                    name = "annotation-jvm"
+                                )
+                            )
+                        )
+                    )
+                ),
+                transitiveClasspath = mapOf(
+                    "androidx.annotation:annotation" to emptySet()
+                )
+            )
+        )
+        val debugVariant = androidProject.the<AppExtension>()
+            .applicationVariants
+            .first { it.name == "debug" }!!
+        val variantKey = VariantGraphKey.from(
+            androidProject,
+            debugVariant.name,
+            VariantType.AndroidBuild
+        )
+
+        val tags = calculateDirectDependencyTags(
+            "android",
+            dependenciesDataSource.collectTransitiveMavenDeps(androidProject, variantKey).toList()
+        ).toSet()
+
+        assertTrue("@maven//:androidx_annotation_annotation" in tags)
+        assertTrue("@maven//:androidx_annotation_annotation_jvm" !in tags)
+    }
+
+    @Test
+    fun `collectTransitiveMavenDeps uses scoped closure when available`() {
         val root = ProjectBuilder.builder().withName("root").build()
         val project = ProjectBuilder.builder()
             .withName("android")
@@ -657,11 +709,11 @@ class DefaultDependenciesDataSourceTest {
 
         assertTrue("@maven//:com_example_shared_root" in tags)
         assertTrue("@maven//:com_example_debug_carrier" in tags)
-        assertTrue("@maven//:com_example_release_carrier" in tags)
+        assertTrue("@maven//:com_example_release_carrier" !in tags)
     }
 
     @Test
-    fun `collectTransitiveMavenDeps does not expand whole repo for known empty scoped closure`() {
+    fun `collectTransitiveMavenDeps falls back to global closure for bucket-specific direct root`() {
         val root = ProjectBuilder.builder().withName("root").build()
         val project = ProjectBuilder.builder()
             .withName("android")
@@ -682,15 +734,15 @@ class DefaultDependenciesDataSourceTest {
                 variantDeps = mapOf(
                     "debug" to listOf(
                         ResolvedDependency.fromId("com.example:shared-root:1.0", "debug"),
-                        ResolvedDependency.fromId("com.example:unrelated-in-debug-repo:1.0", "debug")
+                        ResolvedDependency.fromId("com.example:global-child:1.0", "debug")
                     )
                 ),
                 transitiveClasspath = mapOf(
-                    "com.example:shared-root" to setOf("com.example:unrelated-in-debug-repo")
+                    "com.example:shared-root" to setOf("com.example:global-child")
                 ),
                 variantTransitiveClasspath = mapOf(
                     "debug" to mapOf(
-                        "com.example:other-root" to setOf("com.example:unrelated-in-debug-repo")
+                        "com.example:other-root" to setOf("com.example:global-child")
                     )
                 )
             )
@@ -739,11 +791,11 @@ class DefaultDependenciesDataSourceTest {
         ).toSet()
 
         assertTrue("@maven//:com_example_shared_root" in tags)
-        assertTrue("@maven//:com_example_unrelated_in_debug_repo" !in tags)
+        assertTrue("@maven//:com_example_global_child" in tags)
     }
 
     @Test
-    fun `collectTransitiveMavenDeps falls back to global closure for default repo root absent from scoped maps`() {
+    fun `collectTransitiveMavenDeps falls back to global closure when scoped hierarchy lacks direct root`() {
         val root = ProjectBuilder.builder().withName("root").build()
         val project = ProjectBuilder.builder()
             .withName("android")
@@ -831,7 +883,89 @@ class DefaultDependenciesDataSourceTest {
     }
 
     @Test
-    fun `collectTransitiveMavenDeps uses default closure for standalone test module default repo labels`() {
+    fun `collectTransitiveMavenDeps keeps known empty scoped closure empty`() {
+        val root = ProjectBuilder.builder().withName("root").build()
+        val project = ProjectBuilder.builder()
+            .withName("android")
+            .withParent(root)
+            .build()
+        val implementation = project.configurations.create("implementation")
+        val debugCompileClasspath = project.configurations
+            .create("debugCompileClasspath")
+            .apply { extendsFrom(implementation) }
+        project.dependencies.add("implementation", "com.example:shared-root:1.0")
+
+        val service = object : DefaultDependencyResolutionService() {
+            override fun getParameters(): DependencyResolutionService.Params =
+                object : DependencyResolutionService.Params {}
+        }
+        service.populateCache(
+            WorkspaceDependencies(
+                variantDeps = mapOf(
+                    DEFAULT_VARIANT to listOf(
+                        ResolvedDependency.fromId("com.example:shared-root:1.0", "maven"),
+                        ResolvedDependency.fromId("com.example:default-child:1.0", "maven")
+                    )
+                ),
+                transitiveClasspath = mapOf(
+                    "com.example:shared-root" to setOf("com.example:default-child")
+                ),
+                variantTransitiveClasspath = mapOf(
+                    DEFAULT_VARIANT to mapOf(
+                        "com.example:shared-root" to emptySet()
+                    )
+                )
+            )
+        )
+        val variants = setOf(
+            fakeVariant(
+                project = project,
+                name = "debug",
+                variantConfigurations = setOf(implementation),
+                compileConfigurations = setOf(debugCompileClasspath)
+            )
+        )
+        val dependenciesDataSource = DefaultDependenciesDataSource(
+            configurationDataSource = object : ConfigurationDataSource {
+                override fun resolvedConfigurations(
+                    project: Project,
+                    vararg variantTypes: VariantType
+                ): Sequence<Configuration> = emptySequence()
+
+                override fun configurations(
+                    project: Project,
+                    vararg variantTypes: VariantType
+                ): Sequence<Configuration> = emptySequence()
+
+                override fun isThisConfigurationBelongsToThisVariants(
+                    project: Project,
+                    vararg variants: com.android.build.gradle.api.BaseVariant?,
+                    configuration: Configuration
+                ): Boolean = false
+            },
+            artifactsConfig = ArtifactsConfig(),
+            dependencyResolutionService = project.provider { service },
+            variantBuilder = object : VariantBuilder {
+                override fun build(project: Project): Set<Variant<*>> = variants
+
+                override fun onVariants(project: Project, action: (Variant<*>) -> Unit) {
+                    variants.forEach(action)
+                }
+            }
+        )
+        val variantKey = VariantGraphKey.from(project, "debug", VariantType.AndroidBuild)
+
+        val tags = calculateDirectDependencyTags(
+            "android",
+            dependenciesDataSource.collectTransitiveMavenDeps(project, variantKey).toList()
+        ).toSet()
+
+        assertTrue("@maven//:com_example_shared_root" in tags)
+        assertTrue("@maven//:com_example_default_child" !in tags)
+    }
+
+    @Test
+    fun `collectTransitiveMavenDeps uses scoped closure for standalone test module labels`() {
         val root = ProjectBuilder.builder().withName("root").build()
         val project = ProjectBuilder.builder()
             .withName("android-tests")
@@ -920,11 +1054,11 @@ class DefaultDependenciesDataSourceTest {
 
         assertTrue("@maven//:com_example_shared_root" in tags)
         assertTrue("@maven//:com_example_default_child" in tags)
-        assertTrue("@maven//:com_example_android_test_child" in tags)
+        assertTrue("@maven//:com_example_android_test_child" !in tags)
     }
 
     @Test
-    fun `collectTransitiveMavenDeps includes global closure for test variant tags`() {
+    fun `collectTransitiveMavenDeps uses scoped closure for test variant tags`() {
         val root = ProjectBuilder.builder().withName("root").build()
         val project = ProjectBuilder.builder()
             .withName("android")
@@ -1017,7 +1151,7 @@ class DefaultDependenciesDataSourceTest {
 
         assertTrue("@maven//:com_example_shared_root" in tags)
         assertTrue("@maven//:com_example_android_test_child" in tags)
-        assertTrue("@maven//:com_example_default_child" in tags)
+        assertTrue("@maven//:com_example_default_child" !in tags)
     }
 
     @Test

@@ -19,11 +19,14 @@ package com.grab.grazel.migrate.dependencies
 import com.grab.grazel.bazel.starlark.BazelDependency
 import com.grab.grazel.bazel.starlark.BazelDependency.MavenDependency
 import com.grab.grazel.bazel.starlark.BazelDependency.ProjectDependency
+import java.util.TreeSet
+
+private fun MavenDependency.mavenTag(): String = copy(repo = "maven").toString()
 
 fun calculateMavenDependencyTags(
     deps: Iterable<MavenDependency>
 ) = deps.asSequence()
-    .map { it.copy(repo = "maven").toString() }
+    .map { it.mavenTag() }
     .sorted()
     .toList()
 
@@ -33,9 +36,36 @@ fun calculateDirectDependencyTags(
 ) = deps.asSequence().mapNotNull {
     when (it) {
         is ProjectDependency -> "@direct${it}"
-        is MavenDependency -> it.copy(repo = "maven").toString()
+        is MavenDependency -> it.mavenTag()
         else -> null
     }
 }.toMutableList()
     .also { it.add("@self//$self") }
     .sorted()
+
+fun calculateCompileFilterTags(
+    self: String,
+    directDependencies: List<BazelDependency>,
+    transitiveMavenDependencies: Iterable<MavenDependency>
+): List<String> {
+    return TreeSet<String>().apply {
+        directDependencies.mapNotNullTo(this) {
+            when (it) {
+                is ProjectDependency -> "@direct${it}"
+                else -> null
+            }
+        }
+        add("@self//$self")
+        transitiveMavenDependencies.forEach { add(it.mavenTag()) }
+    }.toList()
+}
+
+fun replaceMavenDependencyTags(
+    existingTags: Iterable<String>,
+    mavenDependencies: Iterable<MavenDependency>
+): List<String> {
+    return TreeSet<String>().apply {
+        existingTags.filterNotTo(this) { tag -> tag.startsWith("@maven//:") }
+        mavenDependencies.forEach { add(it.mavenTag()) }
+    }.toList()
+}

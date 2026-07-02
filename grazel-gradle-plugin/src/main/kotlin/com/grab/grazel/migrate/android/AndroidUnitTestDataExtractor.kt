@@ -23,8 +23,6 @@ import com.grab.grazel.gradle.dependencies.DefaultDependencyGraphsService
 import com.grab.grazel.gradle.dependencies.DependenciesDataSource
 import com.grab.grazel.gradle.dependencies.DependencyGraphs
 import com.grab.grazel.gradle.dependencies.GradleDependencyToBazelDependency
-import com.grab.grazel.gradle.dependencies.TargetTagKinds
-import com.grab.grazel.gradle.dependencies.WorkspaceTargetTagPlanService
 import com.grab.grazel.gradle.hasCompose
 import com.grab.grazel.gradle.variant.AndroidVariantDataSource
 import com.grab.grazel.gradle.variant.DefaultVariantCompressionService
@@ -37,7 +35,7 @@ import com.grab.grazel.gradle.variant.resolveSuffix
 import com.grab.grazel.migrate.android.SourceSetType.JAVA_KOTLIN
 import com.grab.grazel.migrate.common.TestSizeCalculator
 import com.grab.grazel.migrate.common.calculateTestAssociates
-import com.grab.grazel.migrate.dependencies.calculateDirectDependencyTags
+import com.grab.grazel.migrate.dependencies.calculateCompileFilterTags
 import com.grab.grazel.migrate.kotlin.kotlinParcelizeDeps
 import com.grab.grazel.util.GradleProvider
 import org.gradle.api.Project
@@ -64,7 +62,6 @@ constructor(
     private val gradleDependencyToBazelDependency: GradleDependencyToBazelDependency,
     private val testSizeCalculator: TestSizeCalculator,
     private val variantCompressionService: GradleProvider<DefaultVariantCompressionService>,
-    private val workspaceTargetTagPlanService: GradleProvider<WorkspaceTargetTagPlanService>
 ) : AndroidUnitTestDataExtractor {
 
     private val projectDependencyGraphs: DependencyGraphs
@@ -123,16 +120,14 @@ constructor(
             )
 
         val tags = if (kotlinExtension.enabledTransitiveReduction) {
-            val localTags = calculateDirectDependencyTags(name, deps)
-            val mavenTags = workspaceTargetTagPlanService
-                .get()
-                .tagsFor(
-                    variantId = variantKey.variantId,
-                    variantType = variantKey.variantType.toString(),
-                    targetKind = TargetTagKinds.ANDROID_UNIT_TEST
+            calculateCompileFilterTags(
+                self = name,
+                directDependencies = deps,
+                transitiveMavenDependencies = dependenciesDataSource.collectTransitiveMavenDeps(
+                    project = project,
+                    variantKey = variantKey
                 )
-                .orEmpty()
-            (localTags + mavenTags).sorted()
+            )
         } else emptyList()
 
         return AndroidUnitTestData(
@@ -140,7 +135,7 @@ constructor(
             srcs = srcs,
             additionalSrcSets = additionalSrcSets,
             deps = deps.sorted(),
-            tags = tags.sorted(),
+            tags = tags,
             customPackage = packageName,
             associates = buildList { associate?.let(::add) },
             resources = resources,
