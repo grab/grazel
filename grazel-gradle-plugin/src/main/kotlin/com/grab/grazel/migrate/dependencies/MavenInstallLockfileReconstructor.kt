@@ -79,15 +79,26 @@ internal class MavenInstallLockfileReconstructor(
         baselineLockfileContents: String? = null,
     ): String {
         val rewrittenLockfile = rewriteUrls(Json.parseToJsonElement(lockfileContents).jsonObject)
-        val lockfile = baselineLockfileContents
-            ?.let { baselineContents ->
+        val baselineLockfile = baselineLockfileContents
+            ?.let(Json::parseToJsonElement)
+            ?.jsonObject
+        val baselineArtifactNames = baselineLockfile
+            ?.getValue("artifacts")
+            ?.jsonObject
+            ?.keys
+            .orEmpty()
+        val lockfile = baselineLockfile
+            ?.let { baseline ->
                 lockfileWithBaselineFacts(
                     currentLockfile = rewrittenLockfile,
-                    baselineLockfile = Json.parseToJsonElement(baselineContents).jsonObject
+                    baselineLockfile = baseline
                 )
             }
             ?: rewrittenLockfile
-        val normalizedLockfile = lockfileWithPomPackagingArtifactsSkipped(lockfile)
+        val normalizedLockfile = lockfileWithPomPackagingArtifactsSkipped(
+            lockfile = lockfile,
+            baselineArtifactNames = baselineArtifactNames
+        )
         val inputHash = normalizedLockfile
             .getValue("__INPUT_ARTIFACTS_HASH")
             .jsonObject
@@ -217,11 +228,15 @@ internal class MavenInstallLockfileReconstructor(
     private fun lockfileRepositoryPrefix(repositoryUrl: String): String =
         repositoryUrl.trimEnd('/') + "/"
 
-    private fun lockfileWithPomPackagingArtifactsSkipped(lockfile: JsonObject): JsonObject {
+    private fun lockfileWithPomPackagingArtifactsSkipped(
+        lockfile: JsonObject,
+        baselineArtifactNames: Set<String>,
+    ): JsonObject {
         val pomPackagingArtifacts = lockfile.getValue("artifacts")
             .jsonObject
             .keys
             .filter(::isPomPackagingRoot)
+            .filterNot { artifact -> artifact in baselineArtifactNames }
         if (pomPackagingArtifacts.isEmpty()) return lockfile
 
         val existingSkipped = lockfile["skipped"]

@@ -19,7 +19,9 @@ package com.grab.grazel.migrate.dependencies
 import com.google.common.truth.Truth.assertThat
 import com.grab.grazel.bazel.rules.repositoryInputSpec
 import com.grab.grazel.util.Json
+import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import org.junit.Test
 import java.io.File
 import kotlin.test.assertFailsWith
@@ -91,6 +93,22 @@ class MavenInstallLockfileReconstructorTest {
         assertThat(reconstructed).contains("""  "skipped": [""")
         assertThat(reconstructed).contains("""    "com.example:already-skipped",""")
         assertThat(reconstructed).contains("""    "com.example:platform:pom"""")
+    }
+
+    @Test
+    fun `reconstruct preserves baseline pom packaging skipped state`() {
+        val reconstructed = reconstructor().reconstruct(
+            lockfileContents = POM_PACKAGING_LOCALHOST_LOCKFILE,
+            canonicalRepositoryInputs = CANONICAL_REPOSITORY_INPUTS,
+            baselineLockfileContents = POM_PACKAGING_CANONICAL_LOCKFILE
+        )
+        val skipped = Json.parseToJsonElement(reconstructed)
+            .jsonObject
+            .getValue("skipped")
+            .jsonArray
+            .map { skipped -> skipped.jsonPrimitive.content }
+
+        assertThat(skipped).containsExactly("com.example:already-skipped")
     }
 
     @Test
@@ -591,3 +609,14 @@ private val POM_PACKAGING_LOCALHOST_LOCKFILE = """
       "version": "3"
     }
 """.trimIndent()
+
+private val POM_PACKAGING_CANONICAL_LOCKFILE = POM_PACKAGING_LOCALHOST_LOCKFILE
+    .replace("http://127.0.0.1:12345/r/0/", "https://repo.example/maven2/")
+    .replace(
+        """
+      "skipped": [
+        "com.example:already-skipped"
+      ],
+""",
+        ""
+    )

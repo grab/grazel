@@ -4005,3 +4005,50 @@ evidence in item-specific logs so context compaction can recover state quickly.
     `//application-initializer:application-initializer-gps-pax-debug-test`
     passed in `17.313s`;
   - PAX `git diff --check` passed and PAX status is clean.
+
+### Item 38 post-final byte-identity correction
+
+- Completion audit found a hard done gap: forced proxy repinning had passed
+  functionally, but the PAX hook validation was not byte-identical because
+  reconstructed lockfiles added baseline-existing POM-packaging artifacts, for
+  example `androidx.compose:compose-bom:pom`, to `skipped`.
+- Root cause: `MavenInstallLockfileReconstructor` synthesized all
+  POM-packaging artifact keys into `skipped`. Vanilla rules_jvm_external did
+  not skip some POM artifacts that were already present in baseline lockfiles,
+  so baseline skip state must be preserved.
+- Fix: parse baseline artifact names once and only synthesize `skipped` entries
+  for newly introduced POM-packaging roots. Baseline-existing POM artifacts keep
+  their original skip state.
+- Regression test added:
+  `reconstruct preserves baseline pom packaging skipped state`.
+- Focused verification:
+  `./gradlew :grazel-gradle-plugin:test --tests
+  "com.grab.grazel.migrate.dependencies.MavenInstallLockfileReconstructorTest"
+  --console=plain --no-daemon` passed in `12s`.
+- Forced sample proxy repin after the fix passed in `40s`; direct generated
+  output checks found no `localhost`/`127.0.0.1` in `WORKSPACE` or
+  `*maven_install.json`, and sample generated files were byte-identical.
+- Forced PAX proxy repin with the customer-side hook
+  `excludeExternalRepositoryVariables("maven", "DAGGER_REPOSITORIES")` passed
+  in `13m13s`:
+  `build/item38-debug/pax-forced-after-baseline-pom-preserve-migrate.log`.
+  Proxy summary: `787` Gradle artifact hits, `788` Gradle POM hits, `0` origin
+  fallbacks, `30` origin failures, `45` lockfile fallbacks, `52`
+  metadata-only artifact fallbacks, `1713` alternate artifact probes, `0`
+  artifact misses, `0` known POM failures, `3716` checksum hits, `849`
+  write-through cache hits, `1921502568` bytes served in `96949ms`.
+- PAX generated diff after forced repin was byte-identical; the only diff was
+  the temporary `build.gradle` hook/experiment toggle. Temporary edits were
+  removed and PAX status is clean.
+- Final lightweight checks after the follow-up diff:
+  - `./gradlew :grazel-gradle-plugin:test --console=plain --no-daemon` passed
+    in `44s`;
+  - `./gradlew migrateToBazel --console=plain --no-daemon` passed in `10s`;
+  - `reports/scripts/verify-default-task-graph.sh` passed;
+  - `reports/scripts/verify-pax-size-guard.sh --mode preserving` passed with
+    unchanged counts `11/11/1945`;
+  - `git diff --check` and `git diff --check master...HEAD` passed;
+  - generated `WORKSPACE` and Maven install JSON files contain no
+    `localhost`/`127.0.0.1`;
+  - `reports/scripts/verify-sample-bucket-labels.sh` still fails with the
+    known pre-existing appcompat/constraintlayout assertion.
