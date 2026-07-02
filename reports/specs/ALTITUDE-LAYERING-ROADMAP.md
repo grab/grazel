@@ -121,6 +121,7 @@ intended output change).
 | **39** | RJE lockfile reconstructor shape & renderer hygiene | proposed | **preserving (empty-diff)** | Refactor `MavenInstallLockfileReconstructor` into named RJE parser/model/rewriter/baseline-merge/POM-skip/hasher/renderer collaborators; keep manual JSON rendering quarantined to the RJE renderer and byte-identity tested | 38 |
 | **40** | Small altitude hygiene: typed facts, KSP roles & service wiring | proposed | **preserving (empty-diff)** | Fix the small branch-new altitude findings while explicitly excluding `Dependencies.kt`: typed test-bucket facts instead of suffix classification, variant-owned KSP root input planning, missing `usesService(...)`, structural merge determinism, and only trivial local re-derivation cleanup | 38 |
 | **41** | Branch-wide code quality hardening | proposed | **preserving (empty-diff)** | Consolidated hard quality gate merging Items 24/27/28: branch-wide Kotlin inventory including tests, no hidden receiver/policy shortcuts, typed seams, helper model placement, comment hygiene, simplify-pass + adversarial review, and PAX baseline stability | run after current code-producing items |
+| **42** | Extractor-owned transitive tags | proposed | **OUTPUT-CHANGING (classified tag shrink)** | Remove the workspace target-tag prepass; root/binary resolution still populates the transitive store, and extractors compute tags from direct Maven deps plus that store. Direct project deps must not donate their Maven closure to the consuming target's tags | 34, current dependency-refactor baseline |
 
 **Completed prerequisite chain:** 23 → 26 → 24 → 27 → 25.
 Item 23 removes the stale target-reference compatibility path first. Item 26 then fixes the
@@ -160,6 +161,13 @@ cutover. It removes the old `BazelTarget` reference collector from production so
 the duplicate `TargetReferenceFacts`/`TargetMavenRepoReferences` model shape. It deliberately does
 not attempt the larger typed-label rewrite needed to eliminate all regex/string-shaped reference
 parsing.
+
+**Post-Item-34 correction:** Item 34 improved the service packaging around the workspace tag plan,
+but its premise that a target-tag prepass is essential is now superseded. Item 42 captures the
+maintainer-aligned first principle: after inverted root/binary resolution, Grazel still has the
+resolved transitive store it needs, so extractors should own tag calculation from direct deps plus
+that store. Do not preserve `CollectWorkspaceTargetTagPlanTask` merely because Item 34 accepted it
+as a cleanup boundary.
 
 **Post-Item-23 source-shape cleanup:** Item 24 is a branch-diff-scoped hygiene pass. Its inventory
 starts from Kotlin files changed by this branch, but justified fan-out edits are allowed for

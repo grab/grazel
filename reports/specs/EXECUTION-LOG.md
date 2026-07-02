@@ -4375,3 +4375,48 @@ evidence in item-specific logs so context compaction can recover state quickly.
 - `reports/scripts/verify-pax-size-guard.sh --mode preserving` passed with
   unchanged counts `bucketCount=11`, `pinfileCount=11`,
   `totalArtifactRoots=1945`.
+
+### Item 42 spec checkpoint - extractor-owned transitive tags
+
+- Maintainer first principle recorded: inverted root/binary dependency
+  resolution still computes the resolved Maven transitive store Grazel needs;
+  extractors should own Maven tag construction from direct deps plus that store,
+  matching the original extractor -> target-builder layering.
+- Added `reports/specs/2026-07-03-item42-extractor-owned-transitive-tags-design.md`.
+  It proposes removing `CollectWorkspaceTargetTagPlanTask`,
+  `WorkspaceTargetTagPlanCollector`, `WorkspaceTargetTagPlanService`, and
+  `target-tag-plan.json` wiring as an output-changing, PAX-gated tag
+  correction.
+- Updated `ALTITUDE-LAYERING-ROADMAP.md` with Item 42 and explicitly marked the
+  older Item 34 premise ("tag plan collector is essential") as superseded by
+  this first-principles correction.
+- Grounding from the 2026-07-03 PAX timing run: the current
+  `collectWorkspaceTargetTagPlan` stage processed `17090` targets in about
+  `17.1s`; Item 42 should record before/after timing but may not use
+  performance gains to justify generated-output drift.
+- Master-behavior audit: `master` selected direct Maven deps through the
+  target's `VariantGraphKey`, but transitive expansion was shortId-only
+  (`getTransitiveDependencies(dep.shortId)`). The Item 42 spec was amended to
+  preserve variant-specific direct dependency selection while keeping transitive
+  expansion shortId-only unless a future output-changing item deliberately
+  introduces variant-aware transitive closure.
+- Maintainer correction for Item 42: a target's Maven compile-filter tags must
+  come only from the target's direct Maven dependencies plus the transitive
+  closure of those direct Maven dependencies. Direct project dependencies must
+  not donate their Maven closure to the consuming target's tags. Therefore Item
+  42 is now classified as output-changing, with accepted diffs limited to
+  removal of project-dependency-originated `@maven//:` tags and PAX build/test
+  gates as the correctness oracle.
+
+### Item 42 execution start
+
+- Grazel start commit: `ebd43d05df25558b9f926f300289ba29e6fd5ea9`.
+- Initial Grazel dirty state: approved Item 42 spec docs only:
+  `reports/specs/2026-07-03-item42-extractor-owned-transitive-tags-design.md`,
+  `reports/specs/ALTITUDE-LAYERING-ROADMAP.md`, and this execution log.
+- PAX regression workspace: `/Users/arun.sampathkumar/work/pax-android`,
+  branch `arun/grazel-refactor`, commit
+  `d4105d1f64bd2f1930e1030e42647a214002c48d`, clean worktree.
+- Active item: Item 42 extractor-owned transitive tags. Expected output change
+  is limited to removing Maven tags donated only by direct project
+  dependencies; all other generated drift is stop-and-investigate.
