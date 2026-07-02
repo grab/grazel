@@ -27,6 +27,7 @@ import com.grab.grazel.gradle.variant.VariantType
 import com.grab.grazel.gradle.variant.VariantType.AndroidTest
 import com.grab.grazel.gradle.variant.VariantType.Test
 import com.grab.grazel.gradle.variant.testSuffix
+import com.grab.grazel.util.merge
 
 internal data class OwnershipPlannerInput(
     val leafClosures: Map<ProjectDependencyBucket, Map<String, ResolvedDependency>>,
@@ -106,7 +107,8 @@ internal class BucketOwnershipPlanner(
             hierarchyBucketClosures = input.hierarchyBucketClosures,
             leafClosures = input.leafClosures
         ).mapValues { (projectPath, plan) ->
-            plan.withDeclaredMainMetadata(
+            withDeclaredMainMetadata(
+                plan = plan,
                 projectPath = projectPath,
                 declaredMainDependenciesByBucket = declaredMainDependenciesByBucket
             )
@@ -213,21 +215,22 @@ internal class BucketOwnershipPlanner(
         )
     }
 
-    private fun DependencyBucketPlacementPlan.withDeclaredMainMetadata(
+    private fun withDeclaredMainMetadata(
+        plan: DependencyBucketPlacementPlan,
         projectPath: String,
         declaredMainDependenciesByBucket: Map<ProjectDependencyBucket, Map<String, ResolvedDependency>>
     ): DependencyBucketPlacementPlan {
-        return copy(
+        return plan.copy(
             defaultBucket = applyDeclaredMetadata(
-                dependencies = defaultBucket,
+                dependencies = plan.defaultBucket,
                 declaredDependencies = declaredOutputMetadata(
                     projectPath = projectPath,
-                    bucketName = baseBucketName,
-                    dependencies = defaultBucket,
+                    bucketName = plan.baseBucketName,
+                    dependencies = plan.defaultBucket,
                     declaredDependenciesByBucket = declaredMainDependenciesByBucket
                 )
             ),
-            hierarchyBuckets = hierarchyBuckets
+            hierarchyBuckets = plan.hierarchyBuckets
                 .mapValues { (bucketName, dependencies) ->
                     applyDeclaredMetadata(
                         dependencies = dependencies,
@@ -240,7 +243,7 @@ internal class BucketOwnershipPlanner(
                     )
                 }
                 .toSortedMap(),
-            leafBuckets = leafBuckets
+            leafBuckets = plan.leafBuckets
                 .mapValues { (bucketName, dependencies) ->
                     applyDeclaredMetadata(
                         dependencies = dependencies,
@@ -523,23 +526,29 @@ internal class BucketOwnershipPlanner(
                 addPlannedBucket(bucketName, dependencies)
             }
             plannedBuckets.forEach { (bucketName, dependencies) ->
-                val outputBucketName = plan.outputBucketNameForTestBucket(bucketName)
-                val testBucketNames = plan.testBucketNamesForTestBucket(
+                val outputBucketName = outputBucketNameForTestBucket(plan, bucketName)
+                val testBucketNames = testBucketNamesForTestBucket(
+                    plan = plan,
                     bucketName = bucketName
                 )
-                val visibleMainBucketNames = plan.visibleMainBucketNamesForTestBucket(
+                val visibleMainBucketNames = visibleMainBucketNamesForTestBucket(
+                    plan = plan,
                     testBucketNames = testBucketNames
                 )
                 val visibleCoveredDepsByShortId = coveredDepsByShortIdFor(
                     visibleMainBucketNames + testBucketNames
                 )
-                val leafCoveredDepsByShortId = plan
-                    .concreteTestLeafNamesFor(bucketName)
+                val leafCoveredDepsByShortId = concreteTestLeafNamesFor(
+                    plan = plan,
+                    bucketName = bucketName
+                )
                     .map { leafName ->
-                        val leafTestBucketNames = plan.testBucketNamesForTestBucket(
+                        val leafTestBucketNames = testBucketNamesForTestBucket(
+                            plan = plan,
                             bucketName = leafName
                         )
-                        val leafVisibleMainBucketNames = plan.visibleMainBucketNamesForTestBucket(
+                        val leafVisibleMainBucketNames = visibleMainBucketNamesForTestBucket(
+                            plan = plan,
                             testBucketNames = leafTestBucketNames
                         )
                         coveredDepsByShortIdFor(
@@ -587,63 +596,70 @@ internal class BucketOwnershipPlanner(
         )
     }
 
-    private fun DependencyBucketPlacementPlan.testBucketNamesForTestBucket(
+    private fun testBucketNamesForTestBucket(
+        plan: DependencyBucketPlacementPlan,
         bucketName: String
-    ): Set<String> = setOf(bucketName) + bucketAncestors[bucketName].orEmpty()
+    ): Set<String> = setOf(bucketName) + plan.bucketAncestors[bucketName].orEmpty()
 
-    private fun DependencyBucketPlacementPlan.visibleMainBucketNamesForTestBucket(
+    private fun visibleMainBucketNamesForTestBucket(
+        plan: DependencyBucketPlacementPlan,
         testBucketNames: Set<String>
     ): Set<String> {
         return buildSet {
             add(DEFAULT_VARIANT)
             testBucketNames.forEach { testBucketName ->
-                if (testBucketName == baseBucketName) return@forEach
+                if (testBucketName == plan.baseBucketName) return@forEach
                 add(testBucketName)
             }
         }
     }
 
-    private fun DependencyBucketPlacementPlan.concreteTestLeafNamesFor(
+    private fun concreteTestLeafNamesFor(
+        plan: DependencyBucketPlacementPlan,
         bucketName: String
     ): Set<String> {
-        return bucketDescendantLeaves[bucketName]
+        return plan.bucketDescendantLeaves[bucketName]
             .orEmpty()
             .ifEmpty {
-                if (bucketName in leafAncestors) setOf(bucketName) else emptySet()
+                if (bucketName in plan.leafAncestors) setOf(bucketName) else emptySet()
             }
     }
 
-    private fun DependencyBucketPlacementPlan.outputBucketNameForTestBucket(
+    private fun outputBucketNameForTestBucket(
+        plan: DependencyBucketPlacementPlan,
         bucketName: String
     ): String {
-        if (bucketName == baseBucketName || isTypedTestBucket(bucketName)) {
+        if (bucketName == plan.baseBucketName || isTypedTestBucket(plan, bucketName)) {
             return bucketName
         }
-        val scopedBucketName = bucketName + testSuffixForBaseBucket()
-        return if (isTypedTestBucket(scopedBucketName)) {
+        val scopedBucketName = bucketName + testSuffixForBaseBucket(plan)
+        return if (isTypedTestBucket(plan, scopedBucketName)) {
             scopedBucketName
         } else {
-            baseBucketName
+            plan.baseBucketName
         }
     }
 
-    private fun DependencyBucketPlacementPlan.isTypedTestBucket(bucketName: String): Boolean {
-        return variantTypesByBucketName[bucketName] == testVariantTypeForBaseBucket()
+    private fun isTypedTestBucket(
+        plan: DependencyBucketPlacementPlan,
+        bucketName: String
+    ): Boolean {
+        return plan.variantTypesByBucketName[bucketName] == testVariantTypeForBaseBucket(plan)
     }
 
-    private fun DependencyBucketPlacementPlan.testSuffixForBaseBucket(): String {
-        return when (baseBucketName) {
+    private fun testSuffixForBaseBucket(plan: DependencyBucketPlacementPlan): String {
+        return when (plan.baseBucketName) {
             TEST_VARIANT -> Test.testSuffix
             ANDROID_TEST_VARIANT -> AndroidTest.testSuffix
-            else -> error("Unsupported test base bucket $baseBucketName")
+            else -> error("Unsupported test base bucket ${plan.baseBucketName}")
         }
     }
 
-    private fun DependencyBucketPlacementPlan.testVariantTypeForBaseBucket(): VariantType {
-        return when (baseBucketName) {
+    private fun testVariantTypeForBaseBucket(plan: DependencyBucketPlacementPlan): VariantType {
+        return when (plan.baseBucketName) {
             TEST_VARIANT -> Test
             ANDROID_TEST_VARIANT -> AndroidTest
-            else -> error("Unsupported test base bucket $baseBucketName")
+            else -> error("Unsupported test base bucket ${plan.baseBucketName}")
         }
     }
 
@@ -689,16 +705,7 @@ internal fun unionDependencyMaps(
 ): Map<String, ResolvedDependency> {
     if (compile.isEmpty()) return runtime
     if (runtime.isEmpty()) return compile
-    val merged = runtime.toMutableMap()
-    for ((shortId, compileDep) in compile) {
-        val existing = merged[shortId]
-        if (existing == null) {
-            merged[shortId] = compileDep
-        } else {
-            merged[shortId] = mergeDependencyMetadataByMaxVersion(existing, compileDep)
-        }
-    }
-    return merged
+    return listOf(runtime, compile).merge(::mergeDependencyMetadataByMaxVersion)
 }
 
 private fun withoutTestDependenciesCoveredBy(

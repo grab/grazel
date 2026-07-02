@@ -32,7 +32,7 @@ Two channels, kept strictly separate:
 - **Progress** — Gradle `ProgressLogger`, transient single status line. THE user-facing live
   channel. Threaded into pure-JVM code via a lambda, never the Gradle type.
 - **Permanent summary** — `logger.quiet(...)` (this codebase's established user-facing log level,
-  e.g. `GenerateRootBazelScriptsTask`, `ArtificatPinner`, `Bazel.kt`). Persists in the build log.
+  e.g. `GenerateRootBazelScriptsTask`, `ArtifactPinner`, `Bazel.kt`). Persists in the build log.
   **Never** `logger.lifecycle`/`info`/`warn` — those stay reserved for diagnostics, untouched.
 
 ## Grounded current state (verified by Opus exploration; Codex: re-confirm line refs)

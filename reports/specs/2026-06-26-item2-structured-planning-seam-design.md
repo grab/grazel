@@ -36,7 +36,7 @@ Today three "decisions" are made at the wrong altitude / by scraping rendered ou
 1. WORKSPACE materialized-repo set is derived from generated BUILD-file tag manifests via
    regex (`GeneratedBuildMavenRepos.kt:26`, `fromTargets`/`fromFiles`).
 2. Artifact pinning regex-parses the generated WORKSPACE to find active repos
-   (`ArtificatPinner.kt:316-320`).
+   (`ArtifactPinner.kt:316-320`).
 3. Tag-producing extractors compute compile-filter tags locally. The most problematic path
    is `AndroidExtractor`, which walks direct project dependencies and re-selects *their*
    variants to pad `@maven` tags (`AndroidExtractor.kt:146-162`, `186-221`).
@@ -170,7 +170,7 @@ Item 3 cutover:
   Android library, Android unit test, Android instrumentation binary, Kotlin library, and
   Kotlin unit test.
 - `plan.repoPlan[repo]` derived-collapse view == today's `pinnableMavenInstallRepos` /
-  `mavenInstallRootArtifactsByVariant` output (`ArtificatPinner.kt:322-345`,
+  `mavenInstallRootArtifactsByVariant` output (`ArtifactPinner.kt:322-345`,
   `MavenInstallRootArtifacts.kt`).
 - Pure unit tests on `WorkspacePlanBuilder` over fixtures.
 - The Item 1 golden guardrail must still produce an **empty `git diff`** (no consumer

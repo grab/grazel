@@ -92,7 +92,7 @@ constructor(
                     project,
                     variantKey,
                     preferredVariantNames = listOf(matchedVariant.variantName)
-                ) + project.kotlinParcelizeDeps()
+                ) + kotlinParcelizeDeps(project)
                 return extractAndroidLibraryData(
                     project = project,
                     matchedVariant = matchedVariant,

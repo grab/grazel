@@ -86,7 +86,6 @@ internal class ResolvedComponentsVisitor {
         ) = component.toString().compareTo(other.component.toString())
     }
 
-    /** Holder to collect dependency information for a [ResolvedComponentNode] */
     data class DependencyResult(
         val dependency: ResolvedComponentNode,
         val requiresJetifier: Boolean,

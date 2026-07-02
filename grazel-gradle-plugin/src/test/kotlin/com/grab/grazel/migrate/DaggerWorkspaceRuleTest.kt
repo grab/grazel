@@ -115,28 +115,32 @@ class DaggerWorkspaceRuleTest {
         ).build().asString()
 
         // Then
-        workspaceStatements.removeSpaces().truth {
+        normalizeStarlarkForAssertion(workspaceStatements).truth {
             contains(
-                """load("@dagger//:workspace_defs.bzl", "DAGGER_ARTIFACTS", "DAGGER_REPOSITORIES")""".removeSpaces()
+                normalizeStarlarkForAssertion(
+                    """load("@dagger//:workspace_defs.bzl", "DAGGER_ARTIFACTS", "DAGGER_REPOSITORIES")"""
+                )
             )
             contains(
-                """DAGGER_TAG = "$daggerTag"""".removeSpaces()
+                normalizeStarlarkForAssertion("""DAGGER_TAG = "$daggerTag"""")
             )
             contains(
-                """DAGGER_SHA = "$daggerSha"""".removeSpaces()
+                normalizeStarlarkForAssertion("""DAGGER_SHA = "$daggerSha"""")
             )
             contains(
-                """http_archive(
+                normalizeStarlarkForAssertion(
+                    """http_archive(
                         name = "dagger",
                         strip_prefix = "dagger-dagger-%s" % DAGGER_TAG,
                         sha256 = DAGGER_SHA,
                         url = "https://github.com/google/dagger/archive/dagger-%s.zip" % DAGGER_TAG
-                    )""".trimIndent().removeSpaces()
+                    )""".trimIndent()
+                )
             )
         }
     }
 
-    private fun String.removeSpaces(): String {
-        return replace(" ", "")
+    private fun normalizeStarlarkForAssertion(starlark: String): String {
+        return starlark.replace(" ", "")
     }
 }

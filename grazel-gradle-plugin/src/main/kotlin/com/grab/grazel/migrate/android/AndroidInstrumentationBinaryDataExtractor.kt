@@ -134,7 +134,10 @@ internal class DefaultAndroidInstrumentationBinaryDataExtractor
         )
 
         val resources = unitTestResources(project, migratableSourceSets.asSequence()).toList()
-        val resourceStripPrefix = project.resourceStripPrefix(migratableSourceSets.asSequence())
+        val resourceStripPrefix = resourceStripPrefix(
+            project = project,
+            sourceSets = migratableSourceSets.asSequence()
+        )
         val resourceFiles = project.androidSources(migratableSourceSets, SourceSetType.RESOURCES).toList()
 
         val srcs = project.androidSources(migratableSourceSets, sourceSetType).toList()
@@ -185,16 +188,17 @@ internal class DefaultAndroidInstrumentationBinaryDataExtractor
 internal fun BaseExtension.extractTestInstrumentationRunner(): String? =
     defaultConfig.testInstrumentationRunner
 
-internal fun Project.resourceStripPrefix(
+internal fun resourceStripPrefix(
+    project: Project,
     sourceSets: Sequence<AndroidSourceSet>,
 ): String? = sourceSets
     .flatMap { sourceSet ->
         sourceSet.resources.srcDirs.asSequence()
     }
     .filter(File::exists)
-    .map(::relativePath)
+    .map(project::relativePath)
     .map { dir ->
-        "$name/$dir"
+        "${project.name}/$dir"
     }
     .distinct()
     .firstOrNull()

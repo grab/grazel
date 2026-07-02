@@ -32,11 +32,14 @@ class FakeWorkerExecutor : WorkerExecutor {
 class FakeWorkQueue : WorkQueue {
     var awaitCount = 0
         private set
+    var submitCount = 0
+        private set
 
     override fun <T : WorkParameters?> submit(
         workActionClass: Class<out WorkAction<T>>?,
         parameterAction: Action<in T>?
     ) {
+        submitCount++
     }
 
     override fun await() {

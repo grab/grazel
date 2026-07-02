@@ -33,7 +33,6 @@ import org.gradle.kotlin.dsl.configure
 import org.gradle.kotlin.dsl.dependencies
 import org.junit.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertTrue
 
 internal class DefaultVariantMatcherTest {
     private lateinit var rootProject: Project
@@ -89,13 +88,7 @@ internal class DefaultVariantMatcherTest {
     }
 
     private fun assertVariantNames(variants: Set<MatchedVariant>, vararg variantNames: String) {
-        assertEquals(variantNames.size, variants.size)
-        val matchedVariantName = variants.map { it.variantName }
-        variantNames.forEach { expect ->
-            assertTrue("$expect contains in matched variants") {
-                expect in matchedVariantName
-            }
-        }
+        assertEquals(variantNames.toSet(), variants.mapTo(sortedSetOf()) { variant -> variant.variantName })
     }
 
     @Test
@@ -451,14 +444,14 @@ internal class DefaultVariantMatcherTest {
             "paidMinSdk23Debug",
             "paidMinSdk21Release",
             "paidMinSdk23Release",
-            "paidMinSdk21Debug",
-            "paidMinSdk23Release",
+            "paidMinSdk21Staging",
+            "paidMinSdk23Staging",
             "freeMinSdk21Debug",
             "freeMinSdk23Debug",
             "freeMinSdk21Release",
             "freeMinSdk23Release",
-            "freeMinSdk21Debug",
-            "freeMinSdk23Release",
+            "freeMinSdk21Staging",
+            "freeMinSdk23Staging",
         )
     }
 }

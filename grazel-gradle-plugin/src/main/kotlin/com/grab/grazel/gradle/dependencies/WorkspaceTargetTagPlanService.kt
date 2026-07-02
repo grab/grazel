@@ -32,7 +32,7 @@ internal abstract class WorkspaceTargetTagPlanService : BuildService<BuildServic
     fun initTagPlan(targetTagPlanJson: File) {
         synchronized(lock) {
             if (targetTagsByKey == null) {
-                targetTagsByKey = fromJson<List<TargetTagPlan>>(targetTagPlanJson).indexByKey()
+                targetTagsByKey = indexTargetTagsByKey(fromJson(targetTagPlanJson))
             }
         }
     }
@@ -67,5 +67,8 @@ internal abstract class WorkspaceTargetTagPlanService : BuildService<BuildServic
     }
 }
 
-private fun List<TargetTagPlan>.indexByKey(): Map<TargetTagKey, List<String>> =
-    associate { tagPlan -> tagPlan.key to tagPlan.tags }
+private fun indexTargetTagsByKey(
+    targetTagPlans: List<TargetTagPlan>
+): Map<TargetTagKey, List<String>> {
+    return targetTagPlans.associate { tagPlan -> tagPlan.key to tagPlan.tags }
+}

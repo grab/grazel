@@ -96,7 +96,7 @@ constructor(
             }.toMap()
 
         // Collect manifest values from current binary target
-        val defautConfigPlaceHolders: Map<String, String?> = defaultConfig
+        val defaultConfigPlaceholders: Map<String, String?> = defaultConfig
             .manifestPlaceholders
             .mapValues { it.value.toString() }
 
@@ -113,6 +113,6 @@ constructor(
             "targetSdkVersion" to defaultConfig.targetSdkVersion?.apiLevel?.toString(),
             "applicationId" to matchedVariant.variant.applicationId
         )
-        return (androidManifestValues + defautConfigPlaceHolders + variantPlaceholders + libraryFlavorManifestPlaceHolders).toSortedMap()
+        return (androidManifestValues + defaultConfigPlaceholders + variantPlaceholders + libraryFlavorManifestPlaceHolders).toSortedMap()
     }
 }

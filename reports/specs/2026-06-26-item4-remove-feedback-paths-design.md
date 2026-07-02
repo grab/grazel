@@ -35,7 +35,7 @@ Each deletion is golden-checked (empty `git diff` on committed sample outputs).
   depends on project gen.
 
 ### 2. Pinner WORKSPACE-regex discovery
-- Delete `ArtificatPinner.materializedMavenInstallRepos()` (`ArtificatPinner.kt:316-320`)
+- Delete `ArtifactPinner.materializedMavenInstallRepos()` (`ArtifactPinner.kt:316-320`)
   and its call sites; repo discovery now comes from the plan (Item 3).
 - **Keep** the `maven_install_json` pin/unpin toggle (`:83-99`) and the `shouldRunPinning`
   `#maven_install_json` scan (`:136-139`) — legitimate Bazel pin mechanics, not feedback.

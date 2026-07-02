@@ -228,7 +228,10 @@ constructor(
 
         val resources = unitTestResources(testProject, migratableSourceSets.asSequence()).toList()
         val resourceFiles = testProject.androidSources(migratableSourceSets, SourceSetType.RESOURCES).toList()
-        val resourceStripPrefix = testProject.resourceStripPrefix(migratableSourceSets.asSequence())
+        val resourceStripPrefix = resourceStripPrefix(
+            project = testProject,
+            sourceSets = migratableSourceSets.asSequence()
+        )
         val assets = testProject.androidSources(migratableSourceSets, SourceSetType.ASSETS).toList()
 
         val targetPackage = targetResolution.targetVariant.variant.applicationId

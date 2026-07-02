@@ -74,15 +74,19 @@ constructor(
     private val rootProject get() = project.rootProject
 
     @get:InputFile
+    @get:PathSensitive(PathSensitivity.RELATIVE)
     val workspaceDependencies: RegularFileProperty = project.objects.fileProperty()
 
     @get:InputFile
+    @get:PathSensitive(PathSensitivity.RELATIVE)
     val workspacePlan: RegularFileProperty = project.objects.fileProperty()
 
     @get:InputFile
+    @get:PathSensitive(PathSensitivity.RELATIVE)
     val workspaceRenderPlan: RegularFileProperty = project.objects.fileProperty()
 
     @get:InputFile
+    @get:PathSensitive(PathSensitivity.RELATIVE)
     val targetTagPlan: RegularFileProperty = project.objects.fileProperty()
 
     @get:InputFile

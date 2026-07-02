@@ -22,7 +22,7 @@ import kotlin.test.assertTrue
 private data class VariantKey(
     val name: String,
     val variantType: VariantType,
-    val variantClass: String
+    val variantClass: Class<out Variant<*>>
 )
 
 class DefaultVariantBuilderTest {
@@ -274,7 +274,7 @@ class DefaultVariantBuilderTest {
         return VariantKey(
             name = variant.name,
             variantType = variant.variantType,
-            variantClass = variant.javaClass.name
+            variantClass = variant.javaClass
         )
     }
 }

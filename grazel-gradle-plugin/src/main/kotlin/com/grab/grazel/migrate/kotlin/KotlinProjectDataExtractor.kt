@@ -85,7 +85,7 @@ internal class DefaultKotlinProjectDataExtractor
         } + dependenciesDataSource.collectMavenDeps(
             project = project,
             variantKey = variantKey
-        ) + project.androidJarDeps() + project.kotlinParcelizeDeps()
+        ) + androidJarDeps(project) + kotlinParcelizeDeps(project)
 
         val tags = if (kotlinExtension.enabledTransitiveReduction) {
             val localTags = calculateDirectDependencyTags(self = name, deps = deps)
@@ -138,14 +138,14 @@ internal class DefaultKotlinProjectDataExtractor
     }
 }
 
-internal fun Project.kotlinParcelizeDeps(): List<BazelDependency.StringDependency> {
+internal fun kotlinParcelizeDeps(project: Project): List<BazelDependency.StringDependency> {
     return when {
-        hasKotlinAndroidExtensions -> listOf(KOTLIN_PARCELIZE_TARGET)
+        project.hasKotlinAndroidExtensions -> listOf(KOTLIN_PARCELIZE_TARGET)
         else -> emptyList()
     }
 }
 
-internal fun Project.androidJarDeps(): List<BazelDependency> = if (this.hasAndroidJarDep()) {
+internal fun androidJarDeps(project: Project): List<BazelDependency> = if (hasAndroidJarDep(project)) {
     listOf(BazelDependency.StringDependency("//shared_versions:android_sdk"))
 } else {
     emptyList()

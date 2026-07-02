@@ -139,7 +139,7 @@ internal interface GrazelModule {
     companion object {
         @Singleton
         @Provides
-        fun @receiver:RootProject Project.provideGrazelExtension(): GrazelExtension = the()
+        fun provideGrazelExtension(@RootProject rootProject: Project): GrazelExtension = rootProject.the()
 
         @Provides
         @Singleton
@@ -149,8 +149,7 @@ internal interface GrazelModule {
         @Singleton
         fun GrazelExtension.provideMavenInstallExtension() = rules.mavenInstall
 
-        // Dagger binding for GradleServices; runtime Gradle APIs remain the source of instances.
         @Provides
-        fun @receiver:RootProject Project.gradleServices() = GradleServices.from(this)
+        fun gradleServices(@RootProject rootProject: Project) = GradleServices.from(rootProject)
     }
 }

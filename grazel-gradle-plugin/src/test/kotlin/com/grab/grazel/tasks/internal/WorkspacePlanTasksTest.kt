@@ -178,20 +178,16 @@ class WorkspacePlanTasksTest {
             ),
             workspacePlanFile
         )
-        targetMavenRepoReferencesFile.asFile.apply {
-            parentFile.mkdirs()
-            writeText(
-                """
-                {
-                  "repoNames":["debug_maven"],
-                  "projectTargets":{
-                    ":lint:custom-lint-rules":["custom-lint-rules"],
-                    ":ui-tests":["ui-tests-gps-pax-debug_lib"]
-                  }
-                }
-                """.trimIndent()
-            )
-        }
+        writeJson(
+            TargetReferenceFacts(
+                repoNames = setOf("debug_maven"),
+                projectTargets = mapOf(
+                    ":lint:custom-lint-rules" to setOf("custom-lint-rules"),
+                    ":ui-tests" to setOf("ui-tests-gps-pax-debug_lib")
+                )
+            ),
+            targetMavenRepoReferencesFile
+        )
 
         val workspacePlanService = WorkspacePlanService.register(rootProject)
         val workspaceRenderPlanService = WorkspaceRenderPlanService.register(rootProject)

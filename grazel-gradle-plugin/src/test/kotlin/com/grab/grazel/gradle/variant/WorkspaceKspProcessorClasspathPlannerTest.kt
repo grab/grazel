@@ -113,6 +113,26 @@ class WorkspaceKspProcessorClasspathPlannerTest {
         )
     }
 
+    @Test
+    fun `skips variants whose KSP configuration cannot be read`() {
+        val project = ProjectBuilder.builder().withName("library").build()
+
+        val inputs = WorkspaceKspProcessorClasspathPlanner.plan(
+            migratableProjects = listOf(project),
+            variantsByProject = mapOf(
+                project to listOf(
+                    variantWithUnavailableKspConfiguration(
+                        project = project,
+                        name = DEFAULT_VARIANT,
+                        variantType = VariantType.AndroidBuild
+                    )
+                )
+            )
+        )
+
+        assertEquals(emptyList<WorkspaceKspProcessorClasspathInput>(), inputs)
+    }
+
     private fun Project.declarationConfiguration(
         name: String,
         dependencyNotation: String
@@ -150,6 +170,27 @@ class WorkspaceKspProcessorClasspathPlannerTest {
             override val runtimeConfiguration: Set<Configuration> = emptySet()
             override val annotationProcessorConfiguration: Set<Configuration> = emptySet()
             override val kspConfiguration: Set<Configuration> = kspConfigurations
+            override val kotlinCompilerPluginConfiguration: Set<Configuration> = emptySet()
+        }
+    }
+
+    private fun variantWithUnavailableKspConfiguration(
+        project: Project,
+        name: String,
+        variantType: VariantType
+    ): Variant<Any> {
+        return object : Variant<Any> {
+            override val name: String = name
+            override val backingVariant: Any = Any()
+            override val project: Project = project
+            override val variantType: VariantType = variantType
+            override val extendsFrom: Set<String> = emptySet()
+            override val variantConfigurations: Set<Configuration> = emptySet()
+            override val compileConfiguration: Set<Configuration> = emptySet()
+            override val runtimeConfiguration: Set<Configuration> = emptySet()
+            override val annotationProcessorConfiguration: Set<Configuration> = emptySet()
+            override val kspConfiguration: Set<Configuration>
+                get() = error("KSP configuration is unavailable")
             override val kotlinCompilerPluginConfiguration: Set<Configuration> = emptySet()
         }
     }

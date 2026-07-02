@@ -40,7 +40,7 @@
                           │                               │
                           ▼                               ▼
    WorkspaceBuilder renders maven_install(...)      ArtifactPinner.pinArtifacts(...)
-   + maven_install_json="//:<repo>_install.json"    [ArtificatPinner.kt]
+   + maven_install_json="//:<repo>_install.json"    [ArtifactPinner.kt]
    (commented out until first pin)                       │
    [WorkspaceBuilder.kt → MavenRules.kt] ──► WORKSPACE    │ bazel run @<repo>//:pin --script_path=…
                                                           │ then run the script (Worker API)
@@ -97,7 +97,7 @@ build with `maven_install.json contains an invalid input signature and must be r
 string Grazel watches for (`BazelLogParsingOutputStream.kt:65,67`).
 
 Stale lockfiles for removed repos are deleted by `cleanupStaleMavenInstallJsons`
-(`ArtificatPinner.kt:206-216`), keyed off the same `_maven_install.json` naming.
+(`ArtifactPinner.kt:206-216`), keyed off the same `_maven_install.json` naming.
 
 ---
 
@@ -127,7 +127,7 @@ Stale lockfiles for removed repos are deleted by `cleanupStaleMavenInstallJsons`
 - `action()` (`:62-71`) deserializes the two plans (`fromJson`) and calls
   `artifactPinner.pinArtifacts(workspaceFile, workspacePlan, workspaceRenderPlan, gradleServices, logger)`.
 
-### ArtifactPinner internals (`ArtificatPinner.kt`)
+### ArtifactPinner internals (`ArtifactPinner.kt`)
 Interface `:46-73`; impl `DefaultArtifactPinner` (`@Singleton`, `:87-92`). `pinArtifacts(...)`
 (`:218-294`):
 1. Start "Pin maven artifacts" `ProgressLogger` (`:227`).
@@ -160,11 +160,11 @@ Interface `:46-73`; impl `DefaultArtifactPinner` (`@Singleton`, `:87-92`). `pinA
   - probe: `bazelisk build @<repo>//:<group>:<name> --nobuild …`
   - emit script: `bazelisk run @[unpinned_]<repo>//:pin --script_path=…<repo>_pin.sh …`
   - **write the JSON:** the generated `<repo>_pin.sh` is executed directly inside
-    `PinningWorkAction.execute()` (`ArtificatPinner.kt:362-375`) — *this* is what writes the
+    `PinningWorkAction.execute()` (`ArtifactPinner.kt:362-375`) — *this* is what writes the
     `<repo>_install.json`, not the `bazel run` step.
 
 ### Concurrency (Worker API)
-- Pin scripts run via `WorkerExecutor.noIsolation()` (`ArtificatPinner.kt:280-282`).
+- Pin scripts run via `WorkerExecutor.noIsolation()` (`ArtifactPinner.kt:280-282`).
 - `PinningWorkAction : WorkAction<Parameters>` (`:345-376`), injected `ExecOperations`,
   `Parameters.pinScript: RegularFileProperty`. Runs in the daemon process (shared working dir);
   Gradle joins the worker queue at task end.
@@ -234,7 +234,7 @@ The same `pinInputs` model feeds two consumers differently:
   the pinner resolves *against*.
 - **Pin path** — `PinMavenArtifactsTask` does **not** read `MavenInstallData`; it deserializes the
   `WorkspacePlan`/`WorkspaceRenderPlan` JSON and reads `CandidateMavenRepo.pinInputs` directly for
-  *which repos to pin* + *probe artifact* (`ArtificatPinner.kt:328-343`).
+  *which repos to pin* + *probe artifact* (`ArtifactPinner.kt:328-343`).
 
 ### Core data classes
 - **`ResolvedDependency`** (`model/ResolveDependenciesResult.kt:43-108`) — atomic resolved artifact:
@@ -313,7 +313,8 @@ the plan JSON; the plan JSON carries only pin orchestration metadata + probe inp
 
 ## 5. Notable findings / gotchas
 
-- **`ArtificatPinner.kt` filename is misspelled** ("Artificat") — the class is `ArtifactPinner`.
+- **`ArtifactPinner.kt` filename was corrected** from its old misspelled
+  form; the class remains `ArtifactPinner`.
 - **Grazel triggers pinning; it does not author the JSON.** rules_jvm_external writes the lockfile by
   running the generated `<repo>_pin.sh`; `bazel run …:pin` only *emits* that script (`--script_path`).
 - **`ClasspathReduction.kt` is misnamed** for the pinning topic — it holds `calculateMavenDependencyTags`
@@ -368,7 +369,7 @@ against remote repositories.
 
 **Execution / orchestration**
 - `tasks/internal/PinMavenArtifactsTask.kt`
-- `migrate/dependencies/ArtificatPinner.kt` *(misspelled filename)*
+- `migrate/dependencies/ArtifactPinner.kt`
 - `migrate/dependencies/BazelLogParsingOutputStream.kt`
 - `bazel/exec/Bazel.kt`
 - `tasks/internal/TasksManager.kt`

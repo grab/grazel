@@ -100,7 +100,7 @@ constructor(
                     variantKey
                 )
             )
-            addAll(project.kotlinParcelizeDeps())
+            addAll(kotlinParcelizeDeps(project))
             if (projectDependency.toString() != associate.toString()) {
                 add(projectDependency)
             }
@@ -125,7 +125,7 @@ constructor(
             additionalSrcSets = additionalSrcSets,
             deps = deps.sorted(),
             associates = buildList { associate?.let(::add) },
-            hasAndroidJarDep = project.hasAndroidJarDep(),
+            hasAndroidJarDep = hasAndroidJarDep(project),
             testSize = testSize,
             tags = tags.sorted()
         )
@@ -139,8 +139,8 @@ constructor(
         .flatMap { it.kotlin.srcDirs.asSequence() }
 }
 
-internal fun Project.hasAndroidJarDep(): Boolean {
-    return configurations.findByName("compileOnly")
+internal fun hasAndroidJarDep(project: Project): Boolean {
+    return project.configurations.findByName("compileOnly")
         ?.dependencies
         ?.filterIsInstance<DefaultFileCollectionDependency>()
         ?.any { dep -> dep.files.any { it.name.contains("android.jar") } } == true

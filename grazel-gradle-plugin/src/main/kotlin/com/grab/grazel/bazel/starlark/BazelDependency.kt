@@ -20,7 +20,6 @@ import kotlinx.serialization.Serializable
 import org.gradle.api.Project
 import java.io.File
 
-// TODO(arun) Rename this to BazelLabel
 sealed class BazelDependency : Comparable<BazelDependency> {
 
     override fun compareTo(other: BazelDependency) = toString().compareTo(other.toString())

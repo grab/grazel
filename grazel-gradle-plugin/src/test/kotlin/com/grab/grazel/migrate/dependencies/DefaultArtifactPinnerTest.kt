@@ -128,7 +128,7 @@ class DefaultArtifactPinnerTest {
     }
 
     @Test
-    fun `assert maven install json generation is successful`() {
+    fun `pinning activates workspace and submits one worker action`() {
         val workspace = rootProject.file(WORKSPACE).apply {
             writeText(
                 WORKSPACE_TEMPLATE.format(
@@ -165,24 +165,27 @@ class DefaultArtifactPinnerTest {
         assertTrue("pinned macro call is activated") {
             "maven_pinned_maven_install()" in activatedWorkspace
         }
+        assertEquals(1, workerExecutor.workQueue.submitCount)
         assertEquals(1, workerExecutor.workQueue.awaitCount)
     }
 
     @Test
     fun `assert pinning target is chosen based on maven install json availability`() {
-        assertTrue("") {
+        assertEquals(
+            "@unpinned_maven//:pin",
             artifactPinner.determinePinningTarget(
                 rootProject.layout,
                 "maven"
-            ) == "@unpinned_maven//:pin"
-        }
+            )
+        )
         rootProject.file("maven_install.json").delete()
-        assertTrue("") {
+        assertEquals(
+            "@maven//:pin",
             artifactPinner.determinePinningTarget(
                 rootProject.layout,
                 "maven"
-            ) == "@maven//:pin"
-        }
+            )
+        )
     }
 
     @Test

@@ -34,6 +34,8 @@ import com.grab.grazel.gradle.variant.VariantType.AndroidBuild
 import com.grab.grazel.gradle.variant.VariantType.JvmBuild
 import com.grab.grazel.gradle.variant.VariantType.Test as TestVariantType
 import com.grab.grazel.util.ProgressReporter
+import com.nhaarman.mockito_kotlin.mock
+import com.nhaarman.mockito_kotlin.whenever
 import org.gradle.api.artifacts.ExternalModuleDependency
 import org.gradle.api.artifacts.result.ResolvedComponentResult
 import org.gradle.testfixtures.ProjectBuilder
@@ -41,7 +43,6 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import java.lang.reflect.Proxy
 
 class AggregatedDependencyResolverTest {
 
@@ -191,14 +192,14 @@ class AggregatedDependencyResolverTest {
                                 name = DEFAULT_VARIANT,
                                 variantType = AndroidBuild,
                                 leaf = false,
-                                declaredProjectDependencies = setOf("implementation->:lib::[]")
+                                declaredProjectDependencies = setOf(declaredProjectDependency(targetProjectPath = ":lib"))
                             ),
                             declaredVariant(
                                 name = "debug",
                                 variantType = AndroidBuild,
                                 leaf = true,
                                 buildType = "debug",
-                                declaredProjectDependencies = setOf("implementation->:lib::[]")
+                                declaredProjectDependencies = setOf(declaredProjectDependency(targetProjectPath = ":lib"))
                             )
                         )
                     ),
@@ -279,14 +280,14 @@ class AggregatedDependencyResolverTest {
                                 name = DEFAULT_VARIANT,
                                 variantType = AndroidBuild,
                                 leaf = false,
-                                declaredProjectDependencies = setOf("implementation->:lib::[]")
+                                declaredProjectDependencies = setOf(declaredProjectDependency(targetProjectPath = ":lib"))
                             ),
                             declaredVariant(
                                 name = "debug",
                                 variantType = AndroidBuild,
                                 leaf = true,
                                 buildType = "debug",
-                                declaredProjectDependencies = setOf("implementation->:lib::[]")
+                                declaredProjectDependencies = setOf(declaredProjectDependency(targetProjectPath = ":lib"))
                             )
                         )
                     ),
@@ -2616,7 +2617,7 @@ class AggregatedDependencyResolverTest {
                                 name = DEFAULT_VARIANT,
                                 variantType = AndroidBuild,
                                 leaf = false,
-                                declaredProjectDependencies = setOf("implementation->:lib::[]")
+                                declaredProjectDependencies = setOf(declaredProjectDependency(targetProjectPath = ":lib"))
                             )
                         )
                     ),
@@ -2685,7 +2686,7 @@ class AggregatedDependencyResolverTest {
                                 leaf = true,
                                 buildType = "debug",
                                 productFlavors = listOf("flavor2"),
-                                declaredProjectDependencies = setOf("implementation->:lib::[]"),
+                                declaredProjectDependencies = setOf(declaredProjectDependency(targetProjectPath = ":lib")),
                                 extendsFrom = setOf(DEFAULT_VARIANT, "debug", "flavor2")
                             )
                         )
@@ -2798,7 +2799,10 @@ class AggregatedDependencyResolverTest {
                                 variantType = AndroidBuild,
                                 leaf = false,
                                 declaredProjectDependencies = setOf(
-                                    "implementation->:lib::[com.example:blocked]"
+                                    declaredProjectDependency(
+                                        targetProjectPath = ":lib",
+                                        excludedShortIds = setOf("com.example:blocked")
+                                    )
                                 )
                             )
                         )
@@ -2870,7 +2874,10 @@ class AggregatedDependencyResolverTest {
                                 variantType = AndroidBuild,
                                 leaf = false,
                                 declaredProjectDependencies = setOf(
-                                    "implementation->:lib::[com.example:blocked]"
+                                    declaredProjectDependency(
+                                        targetProjectPath = ":lib",
+                                        excludedShortIds = setOf("com.example:blocked")
+                                    )
                                 )
                             )
                         )
@@ -2882,7 +2889,7 @@ class AggregatedDependencyResolverTest {
                                 name = DEFAULT_VARIANT,
                                 variantType = AndroidBuild,
                                 leaf = false,
-                                declaredProjectDependencies = setOf("implementation->:lib::[]")
+                                declaredProjectDependencies = setOf(declaredProjectDependency(targetProjectPath = ":lib"))
                             )
                         )
                     ),
@@ -2956,14 +2963,18 @@ class AggregatedDependencyResolverTest {
                                 name = DEFAULT_VARIANT,
                                 variantType = AndroidBuild,
                                 leaf = false,
-                                declaredProjectDependencies = setOf("implementation->:lib::[]")
+                                declaredProjectDependencies = setOf(declaredProjectDependency(targetProjectPath = ":lib"))
                             ),
                             declaredVariant(
                                 name = "debug",
                                 variantType = AndroidBuild,
                                 leaf = false,
                                 declaredProjectDependencies = setOf(
-                                    "debugImplementation->:lib::[com.example:blocked]"
+                                    declaredProjectDependency(
+                                        configurationName = "debugImplementation",
+                                        targetProjectPath = ":lib",
+                                        excludedShortIds = setOf("com.example:blocked")
+                                    )
                                 )
                             )
                         )
@@ -2976,7 +2987,7 @@ class AggregatedDependencyResolverTest {
                                 variantType = AndroidBuild,
                                 leaf = false,
                                 declaredDependencies = setOf("com.example:blocked:1.0"),
-                                declaredProjectDependencies = setOf("implementation->:app::[]")
+                                declaredProjectDependencies = setOf(declaredProjectDependency(targetProjectPath = ":app"))
                             )
                         )
                     )
@@ -3038,7 +3049,7 @@ class AggregatedDependencyResolverTest {
                                 name = DEFAULT_VARIANT,
                                 variantType = AndroidBuild,
                                 leaf = false,
-                                declaredProjectDependencies = setOf("implementation->:lib::[]")
+                                declaredProjectDependencies = setOf(declaredProjectDependency(targetProjectPath = ":lib"))
                             )
                         )
                     ),
@@ -3049,14 +3060,18 @@ class AggregatedDependencyResolverTest {
                                 name = DEFAULT_VARIANT,
                                 variantType = AndroidBuild,
                                 leaf = false,
-                                declaredProjectDependencies = setOf("implementation->:core::[]")
+                                declaredProjectDependencies = setOf(declaredProjectDependency(targetProjectPath = ":core"))
                             ),
                             declaredVariant(
                                 name = "debug",
                                 variantType = AndroidBuild,
                                 leaf = false,
                                 declaredProjectDependencies = setOf(
-                                    "debugImplementation->:core::[com.example:blocked]"
+                                    declaredProjectDependency(
+                                        configurationName = "debugImplementation",
+                                        targetProjectPath = ":core",
+                                        excludedShortIds = setOf("com.example:blocked")
+                                    )
                                 )
                             )
                         )
@@ -3120,7 +3135,10 @@ class AggregatedDependencyResolverTest {
                                 variantType = AndroidBuild,
                                 leaf = false,
                                 declaredProjectDependencies = setOf(
-                                    "implementation->:lib::[com.example:declared]"
+                                    declaredProjectDependency(
+                                        targetProjectPath = ":lib",
+                                        excludedShortIds = setOf("com.example:declared")
+                                    )
                                 )
                             )
                         )
@@ -3132,7 +3150,7 @@ class AggregatedDependencyResolverTest {
                                 name = DEFAULT_VARIANT,
                                 variantType = AndroidBuild,
                                 leaf = false,
-                                declaredProjectDependencies = setOf("implementation->:lib::[]")
+                                declaredProjectDependencies = setOf(declaredProjectDependency(targetProjectPath = ":lib"))
                             )
                         )
                     ),
@@ -3199,7 +3217,7 @@ class AggregatedDependencyResolverTest {
                                 name = DEFAULT_VARIANT,
                                 variantType = AndroidBuild,
                                 leaf = false,
-                                declaredProjectDependencies = setOf("implementation->:lib::[]")
+                                declaredProjectDependencies = setOf(declaredProjectDependency(targetProjectPath = ":lib"))
                             )
                         )
                     ),
@@ -4216,7 +4234,7 @@ class AggregatedDependencyResolverTest {
         buildType: String? = null,
         productFlavors: List<String> = emptyList(),
         declaredDependencies: Set<String> = emptySet(),
-        declaredProjectDependencies: Set<String> = emptySet(),
+        declaredProjectDependencies: Set<DeclaredProjectDependency> = emptySet(),
         excludeRulesByShortId: Map<String, Set<ExcludeRule>> = emptyMap(),
         compileOnlyDependenciesByShortId: Map<String, ResolvedDependency> = emptyMap(),
         extendsFrom: Set<String>? = null
@@ -4248,6 +4266,20 @@ class AggregatedDependencyResolverTest {
             excludeRulesByShortId = excludeRulesByShortId,
             compileOnlyBucketName = name,
             compileOnlyDependenciesByShortId = compileOnlyDependenciesByShortId
+        )
+    }
+
+    private fun declaredProjectDependency(
+        configurationName: String = "implementation",
+        targetProjectPath: String,
+        targetConfiguration: String = "",
+        excludedShortIds: Set<String> = emptySet()
+    ): DeclaredProjectDependency {
+        return DeclaredProjectDependency(
+            configurationName = configurationName,
+            targetProjectPath = targetProjectPath,
+            targetConfiguration = targetConfiguration,
+            excludedShortIds = excludedShortIds.toSortedSet()
         )
     }
 
@@ -4287,7 +4319,11 @@ class AggregatedDependencyResolverTest {
         configurationName: String,
         dependencyNotation: Any
     ): ExternalModuleDependency {
-        return project.dependencies.add(configurationName, dependencyNotation) as ExternalModuleDependency
+        val dependency = project.dependencies.add(configurationName, dependencyNotation)
+        check(dependency is ExternalModuleDependency) {
+            "Expected external module dependency for '$dependencyNotation'"
+        }
+        return dependency
     }
 
     private fun declaredAppMetadata(): DeclaredDependencyMetadata {
@@ -4308,18 +4344,9 @@ class AggregatedDependencyResolverTest {
     }
 
     private fun failingRootComponent(): ResolvedComponentResult {
-        return Proxy.newProxyInstance(
-            ResolvedComponentResult::class.java.classLoader,
-            arrayOf(ResolvedComponentResult::class.java)
-        ) { _, method, _ ->
-            when (method.name) {
-                "toString" -> "project :app"
-                "hashCode" -> 1
-                "equals" -> false
-                "getDependencies" -> throw IllegalStateException("broken root")
-                else -> throw UnsupportedOperationException(method.name)
-            }
-        } as ResolvedComponentResult
+        return mock<ResolvedComponentResult>().also { component ->
+            whenever(component.dependencies).thenThrow(IllegalStateException("broken root"))
+        }
     }
 
 }

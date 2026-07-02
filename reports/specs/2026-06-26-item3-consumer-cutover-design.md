@@ -32,9 +32,9 @@ the missing decision into the plan, never to scrape rendered output.**
 Order is isolated-first, so root/pinner are decoupled from the manifest **before** the
 most-entangled extractor is touched.
 
-### Step 1 — Pinner (`ArtificatPinner`)
+### Step 1 — Pinner (`ArtifactPinner`)
 Replace repo **discovery** with the plan:
-- `materializedMavenInstallRepos()` (WORKSPACE regex, `ArtificatPinner.kt:316-320`) →
+- `materializedMavenInstallRepos()` (WORKSPACE regex, `ArtifactPinner.kt:316-320`) →
   `workspaceRenderPlan.materializedRepoNames`.
 - repo selection inside `pinnableMavenInstallRepos` (`:322-345`) →
   `workspacePlan.repoPlan` filtered by `workspaceRenderPlan.materializedRepoNames`.

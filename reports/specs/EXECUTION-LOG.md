@@ -77,7 +77,14 @@ evidence in item-specific logs so context compaction can recover state quickly.
     pre-existing appcompat/constraintlayout exclude waiver.
   - Detailed Item40 evidence is in
     `reports/specs/execution-log/item40-small-altitude-hygiene.md`.
-  - Next action: continue to Item41 branch-wide code-quality hardening.
+  - Item41 branch-wide code-quality hardening is now active. The inventory
+    script was updated to the Item41 column shape and regenerated from scratch:
+    `182` Kotlin rows (`main=116`, `test=64`, `functionalTest=2`), all
+    intentionally pending for fresh reconciliation. Detailed evidence is in
+    `reports/specs/execution-log/item41-branch-wide-code-quality-hardening.md`.
+  - Next action: run scoped subagent reviews over the Item41 inventory,
+    reconcile findings into fixes/inventory rows, then run simplify/adversarial
+    review and the required Grazel/PAX gates.
 
 - 2026-07-01 CURRENT TRUTH - Item34/35 goal:
   - Grazel is on `arun/dependencies-refactor` at local commit `85c6136`
@@ -1628,7 +1635,7 @@ evidence in item-specific logs so context compaction can recover state quickly.
   - `ProjectBazelFileBuilder`, `RootBazelFileBuilder`, and `WorkspaceBuilder`
     render from model/extension/task inputs and do not parse generated
     `BUILD.bazel`, `WORKSPACE`, or pin JSON to infer Maven ownership.
-  - `ArtificatPinner` necessarily reads/edits generated `WORKSPACE` and lock
+  - `ArtifactPinner` necessarily reads/edits generated `WORKSPACE` and lock
     JSON for pin toggling/recovery, but repo ownership comes from
     `WorkspacePlan` + `WorkspaceRenderPlan`, not generated file parsing.
   - Existing target-model feedback through target builders /
@@ -1797,6 +1804,19 @@ evidence in item-specific logs so context compaction can recover state quickly.
 - `reports/scripts/verify-sample-bucket-labels.sh` failed only on the known
   appcompat/constraintlayout one-sided exclude-union waiver.
 - `git diff --check` passed.
+
+### Item 41 branch-wide code-quality hardening
+
+- Active after checkpoint `104b4c7` (`refactor: tighten dependency task
+  boundaries`). Detailed working notes live in
+  `reports/specs/execution-log/item41-branch-wide-code-quality-hardening.md`.
+- Regenerated `reports/specs/source-shape-inventory.tsv` from scratch: 182
+  Kotlin rows plus header, all requiring reconciliation.
+- First read-heavy subagent partition pass completed; parent reconciliation is
+  ongoing.
+- Decision: retain `Collection<T>.quote` in `bazel/starlark/Statement.kt` as an
+  intentional Starlark DSL convenience. Do not reintroduce
+  `quoteStarlarkValues(...)` or convert these call sites to a free function.
 - `git diff --check master...HEAD` passed.
 - `bazelisk build //...` failed only on the documented local sample/rule waiver:
   missing
@@ -4252,6 +4272,17 @@ evidence in item-specific logs so context compaction can recover state quickly.
   - `reports/scripts/verify-pax-size-guard.sh --mode preserving` passed with
     unchanged counts `11/11/1945`.
 
+### Item 41 source-shape checkpoint
+
+- Maintainer feedback: retain the existing `Collection<T>.quote` Starlark DSL
+  extension; replacing it with a free function was too aggressive for this
+  branch-wide hygiene pass.
+- Reverted the temporary quote cleanup. `quoteStarlarkValues` no longer exists
+  in main sources, and `Statement.kt`/rules quote call sites are no longer part
+  of the dirty diff.
+- Verification: `./gradlew :grazel-gradle-plugin:test --console=plain
+  --no-daemon --quiet` passed in `8s`.
+
 ### Item 38 proxy package-boundary cleanup
 
 - Maintainer feedback: proxy-related classes should live under
@@ -4275,3 +4306,72 @@ evidence in item-specific logs so context compaction can recover state quickly.
   "com.grab.grazel.tasks.internal.PinMavenArtifactsTaskTest"
   --console=plain --no-daemon` passed in `27s`.
 - `git diff --check` passed.
+
+### Item 41 simplify-pass reconciliation
+
+- Simplify-pass ran after the branch-wide source-shape cleanup. Parent
+  reconciliation accepted the `BucketOwnershipPlanner` map-merge reuse finding
+  and kept the maintainer-requested `Collection<T>.quote` Starlark DSL
+  extension.
+- Deferred findings that would change model/performance altitude rather than
+  preserving source shape: KSP direct-ID micro-optimization, provider
+  materialization, proxy/lockfile package reshapes, and broader target/tag
+  helper extraction.
+- Focused verification after the accepted cleanup passed in `21s`:
+  `./gradlew :grazel-gradle-plugin:test --tests
+  "com.grab.grazel.gradle.dependencies.BucketOwnershipPlannerTest"
+  --tests "com.grab.grazel.gradle.dependencies.AggregatedDependencyResolverTest"
+  --tests "com.grab.grazel.gradle.variant.WorkspaceKspProcessorClasspathPlannerTest"
+  --console=plain --no-daemon --quiet`.
+- Adversarial review follow-up fixed three preserving issues:
+  - restored the defensive KSP configuration read boundary and added focused
+    coverage for unavailable KSP configurations;
+  - converted policy-heavy `AggregatedDependencyRootMetadata` and
+    `DependencyBucketPlacementPlan` receiver helpers to explicit-parameter
+    helpers;
+  - replaced the `AggregatedDependencyResolverTest` Java proxy fixture with an
+    existing Mockito-based `ResolvedComponentResult` mock.
+- The source-shape inventory script now records private domain receiver helpers
+  as `domain_receiver_extension`. It is an advisory detector; rows still need
+  parent/subagent classification because algebraic DSL helpers such as
+  `Collection<T>.quote` remain intentionally retained.
+- Focused verification after these fixes passed in `15s`:
+  `./gradlew :grazel-gradle-plugin:test --tests
+  "com.grab.grazel.gradle.dependencies.AggregatedDependencyResolverTest"
+  --tests "com.grab.grazel.gradle.dependencies.BucketOwnershipPlannerTest"
+  --tests "com.grab.grazel.gradle.variant.WorkspaceKspProcessorClasspathPlannerTest"
+  --console=plain --no-daemon --quiet`.
+
+### Item 41 final verification checkpoint
+
+- Full plugin unit test passed:
+  `./gradlew :grazel-gradle-plugin:test --console=plain --no-daemon
+  --quiet`.
+- `reports/scripts/source-shape-inventory.sh` was rerun after final fixes; the
+  inventory has no blank/pending status cells. The retained
+  `Collection<T>.quote` extension is classified as an intentional Starlark DSL
+  exception.
+- Grazel hygiene passed: `git diff --check` and
+  `git diff --check master...HEAD`.
+- Grazel `migrateToBazel --console=plain --no-daemon` passed in `10s`.
+- `reports/scripts/verify-default-task-graph.sh` passed.
+- `reports/scripts/verify-sample-bucket-labels.sh` failed on the existing
+  `androidx.constraintlayout:constraintlayout` appcompat/core exclusion guard.
+  Current generation produced no local generated diff for the checked files,
+  and `HEAD:WORKSPACE` plus `master:WORKSPACE` already contain the same
+  exclusion block, so this is recorded as a pre-existing guard/baseline mismatch
+  rather than an Item41 regression.
+- PAX `migrateToBazel --no-daemon --console=plain --stacktrace --rerun-tasks`
+  passed in `11m 43s`; generated output remained stable with only
+  `build.gradle` dirty in PAX.
+- PAX `./bazel.sh build --verbose_failures //app:app-gps-pax-debug.apk
+  //app:app-gps-pax-debug-android-test.apk` passed in `216s`.
+- PAX `./bazel.sh test --test_output=errors
+  //app-utils:app-utils-gps-pax-debug-test
+  //app-test:app-test-gps-pax-debug-test
+  //application-initializer:application-initializer-gps-pax-debug-test` passed
+  in `22s`.
+- PAX `git diff --check` passed.
+- `reports/scripts/verify-pax-size-guard.sh --mode preserving` passed with
+  unchanged counts `bucketCount=11`, `pinfileCount=11`,
+  `totalArtifactRoots=1945`.

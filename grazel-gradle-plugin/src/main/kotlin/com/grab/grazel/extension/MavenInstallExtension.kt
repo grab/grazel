@@ -80,7 +80,6 @@ data class MavenInstallExtension(
         emptyList()
     ),
 ) {
-    // TODO GitRepositoryRule
     /**
      * Configure an HTTP Archive for `rules_jvm_external`.
      *

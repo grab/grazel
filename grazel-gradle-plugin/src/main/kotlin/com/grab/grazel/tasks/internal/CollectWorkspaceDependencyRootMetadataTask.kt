@@ -25,7 +25,6 @@ import org.gradle.api.DefaultTask
 import org.gradle.api.Project
 import org.gradle.api.file.RegularFileProperty
 import org.gradle.api.provider.ListProperty
-import org.gradle.api.provider.MapProperty
 import org.gradle.api.provider.Property
 import org.gradle.api.provider.Provider
 import org.gradle.api.provider.SetProperty
@@ -79,7 +78,7 @@ internal abstract class WorkspaceDependencyRootMetadataInput {
     abstract val projectPath: Property<String>
 
     @get:Input
-    abstract val kind: Property<String>
+    abstract val kind: Property<AggregatedDependencyRootKind>
 
     @get:Input
     abstract val configurationName: Property<String>
@@ -115,12 +114,12 @@ internal abstract class WorkspaceDependencyRootMetadataInput {
     @get:Input
     abstract val directDependencyShortIds: SetProperty<String>
 
-    @get:Input
-    abstract val encodedRootExcludeRulesByShortId: MapProperty<String, String>
+    @get:Nested
+    abstract val rootExcludeRules: ListProperty<RootExcludeRulesInput>
 
     internal fun setMetadata(metadata: Provider<AggregatedDependencyRootMetadata>) {
         projectPath.set(metadata.map { root -> root.projectPath })
-        kind.set(metadata.map { root -> root.kind.name })
+        kind.set(metadata.map { root -> root.kind })
         configurationName.set(metadata.map { root -> root.configurationName })
         bucketName.set(metadata.map { root -> root.bucketName.orEmpty() })
         leafName.set(metadata.map { root -> root.leafName.orEmpty() })
@@ -131,11 +130,16 @@ internal abstract class WorkspaceDependencyRootMetadataInput {
         targetBuckets.set(metadata.map { root -> root.targetBuckets })
         traverseProjectNodes.set(metadata.map { root -> root.traverseProjectNodes })
         directDependencyShortIds.set(metadata.map { root -> root.directDependencyShortIds })
-        encodedRootExcludeRulesByShortId.set(
+        rootExcludeRules.set(
             metadata.map { root ->
                 root.rootExcludeRulesByShortId
-                    .mapValues { (_, rules) -> encodeExcludeRules(rules) }
                     .toSortedMap()
+                    .map { (shortId, rules) ->
+                        RootExcludeRulesInput(
+                            shortId = shortId,
+                            rules = toExcludeRuleInputs(rules)
+                        )
+                    }
             }
         )
     }
@@ -143,7 +147,7 @@ internal abstract class WorkspaceDependencyRootMetadataInput {
     internal fun toMetadata(): AggregatedDependencyRootMetadata {
         return AggregatedDependencyRootMetadata(
             projectPath = projectPath.get(),
-            kind = AggregatedDependencyRootKind.valueOf(kind.get()),
+            kind = kind.get(),
             configurationName = configurationName.get(),
             bucketName = bucketName.get().ifBlank { null },
             leafName = leafName.get().ifBlank { null },
@@ -154,26 +158,39 @@ internal abstract class WorkspaceDependencyRootMetadataInput {
             targetBuckets = targetBuckets.get().toSortedSet(),
             traverseProjectNodes = traverseProjectNodes.get(),
             directDependencyShortIds = directDependencyShortIds.get().toSortedSet(),
-            rootExcludeRulesByShortId = encodedRootExcludeRulesByShortId.get()
-                .mapValues { (_, encodedRules) -> decodeExcludeRules(encodedRules) }
+            rootExcludeRulesByShortId = rootExcludeRules.get()
+                .associate { input ->
+                    input.shortId to toExcludeRules(input.rules)
+                }
                 .toSortedMap()
         )
     }
+}
 
-    private fun encodeExcludeRules(excludeRules: Set<ExcludeRule>): String {
-        return excludeRules.sortedWith(compareBy<ExcludeRule> { rule -> rule.group }.thenBy { rule -> rule.artifact })
-            .joinToString(separator = ";") { rule -> "${rule.group}:${rule.artifact}" }
-    }
+internal data class RootExcludeRulesInput(
+    @get:Input
+    val shortId: String,
+    @get:Nested
+    val rules: List<ExcludeRuleInput>
+)
 
-    private fun decodeExcludeRules(encodedExcludeRules: String): Set<ExcludeRule> {
-        if (encodedExcludeRules.isBlank()) return emptySet()
-        return encodedExcludeRules.split(";")
-            .mapTo(sortedSetOf(compareBy<ExcludeRule> { rule -> rule.group }.thenBy { rule -> rule.artifact })) {
-                encodedRule ->
-                ExcludeRule(
-                    group = encodedRule.substringBefore(":"),
-                    artifact = encodedRule.substringAfter(":")
-                )
-            }
+internal data class ExcludeRuleInput(
+    @get:Input
+    val group: String,
+    @get:Input
+    val artifact: String
+)
+
+private val excludeRuleComparator = compareBy<ExcludeRule> { rule -> rule.group }
+    .thenBy { rule -> rule.artifact }
+
+private fun toExcludeRuleInputs(excludeRules: Set<ExcludeRule>): List<ExcludeRuleInput> {
+    return excludeRules.sortedWith(excludeRuleComparator)
+        .map { rule -> ExcludeRuleInput(rule.group, rule.artifact) }
+}
+
+private fun toExcludeRules(excludeRuleInputs: List<ExcludeRuleInput>): Set<ExcludeRule> {
+    return excludeRuleInputs.mapTo(sortedSetOf(excludeRuleComparator)) { rule ->
+        ExcludeRule(rule.group, rule.artifact)
     }
 }

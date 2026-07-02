@@ -24,6 +24,7 @@ import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import org.gradle.testkit.runner.BuildResult
 import org.gradle.testkit.runner.TaskOutcome.SUCCESS
 import org.gradle.testkit.runner.TaskOutcome.UP_TO_DATE
 import org.junit.Assert
@@ -99,34 +100,35 @@ class BuildVariantTest : BaseGrazelPluginTest() {
             arrayOf("computeWorkspaceDependencies", "--dry-run", "--console=plain"),
             rootProject
         )
+        val dryRunTaskPaths = result.dryRunTaskPaths()
 
         Assert.assertTrue(
             "Dependency resolution should collect declared metadata through source-project shard tasks",
-            result.output.contains(":app:collectProjectDeclaredDependencyMetadata SKIPPED")
+            ":app:collectProjectDeclaredDependencyMetadata" in dryRunTaskPaths
         )
         Assert.assertTrue(
             "Dependency resolution should merge declared metadata shards through the root task",
-            result.output.contains(":mergeDeclaredDependencyMetadata SKIPPED")
+            ":mergeDeclaredDependencyMetadata" in dryRunTaskPaths
         )
         Assert.assertFalse(
             "Default declared metadata collection must not use the single-task compatibility path",
-            result.output.contains(":collectDeclaredDependencyMetadata SKIPPED")
+            ":collectDeclaredDependencyMetadata" in dryRunTaskPaths
         )
         Assert.assertFalse(
             "Default declared metadata collection must not use root-flat shard task names",
-            result.output.contains(":collectAppDeclaredDependencyMetadata SKIPPED")
+            ":collectAppDeclaredDependencyMetadata" in dryRunTaskPaths
         )
         Assert.assertTrue(
             "Dependency resolution should collect KSP processor metadata via a task",
-            result.output.contains(":collectKspProcessorDependencies SKIPPED")
+            ":collectKspProcessorDependencies" in dryRunTaskPaths
         )
         Assert.assertFalse(
             "Dependency resolution must not schedule legacy per-variant ResolveDependencies tasks",
-            result.output.lines().any { it.contains("ResolveDependencies SKIPPED") }
+            dryRunTaskPaths.any { taskPath -> taskPath.contains("ResolveDependencies") }
         )
         Assert.assertTrue(
             "computeWorkspaceDependencies should still be present in the task graph",
-            result.output.contains(":computeWorkspaceDependencies SKIPPED")
+            ":computeWorkspaceDependencies" in dryRunTaskPaths
         )
     }
 
@@ -456,6 +458,18 @@ dependencies {
                 )
         )
         return fixtureRoot
+    }
+
+    private fun BuildResult.dryRunTaskPaths(): Set<String> {
+        val trimmedLines = output.lines().map(String::trim)
+        val sameLineSkippedTasks = trimmedLines
+            .filter { line -> line.startsWith(":") && line.endsWith(" SKIPPED") }
+            .mapTo(sortedSetOf()) { line -> line.removeSuffix(" SKIPPED") }
+        val splitLineSkippedTasks = trimmedLines
+            .zipWithNext()
+            .filter { (taskPath, outcome) -> taskPath.startsWith(":") && outcome == "SKIPPED" }
+            .mapTo(sortedSetOf()) { (taskPath, _) -> taskPath }
+        return sameLineSkippedTasks + splitLineSkippedTasks
     }
 
     private fun setDeclaredMetadataAggregationMode(fixtureRoot: File, mode: String) {

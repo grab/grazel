@@ -57,17 +57,15 @@ internal data class ResolvedDependency(
     override fun compareTo(other: ResolvedDependency) = id.compareTo(other.id)
 
     companion object {
-        private operator fun <E> List<E>.component6() = get(5)
-
         /**
          * Construct [ResolvedDependency] from id alone
          */
         fun fromId(id: String, repository: String): ResolvedDependency {
-            val (group, name, version) = id.split(":")
+            val notation = ResolvedDependencyNotation.fromId(id)
             return ResolvedDependency(
                 id = id,
-                version = version,
-                shortId = "$group:$name",
+                version = notation.version,
+                shortId = notation.shortId,
                 direct = true,
                 dependencies = emptySet(),
                 excludeRules = emptySet(),
@@ -78,21 +76,17 @@ internal data class ResolvedDependency(
         }
 
         fun from(dependencyNotation: String): ResolvedDependency {
-            val chunks = dependencyNotation.split(":")
-            val (group, name, version, repository, requiresJetifier, jetifierGroup) = chunks
-            val shortId = "$group:$name"
-            val jetifierSource = if (jetifierGroup != "null") "$jetifierGroup:${chunks.last()}"
-            else null
+            val notation = ResolvedDependencyNotation.parse(dependencyNotation)
             return ResolvedDependency(
-                id = "$group:$name:$version",
-                version = version,
-                shortId = shortId,
+                id = notation.id,
+                version = notation.version,
+                shortId = notation.shortId,
                 direct = false,
                 dependencies = emptySet(),
                 excludeRules = emptySet(),
-                repository = repository,
-                requiresJetifier = requiresJetifier.toBoolean(),
-                jetifierSource = jetifierSource
+                repository = notation.repository,
+                requiresJetifier = notation.requiresJetifier,
+                jetifierSource = notation.jetifierSource
             )
         }
 
@@ -103,6 +97,48 @@ internal data class ResolvedDependency(
         ): String {
             val repository = (component as? DefaultResolvedComponentResult)?.repositoryName ?: ""
             return "$component:${repository}:$requiresJetifier:$jetifierSource"
+        }
+    }
+}
+
+private data class ResolvedDependencyNotation(
+    val group: String,
+    val name: String,
+    val version: String,
+    val repository: String = "",
+    val requiresJetifier: Boolean = false,
+    val jetifierSource: String? = null
+) {
+    val id: String get() = "$group:$name:$version"
+    val shortId: String get() = "$group:$name"
+
+    companion object {
+        fun fromId(id: String): ResolvedDependencyNotation {
+            val parts = id.split(":")
+            require(parts.size == 3) { "Expected dependency id as group:name:version, got '$id'" }
+            return ResolvedDependencyNotation(
+                group = parts[0],
+                name = parts[1],
+                version = parts[2]
+            )
+        }
+
+        fun parse(dependencyNotation: String): ResolvedDependencyNotation {
+            val parts = dependencyNotation.split(":")
+            require(parts.size >= 6) {
+                "Expected dependency notation as group:name:version:repository:requiresJetifier:jetifierSource, got '$dependencyNotation'"
+            }
+            val jetifierSource = parts.drop(5)
+                .joinToString(":")
+                .takeUnless { source -> source == "null" }
+            return ResolvedDependencyNotation(
+                group = parts[0],
+                name = parts[1],
+                version = parts[2],
+                repository = parts[3],
+                requiresJetifier = parts[4].toBoolean(),
+                jetifierSource = jetifierSource
+            )
         }
     }
 }
@@ -197,11 +233,11 @@ internal val ResolvedDependency.allDependencies: Set<ResolvedDependency>
 /**
  * Proxy class to use [Versioned] so that we can use [DefaultVersionComparator]
  */
-internal class VersionInfo(val version: String) : Versioned, Comparable<VersionInfo> {
+internal class ComparableGradleVersion(val version: String) : Versioned, Comparable<ComparableGradleVersion> {
     private val parsedVersion = VersionParser().transform(version)
     override fun getVersion(): Version = parsedVersion
     private val comparator = DefaultVersionComparator()
-    override fun compareTo(other: VersionInfo) = comparator.compare(this, other)
+    override fun compareTo(other: ComparableGradleVersion) = comparator.compare(this, other)
 }
 
-internal val ResolvedDependency.versionInfo get() = VersionInfo(version = version)
+internal val ResolvedDependency.versionInfo get() = ComparableGradleVersion(version = version)

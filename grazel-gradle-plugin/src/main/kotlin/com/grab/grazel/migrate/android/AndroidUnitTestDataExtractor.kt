@@ -116,7 +116,7 @@ constructor(
                 variantKey = variantKey,
                 preferredVariantNames = listOf(matchedVariant.variantName)
             ) +
-            project.kotlinParcelizeDeps() +
+            kotlinParcelizeDeps(project) +
             BazelDependency.ProjectDependency(
                 dependencyProject = project,
                 suffix = targetSuffix

@@ -69,6 +69,7 @@ constructor(
 ) : DefaultTask() {
 
     @get:InputFile
+    @get:PathSensitive(PathSensitivity.RELATIVE)
     val workspaceDependencies: RegularFileProperty = project.objects.fileProperty()
 
     @get:InputFile

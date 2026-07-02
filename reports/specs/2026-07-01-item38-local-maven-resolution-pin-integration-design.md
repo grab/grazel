@@ -38,7 +38,7 @@ invalidates both hashes, which must be recomputed over the canonical values.
 
 ## Grounded current state (Codex: re-confirm)
 
-- `migrate/dependencies/ArtificatPinner.kt` — the pin flow to extend: `pinArtifacts(...)` `:218-294`;
+- `migrate/dependencies/ArtifactPinner.kt` — the pin flow to extend: `pinArtifacts(...)` `:218-294`;
   reversible WORKSPACE edits `pin()`/`unpin()` `:97-113`; `failWhenOutOfDate` `:115-122`;
   `determinePinningTarget` `:197-204`; `shouldRunPinning` `:133-194`; `collectPinnableMavenInstallRepos`
   `:328-338`; `PinningWorkAction` (`WorkerExecutor.noIsolation`) `:345-376`.
@@ -95,7 +95,7 @@ regenerated")` / `"… invalid signature … may be corrupted"` (gated by `fail_
 2. Establish a stable canonical-repo registry: distinct canonical repo URL ↔ index `n` (shared with
    the Item 37 serve route `/r/{n}/`). Start the Item 37 service, read its ephemeral base URL.
 3. Before pinning, **swap** each rendered `maven_install(repositories=[…])` in the generated WORKSPACE
-   from canonical → `http://<baseUrl>/r/{n}/`, reversibly (reuse/mirror the `ArtificatPinner.pin()/unpin()`
+   from canonical → `http://<baseUrl>/r/{n}/`, reversibly (reuse/mirror the `ArtifactPinner.pin()/unpin()`
    text-edit pattern). Localhost must be present for **both** `bazel run …:pin` (script generation)
    and the `PinningWorkAction` script execution. Apply per rule (default `maven`, per-variant,
    aggregated `ksp_maven`, …).
@@ -126,7 +126,7 @@ regenerated")` / `"… invalid signature … may be corrupted"` (gated by `fail_
    lockfile. On rejection → **hard-fail** with a clear message naming the rje-6.10 hash-reconstruction
    mismatch and pointing at disabling the flag. (Maintainer decision: hard-fail; implementers iterate
    until green. No silent fallback to network pin.)
-8. **Unswap** the WORKSPACE repos → canonical, coordinated with `ArtificatPinner.pin()`'s marker
+8. **Unswap** the WORKSPACE repos → canonical, coordinated with `ArtifactPinner.pin()`'s marker
    uncommenting, so the committed WORKSPACE + lockfiles are fully canonical.
 9. Emit a final `logger.quiet` summary from the pin path when the flag is on, using Item 37 stats:
    e.g. `Local Maven resolution served X artifacts from Gradle index, Y POMs from Gradle cache,
@@ -140,7 +140,7 @@ regenerated")` / `"… invalid signature … may be corrupted"` (gated by `fail_
 - The reconstructor is **pure-JVM** (no Gradle/bazel). The rje algorithm port must match rje **6.10**;
   the version coupling is documented and re-verified on any rje bump.
 - No localhost URL survives in any committed file (WORKSPACE or any `*_install.json`).
-- Reuse the existing pin machinery (`ArtificatPinner`, `Bazel.kt`, `BazelLogParsingOutputStream`); do
+- Reuse the existing pin machinery (`ArtifactPinner`, `Bazel.kt`, `BazelLogParsingOutputStream`); do
   not fork a parallel pin path. Bucket/placement set-math untouched.
 - Miss policy is inherited from Item 37: missing Gradle-resolved artifacts and known-component POM
   failures are hard failures; only unknown parent/BOM metadata may fall back to origin and must be

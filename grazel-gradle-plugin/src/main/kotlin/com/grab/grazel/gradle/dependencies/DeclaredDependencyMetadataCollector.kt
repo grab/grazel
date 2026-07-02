@@ -99,7 +99,7 @@ internal class DeclaredProjectMetadataSnapshotter {
                         declaredDependencies = declaredDependencyDeclarations
                             .mapTo(sortedSetOf(), DeclaredExternalDependency::id),
                         declaredDependencyDeclarations = declaredDependencyDeclarations,
-                        declaredProjectDependencies = variant.extractDeclaredProjectDependencyIds(),
+                        declaredProjectDependencies = variant.extractDeclaredProjectDependencies(),
                         excludeRulesByShortId = extractDeclaredExcludeRulesByShortId(
                             configurations = variant.declaredDependencyConfigurations
                         ),
@@ -269,7 +269,8 @@ internal data class DeclaredDependencyMetadata(
                         variant.declaredDependencyDeclarations
                             .asSequence()
                             .mapNotNull { declaration ->
-                                declaration.id.toDeclaredResolvedDependency(
+                                toDeclaredResolvedDependency(
+                                    declaredDependencyId = declaration.id,
                                     excludeRulesByShortId = variant.excludeRulesByShortId
                                 )?.let { dependency -> declaration to dependency }
                             }
@@ -336,7 +337,7 @@ internal data class DeclaredVariantDependencyMetadata(
     val productFlavors: List<String>,
     val declaredDependencies: Set<String>,
     val declaredDependencyDeclarations: Set<DeclaredExternalDependency> = emptySet(),
-    val declaredProjectDependencies: Set<String>,
+    val declaredProjectDependencies: Set<DeclaredProjectDependency>,
     val excludeRulesByShortId: Map<String, Set<ExcludeRule>>,
     val compileOnlyBucketName: String,
     val compileOnlyDependenciesByShortId: Map<String, ResolvedDependency>
@@ -347,6 +348,14 @@ internal data class DeclaredExternalDependency(
     val configurationName: String,
     val bucketName: String,
     val id: String
+)
+
+@Serializable
+internal data class DeclaredProjectDependency(
+    val configurationName: String,
+    val targetProjectPath: String,
+    val targetConfiguration: String,
+    val excludedShortIds: Set<String>
 )
 
 private fun Variant<*>.configurationNamesOf(
@@ -501,7 +510,7 @@ private fun Variant<*>.extractDeclaredExternalDependencyDeclarations(): Set<Decl
             .thenBy { declaration -> declaration.id })
 }
 
-private fun Variant<*>.extractDeclaredProjectDependencyIds(): Set<String> {
+private fun Variant<*>.extractDeclaredProjectDependencies(): Set<DeclaredProjectDependency> {
     return declaredDependencyConfigurations
         .asSequence()
         .flatMap { configuration ->
@@ -509,13 +518,21 @@ private fun Variant<*>.extractDeclaredProjectDependencyIds(): Set<String> {
                 .filterIsInstance<ProjectDependency>()
                 .asSequence()
                 .map { dependency ->
-                    val targetConfiguration = dependency.targetConfiguration.orEmpty()
-                    val excludeRules = dependency.extractExcludeRules()
-                        .joinToString(prefix = "[", postfix = "]") { rule -> "${rule.group}:${rule.artifact}" }
-                    "${configuration.name}->${dependency.dependencyProject.path}:$targetConfiguration:$excludeRules"
+                    DeclaredProjectDependency(
+                        configurationName = configuration.name,
+                        targetProjectPath = dependency.dependencyProject.path,
+                        targetConfiguration = dependency.targetConfiguration.orEmpty(),
+                        excludedShortIds = dependency.extractExcludeRules()
+                            .mapTo(sortedSetOf()) { rule -> "${rule.group}:${rule.artifact}" }
+                    )
                 }
         }
-        .toSortedSet()
+        .toSortedSet(
+            compareBy<DeclaredProjectDependency> { dependency -> dependency.configurationName }
+                .thenBy { dependency -> dependency.targetProjectPath }
+                .thenBy { dependency -> dependency.targetConfiguration }
+                .thenBy { dependency -> dependency.excludedShortIds.joinToString() }
+        )
 }
 
 private fun Variant<*>.extractCompileOnlyDependenciesByShortId(): Map<String, ResolvedDependency> {
@@ -550,10 +567,11 @@ private fun Variant<*>.extractCompileOnlyDependenciesByShortId(): Map<String, Re
         .toSortedMap()
 }
 
-private fun String.toDeclaredResolvedDependency(
+private fun toDeclaredResolvedDependency(
+    declaredDependencyId: String,
     excludeRulesByShortId: Map<String, Set<ExcludeRule>>
 ): ResolvedDependency? {
-    val chunks = split(":")
+    val chunks = declaredDependencyId.split(":")
     if (chunks.size != 3) return null
     val (group, name, version) = chunks
     if (group.isBlank() || name.isBlank() || version.isBlank()) return null

@@ -97,5 +97,5 @@ Documented local waivers:
 - Item 19 `TargetReferenceFacts` / existing `TargetMavenRepoReferencesCollector` transition and
   exact referenced project target propagation.
 - Android/Kotlin target reachability filtering and BUILD disabling behavior.
-- Maven pin activation in `MavenRules` and `ArtificatPinner`.
+- Maven pin activation in `MavenRules` and `ArtifactPinner`.
 - Tests for exclude intersection, provenance, reachability, and pinning.

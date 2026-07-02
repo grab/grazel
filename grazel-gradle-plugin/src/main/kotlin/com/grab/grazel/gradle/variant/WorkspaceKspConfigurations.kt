@@ -17,8 +17,8 @@
 package com.grab.grazel.gradle.variant
 
 import org.gradle.api.Project
-import org.gradle.api.artifacts.ExternalDependency
 import org.gradle.api.artifacts.Configuration
+import org.gradle.api.artifacts.ExternalDependency
 
 internal data class WorkspaceKspProcessorClasspathInput(
     val project: Project,
@@ -27,65 +27,12 @@ internal data class WorkspaceKspProcessorClasspathInput(
     val directDependencyShortIds: Set<String>
 )
 
-internal object WorkspaceKspProcessorClasspathPlanner {
-    fun plan(
-        migratableProjects: Iterable<Project>,
-        variantsByProject: Map<Project, Iterable<Variant<*>>>
-    ): List<WorkspaceKspProcessorClasspathInput> {
-        val inputsByClasspath = linkedMapOf<KspProcessorClasspathKey, MutableKspProcessorClasspathInput>()
-        migratableProjects
-            .sortedBy(Project::getPath)
-            .forEach { project ->
-                (variantsByProject[project] ?: emptyList())
-                    .sortedWith(compareBy<Variant<*>> { variant -> variant.variantType.name }.thenBy { variant -> variant.name })
-                    .forEach { variant ->
-                        safeKspConfigurations(variant).forEach { processorClasspath ->
-                            val declarationConfigurations = declarationConfigurationsFor(processorClasspath)
-                            val directShortIds = directDependencyShortIds(declarationConfigurations)
-                            if (directShortIds.isNotEmpty()) {
-                                inputsByClasspath
-                                    .getOrPut(
-                                        KspProcessorClasspathKey(
-                                            projectPath = project.path,
-                                            configurationName = processorClasspath.name
-                                        )
-                                    ) {
-                                        MutableKspProcessorClasspathInput(
-                                            project = project,
-                                            processorClasspath = processorClasspath
-                                        )
-                                    }
-                                    .add(
-                                        declarationConfigurations = declarationConfigurations,
-                                        directDependencyShortIds = directShortIds
-                                    )
-                            }
-                        }
-                    }
-            }
-
-        return inputsByClasspath
-            .values
-            .map(MutableKspProcessorClasspathInput::toInput)
-            .sortedWith(compareBy<WorkspaceKspProcessorClasspathInput> { input -> input.project.path }
-                .thenBy { input -> input.processorClasspath.name })
-    }
-
-    private fun safeKspConfigurations(variant: Variant<*>): Set<Configuration> {
-        return try {
-            variant.kspConfiguration
-        } catch (e: Exception) {
-            emptySet()
-        }
-    }
-}
-
 private data class KspProcessorClasspathKey(
     val projectPath: String,
     val configurationName: String
 )
 
-private class MutableKspProcessorClasspathInput(
+private class KspProcessorClasspathState(
     private val project: Project,
     private val processorClasspath: Configuration
 ) {
@@ -108,6 +55,60 @@ private class MutableKspProcessorClasspathInput(
             directDependencyShortIds = directDependencyShortIds.toSortedSet()
         )
     }
+}
+
+internal object WorkspaceKspProcessorClasspathPlanner {
+    fun plan(
+        migratableProjects: Iterable<Project>,
+        variantsByProject: Map<Project, Iterable<Variant<*>>>
+    ): List<WorkspaceKspProcessorClasspathInput> {
+        val inputsByClasspath = linkedMapOf<KspProcessorClasspathKey, KspProcessorClasspathState>()
+        migratableProjects
+            .sortedBy(Project::getPath)
+            .forEach { project ->
+                (variantsByProject[project] ?: emptyList())
+                    .sortedWith(compareBy<Variant<*>> { variant -> variant.variantType.name }.thenBy { variant -> variant.name })
+                    .forEach { variant ->
+                        kspConfigurationsOrEmpty(variant).forEach { processorClasspath ->
+                            val declarationConfigurations = declarationConfigurationsFor(processorClasspath)
+                            val directShortIds = directDependencyShortIds(declarationConfigurations)
+                            if (directShortIds.isNotEmpty()) {
+                                inputsByClasspath
+                                    .getOrPut(
+                                        KspProcessorClasspathKey(
+                                            projectPath = project.path,
+                                            configurationName = processorClasspath.name
+                                        )
+                                    ) {
+                                        KspProcessorClasspathState(
+                                            project = project,
+                                            processorClasspath = processorClasspath
+                                        )
+                                    }
+                                    .add(
+                                        declarationConfigurations = declarationConfigurations,
+                                        directDependencyShortIds = directShortIds
+                                    )
+                            }
+                        }
+                    }
+            }
+
+        return inputsByClasspath
+            .values
+            .map(KspProcessorClasspathState::toInput)
+            .sortedWith(compareBy<WorkspaceKspProcessorClasspathInput> { input -> input.project.path }
+                .thenBy { input -> input.processorClasspath.name })
+    }
+
+    private fun kspConfigurationsOrEmpty(variant: Variant<*>): Set<Configuration> {
+        return try {
+            variant.kspConfiguration
+        } catch (_: Exception) {
+            emptySet()
+        }
+    }
+
 }
 
 private fun declarationConfigurationsFor(processorClasspath: Configuration): Set<Configuration> {
