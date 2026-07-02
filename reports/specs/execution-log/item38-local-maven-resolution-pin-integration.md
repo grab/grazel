@@ -1382,6 +1382,36 @@
     `localhost`/`127.0.0.1`;
   - `reports/scripts/verify-sample-bucket-labels.sh` still fails with the
     known pre-existing appcompat/constraintlayout assertion.
+
+### Review follow-up: baseline skipped merge
+
+- Final read-only review found that baseline skip state was still not fully
+  authoritative. The reconstructor filtered synthesized POM skips for baseline
+  artifacts, but merged `currentSkipped` before that filter. A proxy/current
+  lockfile could therefore mark a baseline-existing POM artifact as skipped and
+  still change the reconstructed output even when the baseline did not skip it.
+- Fix: raw `currentSkipped` remains available for the existing safety check,
+  then `currentSkippedForMerge` removes baseline artifact names before skipped
+  entries are merged. Baseline skipped entries come from the baseline lockfile.
+- Regression test added:
+  `reconstruct ignores current skipped state for baseline pom packaging
+  artifact`.
+- Focused reconstructor test passed in `19s`:
+  `./gradlew :grazel-gradle-plugin:test --tests
+  "com.grab.grazel.migrate.dependencies.MavenInstallLockfileReconstructorTest"
+  --console=plain --no-daemon`.
+- Post-review lightweight gates:
+  - `./gradlew :grazel-gradle-plugin:test --console=plain --no-daemon` passed
+    in `40s`;
+  - `./gradlew migrateToBazel --console=plain --no-daemon` passed in `10s`;
+  - `reports/scripts/verify-default-task-graph.sh` passed;
+  - `reports/scripts/verify-pax-size-guard.sh --mode preserving` passed with
+    unchanged counts `11/11/1945`;
+  - `git diff --check` and `git diff --check master...HEAD` passed;
+  - generated `WORKSPACE` and Maven install JSON files contain no
+    `localhost`/`127.0.0.1`;
+  - `reports/scripts/verify-sample-bucket-labels.sh` still fails with the
+    known pre-existing appcompat/constraintlayout assertion.
 - Remaining before final/commit: simplify-pass and adversarial review over the
   green proxy slice; fix real findings and rerun impacted gates.
 

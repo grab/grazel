@@ -112,6 +112,22 @@ class MavenInstallLockfileReconstructorTest {
     }
 
     @Test
+    fun `reconstruct ignores current skipped state for baseline pom packaging artifact`() {
+        val reconstructed = reconstructor().reconstruct(
+            lockfileContents = POM_PACKAGING_LOCALHOST_LOCKFILE_WITH_BASELINE_POM_SKIPPED,
+            canonicalRepositoryInputs = CANONICAL_REPOSITORY_INPUTS,
+            baselineLockfileContents = POM_PACKAGING_CANONICAL_LOCKFILE
+        )
+        val skipped = Json.parseToJsonElement(reconstructed)
+            .jsonObject
+            .getValue("skipped")
+            .jsonArray
+            .map { skipped -> skipped.jsonPrimitive.content }
+
+        assertThat(skipped).containsExactly("com.example:already-skipped")
+    }
+
+    @Test
     fun `reconstruct fails when proxy shasums differ from baseline shasums`() {
         val failure = assertFailsWith<IllegalStateException> {
             reconstructor().reconstruct(
@@ -617,6 +633,21 @@ private val POM_PACKAGING_CANONICAL_LOCKFILE = POM_PACKAGING_LOCALHOST_LOCKFILE
       "skipped": [
         "com.example:already-skipped"
       ],
-""",
+    """,
         ""
+    )
+
+private val POM_PACKAGING_LOCALHOST_LOCKFILE_WITH_BASELINE_POM_SKIPPED = POM_PACKAGING_LOCALHOST_LOCKFILE
+    .replace(
+        """
+      "skipped": [
+        "com.example:already-skipped"
+      ],
+""",
+        """
+      "skipped": [
+        "com.example:already-skipped",
+        "com.example:platform:pom"
+      ],
+"""
     )

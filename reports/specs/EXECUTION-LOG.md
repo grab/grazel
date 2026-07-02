@@ -4052,3 +4052,34 @@ evidence in item-specific logs so context compaction can recover state quickly.
     `localhost`/`127.0.0.1`;
   - `reports/scripts/verify-sample-bucket-labels.sh` still fails with the
     known pre-existing appcompat/constraintlayout assertion.
+
+### Item 38 review follow-up on skipped merge
+
+- Read-only final review found a remaining byte-identity edge case: the
+  baseline POM skip preservation filtered synthesized POM skips, but still
+  merged `currentSkipped` wholesale. If the proxy/current lockfile marked a
+  baseline-existing POM artifact as skipped while the baseline did not, the
+  reconstructed lockfile could still drift.
+- Fix: keep raw `currentSkipped` for the existing safety check, but filter
+  baseline artifact names out before merging current skipped entries into the
+  reconstructed lockfile. Baseline skipped entries are then sourced only from
+  the baseline lockfile.
+- Regression test added:
+  `reconstruct ignores current skipped state for baseline pom packaging
+  artifact`.
+- Focused verification:
+  `./gradlew :grazel-gradle-plugin:test --tests
+  "com.grab.grazel.migrate.dependencies.MavenInstallLockfileReconstructorTest"
+  --console=plain --no-daemon` passed in `19s`.
+- Post-review lightweight gates:
+  - `./gradlew :grazel-gradle-plugin:test --console=plain --no-daemon` passed
+    in `40s`;
+  - `./gradlew migrateToBazel --console=plain --no-daemon` passed in `10s`;
+  - `reports/scripts/verify-default-task-graph.sh` passed;
+  - `reports/scripts/verify-pax-size-guard.sh --mode preserving` passed with
+    unchanged counts `11/11/1945`;
+  - `git diff --check` and `git diff --check master...HEAD` passed;
+  - generated `WORKSPACE` and Maven install JSON files contain no
+    `localhost`/`127.0.0.1`;
+  - `reports/scripts/verify-sample-bucket-labels.sh` still fails with the
+    known pre-existing appcompat/constraintlayout assertion.

@@ -162,7 +162,9 @@ internal class MavenInstallLockfileReconstructor(
                 skippedBaselineArtifacts.joinToString()
         }
 
-        val skipped = (baselineSkipped + currentSkipped)
+        val currentSkippedForMerge = currentSkipped
+            .filterNot { skipped -> skipped in baselineArtifactNames }
+        val skipped = (baselineSkipped + currentSkippedForMerge)
             .toSortedSet()
             .map(::JsonPrimitive)
 
