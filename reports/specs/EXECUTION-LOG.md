@@ -4069,6 +4069,15 @@ evidence in item-specific logs so context compaction can recover state quickly.
   `build.gradle` lines appeared, and no generated Maven install JSON or
   `WORKSPACE` contained `localhost`/`127.0.0.1`. Temporary PAX edits were
   removed and PAX status is clean.
+- Final PAX Bazel gates were rerun on the clean baseline after the review fix:
+  - `./bazel.sh build --verbose_failures //app:app-gps-pax-debug.apk
+    //app:app-gps-pax-debug-android-test.apk` passed in `220.593s`;
+  - `./bazel.sh test --test_output=errors
+    //app-utils:app-utils-gps-pax-debug-test
+    //app-test:app-test-gps-pax-debug-test
+    //application-initializer:application-initializer-gps-pax-debug-test`
+    passed in `16.392s` with `3 tests pass`;
+  - PAX `git diff --check` passed and PAX status is clean.
 
 ### Item 38 review follow-up on skipped merge
 
