@@ -5,6 +5,40 @@ evidence in item-specific logs so context compaction can recover state quickly.
 
 ## Active State
 
+- 2026-07-02 CURRENT TRUTH - Item39/40/41 goal:
+  - Grazel is on `arun/dependencies-refactor` at local commit `e934f43`
+    (`Polish local Maven proxy pinning`). Do not push.
+  - Active goal order from
+    `/Users/arun.sampathkumar/.codex/attachments/8cab9421-a14c-4fe9-8b8b-58be07754ff0/pasted-text-1.txt`:
+    status/docs checkpoint -> finish and commit proxy package-boundary cleanup
+    -> Item39 RJE lockfile reconstructor shape -> Item40 small altitude hygiene
+    -> Item41 branch-wide code quality hardening -> full Grazel/PAX final
+    gates.
+  - PAX regression workspace is `/Users/arun.sampathkumar/work/pax-android`,
+    branch `arun/grazel-refactor`, commit `d4105d1f64bd` (`Update bazeline`).
+    Current PAX worktree status is the maintainer-requested local proxy hook
+    only: `M build.gradle`. Do not commit or push PAX.
+  - Current uncommitted Grazel checkpoint matches the approved step-0 scope:
+    proxy package-boundary cleanup, Item39/40/41 spec docs, roadmap index
+    updates, and this execution log. Preserve these changes; do not revert them.
+  - Step-0 verification rerun on 2026-07-02:
+    - `./gradlew :grazel-gradle-plugin:test --tests
+      "com.grab.grazel.proxy.LocalMavenProxyServiceTest" --tests
+      "com.grab.grazel.proxy.LocalMavenResolvedFactsTest" --tests
+      "com.grab.grazel.proxy.MavenInstallLockfileFallbackIndexTest" --tests
+      "com.grab.grazel.proxy.LocalMavenProxyServerTest" --tests
+      "com.grab.grazel.tasks.internal.PinMavenArtifactsTaskTest"
+      --console=plain --no-daemon` passed in `8s`;
+    - `git diff --check` and `git diff --check master...HEAD` passed;
+    - `./gradlew migrateToBazel --console=plain --no-daemon` passed in `10s`
+      and produced no generated-output drift;
+    - `reports/scripts/verify-default-task-graph.sh` passed;
+    - `reports/scripts/verify-pax-size-guard.sh --mode preserving` passed
+      with unchanged PAX counts `11/11/1945`.
+  - Current resource check before local verification: Data volume is 92% used
+    with about 33 GiB free. No cache cleanup performed; avoid expensive
+    concurrent Gradle/Bazel jobs.
+
 - 2026-07-01 CURRENT TRUTH - Item34/35 goal:
   - Grazel is on `arun/dependencies-refactor` at local commit `85c6136`
     (`refactor: split workspace tag plan service`). Do not push.
@@ -4177,3 +4211,27 @@ evidence in item-specific logs so context compaction can recover state quickly.
   - PAX `git diff --check` passed;
   - `reports/scripts/verify-pax-size-guard.sh --mode preserving` passed with
     unchanged counts `11/11/1945`.
+
+### Item 38 proxy package-boundary cleanup
+
+- Maintainer feedback: proxy-related classes should live under
+  `com.grab.grazel.proxy`; having only the HTTP server there leaves the feature
+  split across `gradle.dependencies` and `migrate.dependencies`.
+- Moved proxy content/service classes to the proxy package:
+  - `LocalMavenProxyService`;
+  - `LocalMavenResolvedFacts` and its Gradle/cache/POM hydrators;
+  - lockfile fallback allowlist extraction, renamed from vague "facts" naming
+    to `MavenInstallLockfileFallbackIndex` with explicit
+    `allowedOriginArtifactPaths` and `additionalComponentGavs`.
+- Kept `LocalMavenPinningWorkspace` and `LocalMavenResolutionPinContext` in
+  `migrate.dependencies` because they own pin-flow orchestration rather than
+  proxy content serving/hydration.
+- Verification:
+  `./gradlew :grazel-gradle-plugin:test --tests
+  "com.grab.grazel.proxy.LocalMavenProxyServiceTest" --tests
+  "com.grab.grazel.proxy.LocalMavenResolvedFactsTest" --tests
+  "com.grab.grazel.proxy.MavenInstallLockfileFallbackIndexTest" --tests
+  "com.grab.grazel.proxy.LocalMavenProxyServerTest" --tests
+  "com.grab.grazel.tasks.internal.PinMavenArtifactsTaskTest"
+  --console=plain --no-daemon` passed in `27s`.
+- `git diff --check` passed.

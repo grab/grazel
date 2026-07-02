@@ -17,8 +17,6 @@
 package com.grab.grazel.proxy
 
 import com.grab.grazel.gradle.RepositoryAuth
-import com.grab.grazel.gradle.dependencies.PomFileResolution
-import com.grab.grazel.gradle.dependencies.PomFileResolver
 import com.grab.grazel.maven.MavenPath
 import com.grab.grazel.maven.isConcreteMavenArtifactPath
 import io.ktor.client.HttpClient

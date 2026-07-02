@@ -28,7 +28,7 @@ import com.grab.grazel.gradle.MigrationCriteriaModule
 import com.grab.grazel.gradle.RepositoryDataSource
 import com.grab.grazel.gradle.dependencies.DefaultDependencyGraphsService
 import com.grab.grazel.gradle.dependencies.DefaultDependencyResolutionService
-import com.grab.grazel.gradle.dependencies.LocalMavenProxyService
+import com.grab.grazel.proxy.LocalMavenProxyService
 import com.grab.grazel.gradle.dependencies.WorkspacePlanService
 import com.grab.grazel.gradle.dependencies.DependenciesDataSource
 import com.grab.grazel.gradle.dependencies.DependenciesModule

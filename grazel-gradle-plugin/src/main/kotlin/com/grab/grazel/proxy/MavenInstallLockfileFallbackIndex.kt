@@ -14,9 +14,11 @@
  * limitations under the License.
  */
 
-package com.grab.grazel.migrate.dependencies
+package com.grab.grazel.proxy
 
 import com.grab.grazel.maven.MavenCoordinates
+import com.grab.grazel.migrate.dependencies.MavenInstallLockfileArtifactKey
+import com.grab.grazel.migrate.dependencies.mavenInstallJsonName
 import com.grab.grazel.util.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.contentOrNull
@@ -24,58 +26,66 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import java.io.File
 
-internal data class MavenInstallLockfileFallbackFacts(
-    val paths: Set<String>,
-    val gavs: Set<String>,
+internal data class MavenInstallLockfileFallbackIndex(
+    val allowedOriginArtifactPaths: Set<String>,
+    val additionalComponentGavs: Set<String>,
 )
 
-internal fun activeMavenInstallLockfileFallbackFacts(
+internal fun activeMavenInstallLockfileFallbackIndex(
     rootDirectory: File,
     activeMavenRepos: Set<String>,
-): MavenInstallLockfileFallbackFacts {
-    val lockfileFacts = activeMavenRepos
+): MavenInstallLockfileFallbackIndex {
+    val fallbackIndexes = activeMavenRepos
         .asSequence()
         .map { repoName -> rootDirectory.resolve(mavenInstallJsonName(repoName)) }
         .filter(File::exists)
-        .map { lockfile -> mavenInstallLockfileFallbackFacts(lockfile.readText()) }
+        .map { lockfile -> mavenInstallLockfileFallbackIndex(lockfile.readText()) }
         .toList()
-    return MavenInstallLockfileFallbackFacts(
-        paths = lockfileFacts.flatMapTo(sortedSetOf()) { facts -> facts.paths },
-        gavs = lockfileFacts.flatMapTo(sortedSetOf()) { facts -> facts.gavs }
+    return MavenInstallLockfileFallbackIndex(
+        allowedOriginArtifactPaths = fallbackIndexes.flatMapTo(sortedSetOf()) { index ->
+            index.allowedOriginArtifactPaths
+        },
+        additionalComponentGavs = fallbackIndexes.flatMapTo(sortedSetOf()) { index ->
+            index.additionalComponentGavs
+        }
     )
 }
 
-internal fun mavenInstallLockfileFallbackFacts(lockfileContents: String): MavenInstallLockfileFallbackFacts {
+internal fun mavenInstallLockfileFallbackIndex(lockfileContents: String): MavenInstallLockfileFallbackIndex {
     val lockfile = Json.parseToJsonElement(lockfileContents).jsonObject
-    val artifactFacts = lockfile
+    val artifactFallbacks = lockfile
         .getValue("artifacts")
         .jsonObject
         .asSequence()
         .map { (artifactKey, artifactInfo) ->
-            factsForLockfileArtifact(
+            fallbackForLockfileArtifact(
                 artifactKey = artifactKey,
                 artifactInfo = artifactInfo.jsonObject
             )
         }
         .toList()
-    return MavenInstallLockfileFallbackFacts(
-        paths = artifactFacts.flatMapTo(sortedSetOf()) { facts -> facts.paths },
-        gavs = artifactFacts.mapNotNullTo(sortedSetOf()) { facts -> facts.gav }
+    return MavenInstallLockfileFallbackIndex(
+        allowedOriginArtifactPaths = artifactFallbacks.flatMapTo(sortedSetOf()) { fallback ->
+            fallback.paths
+        },
+        additionalComponentGavs = artifactFallbacks.mapNotNullTo(sortedSetOf()) { fallback ->
+            fallback.gav
+        }
     )
 }
 
-private data class LockfileArtifactFacts(
+private data class LockfileArtifactFallback(
     val paths: Set<String>,
     val gav: String?,
 )
 
-private fun factsForLockfileArtifact(
+private fun fallbackForLockfileArtifact(
     artifactKey: String,
     artifactInfo: JsonObject,
-): LockfileArtifactFacts {
+): LockfileArtifactFallback {
     val key = MavenInstallLockfileArtifactKey.parse(artifactKey)
     val version = artifactInfo.getValue("version").jsonPrimitive.contentOrNull
-        ?: return LockfileArtifactFacts(paths = emptySet(), gav = null)
+        ?: return LockfileArtifactFallback(paths = emptySet(), gav = null)
     val shasums = artifactInfo.getValue("shasums").jsonObject
     val coordinates = MavenCoordinates(
         group = key.group,
@@ -95,7 +105,7 @@ private fun factsForLockfileArtifact(
                 classifierKey = classifierKey
             )
         }
-    return LockfileArtifactFacts(
+    return LockfileArtifactFallback(
         paths = paths,
         gav = coordinates.gav
     )

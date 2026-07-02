@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.grab.grazel.gradle.dependencies
+package com.grab.grazel.proxy
 
 import com.google.common.truth.Truth.assertThat
 import com.grab.grazel.gradle.RepositoryAuth

@@ -17,8 +17,6 @@
 package com.grab.grazel.proxy
 
 import com.grab.grazel.gradle.RepositoryAuth
-import com.grab.grazel.gradle.dependencies.PomFileResolution
-import com.grab.grazel.gradle.dependencies.PomFileResolver
 import com.sun.net.httpserver.HttpServer
 import org.junit.Rule
 import org.junit.Test

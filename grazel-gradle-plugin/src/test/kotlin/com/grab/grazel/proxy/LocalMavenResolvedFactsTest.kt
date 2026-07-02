@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.grab.grazel.gradle.dependencies
+package com.grab.grazel.proxy
 
 import com.grab.grazel.fake.fakeComponentResult
 import org.gradle.api.artifacts.ModuleIdentifier

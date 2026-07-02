@@ -14,15 +14,12 @@
  * limitations under the License.
  */
 
-package com.grab.grazel.gradle.dependencies
+package com.grab.grazel.proxy
 
 import com.grab.grazel.di.qualifiers.RootProject
 import com.grab.grazel.gradle.RepositoryAuth
 import com.grab.grazel.gradle.RepositoryWithAuth
 import com.grab.grazel.maven.mavenRepositoryUrlWithBasicCredentials
-import com.grab.grazel.proxy.LocalMavenProxyOrigin
-import com.grab.grazel.proxy.LocalMavenProxyServer
-import com.grab.grazel.proxy.LocalMavenProxyStats
 import org.gradle.api.Project
 import org.gradle.api.file.DirectoryProperty
 import org.gradle.api.provider.ListProperty

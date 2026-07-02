@@ -14,21 +14,22 @@
  * limitations under the License.
  */
 
-package com.grab.grazel.migrate.dependencies
+package com.grab.grazel.proxy
 
 import com.google.common.truth.Truth.assertThat
+import com.grab.grazel.migrate.dependencies.mavenInstallJsonName
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
 
-class MavenInstallLockfileArtifactPathsTest {
+class MavenInstallLockfileFallbackIndexTest {
 
     @get:Rule
     val temporaryFolder = TemporaryFolder()
 
     @Test
     fun `derives exact concrete artifact paths from rje v3 lockfile entries`() {
-        val facts = mavenInstallLockfileFallbackFacts(
+        val fallbackIndex = mavenInstallLockfileFallbackIndex(
             """
                 {
                   "artifacts": {
@@ -67,7 +68,7 @@ class MavenInstallLockfileArtifactPathsTest {
             """.trimIndent()
         )
 
-        assertThat(facts.paths).containsExactly(
+        assertThat(fallbackIndex.allowedOriginArtifactPaths).containsExactly(
             "com/example/android-lib/2.0/android-lib-2.0.aar",
             "com/example/library/1.0/library-1.0-sources.jar",
             "com/example/library/1.0/library-1.0.jar",
@@ -77,7 +78,7 @@ class MavenInstallLockfileArtifactPathsTest {
 
     @Test
     fun `derives gavs from rje v3 lockfile entries`() {
-        val facts = mavenInstallLockfileFallbackFacts(
+        val fallbackIndex = mavenInstallLockfileFallbackIndex(
             """
                 {
                   "artifacts": {
@@ -109,7 +110,7 @@ class MavenInstallLockfileArtifactPathsTest {
             """.trimIndent()
         )
 
-        assertThat(facts.gavs).containsExactly(
+        assertThat(fallbackIndex.additionalComponentGavs).containsExactly(
             "com.example:android-lib:2.0",
             "com.example:library:1.0",
             "com.example:platform:3.0"
@@ -129,10 +130,10 @@ class MavenInstallLockfileArtifactPathsTest {
         )
 
         assertThat(
-            activeMavenInstallLockfileFallbackFacts(
+            activeMavenInstallLockfileFallbackIndex(
                 rootDirectory = temporaryFolder.root,
                 activeMavenRepos = setOf("maven", "debug_maven")
-            ).paths
+            ).allowedOriginArtifactPaths
         ).containsExactly(
             "com/example/active/1.0/active-1.0.jar",
             "com/example/debug-only/2.0/debug-only-2.0.jar"

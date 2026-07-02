@@ -19,6 +19,7 @@ package com.grab.grazel.gradle.dependencies
 import com.grab.grazel.GrazelExtension
 import com.grab.grazel.di.qualifiers.RootProject
 import com.grab.grazel.gradle.RepositoryDataSource
+import com.grab.grazel.proxy.LocalMavenProxyService
 import com.grab.grazel.util.GradleProvider
 import dagger.Binds
 import dagger.Module

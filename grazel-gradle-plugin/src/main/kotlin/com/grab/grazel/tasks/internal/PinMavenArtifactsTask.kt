@@ -18,8 +18,6 @@ package com.grab.grazel.tasks.internal
 
 import com.grab.grazel.di.GradleServices
 import com.grab.grazel.di.GrazelComponent
-import com.grab.grazel.gradle.dependencies.LocalMavenProxyService
-import com.grab.grazel.gradle.dependencies.LocalMavenResolvedFactsBuilder
 import com.grab.grazel.gradle.dependencies.model.ResolvedDependency
 import com.grab.grazel.gradle.dependencies.model.WorkspacePlan
 import com.grab.grazel.gradle.dependencies.model.WorkspaceRenderPlan
@@ -32,9 +30,11 @@ import com.grab.grazel.migrate.dependencies.LocalMavenResolutionStats
 import com.grab.grazel.migrate.dependencies.LocalMavenResolutionStatsProvider
 import com.grab.grazel.migrate.dependencies.MavenInstallRepositoryInputs
 import com.grab.grazel.migrate.dependencies.MavenInstallRepositoryRewrite
-import com.grab.grazel.migrate.dependencies.activeMavenInstallLockfileFallbackFacts
 import com.grab.grazel.migrate.dependencies.repositoryUrls
+import com.grab.grazel.proxy.LocalMavenProxyService
 import com.grab.grazel.proxy.LocalMavenProxyStats
+import com.grab.grazel.proxy.LocalMavenResolvedFactsBuilder
+import com.grab.grazel.proxy.activeMavenInstallLockfileFallbackIndex
 import com.grab.grazel.util.fromJson
 import com.grab.grazel.util.GradleProvider
 import dagger.Lazy
@@ -120,7 +120,7 @@ constructor(
         val configuredAdditionalGavs = localMavenResolutionAdditionalGavs.get()
         val rootDirectory = project.layout.projectDirectory.asFile
         return LocalMavenResolutionPinContextFactory { pinnableRepos, repositoryInputs ->
-            val activeLockfileFacts = activeMavenInstallLockfileFallbackFacts(
+            val activeLockfileFallbackIndex = activeMavenInstallLockfileFallbackIndex(
                 rootDirectory = rootDirectory,
                 activeMavenRepos = pinnableRepos.keys
             )
@@ -128,12 +128,12 @@ constructor(
                 configurations = localMavenResolutionRootConfigurations.get(),
                 additionalGavs = pinnableRepoResolutionGavs(
                     pinnableRepos = pinnableRepos,
-                    additionalGavs = configuredAdditionalGavs + activeLockfileFacts.gavs
+                    additionalGavs = configuredAdditionalGavs + activeLockfileFallbackIndex.additionalComponentGavs
                 )
             )
             val repositoryMappings = service.configure(
                 facts = facts,
-                allowedOriginArtifactPaths = activeLockfileFacts.paths,
+                allowedOriginArtifactPaths = activeLockfileFallbackIndex.allowedOriginArtifactPaths,
                 canonicalRepositoryUrls = repositoryUrls(repositoryInputs)
             )
             LocalMavenResolutionPinContext(
