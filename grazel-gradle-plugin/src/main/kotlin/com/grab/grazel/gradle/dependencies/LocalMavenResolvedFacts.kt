@@ -17,6 +17,9 @@
 package com.grab.grazel.gradle.dependencies
 
 import com.google.common.io.Files
+import com.grab.grazel.maven.MavenCoordinates
+import com.grab.grazel.maven.MavenPath
+import com.grab.grazel.maven.isConcreteMavenArtifactPath
 import org.gradle.api.Project
 import org.gradle.api.artifacts.Configuration
 import org.gradle.api.artifacts.component.ComponentIdentifier
@@ -31,23 +34,10 @@ import java.util.concurrent.ConcurrentHashMap
 
 internal data class LocalMavenResolvedFacts(
     val artifactIndex: Map<String, File>,
-    val artifactFileResolver: MavenArtifactFileResolver,
     val knownComponentGavs: Set<String>,
     val metadataOnlyGavs: Set<String>,
     val pomFileResolver: PomFileResolver,
 )
-
-internal interface MavenArtifactFileResolver {
-    fun resolveArtifact(path: String): File?
-
-    object None : MavenArtifactFileResolver {
-        override fun resolveArtifact(path: String): File? = null
-    }
-}
-
-internal interface PomFileResolver {
-    fun resolvePom(gav: String): File?
-}
 
 internal class LocalMavenResolvedFactsBuilder(
     private val project: Project
@@ -61,30 +51,29 @@ internal class LocalMavenResolvedFactsBuilder(
         val knownComponentGavs = componentIdsByGav.keys.toSortedSet()
         val indexGavs = (knownComponentGavs + additionalGavs).toSortedSet()
         val artifactIndex = ResolvedArtifactIndexBuilder.indexConfigurations(configurationList)
-        val moduleCacheFileResolver = GradleModuleCacheFileResolver(project.gradle.gradleUserHomeDir)
-        val artifactIndexGavs = artifactIndex
-            .keys
+        val artifactIndexGavs = artifactIndex.keys
             .asSequence()
-            .filter(::isConcreteArtifactPath)
             .mapNotNull { path -> MavenPath.parse(path)?.coordinates?.gav }
             .toSet()
+        val moduleCacheFileResolver = GradleModuleCacheFileResolver(project.gradle.gradleUserHomeDir)
         val moduleCacheIndex = GradleModuleCacheFileIndexBuilder(moduleCacheFileResolver)
             .index(indexGavs - artifactIndexGavs)
         val mergedArtifactIndex = mergeArtifactIndexes(
             primary = artifactIndex,
             fallback = moduleCacheIndex
         )
+        val metadataOnlyGavs = metadataOnlyComponentGavs(
+            knownComponentGavs = knownComponentGavs,
+            artifactPaths = mergedArtifactIndex.keys
+        )
         return LocalMavenResolvedFacts(
             artifactIndex = mergedArtifactIndex,
-            artifactFileResolver = moduleCacheFileResolver,
             knownComponentGavs = knownComponentGavs,
-            metadataOnlyGavs = metadataOnlyGavs(
-                gavs = indexGavs,
-                artifactPaths = mergedArtifactIndex.keys
-            ),
+            metadataOnlyGavs = metadataOnlyGavs,
             pomFileResolver = GradlePomFileResolver.from(
                 project = project,
-                componentIdsByGav = componentIdsByGav
+                componentIdsByGav = componentIdsByGav,
+                moduleCacheFileResolver = moduleCacheFileResolver
             )
         )
     }
@@ -144,7 +133,7 @@ internal class GradleModuleCacheFileIndexBuilder(
                 fileResolver.cacheFiles(coordinates)
                     .forEach { file ->
                         coordinates.mavenRelativePaths(file.name).forEach { path ->
-                            index.putMavenFile(path, file)
+                            putMavenFile(index = index, path = path, file = file)
                         }
                     }
             }
@@ -154,13 +143,13 @@ internal class GradleModuleCacheFileIndexBuilder(
 
 internal class GradleModuleCacheFileResolver(
     gradleUserHomeDir: File
-) : MavenArtifactFileResolver {
+) {
     private val modulesCacheRoot: File =
         gradleUserHomeDir.resolve("caches/modules-2/files-2.1")
     private val artifactPathCache = ConcurrentHashMap<String, ArtifactPathResolution>()
     private val cacheFilesByCoordinates = ConcurrentHashMap<MavenCoordinates, List<File>>()
 
-    override fun resolveArtifact(path: String): File? {
+    fun resolveArtifact(path: String): File? {
         return when (val resolution = artifactPathCache.computeIfAbsent(path, ::resolveArtifactUncached)) {
             is ArtifactPathResolution.Found -> resolution.file
             ArtifactPathResolution.Missing -> null
@@ -169,13 +158,12 @@ internal class GradleModuleCacheFileResolver(
 
     private fun resolveArtifactUncached(path: String): ArtifactPathResolution {
         val mavenPath = MavenPath.parse(path) ?: return ArtifactPathResolution.Missing
-        return cacheFiles(mavenPath.coordinates)
+        val matchingFiles = cacheFiles(mavenPath.coordinates)
             .filter { file ->
                 file.name == mavenPath.fileName ||
                     path in mavenPath.coordinates.mavenRelativePaths(file.name)
             }
-            .singleMavenFileOrNull(path)
-            .toArtifactPathResolution()
+        return artifactPathResolution(singleMavenFileOrNull(files = matchingFiles, path = path))
     }
 
     fun cacheFiles(coordinates: MavenCoordinates): List<File> {
@@ -204,90 +192,8 @@ internal class GradleModuleCacheFileResolver(
         object Missing : ArtifactPathResolution
     }
 
-    private fun File?.toArtifactPathResolution(): ArtifactPathResolution =
-        this?.let { file -> ArtifactPathResolution.Found(file) } ?: ArtifactPathResolution.Missing
-}
-
-internal data class MavenPath(
-    val coordinates: MavenCoordinates,
-    val fileName: String,
-) {
-    companion object {
-        fun parse(path: String): MavenPath? {
-            val parts = path.split("/")
-            if (parts.size < 4) return null
-            return MavenPath(
-                coordinates = MavenCoordinates(
-                    group = parts.dropLast(3).joinToString("."),
-                    module = parts[parts.lastIndex - 2],
-                    version = parts[parts.lastIndex - 1],
-                ),
-                fileName = parts.last()
-            )
-        }
-    }
-}
-
-internal data class MavenCoordinates(
-    val group: String,
-    val module: String,
-    val version: String,
-) {
-    val gav: String = "$group:$module:$version"
-
-    fun mavenRelativePaths(fileName: String): Set<String> {
-        val physicalPath = mavenRelativePath(fileName)
-        val canonicalPath = mavenRelativePath(canonicalMavenFileName(fileName))
-        return setOf(physicalPath, canonicalPath)
-    }
-
-    fun cacheDirectory(modulesCacheRoot: File): File {
-        return listOf(modulesCacheRoot.path, group, module, version)
-            .joinToString(File.separator)
-            .let(::File)
-    }
-
-    private fun canonicalMavenFileName(fileName: String): String {
-        val extension = fileName.substringAfterLast('.', missingDelimiterValue = "")
-            .takeIf { extension -> extension.isNotBlank() }
-            ?: return fileName
-        val mavenPrefix = "$module-$version"
-        val baseName = fileName.removeSuffix(".$extension")
-        val classifier = baseName
-            .takeIf { name -> name.startsWith("$mavenPrefix-") }
-            ?.removePrefix("$mavenPrefix-")
-            ?.takeIf { value -> value.isNotBlank() }
-        return buildString {
-            append(mavenPrefix)
-            if (classifier != null) {
-                append('-')
-                append(classifier)
-            }
-            append('.')
-            append(extension)
-        }
-    }
-
-    private fun mavenRelativePath(fileName: String): String {
-        return listOf(
-            group.replace('.', '/'),
-            module,
-            version,
-            fileName
-        ).joinToString("/")
-    }
-
-    companion object {
-        fun parse(gav: String): MavenCoordinates {
-            val parts = gav.split(":")
-            require(parts.size == 3) { "Expected group:name:version coordinate, got $gav" }
-            return MavenCoordinates(
-                group = parts[0],
-                module = parts[1],
-                version = parts[2]
-            )
-        }
-    }
+    private fun artifactPathResolution(file: File?): ArtifactPathResolution =
+        file?.let { ArtifactPathResolution.Found(it) } ?: ArtifactPathResolution.Missing
 }
 
 internal object ResolvedComponentIndexBuilder {
@@ -323,39 +229,36 @@ private fun mergeArtifactIndexes(
 ): Map<String, File> {
     val merged = primary.toSortedMap()
     fallback.forEach { (path, file) ->
-        merged.putMavenFile(path, file)
+        putMavenFile(index = merged, path = path, file = file)
     }
     return merged
 }
 
-private fun metadataOnlyGavs(
-    gavs: Set<String>,
+internal fun metadataOnlyComponentGavs(
+    knownComponentGavs: Set<String>,
     artifactPaths: Set<String>,
 ): Set<String> {
     val concreteArtifactGavs = artifactPaths
         .asSequence()
-        .filter(::isConcreteArtifactPath)
+        .filter(::isConcreteMavenArtifactPath)
         .mapNotNull { path -> MavenPath.parse(path)?.coordinates?.gav }
         .toSet()
-    return gavs
+    return knownComponentGavs
         .asSequence()
         .filterNot { gav -> gav in concreteArtifactGavs }
         .toSortedSet()
 }
 
-internal fun isConcreteArtifactPath(path: String): Boolean {
-    if (path.endsWith(".pom") || path.endsWith(".module")) return false
-    if (path.endsWith(".sha1") || path.endsWith(".md5") || path.endsWith(".sha256")) return false
-    if (path.endsWith("maven-metadata.xml")) return false
-    return MavenPath.parse(path) != null
-}
-
-private fun MutableMap<String, File>.putMavenFile(path: String, file: File) {
-    val existing = this[path]
+private fun putMavenFile(
+    index: MutableMap<String, File>,
+    path: String,
+    file: File,
+) {
+    val existing = index[path]
     when {
-        existing == null -> this[path] = file
+        existing == null -> index[path] = file
         existing == file -> Unit
-        existing.sameContentAs(file) -> Unit
+        sameFileContent(existing, file) -> Unit
         else -> error(
             "Gradle cache has multiple different files for Maven path $path: " +
                 "${existing.absolutePath} and ${file.absolutePath}"
@@ -363,12 +266,15 @@ private fun MutableMap<String, File>.putMavenFile(path: String, file: File) {
     }
 }
 
-private fun List<File>.singleMavenFileOrNull(path: String): File? {
-    return fold<File, File?>(null) { selected, file ->
+private fun singleMavenFileOrNull(
+    files: List<File>,
+    path: String,
+): File? {
+    return files.fold<File, File?>(null) { selected, file ->
         when {
             selected == null -> file
             selected == file -> selected
-            selected.sameContentAs(file) -> selected
+            sameFileContent(selected, file) -> selected
             else -> error(
                 "Gradle cache has multiple different files for Maven path $path: " +
                     "${selected.absolutePath} and ${file.absolutePath}"
@@ -377,59 +283,92 @@ private fun List<File>.singleMavenFileOrNull(path: String): File? {
     }
 }
 
-private fun File.sameContentAs(other: File): Boolean {
-    return Files.equal(this, other)
+private fun sameFileContent(first: File, second: File): Boolean {
+    return Files.equal(first, second)
+}
+
+internal fun interface PomFileResolver {
+    fun resolvePom(gav: String): File?
 }
 
 internal class GradlePomFileResolver(
     private val componentIdsByGav: Map<String, ComponentIdentifier>,
-    private val queryPom: (ComponentIdentifier) -> File?,
+    private val pomArtifactQuery: PomArtifactQuery,
+    private val pomCacheLookup: PomCacheLookup = PomCacheLookup { null },
 ) : PomFileResolver {
-    private val cache = ConcurrentHashMap<String, PomResolution>()
+    private val pomFilesByGav = ConcurrentHashMap<String, PomFileResolution>()
 
     override fun resolvePom(gav: String): File? {
-        val componentId = componentIdsByGav[gav] ?: return null
-        return when (val resolution = cache.computeIfAbsent(gav) { queryPom(componentId).toPomResolution() }) {
-            is PomResolution.Found -> resolution.file
-            PomResolution.Missing -> null
+        return when (val resolution = pomFilesByGav.computeIfAbsent(gav, ::resolvePomUncached)) {
+            is PomFileResolution.Found -> resolution.file
+            PomFileResolution.Missing -> null
         }
     }
 
-    private sealed interface PomResolution {
-        data class Found(val file: File) : PomResolution
-        object Missing : PomResolution
+    private fun resolvePomUncached(gav: String): PomFileResolution {
+        val cachedPom = pomCacheLookup.findPomFile(gav)
+            ?.takeIf { pom -> pom.exists() }
+        val componentPom = cachedPom ?: componentIdsByGav[gav]
+            ?.let { componentId ->
+                runCatching { pomArtifactQuery.findPomFile(componentId) }.getOrNull()
+            }
+        return if (componentPom != null && componentPom.exists()) {
+            PomFileResolution.Found(componentPom)
+        } else {
+            PomFileResolution.Missing
+        }
     }
 
-    private fun File?.toPomResolution(): PomResolution =
-        this
-            ?.takeIf { file -> file.exists() }
-            ?.let { file -> PomResolution.Found(file) }
-            ?: PomResolution.Missing
+    private sealed interface PomFileResolution {
+        data class Found(val file: File) : PomFileResolution
+        object Missing : PomFileResolution
+    }
 
     companion object {
         fun from(
             project: Project,
-            componentIdsByGav: Map<String, ComponentIdentifier>
+            componentIdsByGav: Map<String, ComponentIdentifier>,
+            moduleCacheFileResolver: GradleModuleCacheFileResolver,
         ): GradlePomFileResolver {
-            return GradlePomFileResolver(componentIdsByGav) { componentId ->
-                project
-                    .dependencies
-                    .createArtifactResolutionQuery()
-                    .forComponents(componentId)
-                    .withArtifacts(MavenModule::class.java, MavenPomArtifact::class.java)
-                    .execute()
-                    .resolvedComponents
-                    .asSequence()
-                    .flatMap { component ->
-                        component
-                            .getArtifacts(MavenPomArtifact::class.java)
-                            .asSequence()
-                    }
-                    .filterIsInstance<ResolvedArtifactResult>()
-                    .firstOrNull()
-                    ?.file
-                    ?.takeIf { file -> file.exists() }
-            }
+            return GradlePomFileResolver(
+                componentIdsByGav = componentIdsByGav,
+                pomArtifactQuery = PomArtifactQuery { componentId ->
+                    project
+                        .dependencies
+                        .createArtifactResolutionQuery()
+                        .forComponents(componentId)
+                        .withArtifacts(MavenModule::class.java, MavenPomArtifact::class.java)
+                        .execute()
+                        .resolvedComponents
+                        .asSequence()
+                        .flatMap { component ->
+                            component
+                                .getArtifacts(MavenPomArtifact::class.java)
+                                .asSequence()
+                        }
+                        .filterIsInstance<ResolvedArtifactResult>()
+                        .firstOrNull()
+                        ?.file
+                        ?.takeIf { file -> file.exists() }
+                },
+                pomCacheLookup = PomCacheLookup { gav ->
+                    val coordinates = MavenCoordinates.parse(gav)
+                    val pomFileName = "${coordinates.module}-${coordinates.version}.pom"
+                    coordinates
+                        .mavenRelativePaths(pomFileName)
+                        .asSequence()
+                        .mapNotNull(moduleCacheFileResolver::resolveArtifact)
+                        .firstOrNull()
+                }
+            )
         }
     }
+}
+
+internal fun interface PomArtifactQuery {
+    fun findPomFile(componentId: ComponentIdentifier): File?
+}
+
+internal fun interface PomCacheLookup {
+    fun findPomFile(gav: String): File?
 }

@@ -29,7 +29,6 @@ import org.junit.Test
 import org.junit.rules.TemporaryFolder
 import java.io.File
 import kotlin.test.assertEquals
-import kotlin.test.assertNull
 
 class LocalMavenResolvedFactsTest {
 
@@ -75,6 +74,23 @@ class LocalMavenResolvedFactsTest {
     }
 
     @Test
+    fun `artifact index does not alias different versioned file name to selected version path`() {
+        val androidJar = temporaryFolder.newFile("guava-33.0.0-android.jar")
+        val index = ResolvedArtifactIndexBuilder.indexArtifacts(
+            artifacts = listOf(
+                fakeArtifact("com.google.guava", "guava", "33.0.0-jre", androidJar)
+            )
+        )
+
+        assertEquals(
+            mapOf(
+                "com/google/guava/guava/33.0.0-jre/guava-33.0.0-android.jar" to androidJar
+            ),
+            index
+        )
+    }
+
+    @Test
     fun `module cache index adds maven layout files for resolved components`() {
         val gradleHome = temporaryFolder.newFolder("gradle-home")
         val cacheDirectory = File(
@@ -92,6 +108,36 @@ class LocalMavenResolvedFactsTest {
                 "androidx/compose/ui/ui-android/1.7.8/ui-android-1.7.8.aar" to aar,
                 "androidx/compose/ui/ui-android/1.7.8/ui-android-1.7.8.module" to module,
                 "androidx/compose/ui/ui-android/1.7.8/ui-release.aar" to aar
+            ),
+            index
+        )
+    }
+
+    @Test
+    fun `module cache index keeps exact file for selected version when cache has sibling variant artifact`() {
+        val gradleHome = temporaryFolder.newFolder("gradle-home")
+        val coordinatesDirectory = File(
+            gradleHome,
+            "caches/modules-2/files-2.1/com.google.guava/guava/33.0.0-jre"
+        )
+        val jreJar = coordinatesDirectory.resolve("jre-hash/guava-33.0.0-jre.jar")
+            .apply {
+                parentFile.mkdirs()
+                writeText("jre")
+            }
+        val androidJar = coordinatesDirectory.resolve("android-hash/guava-33.0.0-android.jar")
+            .apply {
+                parentFile.mkdirs()
+                writeText("android")
+            }
+
+        val index = GradleModuleCacheFileIndexBuilder(gradleHome)
+            .index(listOf("com.google.guava:guava:33.0.0-jre"))
+
+        assertEquals(
+            mapOf(
+                "com/google/guava/guava/33.0.0-jre/guava-33.0.0-android.jar" to androidJar,
+                "com/google/guava/guava/33.0.0-jre/guava-33.0.0-jre.jar" to jreJar
             ),
             index
         )
@@ -119,42 +165,112 @@ class LocalMavenResolvedFactsTest {
     }
 
     @Test
-    fun `pom resolver memoizes known component query`() {
+    fun `metadata only component gavs classify only Gradle components without concrete artifacts`() {
+        assertEquals(
+            setOf("androidx.collection:collection:1.5.0"),
+            metadataOnlyComponentGavs(
+                knownComponentGavs = setOf(
+                    "androidx.collection:collection:1.5.0",
+                    "androidx.collection:collection-jvm:1.5.0"
+                ),
+                artifactPaths = setOf(
+                    "androidx/collection/collection-jvm/1.5.0/collection-jvm-1.5.0.jar"
+                )
+            )
+        )
+    }
+
+    @Test
+    fun `pom resolver queries known component lazily and memoizes result`() {
         val pom = temporaryFolder.newFile("library-1.2.3.pom")
         val component = fakeComponent("com.example", "library", "1.2.3")
         var queries = 0
         val resolver = GradlePomFileResolver(
             componentIdsByGav = mapOf("com.example:library:1.2.3" to component),
-            queryPom = {
+            pomArtifactQuery = {
                 queries += 1
                 pom
             }
         )
 
+        assertEquals(0, queries)
         assertEquals(pom, resolver.resolvePom("com.example:library:1.2.3"))
         assertEquals(pom, resolver.resolvePom("com.example:library:1.2.3"))
         assertEquals(1, queries)
     }
 
     @Test
-    fun `pom resolver returns null for unknown component`() {
+    fun `pom resolver skips Gradle query for unknown components`() {
         val resolver = GradlePomFileResolver(
             componentIdsByGav = emptyMap(),
-            queryPom = { error("Unknown component should not query Gradle") }
+            pomArtifactQuery = { error("Unknown component should not query Gradle") }
         )
 
-        assertNull(resolver.resolvePom("com.example:missing:1.0"))
+        assertEquals(null, resolver.resolvePom("com.example:missing:1.0"))
     }
 
     @Test
-    fun `pom resolver returns null when known component has no pom file`() {
+    fun `pom resolver returns null for known component with no pom file`() {
         val component = fakeComponent("com.example", "broken", "1.0")
         val resolver = GradlePomFileResolver(
             componentIdsByGav = mapOf("com.example:broken:1.0" to component),
-            queryPom = { null }
+            pomArtifactQuery = { null }
         )
 
-        assertNull(resolver.resolvePom("com.example:broken:1.0"))
+        assertEquals(null, resolver.resolvePom("com.example:broken:1.0"))
+    }
+
+    @Test
+    fun `pom resolver uses Gradle module cache before querying known components`() {
+        val component = fakeComponent("com.example", "library", "1.2.3")
+        val pom = temporaryFolder.newFile("library-1.2.3.pom")
+        val resolver = GradlePomFileResolver(
+            componentIdsByGav = mapOf("com.example:library:1.2.3" to component),
+            pomArtifactQuery = { error("Module cache hit should not query Gradle") },
+            pomCacheLookup = { gav ->
+                assertEquals("com.example:library:1.2.3", gav)
+                pom
+            }
+        )
+
+        assertEquals(pom, resolver.resolvePom("com.example:library:1.2.3"))
+    }
+
+    @Test
+    fun `pom resolver falls back to Gradle query when module cache path is stale`() {
+        val component = fakeComponent("com.example", "library", "1.2.3")
+        val pom = temporaryFolder.newFile("library-1.2.3.pom")
+        val missingPom = temporaryFolder.root.resolve("missing-library-1.2.3.pom")
+        var queries = 0
+        val resolver = GradlePomFileResolver(
+            componentIdsByGav = mapOf("com.example:library:1.2.3" to component),
+            pomArtifactQuery = {
+                queries += 1
+                pom
+            },
+            pomCacheLookup = { gav ->
+                assertEquals("com.example:library:1.2.3", gav)
+                missingPom
+            }
+        )
+
+        assertEquals(pom, resolver.resolvePom("com.example:library:1.2.3"))
+        assertEquals(1, queries)
+    }
+
+    @Test
+    fun `pom resolver falls back to Gradle module cache for additional gavs`() {
+        val pom = temporaryFolder.newFile("additional-1.2.3.pom")
+        val resolver = GradlePomFileResolver(
+            componentIdsByGav = emptyMap(),
+            pomArtifactQuery = { error("Additional GAV should not query Gradle") },
+            pomCacheLookup = { gav ->
+                assertEquals("com.example:additional:1.2.3", gav)
+                pom
+            }
+        )
+
+        assertEquals(pom, resolver.resolvePom("com.example:additional:1.2.3"))
     }
 
     private fun fakeArtifact(

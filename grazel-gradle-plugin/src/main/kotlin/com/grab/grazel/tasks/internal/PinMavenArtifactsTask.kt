@@ -18,15 +18,23 @@ package com.grab.grazel.tasks.internal
 
 import com.grab.grazel.di.GradleServices
 import com.grab.grazel.di.GrazelComponent
+import com.grab.grazel.gradle.dependencies.LocalMavenProxyStats
 import com.grab.grazel.gradle.dependencies.LocalMavenProxyService
 import com.grab.grazel.gradle.dependencies.LocalMavenResolvedFactsBuilder
 import com.grab.grazel.gradle.dependencies.model.ResolvedDependency
 import com.grab.grazel.gradle.dependencies.model.WorkspacePlan
 import com.grab.grazel.gradle.dependencies.model.WorkspaceRenderPlan
 import com.grab.grazel.gradle.dependencies.model.allDependencies
+import com.grab.grazel.maven.MavenCoordinates
 import com.grab.grazel.migrate.dependencies.ArtifactPinner
 import com.grab.grazel.migrate.dependencies.LocalMavenResolutionPinContext
+import com.grab.grazel.migrate.dependencies.LocalMavenResolutionPinContextFactory
+import com.grab.grazel.migrate.dependencies.LocalMavenResolutionStats
+import com.grab.grazel.migrate.dependencies.LocalMavenResolutionStatsProvider
 import com.grab.grazel.migrate.dependencies.MavenInstallRepositoryInputs
+import com.grab.grazel.migrate.dependencies.MavenInstallRepositoryRewrite
+import com.grab.grazel.migrate.dependencies.activeMavenInstallLockfileFallbackFacts
+import com.grab.grazel.migrate.dependencies.repositoryUrls
 import com.grab.grazel.util.fromJson
 import com.grab.grazel.util.GradleProvider
 import dagger.Lazy
@@ -87,6 +95,12 @@ constructor(
         .listProperty(Configuration::class.java)
         .convention(emptyList())
 
+    @get:Input
+    val localMavenResolutionAdditionalGavs: ListProperty<String> = gradleServices
+        .objectFactory
+        .listProperty(String::class.java)
+        .convention(emptyList())
+
     @TaskAction
     fun action() {
         artifactPinner.get().pinArtifacts(
@@ -100,21 +114,38 @@ constructor(
         )
     }
 
-    private fun localMavenResolutionContextFactory():
-        ((Map<String, List<ResolvedDependency>>) -> LocalMavenResolutionPinContext)? {
+    private fun localMavenResolutionContextFactory(): LocalMavenResolutionPinContextFactory? {
         if (!localMavenResolutionEnabled.get()) return null
-        return { pinnableRepos ->
-            val service = localMavenProxyService.get()
+        val service = localMavenProxyService.get()
+        val configuredAdditionalGavs = localMavenResolutionAdditionalGavs.get()
+        val rootDirectory = project.layout.projectDirectory.asFile
+        return LocalMavenResolutionPinContextFactory { pinnableRepos, repositoryInputs ->
+            val activeLockfileFacts = activeMavenInstallLockfileFallbackFacts(
+                rootDirectory = rootDirectory,
+                activeMavenRepos = pinnableRepos.keys
+            )
             val facts = LocalMavenResolvedFactsBuilder(project).build(
                 configurations = localMavenResolutionRootConfigurations.get(),
-                additionalGavs = localMavenResolutionFactGavs(pinnableRepos)
+                additionalGavs = pinnableRepoResolutionGavs(
+                    pinnableRepos = pinnableRepos,
+                    additionalGavs = configuredAdditionalGavs + activeLockfileFacts.gavs
+                )
             )
-            service.configure(facts)
+            val repositoryMappings = service.configure(
+                facts = facts,
+                allowedOriginArtifactPaths = activeLockfileFacts.paths,
+                canonicalRepositoryUrls = repositoryUrls(repositoryInputs)
+            )
             LocalMavenResolutionPinContext(
-                repositoryRewrite = service.repositoryRewrite(),
+                repositoryRewrite = MavenInstallRepositoryRewrite(
+                    proxyToCanonicalUrl = repositoryMappings.proxyToCanonicalUrl,
+                    canonicalToProxyUrl = repositoryMappings.canonicalToProxyUrl
+                ),
                 metadataOnlyShortIds = facts.metadataOnlyGavs
-                    .mapTo(sortedSetOf()) { gav -> gav.substringBeforeLast(":") },
-                stats = service::stats
+                    .mapTo(sortedSetOf()) { gav -> MavenCoordinates.parse(gav).shortId },
+                stats = LocalMavenResolutionStatsProvider {
+                    localMavenResolutionStatsFrom(service.stats())
+                }
             )
         }
     }
@@ -136,6 +167,9 @@ constructor(
                 localMavenResolutionEnabled.set(
                     grazelComponent.extension().experiments.localMavenResolution
                 )
+                localMavenResolutionAdditionalGavs.set(
+                    grazelComponent.extension().dependencies.overrideArtifactVersions
+                )
                 configureTask()
             }
             rootProject.afterEvaluate {
@@ -149,14 +183,34 @@ constructor(
     }
 }
 
-internal fun localMavenResolutionFactGavs(
-    pinnableRepos: Map<String, List<ResolvedDependency>>
+private fun localMavenResolutionStatsFrom(proxyStats: LocalMavenProxyStats): LocalMavenResolutionStats =
+    LocalMavenResolutionStats(
+        artifactHits = proxyStats.artifactHits,
+        artifactMisses = proxyStats.artifactMisses,
+        alternateArtifactMisses = proxyStats.alternateArtifactMisses,
+        lockfileArtifactFallbacks = proxyStats.lockfileArtifactFallbacks,
+        metadataOnlyArtifactFallbacks = proxyStats.metadataOnlyArtifactFallbacks,
+        gradlePomHits = proxyStats.gradlePomHits,
+        knownPomFailures = proxyStats.knownPomFailures,
+        originFallbacks = proxyStats.originFallbacks,
+        originFailures = proxyStats.originFailures,
+        checksumHits = proxyStats.checksumHits,
+        writeThroughCacheHits = proxyStats.writeThroughCacheHits,
+        bytesServed = proxyStats.bytesServed
+    )
+
+internal fun pinnableRepoResolutionGavs(
+    pinnableRepos: Map<String, List<ResolvedDependency>>,
+    additionalGavs: Iterable<String> = emptyList(),
 ): Set<String> {
     val gavs = sortedSetOf<String>()
-    pinnableRepos.values.flatten().forEach { dependency ->
-        dependency.allDependencies.forEach { resolvedDependency ->
-            gavs += resolvedDependency.id
+    pinnableRepos.values.forEach { pinInputs ->
+        pinInputs.forEach { rootDependency ->
+            rootDependency.allDependencies.forEach { resolvedDependency ->
+                gavs += resolvedDependency.id
+            }
         }
     }
+    gavs += additionalGavs
     return gavs
 }

@@ -17,24 +17,81 @@
 package com.grab.grazel.migrate.dependencies
 
 internal object MavenInstallWorkspaceRepositoryRewriter {
-    private val repositoriesBlockRegex = Regex(
-        pattern = """(?s)(repositories\s*=\s*\[)(.*?)(\])"""
-    )
-    private val quotedStringRegex = Regex(""""([^"]+)"""")
-
     fun rewrite(
         workspace: String,
         urlReplacements: Map<String, String>,
     ): String {
         if (urlReplacements.isEmpty()) return workspace
-        return repositoriesBlockRegex.replace(workspace) { blockMatch ->
-            val blockBody = blockMatch.groupValues[2]
-            val rewrittenBody = quotedStringRegex.replace(blockBody) { urlMatch ->
-                val url = urlMatch.groupValues[1]
-                urlReplacements[url]?.let { replacement -> """"$replacement"""" }
-                    ?: urlMatch.value
+        val rewriter = MavenInstallRepositoryBlockRewriter(urlReplacements)
+        return workspace
+            .lineSequence()
+            .joinToString(separator = "\n") { line -> rewriter.rewrite(line) }
+    }
+}
+
+private val quotedStringRegex = Regex(""""([^"]+)"""")
+
+private class MavenInstallRepositoryBlockRewriter(
+    private val urlReplacements: Map<String, String>,
+) {
+    private var insideMavenInstall = false
+    private var mavenInstallParenDepth = 0
+    private var insideRepositories = false
+    private var repositoriesBracketDepth = 0
+
+    fun rewrite(line: String): String {
+        enterMavenInstallIfNeeded(line)
+        enterRepositoriesIfNeeded(line)
+        val rewrittenLine = if (insideMavenInstall && insideRepositories) {
+            rewriteQuotedUrls(line)
+        } else {
+            line
+        }
+        advanceState(line)
+        return rewrittenLine
+    }
+
+    private fun enterMavenInstallIfNeeded(line: String) {
+        if (!insideMavenInstall && line.trimStart().startsWith("maven_install(")) {
+            insideMavenInstall = true
+        }
+    }
+
+    private fun enterRepositoriesIfNeeded(line: String) {
+        if (
+            insideMavenInstall &&
+            !insideRepositories &&
+            line.trimStart().startsWith("repositories")
+        ) {
+            insideRepositories = true
+        }
+    }
+
+    private fun rewriteQuotedUrls(line: String): String =
+        quotedStringRegex.replace(line) { urlMatch ->
+            val url = urlMatch.groupValues[1]
+            urlReplacements[url]?.let { replacement -> """"$replacement"""" }
+                ?: urlMatch.value
+        }
+
+    private fun advanceState(line: String) {
+        if (insideMavenInstall) {
+            mavenInstallParenDepth += line.count { char -> char == '(' }
+            mavenInstallParenDepth -= line.count { char -> char == ')' }
+        }
+        if (insideRepositories) {
+            repositoriesBracketDepth += line.count { char -> char == '[' }
+            repositoriesBracketDepth -= line.count { char -> char == ']' }
+            if (repositoriesBracketDepth <= 0) {
+                insideRepositories = false
+                repositoriesBracketDepth = 0
             }
-            blockMatch.groupValues[1] + rewrittenBody + blockMatch.groupValues[3]
+        }
+        if (insideMavenInstall && mavenInstallParenDepth <= 0) {
+            insideMavenInstall = false
+            mavenInstallParenDepth = 0
+            insideRepositories = false
+            repositoriesBracketDepth = 0
         }
     }
 }

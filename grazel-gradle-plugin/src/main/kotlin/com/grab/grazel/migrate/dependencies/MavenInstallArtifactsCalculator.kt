@@ -30,19 +30,12 @@ import com.grab.grazel.gradle.dependencies.model.ExcludeRule
 import com.grab.grazel.gradle.dependencies.model.ResolvedDependency
 import com.grab.grazel.gradle.dependencies.model.WorkspacePlan
 import com.grab.grazel.gradle.variant.DEFAULT_VARIANT
+import com.grab.grazel.maven.MavenCoordinates
 import org.gradle.api.artifacts.repositories.PasswordCredentials
 import org.gradle.api.file.ProjectLayout
 import org.gradle.api.internal.artifacts.repositories.DefaultMavenArtifactRepository
 import java.util.TreeSet
 import javax.inject.Inject
-
-private data class MavenInstallCoordinate(
-    val group: String,
-    val name: String,
-    val version: String
-) {
-    val shortId: String = "$group:$name"
-}
 
 /**
  * Utility class to convert planned Maven repositories to [MavenInstallData] while accounting for
@@ -61,6 +54,10 @@ constructor(
     private val mavenInstallExtension get() = grazelExtension.rules.mavenInstall
 
     private val includeCredentials get() = mavenInstallExtension.includeCredentials
+
+    private val excludedExternalRepositoriesByRepoName: Map<String, List<String>> by lazy {
+        mavenInstallExtension.excludedExternalRepositoryVariablesByRepoName.get()
+    }
 
     /** Map of user configured overrides for artifact versions. */
     private val overrideVersionsMap: Map< /*shortId*/ String, /*version*/ String> by lazy {
@@ -81,6 +78,7 @@ constructor(
         externalRepositories: Set<String>,
         materializedMavenRepos: Set<String>,
     ): Set<MavenInstallData> {
+        val supportedRepositories = calculateSupportedRepositories()
         val result = workspacePlan
             .repoPlan
             .asSequence()
@@ -101,11 +99,9 @@ constructor(
                     .mapTo(TreeSet(compareBy(MavenInstallArtifact::id)), ::toMavenInstallArtifact)
                     .also { if (it.isEmpty()) return@mapNotNullTo null }
 
-                val repositories = calculateSupportedRepositories()
-
                 val mavenInstallJson = layout
                     .projectDirectory
-                    .file("${mavenInstallName}_install.json").asFile
+                    .file(mavenInstallJsonName(mavenInstallName)).asFile
 
                 val jetifierArtifacts = (
                     rootArtifacts
@@ -125,9 +121,9 @@ constructor(
                     } else {
                         emptySet()
                     },
-                    repositories = repositories,
+                    repositories = supportedRepositories,
                     externalRepositories = if (mavenInstallName == DEFAULT_VARIANT.toMavenRepoName()) {
-                        externalRepositories
+                        externalRepositoriesFor(mavenInstallName, externalRepositories)
                     } else {
                         emptySet()
                     },
@@ -156,17 +152,16 @@ constructor(
                 .mapTo(TreeSet(compareBy(MavenInstallArtifact::id)), ::toMavenInstallArtifact)
             if (mavenInstallArtifacts.isEmpty()) return@forEach
 
-            val repositories = calculateSupportedRepositories()
             val mavenInstallJson = layout
                 .projectDirectory
-                .file("${repoName}_install.json").asFile
+                .file(mavenInstallJsonName(repoName)).asFile
 
             result.add(
                 MavenInstallData(
                     name = repoName,
                     artifacts = mavenInstallArtifacts,
                     externalArtifacts = emptySet(),
-                    repositories = repositories,
+                    repositories = supportedRepositories,
                     externalRepositories = emptySet(),
                     jetifierConfig = JetifierConfig(isEnabled = false, artifacts = emptySet()),
                     failOnMissingChecksum = false,
@@ -188,29 +183,19 @@ constructor(
     private fun toMavenInstallArtifact(
         dependency: ResolvedDependency,
     ): MavenInstallArtifact {
-        val coordinate = mavenInstallCoordinate(dependency)
-        val overrideVersion = overrideVersionsMap[coordinate.shortId] ?: coordinate.version
-        val artifactId = "${coordinate.group}:${coordinate.name}:$overrideVersion"
+        val coordinate = MavenCoordinates.parse(dependency.id)
+        val overrideVersion = overrideVersionsMap[dependency.shortId] ?: coordinate.version
+        val artifactId = "${coordinate.group}:${coordinate.module}:$overrideVersion"
         val exclusions = dependency.excludeRules.mapNotNull(::toExclusion)
         return when {
             exclusions.isEmpty() -> SimpleArtifact(artifactId)
             else -> DetailedArtifact(
                 group = coordinate.group,
-                artifact = coordinate.name,
+                artifact = coordinate.module,
                 version = overrideVersion,
                 exclusions = exclusions
             )
         }
-    }
-
-    private fun mavenInstallCoordinate(dependency: ResolvedDependency): MavenInstallCoordinate {
-        val shortIdParts = dependency.shortId.split(":")
-        require(shortIdParts.size == 2) { "Expected group:name shortId for ${dependency.id}" }
-        return MavenInstallCoordinate(
-            group = shortIdParts[0],
-            name = shortIdParts[1],
-            version = dependency.version
-        )
     }
 
     private fun toExclusion(excludeRule: ExcludeRule): SimpleExclusion? {
@@ -220,9 +205,9 @@ constructor(
         }
     }
 
-    private fun DefaultMavenArtifactRepository.toMavenRepository(): DefaultMavenRepository {
+    private fun toMavenRepository(repository: DefaultMavenArtifactRepository): DefaultMavenRepository {
         val passwordCredentials = try {
-            getCredentials(PasswordCredentials::class.java)
+            repository.getCredentials(PasswordCredentials::class.java)
         } catch (e: Exception) {
             // We only support basic auth now
             null
@@ -230,7 +215,7 @@ constructor(
         val username = if (includeCredentials) passwordCredentials?.username else null
         val password = if (includeCredentials) passwordCredentials?.password else null
         return DefaultMavenRepository(
-            url.toString(),
+            repository.url.toString(),
             username,
             password
         )
@@ -239,6 +224,12 @@ constructor(
     private fun calculateSupportedRepositories(): Set<DefaultMavenRepository> =
         repositoryDataSource
             .supportedRepositories
-            .map { it.toMavenRepository() }
+            .map { repository -> toMavenRepository(repository) }
             .toSet()
+
+    private fun externalRepositoriesFor(
+        mavenInstallName: String,
+        externalRepositories: Set<String>,
+    ): Set<String> =
+        externalRepositories - excludedExternalRepositoriesByRepoName[mavenInstallName].orEmpty().toSet()
 }

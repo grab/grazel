@@ -33,7 +33,7 @@ class PinMavenArtifactsTaskTest {
                 )
             )
 
-        val gavs = localMavenResolutionFactGavs(
+        val gavs = pinnableRepoResolutionGavs(
             mapOf("ksp_maven" to listOf(processor))
         )
 
@@ -42,6 +42,25 @@ class PinMavenArtifactsTaskTest {
                 "com.squareup.moshi:moshi-kotlin-codegen:1.15.0",
                 "com.squareup:kotlinpoet:1.13.2",
                 "org.jetbrains.kotlin:kotlin-stdlib:1.8.21"
+            ),
+            gavs
+        )
+    }
+
+    @Test
+    fun `local maven fact gavs include configured final maven install artifacts`() {
+        val dependency = ResolvedDependency
+            .fromId("com.google.guava:guava:31.1-jre", "maven")
+
+        val gavs = pinnableRepoResolutionGavs(
+            pinnableRepos = mapOf("maven" to listOf(dependency)),
+            additionalGavs = listOf("com.google.guava:guava:33.0.0-jre")
+        )
+
+        assertEquals(
+            setOf(
+                "com.google.guava:guava:31.1-jre",
+                "com.google.guava:guava:33.0.0-jre"
             ),
             gavs
         )

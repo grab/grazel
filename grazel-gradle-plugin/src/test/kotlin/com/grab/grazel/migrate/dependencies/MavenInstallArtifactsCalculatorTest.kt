@@ -1,6 +1,7 @@
 package com.grab.grazel.migrate.dependencies
 
 import com.grab.grazel.GrazelExtension
+import com.grab.grazel.bazel.rules.DAGGER_REPOSITORIES
 import com.grab.grazel.bazel.rules.MavenInstallArtifact.DetailedArtifact
 import com.grab.grazel.bazel.rules.MavenInstallArtifact.Exclusion.SimpleExclusion
 import com.grab.grazel.bazel.rules.MavenRepository.DefaultMavenRepository
@@ -147,6 +148,68 @@ class MavenInstallArtifactsCalculatorTest {
         assertEquals("pinned", repo.versionConflictPolicy)
         assertEquals(selectedDependency.id, artifact.id)
         assertFalse("normal selected roots should stay compact simple artifacts", artifact is DetailedArtifact)
+    }
+
+    @Test
+    fun `maven install can omit external repository variables for a named repo`() {
+        setup {
+            rules {
+                mavenInstall {
+                    excludeExternalRepositoryVariables("maven", DAGGER_REPOSITORIES)
+                }
+            }
+        }
+
+        val selectedDependency = ResolvedDependency.fromId(
+            "com.example:library:1.0.0",
+            "MavenRepo"
+        )
+        val workspaceDependencies = WorkspaceDependencies(
+            variantDeps = mapOf(DEFAULT_VARIANT to listOf(selectedDependency))
+        )
+
+        val result = calculateMavenInstallArtifacts(
+            layout = rootProject.layout,
+            workspaceDependencies = workspaceDependencies,
+            externalArtifacts = emptySet(),
+            externalRepositories = setOf(DAGGER_REPOSITORIES)
+        )
+
+        val repo = result.single { it.name == "maven" }
+        assertEquals(emptySet(), repo.externalRepositories)
+        assertTrue(
+            "Dagger repository URLs should not be present in repository input specs",
+            repositoryInputs(repo).none { input -> "maven.google.com" in input.repositoryInputSpec }
+        )
+    }
+
+    @Test
+    fun `external repository variable omissions are scoped by repo name`() {
+        setup {
+            rules {
+                mavenInstall {
+                    excludeExternalRepositoryVariables("debug_maven", DAGGER_REPOSITORIES)
+                }
+            }
+        }
+
+        val selectedDependency = ResolvedDependency.fromId(
+            "com.example:library:1.0.0",
+            "MavenRepo"
+        )
+        val workspaceDependencies = WorkspaceDependencies(
+            variantDeps = mapOf(DEFAULT_VARIANT to listOf(selectedDependency))
+        )
+
+        val result = calculateMavenInstallArtifacts(
+            layout = rootProject.layout,
+            workspaceDependencies = workspaceDependencies,
+            externalArtifacts = emptySet(),
+            externalRepositories = setOf(DAGGER_REPOSITORIES)
+        )
+
+        val repo = result.single { it.name == "maven" }
+        assertEquals(setOf(DAGGER_REPOSITORIES), repo.externalRepositories)
     }
 
     @Test

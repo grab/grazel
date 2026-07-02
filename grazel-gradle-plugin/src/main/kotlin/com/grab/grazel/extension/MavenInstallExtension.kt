@@ -68,6 +68,9 @@ data class MavenInstallExtension(
     var artifactPinning: ArtifactPinning = ArtifactPinning(objects),
     var excludeArtifactsDenyList: ListProperty<String> = objects.listProperty(),
     var overrideTargetLabels: MapProperty<String, String> = objects.mapProperty(),
+    val excludedExternalRepositoryVariablesByRepoName: MapProperty<String, List<String>> = objects
+        .mapProperty<String, List<String>>()
+        .convention(emptyMap()),
     var excludeArtifacts: ListProperty<String> = objects.listProperty(),
     var jetifyIncludeList: ListProperty<String> = objects.listProperty(),
     var jetifyExcludeList: ListProperty<String> = objects.listProperty(),
@@ -105,6 +108,16 @@ data class MavenInstallExtension(
 
     fun artifactPinning(builder: ArtifactPinning.() -> Unit) {
         artifactPinning = artifactPinning.apply(builder)
+    }
+
+    fun excludeExternalRepositoryVariables(mavenInstallName: String, vararg variableNames: String) {
+        val existingVariableNames = excludedExternalRepositoryVariablesByRepoName
+            .getOrElse(emptyMap())[mavenInstallName]
+            .orEmpty()
+        excludedExternalRepositoryVariablesByRepoName.put(
+            mavenInstallName,
+            (existingVariableNames + variableNames).distinct().sorted()
+        )
     }
 }
 

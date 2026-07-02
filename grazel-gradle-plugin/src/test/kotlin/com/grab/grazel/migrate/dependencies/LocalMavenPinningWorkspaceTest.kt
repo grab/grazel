@@ -17,6 +17,7 @@
 package com.grab.grazel.migrate.dependencies
 
 import com.google.common.truth.Truth.assertThat
+import com.grab.grazel.bazel.rules.repositoryInputSpec
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
@@ -43,6 +44,25 @@ class LocalMavenPinningWorkspaceTest {
         }
 
         assertThat(workspaceFile.readText()).isEqualTo(WORKSPACE_WITH_CANONICAL_REPOSITORIES)
+    }
+
+    @Test
+    fun `proxy repositories replace credentialed repository aliases while active`() {
+        val workspaceFile = temporaryFolder.newFile("WORKSPACE").apply {
+            writeText(WORKSPACE_WITH_CREDENTIAL_REPOSITORY)
+        }
+        val pinningWorkspace = LocalMavenPinningWorkspace(
+            workspaceFile = workspaceFile,
+            rootDirectory = temporaryFolder.root,
+            repositoryRewrite = CREDENTIAL_REPOSITORY_REWRITE
+        )
+
+        pinningWorkspace.withProxyRepositories {
+            assertThat(workspaceFile.readText()).contains(""""http://127.0.0.1:12345/r/0/"""")
+            assertThat(workspaceFile.readText()).doesNotContain("user:pass@repo.example")
+        }
+
+        assertThat(workspaceFile.readText()).isEqualTo(WORKSPACE_WITH_CREDENTIAL_REPOSITORY)
     }
 
     @Test
@@ -84,8 +104,9 @@ class LocalMavenPinningWorkspaceTest {
             val workspace = workspaceFile.readText()
             assertThat(workspace).contains("# override target kept as a comment")
             assertThat(workspace).contains("not an override target")
+            assertThat(workspace).contains("kept outside override_targets")
             assertThat(workspace)
-                .doesNotContain(""""org.jetbrains.kotlinx:kotlinx-coroutines-core":""")
+                .doesNotContain("@maven//:org_jetbrains_kotlinx_kotlinx_coroutines_core")
         }
     }
 
@@ -94,13 +115,13 @@ class LocalMavenPinningWorkspaceTest {
         val workspaceFile = temporaryFolder.newFile("WORKSPACE").apply {
             writeText(WORKSPACE_WITH_CANONICAL_REPOSITORIES)
         }
-        val mavenInstall = temporaryFolder.newFile("maven_install.json").apply {
+        val mavenInstall = temporaryFolder.newFile(mavenInstallJsonName("maven")).apply {
             writeText(LOCALHOST_LOCKFILE)
         }
-        val debugInstall = temporaryFolder.newFile("debug_maven_install.json").apply {
+        val debugInstall = temporaryFolder.newFile(mavenInstallJsonName("debug_maven")).apply {
             writeText(LOCALHOST_LOCKFILE)
         }
-        val staleInstall = temporaryFolder.newFile("release_maven_install.json").apply {
+        val staleInstall = temporaryFolder.newFile(mavenInstallJsonName("release_maven")).apply {
             writeText(LOCALHOST_LOCKFILE)
         }
         val pinningWorkspace = LocalMavenPinningWorkspace(
@@ -109,8 +130,8 @@ class LocalMavenPinningWorkspaceTest {
             repositoryRewrite = REPOSITORY_REWRITE,
             repositoryInputs = MavenInstallRepositoryInputs(
                 repositoriesByName = mapOf(
-                    "maven" to listOf("""{ "repo_url": "https://repo.example/maven2/" }"""),
-                    "debug_maven" to listOf("""{ "repo_url": "https://repo.example/maven2/" }"""),
+                    "maven" to listOf(repositoryInput("https://repo.example/maven2/")),
+                    "debug_maven" to listOf(repositoryInput("https://repo.example/maven2/")),
                 )
             )
         )
@@ -130,12 +151,37 @@ private val REPOSITORY_REWRITE = MavenInstallRepositoryRewrite(
     )
 )
 
+private val CREDENTIAL_REPOSITORY_REWRITE = MavenInstallRepositoryRewrite(
+    proxyToCanonicalUrl = mapOf(
+        "http://127.0.0.1:12345/r/0/" to "https://user:pass@repo.example/maven2/"
+    ),
+    canonicalToProxyUrl = mapOf(
+        "https://repo.example/maven2/" to "http://127.0.0.1:12345/r/0/",
+        "https://user:pass@repo.example/maven2/" to "http://127.0.0.1:12345/r/0/"
+    )
+)
+
+private fun repositoryInput(url: String): MavenInstallRepositoryInput =
+    MavenInstallRepositoryInput(
+        repositoryInputSpec = repositoryInputSpec(url),
+        canonicalUrl = url
+    )
+
 private val WORKSPACE_WITH_CANONICAL_REPOSITORIES = """
     maven_install(
         name = "maven",
         repositories = [
             "https://repo.example/maven2/",
             "https://repo.maven.apache.org/maven2/",
+        ],
+    )
+""".trimIndent()
+
+private val WORKSPACE_WITH_CREDENTIAL_REPOSITORY = """
+    maven_install(
+        name = "maven",
+        repositories = [
+            "https://user:pass@repo.example/maven2/",
         ],
     )
 """.trimIndent()
@@ -165,6 +211,9 @@ private val WORKSPACE_WITH_COMMENTED_OVERRIDE_TARGETS = """
             "not an override target",
             "org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3",
         ],
+        generated_metadata = {
+            "org.jetbrains.kotlinx:kotlinx-coroutines-core": "kept outside override_targets",
+        },
         override_targets = {
             "org.jetbrains.kotlinx:kotlinx-coroutines-core": "@maven//:org_jetbrains_kotlinx_kotlinx_coroutines_core",
         },

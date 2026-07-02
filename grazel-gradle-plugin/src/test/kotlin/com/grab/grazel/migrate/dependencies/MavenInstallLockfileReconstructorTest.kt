@@ -22,6 +22,7 @@ import com.grab.grazel.util.Json
 import kotlinx.serialization.json.jsonObject
 import org.junit.Test
 import java.io.File
+import kotlin.test.assertFailsWith
 
 class MavenInstallLockfileReconstructorTest {
 
@@ -80,16 +81,116 @@ class MavenInstallLockfileReconstructorTest {
     }
 
     @Test
+    fun `reconstruct marks new pom packaging artifacts skipped when baseline lockfile exists`() {
+        val reconstructed = reconstructor().reconstruct(
+            lockfileContents = POM_PACKAGING_LOCALHOST_LOCKFILE,
+            canonicalRepositoryInputs = CANONICAL_REPOSITORY_INPUTS,
+            baselineLockfileContents = CANONICAL_LOCKFILE
+        )
+
+        assertThat(reconstructed).contains("""  "skipped": [""")
+        assertThat(reconstructed).contains("""    "com.example:already-skipped",""")
+        assertThat(reconstructed).contains("""    "com.example:platform:pom"""")
+    }
+
+    @Test
+    fun `reconstruct fails when proxy shasums differ from baseline shasums`() {
+        val failure = assertFailsWith<IllegalStateException> {
+            reconstructor().reconstruct(
+                lockfileContents = LOCALHOST_LOCKFILE.replace("abc123", "proxy-sha"),
+                canonicalRepositoryInputs = CANONICAL_REPOSITORY_INPUTS,
+                baselineLockfileContents = CANONICAL_LOCKFILE.replace("abc123", "baseline-sha")
+            )
+        }
+
+        assertThat(failure).hasMessageThat().contains("changed shasums")
+    }
+
+    @Test
+    fun `reconstruct accepts baseline shasums that match current shasums`() {
+        val reconstructed = reconstructor().reconstruct(
+            lockfileContents = LOCALHOST_LOCKFILE,
+            canonicalRepositoryInputs = CANONICAL_REPOSITORY_INPUTS,
+            baselineLockfileContents = CANONICAL_LOCKFILE
+        )
+
+        assertThat(reconstructed).contains(""""jar": "abc123"""")
+    }
+
+    @Test
+    fun `reconstruct fails when current lockfile skips a baseline artifact`() {
+        val failure = assertFailsWith<IllegalStateException> {
+            reconstructor().reconstruct(
+                lockfileContents = LOCALHOST_LOCKFILE_WITH_BASELINE_ARTIFACT_SKIPPED,
+                canonicalRepositoryInputs = CANONICAL_REPOSITORY_INPUTS,
+                baselineLockfileContents = CANONICAL_LOCKFILE
+            )
+        }
+
+        assertThat(failure).hasMessageThat().contains("skipped artifacts that existed in the baseline")
+    }
+
+    @Test
+    fun `reconstruct allows skipped baseline artifact when current artifact record still exists`() {
+        val reconstructed = reconstructor().reconstruct(
+            lockfileContents = LOCALHOST_LOCKFILE_WITH_SKIPPED_NULL_ARTIFACT,
+            canonicalRepositoryInputs = CANONICAL_REPOSITORY_INPUTS,
+            baselineLockfileContents = CANONICAL_LOCKFILE_WITH_SKIPPED_NULL_ARTIFACT
+        )
+
+        assertThat(reconstructed).contains(""""com.example:platform"""")
+        assertThat(reconstructed).contains(""""jar": null""")
+        assertThat(reconstructed).contains("""    "com.example:platform"""")
+    }
+
+    @Test
     fun `reconstruct hashes supplied repository inputs instead of lockfile output repositories`() {
         val reconstructed = reconstructor().reconstruct(
             lockfileContents = LOCALHOST_LOCKFILE,
             canonicalRepositoryInputs = listOf(
-                """{ "repo_url": "https://repo.example/maven2/" }""",
-                """{ "repo_url": "https://unused.example/maven2/" }""",
+                repositoryInputSpec("https://repo.example/maven2/"),
+                repositoryInputSpec("https://unused.example/maven2/"),
             )
         )
 
         assertThat(reconstructed).contains(""""repositories": 1064750530""")
+    }
+
+    @Test
+    fun `reconstruct writes canonical lockfile repository urls with trailing slash`() {
+        val reconstructed = MavenInstallLockfileReconstructor(
+            repositoryRewrite = MavenInstallRepositoryRewrite(
+                proxyToCanonicalUrl = mapOf(
+                    "http://127.0.0.1:12345/r/0/" to "https://repo.example/maven2"
+                )
+            )
+        ).reconstruct(
+            lockfileContents = LOCALHOST_LOCKFILE,
+            canonicalRepositoryInputs = listOf(
+                repositoryInputSpec("https://repo.example/maven2"),
+            )
+        )
+
+        assertThat(reconstructed).contains(""""https://repo.example/maven2/": [""")
+        assertThat(reconstructed).doesNotContain("https://repo.example/maven2com")
+    }
+
+    @Test
+    fun `reconstruct restores credentialed canonical repository urls when generated input uses credentials`() {
+        val reconstructed = MavenInstallLockfileReconstructor(
+            repositoryRewrite = MavenInstallRepositoryRewrite(
+                proxyToCanonicalUrl = mapOf(
+                    "http://127.0.0.1:12345/r/0/" to "https://user:pass@repo.example/maven2/"
+                )
+            )
+        ).reconstruct(
+            lockfileContents = LOCALHOST_LOCKFILE,
+            canonicalRepositoryInputs = listOf(
+                repositoryInputSpec("https://user:pass@repo.example/maven2/"),
+            )
+        )
+
+        assertThat(reconstructed).contains(""""https://user:pass@repo.example/maven2/": [""")
     }
 
     @Test
@@ -124,7 +225,7 @@ private fun reconstructor() =
     )
 
 private val CANONICAL_REPOSITORY_INPUTS = listOf(
-    """{ "repo_url": "https://repo.example/maven2/" }""",
+    repositoryInputSpec("https://repo.example/maven2/"),
 )
 
 private fun canonicalRepositoryInputsFromLockfileRepositories(lockfileContents: String): List<String> =
@@ -256,6 +357,122 @@ private val CYCLIC_LOCALHOST_LOCKFILE = """
         ]
       },
       "services": {},
+      "version": "3"
+    }
+""".trimIndent()
+
+private val LOCALHOST_LOCKFILE_WITH_BASELINE_ARTIFACT_SKIPPED = """
+    {
+      "__AUTOGENERATED_FILE_DO_NOT_MODIFY_THIS_FILE_MANUALLY": "THERE_IS_NO_DATA_ONLY_ZUUL",
+      "__INPUT_ARTIFACTS_HASH": {
+        "com.example:lib": 1698394405,
+        "repositories": -1
+      },
+      "__RESOLVED_ARTIFACTS_HASH": {
+        "com.example:lib": -1
+      },
+      "artifacts": {},
+      "dependencies": {
+        "com.example:lib": []
+      },
+      "packages": {
+        "com.example:lib": [
+          "com.example"
+        ]
+      },
+      "repositories": {
+        "http://127.0.0.1:12345/r/0/": [
+          "com.example:lib"
+        ]
+      },
+      "services": {},
+      "skipped": [
+        "com.example:lib"
+      ],
+      "version": "3"
+    }
+""".trimIndent()
+
+private val LOCALHOST_LOCKFILE_WITH_SKIPPED_NULL_ARTIFACT = """
+    {
+      "__AUTOGENERATED_FILE_DO_NOT_MODIFY_THIS_FILE_MANUALLY": "THERE_IS_NO_DATA_ONLY_ZUUL",
+      "__INPUT_ARTIFACTS_HASH": {
+        "com.example:platform": 1,
+        "com.example:platform:aar": 2,
+        "repositories": -1
+      },
+      "__RESOLVED_ARTIFACTS_HASH": {},
+      "artifacts": {
+        "com.example:platform": {
+          "shasums": {
+            "jar": null
+          },
+          "version": "1.0"
+        },
+        "com.example:platform:aar": {
+          "shasums": {
+            "jar": "aar-sha"
+          },
+          "version": "1.0"
+        }
+      },
+      "dependencies": {
+        "com.example:platform": [],
+        "com.example:platform:aar": []
+      },
+      "packages": {},
+      "repositories": {
+        "http://127.0.0.1:12345/r/0/": [
+          "com.example:platform",
+          "com.example:platform:aar"
+        ]
+      },
+      "services": {},
+      "skipped": [
+        "com.example:platform"
+      ],
+      "version": "3"
+    }
+""".trimIndent()
+
+private val CANONICAL_LOCKFILE_WITH_SKIPPED_NULL_ARTIFACT = """
+    {
+      "__AUTOGENERATED_FILE_DO_NOT_MODIFY_THIS_FILE_MANUALLY": "THERE_IS_NO_DATA_ONLY_ZUUL",
+      "__INPUT_ARTIFACTS_HASH": {
+        "com.example:platform": 1,
+        "com.example:platform:aar": 2,
+        "repositories": 1182908442
+      },
+      "__RESOLVED_ARTIFACTS_HASH": {},
+      "artifacts": {
+        "com.example:platform": {
+          "shasums": {
+            "jar": null
+          },
+          "version": "1.0"
+        },
+        "com.example:platform:aar": {
+          "shasums": {
+            "jar": "aar-sha"
+          },
+          "version": "1.0"
+        }
+      },
+      "dependencies": {
+        "com.example:platform": [],
+        "com.example:platform:aar": []
+      },
+      "packages": {},
+      "repositories": {
+        "https://repo.example/maven2/": [
+          "com.example:platform",
+          "com.example:platform:aar"
+        ]
+      },
+      "services": {},
+      "skipped": [
+        "com.example:platform"
+      ],
       "version": "3"
     }
 """.trimIndent()

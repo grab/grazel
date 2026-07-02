@@ -25,7 +25,6 @@ import com.grab.grazel.gradle.MigrationChecker
 import com.grab.grazel.gradle.dependencies.DefaultDependencyResolutionService
 import com.grab.grazel.gradle.dependencies.model.WorkspacePlan
 import com.grab.grazel.gradle.dependencies.model.WorkspaceRenderPlan
-import com.grab.grazel.migrate.dependencies.MavenInstallRepositoryInputs
 import com.grab.grazel.migrate.internal.RootBazelFileBuilder
 import com.grab.grazel.migrate.internal.WorkspaceBuilder
 import com.grab.grazel.util.BUILD_BAZEL
@@ -132,10 +131,7 @@ constructor(
         )
         workspaceBuilder.build().writeToFile(workspaceFile.get().asFile)
         mavenInstallRepositoryInputs.get().asFile.parentFile.mkdirs()
-        writeJson(
-            MavenInstallRepositoryInputs(workspaceBuilder.mavenInstallRepositoryInputs()),
-            mavenInstallRepositoryInputs.get()
-        )
+        writeJson(workspaceBuilder.mavenInstallRepositoryInputs(), mavenInstallRepositoryInputs.get())
         formatWithBuildifier(
             buildifierScript = buildifierScript.get().asFile,
             source = workspaceFile.get().asFile,

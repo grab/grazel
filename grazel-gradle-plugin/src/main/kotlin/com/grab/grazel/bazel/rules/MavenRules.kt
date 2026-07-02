@@ -26,6 +26,7 @@ import com.grab.grazel.bazel.starlark.assigneeBuilder
 import com.grab.grazel.bazel.starlark.load
 import com.grab.grazel.bazel.starlark.obj
 import com.grab.grazel.bazel.starlark.quote
+import com.grab.grazel.maven.mavenRepositoryUrlWithBasicCredentials
 
 sealed class MavenRepository : AssigneeBuilder {
     data class DefaultMavenRepository(
@@ -36,14 +37,17 @@ sealed class MavenRepository : AssigneeBuilder {
         override fun build() = StringStatement(urlWithCredentials().quote)
 
         internal fun repositoryInputSpec(): String =
-            repositoryInputSpec(urlWithCredentials())
+            repositoryInputSpec(repositoryInputUrl())
 
-        private fun urlWithCredentials(): String {
-            return when {
-                username == null || password == null -> url
-                else -> url.split("://").joinToString(separator = "://$username:$password@")
+        internal fun repositoryInputUrl(): String =
+            urlWithCredentials()
+
+        private fun urlWithCredentials(): String =
+            if (username == null || password == null) {
+                url
+            } else {
+                mavenRepositoryUrlWithBasicCredentials(url, username, password)
             }
-        }
     }
 }
 

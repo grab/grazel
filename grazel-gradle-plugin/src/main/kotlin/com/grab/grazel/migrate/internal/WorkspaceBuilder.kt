@@ -44,8 +44,9 @@ import com.grab.grazel.migrate.BazelFileBuilder
 import com.grab.grazel.migrate.android.parseCompileSdkVersion
 import com.grab.grazel.migrate.dependencies.MavenInstallArtifactsCalculator
 import com.grab.grazel.migrate.dependencies.MavenInstallData
+import com.grab.grazel.migrate.dependencies.MavenInstallRepositoryInputs
 import com.grab.grazel.migrate.dependencies.mavenInstallExternalInputs
-import com.grab.grazel.migrate.dependencies.repositoryInputSpecs
+import com.grab.grazel.migrate.dependencies.repositoryInputs
 import org.gradle.api.Project
 import org.gradle.kotlin.dsl.the
 import javax.inject.Inject
@@ -104,8 +105,12 @@ internal class WorkspaceBuilder(
         toolsAndroid()
     }
 
-    fun mavenInstallRepositoryInputs(): Map<String, List<String>> =
-        mavenInstallData.associate { data -> data.name to data.repositoryInputSpecs() }
+    fun mavenInstallRepositoryInputs(): MavenInstallRepositoryInputs =
+        MavenInstallRepositoryInputs(
+            repositoriesByName = mavenInstallData.associate { data ->
+                data.name to repositoryInputs(data)
+            }
+        )
 
     private val mavenInstallData: Set<MavenInstallData> by lazy {
         val externalInputs = mavenInstallExternalInputs(gradleProjectInfo.hasDagger)

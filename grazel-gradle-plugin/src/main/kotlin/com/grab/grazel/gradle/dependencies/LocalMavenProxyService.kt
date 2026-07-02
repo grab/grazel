@@ -19,11 +19,7 @@ package com.grab.grazel.gradle.dependencies
 import com.grab.grazel.di.qualifiers.RootProject
 import com.grab.grazel.gradle.RepositoryAuth
 import com.grab.grazel.gradle.RepositoryWithAuth
-import com.grab.grazel.migrate.dependencies.LocalMavenProxyAuth
-import com.grab.grazel.migrate.dependencies.LocalMavenProxyOrigin
-import com.grab.grazel.migrate.dependencies.LocalMavenProxyServer
-import com.grab.grazel.migrate.dependencies.LocalMavenProxyStats
-import com.grab.grazel.migrate.dependencies.MavenInstallRepositoryRewrite
+import com.grab.grazel.maven.mavenRepositoryUrlWithBasicCredentials
 import org.gradle.api.Project
 import org.gradle.api.file.DirectoryProperty
 import org.gradle.api.provider.ListProperty
@@ -35,44 +31,51 @@ internal abstract class LocalMavenProxyService :
     AutoCloseable {
     private val lock = Any()
     private var server: LocalMavenProxyServer? = null
+    private var serverOrigins: List<LocalMavenProxyOrigin>? = null
 
-    fun configure(facts: LocalMavenResolvedFacts) {
-        synchronized(lock) {
-            activeServer().configure(
+    fun configure(
+        facts: LocalMavenResolvedFacts,
+        allowedOriginArtifactPaths: Set<String> = emptySet(),
+        canonicalRepositoryUrls: Set<String> = emptySet(),
+    ): LocalMavenProxyRepositoryMappings {
+        return synchronized(lock) {
+            val proxyPlans = localMavenRepositoryProxyPlans(
+                repositories = parameters.repositories.get(),
+                canonicalRepositoryUrls = canonicalRepositoryUrls
+            )
+            val activeServer = activeServer(proxyPlans)
+            activeServer.configure(
                 artifactIndex = facts.artifactIndex,
-                artifactFileResolver = facts.artifactFileResolver,
                 knownComponentGavs = facts.knownComponentGavs,
+                metadataOnlyGavs = facts.metadataOnlyGavs,
+                allowedOriginArtifactPaths = allowedOriginArtifactPaths,
                 pomFileResolver = facts.pomFileResolver
             )
+            localMavenRepositoryProxyMappingsFrom(
+                baseUrl = activeServer.baseUrl().trimEnd('/'),
+                proxyPlans = proxyPlans
+            )
         }
-    }
-
-    fun baseUrl(): String = synchronized(lock) {
-        activeServer().baseUrl()
     }
 
     fun stats(): LocalMavenProxyStats = synchronized(lock) {
         server?.stats() ?: LocalMavenProxyStats()
     }
 
-    fun repositoryRewrite(): MavenInstallRepositoryRewrite = synchronized(lock) {
-        val baseUrl = activeServer().baseUrl().trimEnd('/')
-        MavenInstallRepositoryRewrite(
-            proxyToCanonicalUrl = parameters.repositories
-                .get()
-                .mapIndexed { index, repository ->
-                    "$baseUrl/r/$index/" to repository.url
-                }
-                .toMap()
-        )
-    }
-
-    private fun activeServer(): LocalMavenProxyServer {
-        return server ?: LocalMavenProxyServer(
+    private fun activeServer(proxyPlans: List<LocalMavenRepositoryProxyPlan>): LocalMavenProxyServer {
+        val origins = proxyPlans.map { plan -> plan.origin }
+        server?.takeIf { serverOrigins == origins }?.let { activeServer ->
+            return activeServer
+        }
+        server?.close()
+        server = null
+        serverOrigins = null
+        return LocalMavenProxyServer(
             cacheDir = parameters.cacheDir.get().asFile,
-            origins = parameters.repositories.get().map { repository -> repository.toProxyOrigin() }
+            origins = origins
         ).also { newServer ->
             server = newServer
+            serverOrigins = origins
         }
     }
 
@@ -80,6 +83,7 @@ internal abstract class LocalMavenProxyService :
         synchronized(lock) {
             server?.close()
             server = null
+            serverOrigins = null
         }
     }
 
@@ -104,21 +108,122 @@ internal abstract class LocalMavenProxyService :
     }
 }
 
-private fun RepositoryWithAuth.toProxyOrigin(): LocalMavenProxyOrigin =
+private fun toProxyOrigin(repository: RepositoryWithAuth): LocalMavenProxyOrigin =
     LocalMavenProxyOrigin(
-        name = name,
-        url = url,
-        auth = when (val repositoryAuth = auth) {
-            is RepositoryAuth.Basic -> LocalMavenProxyAuth.Basic(
-                username = repositoryAuth.username,
-                password = repositoryAuth.password
-            )
-
-            is RepositoryAuth.Header -> LocalMavenProxyAuth.Header(
-                name = repositoryAuth.name,
-                value = repositoryAuth.value
-            )
-
-            is RepositoryAuth.None -> LocalMavenProxyAuth.None
-        }
+        name = repository.name,
+        url = repository.url,
+        auth = repository.auth
     )
+
+internal fun localMavenProxyOrigins(
+    repositories: List<RepositoryWithAuth>,
+    canonicalRepositoryUrls: Set<String>,
+): List<LocalMavenProxyOrigin> =
+    localMavenRepositoryProxyPlans(
+        repositories = repositories,
+        canonicalRepositoryUrls = canonicalRepositoryUrls
+    ).map { plan -> plan.origin }
+
+internal data class LocalMavenProxyRepositoryMappings(
+    val proxyToCanonicalUrl: Map<String, String>,
+    val canonicalToProxyUrl: Map<String, String>,
+)
+
+internal fun localMavenRepositoryProxyMappings(
+    baseUrl: String,
+    repositories: List<RepositoryWithAuth>,
+    canonicalRepositoryUrls: Set<String>,
+): LocalMavenProxyRepositoryMappings =
+    localMavenRepositoryProxyMappingsFrom(
+        baseUrl = baseUrl,
+        proxyPlans = localMavenRepositoryProxyPlans(
+            repositories = repositories,
+            canonicalRepositoryUrls = canonicalRepositoryUrls
+        )
+    )
+
+private fun localMavenRepositoryProxyMappingsFrom(
+    baseUrl: String,
+    proxyPlans: List<LocalMavenRepositoryProxyPlan>,
+): LocalMavenProxyRepositoryMappings {
+    val proxyToCanonicalUrl = linkedMapOf<String, String>()
+    val canonicalToProxyUrl = linkedMapOf<String, String>()
+    proxyPlans.forEachIndexed { index, plan ->
+        val proxyUrl = "${baseUrl.trimEnd('/')}/r/$index/"
+        proxyToCanonicalUrl[proxyUrl] = plan.canonicalUrlForGeneratedOutput
+        plan.canonicalAliases.forEach { canonicalUrl ->
+            canonicalToProxyUrl[canonicalUrl] = proxyUrl
+        }
+    }
+    return LocalMavenProxyRepositoryMappings(
+        proxyToCanonicalUrl = proxyToCanonicalUrl,
+        canonicalToProxyUrl = canonicalToProxyUrl
+    )
+}
+
+private data class LocalMavenRepositoryProxyPlan(
+    val origin: LocalMavenProxyOrigin,
+    val canonicalAliases: Set<String>,
+    val canonicalUrlForGeneratedOutput: String,
+)
+
+private fun localMavenRepositoryProxyPlans(
+    repositories: List<RepositoryWithAuth>,
+    canonicalRepositoryUrls: Set<String>,
+): List<LocalMavenRepositoryProxyPlan> {
+    val repositoryPlans = repositories.map { repository ->
+        val aliases = canonicalUrlAliases(repository)
+        LocalMavenRepositoryProxyPlan(
+            origin = toProxyOrigin(repository),
+            canonicalAliases = aliases,
+            canonicalUrlForGeneratedOutput = canonicalUrlForGeneratedOutput(
+                repository = repository,
+                canonicalRepositoryUrls = canonicalRepositoryUrls
+            )
+        )
+    }
+    val coveredAliases = repositoryPlans
+        .flatMap { plan -> plan.canonicalAliases }
+        .toSet()
+    val externalPlans = (canonicalRepositoryUrls - coveredAliases)
+        .sorted()
+        .mapIndexed { index, canonicalUrl ->
+            LocalMavenRepositoryProxyPlan(
+                origin = LocalMavenProxyOrigin(
+                    name = "external-$index",
+                    url = canonicalUrl
+                ),
+                canonicalAliases = setOf(canonicalUrl),
+                canonicalUrlForGeneratedOutput = canonicalUrl
+            )
+        }
+    return repositoryPlans + externalPlans
+}
+
+private fun canonicalUrlForGeneratedOutput(
+    repository: RepositoryWithAuth,
+    canonicalRepositoryUrls: Set<String>,
+): String {
+    val credentialedUrl = credentialedUrl(repository)
+    return when {
+        credentialedUrl != null && credentialedUrl in canonicalRepositoryUrls -> credentialedUrl
+        repository.url in canonicalRepositoryUrls -> repository.url
+        credentialedUrl != null && canonicalRepositoryUrls.isEmpty() -> credentialedUrl
+        else -> repository.url
+    }
+}
+
+private fun canonicalUrlAliases(repository: RepositoryWithAuth): Set<String> =
+    listOfNotNull(repository.url, credentialedUrl(repository)).toSet()
+
+private fun credentialedUrl(repository: RepositoryWithAuth): String? =
+    when (val repositoryAuth = repository.auth) {
+        is RepositoryAuth.Basic -> mavenRepositoryUrlWithBasicCredentials(
+            url = repository.url,
+            username = repositoryAuth.username,
+            password = repositoryAuth.password
+        )
+
+        is RepositoryAuth.Header,
+        RepositoryAuth.None -> null
+    }

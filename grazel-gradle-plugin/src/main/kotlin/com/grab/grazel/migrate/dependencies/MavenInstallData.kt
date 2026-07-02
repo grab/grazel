@@ -12,7 +12,13 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 internal data class MavenInstallRepositoryInputs(
-    val repositoriesByName: Map<String, List<String>>,
+    val repositoriesByName: Map<String, List<MavenInstallRepositoryInput>>,
+)
+
+@Serializable
+internal data class MavenInstallRepositoryInput(
+    val repositoryInputSpec: String,
+    val canonicalUrl: String,
 )
 
 internal data class MavenInstallData(
@@ -63,15 +69,36 @@ internal fun mavenInstallExternalInputs(
     )
 }
 
-internal fun MavenInstallData.repositoryInputSpecs(): List<String> =
-    (repositories.map { repository ->
+internal fun repositoryInputs(mavenInstallData: MavenInstallData): List<MavenInstallRepositoryInput> =
+    (mavenInstallData.repositories.map { repository ->
         when (repository) {
-            is DefaultMavenRepository -> repository.repositoryInputSpec()
+            is DefaultMavenRepository -> MavenInstallRepositoryInput(
+                repositoryInputSpec = repository.repositoryInputSpec(),
+                canonicalUrl = repository.repositoryInputUrl()
+            )
         }
-    } + externalRepositories.flatMap(::externalRepositoryInputSpecs)).sorted()
+    } + mavenInstallData.externalRepositories.flatMap(::externalRepositoryInputs))
+        .sortedWith(
+            compareBy<MavenInstallRepositoryInput> { input -> input.repositoryInputSpec }
+                .thenBy { input -> input.canonicalUrl }
+        )
 
-private fun externalRepositoryInputSpecs(variableName: String): List<String> =
+private fun externalRepositoryInputs(variableName: String): List<MavenInstallRepositoryInput> =
     when (variableName) {
-        DAGGER_REPOSITORIES -> DAGGER_REPOSITORY_URLS.map(::repositoryInputSpec)
+        DAGGER_REPOSITORIES -> DAGGER_REPOSITORY_URLS.map { url ->
+            MavenInstallRepositoryInput(
+                repositoryInputSpec = repositoryInputSpec(url),
+                canonicalUrl = url
+            )
+        }
         else -> error("Unsupported external Maven repository variable for local pinning: $variableName")
     }
+
+internal fun repositoryUrls(mavenInstallRepositoryInputs: MavenInstallRepositoryInputs): Set<String> =
+    mavenInstallRepositoryInputs
+        .repositoriesByName
+        .values
+        .asSequence()
+        .flatten()
+        .map { input -> input.canonicalUrl }
+        .toSortedSet()

@@ -46,6 +46,18 @@ class MavenInstallWorkspaceRepositoryRewriterTest {
 
         assertThat(restored).isEqualTo(WORKSPACE_WITH_REPOSITORIES)
     }
+
+    @Test
+    fun `rewrite does not replace repositories outside maven install calls`() {
+        val rewritten = MavenInstallWorkspaceRepositoryRewriter.rewrite(
+            workspace = WORKSPACE_WITH_NON_MAVEN_REPOSITORIES,
+            urlReplacements = mapOf(
+                "https://repo.maven.apache.org/maven2/" to "http://127.0.0.1:3456/r/1/"
+            )
+        )
+
+        assertThat(rewritten).isEqualTo(WORKSPACE_WITH_NON_MAVEN_REPOSITORIES)
+    }
 }
 
 private val WORKSPACE_WITH_REPOSITORIES = """
@@ -75,5 +87,14 @@ private val LOCALHOST_WORKSPACE = """
             "http://127.0.0.1:3456/r/0/",
             "http://127.0.0.1:3456/r/1/",
         ] + DAGGER_REPOSITORIES,
+    )
+""".trimIndent()
+
+private val WORKSPACE_WITH_NON_MAVEN_REPOSITORIES = """
+    custom_rule(
+        name = "not_maven",
+        repositories = [
+            "https://repo.maven.apache.org/maven2/",
+        ],
     )
 """.trimIndent()

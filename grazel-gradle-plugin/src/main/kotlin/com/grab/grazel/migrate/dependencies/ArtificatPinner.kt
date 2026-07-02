@@ -53,7 +53,7 @@ internal interface ArtifactPinner {
         mavenInstallRepositoryInputs: MavenInstallRepositoryInputs = MavenInstallRepositoryInputs(emptyMap()),
         gradleServices: GradleServices,
         logger: Logger,
-        localMavenResolutionContextFactory: ((Map<String, List<ResolvedDependency>>) -> LocalMavenResolutionPinContext)? = null,
+        localMavenResolutionContextFactory: LocalMavenResolutionPinContextFactory? = null,
     ): Boolean
 
     /**
@@ -118,8 +118,8 @@ constructor(
     private fun failWhenOutOfDate(workspaceFile: File, enable: Boolean) {
         workspaceFile.writeText(
             workspaceFile.readText().replace(
-                "fail_if_repin_required = ${(!enable).toString().capitalize()}",
-                "fail_if_repin_required = ${enable.toString().capitalize()}"
+                "fail_if_repin_required = ${starlarkBoolean(!enable)}",
+                "fail_if_repin_required = ${starlarkBoolean(enable)}"
             )
         )
     }
@@ -198,7 +198,7 @@ constructor(
 
 
     internal fun determinePinningTarget(layout: ProjectLayout, mavenRepo: String): String {
-        val installJson = "${mavenRepo}_install.json"
+        val installJson = mavenInstallJsonName(mavenRepo)
         return if (layout.projectDirectory.file(installJson).asFile.exists()) {
             "@unpinned_${mavenRepo}//:pin"
         } else {
@@ -207,7 +207,7 @@ constructor(
     }
 
     internal fun cleanupStaleMavenInstallJsons(layout: ProjectLayout, activeMavenRepos: Set<String>) {
-        val activeInstallJsons = activeMavenRepos.mapTo(mutableSetOf()) { "${it}_install.json" }
+        val activeInstallJsons = activeMavenRepos.mapTo(mutableSetOf(), ::mavenInstallJsonName)
         layout.projectDirectory.asFile
             .listFiles { file ->
                 file.isFile &&
@@ -225,7 +225,7 @@ constructor(
         mavenInstallRepositoryInputs: MavenInstallRepositoryInputs,
         gradleServices: GradleServices,
         logger: Logger,
-        localMavenResolutionContextFactory: ((Map<String, List<ResolvedDependency>>) -> LocalMavenResolutionPinContext)?,
+        localMavenResolutionContextFactory: LocalMavenResolutionPinContextFactory?,
     ): Boolean {
         val progressLoggerFactory = gradleServices.progressLoggerFactory
 
@@ -247,7 +247,10 @@ constructor(
 
         if (shouldRun) {
             val localMavenStartNanos = System.nanoTime()
-            val localMavenContext = localMavenResolutionContextFactory?.invoke(allRepos)
+            val localMavenContext = localMavenResolutionContextFactory?.create(
+                pinnableRepos = allRepos,
+                repositoryInputs = mavenInstallRepositoryInputs
+            )
             val localMavenWorkspace = localMavenContext?.let { context ->
                 LocalMavenPinningWorkspace(
                     workspaceFile = workspaceFile,
@@ -294,13 +297,19 @@ constructor(
             val pinScripts = localMavenWorkspace?.withProxyRepositories(generatePinScripts) ?: generatePinScripts()
             val isSuccess = pinScripts.all { it.second.isSuccess }
             if (isSuccess) {
+                val baselineLockfiles = localMavenWorkspace
+                    ?.snapshotActiveLockfiles(allRepos.keys)
+                    .orEmpty()
                 pin(workspaceFile)
                 val workQueue = gradleServices.workerExecutor.noIsolation()
                 pinScripts.forEach { (script, _) ->
                     workQueue.submit(PinningWorkAction::class.java) { pinScript.set(script) }
                 }
                 workQueue.await()
-                localMavenWorkspace?.reconstructActiveLockfiles(allRepos.keys)
+                localMavenWorkspace?.reconstructActiveLockfiles(
+                    activeMavenRepos = allRepos.keys,
+                    baselineLockfilesByRepoName = baselineLockfiles
+                )
                 if (localMavenContext != null) {
                     validateLocalMavenReconstruction(
                         workspaceFile = workspaceFile,
@@ -311,7 +320,7 @@ constructor(
                     )
                     logLocalMavenResolutionSummary(
                         logger = logger,
-                        stats = localMavenContext.stats(),
+                        stats = localMavenContext.stats.snapshot(),
                         elapsedNanos = System.nanoTime() - localMavenStartNanos
                     )
                 }
@@ -353,14 +362,22 @@ constructor(
 
     private fun logLocalMavenResolutionSummary(
         logger: Logger,
-        stats: LocalMavenProxyStats,
+        stats: LocalMavenResolutionStats,
         elapsedNanos: Long,
     ) {
         logger.quiet(
             "Local Maven resolution served ${stats.artifactHits} artifacts from Gradle index, " +
-                "${stats.gradlePomHits} POMs from Gradle cache, " +
-                "${stats.originFallbacks} unknown metadata POMs from origin, " +
-                "${stats.alternateArtifactMisses} known alternate artifact misses, in " +
+                "${stats.gradlePomHits} POMs from Gradle index, " +
+                "${stats.originFallbacks} origin fallbacks, " +
+                "${stats.originFailures} origin failures, " +
+                "${stats.lockfileArtifactFallbacks} lockfile artifact fallbacks, " +
+                "${stats.metadataOnlyArtifactFallbacks} metadata-only artifact fallbacks, " +
+                "${stats.alternateArtifactMisses} known alternate artifact probes, " +
+                "${stats.artifactMisses} artifact misses, " +
+                "${stats.knownPomFailures} known POM failures, " +
+                "${stats.checksumHits} checksum hits, " +
+                "${stats.writeThroughCacheHits} write-through cache hits, " +
+                "${stats.bytesServed} bytes served, in " +
                 "${TimeUnit.NANOSECONDS.toMillis(elapsedNanos)}ms".ansiGreen
         )
     }
@@ -386,8 +403,8 @@ constructor(
                     .forEach(File::delete)
 
                 // Retry the block again after unpinning
-                val (_, execResult) = bazelBlock()
-                execResult.assertNormalExitValue()
+                val (_, retryExecResult) = bazelBlock()
+                retryExecResult.assertNormalExitValue()
             }
 
             !outputStream.isOutOfDate && !execResult.isSuccess -> {
@@ -395,6 +412,9 @@ constructor(
             }
         }
     }
+
+    private fun starlarkBoolean(value: Boolean): String =
+        if (value) "True" else "False"
 }
 
 internal fun collectPinnableMavenInstallRepos(

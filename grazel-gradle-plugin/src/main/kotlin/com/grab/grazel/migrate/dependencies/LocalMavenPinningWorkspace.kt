@@ -18,12 +18,6 @@ package com.grab.grazel.migrate.dependencies
 
 import java.io.File
 
-internal data class LocalMavenResolutionPinContext(
-    val repositoryRewrite: MavenInstallRepositoryRewrite,
-    val metadataOnlyShortIds: Set<String>,
-    val stats: () -> LocalMavenProxyStats,
-)
-
 internal class LocalMavenPinningWorkspace(
     private val workspaceFile: File,
     private val rootDirectory: File,
@@ -35,8 +29,11 @@ internal class LocalMavenPinningWorkspace(
         val workspace = workspaceFile.readText()
         workspaceFile.writeText(
             MavenInstallWorkspaceRepositoryRewriter.rewrite(
-                workspace = workspace.withoutOverrideTargets(metadataOnlyShortIds),
-                urlReplacements = repositoryRewrite.canonicalToProxyUrl()
+                workspace = workspaceWithoutMetadataOnlyOverrideTargets(
+                    workspace = workspace,
+                    shortIds = metadataOnlyShortIds
+                ),
+                urlReplacements = repositoryRewrite.canonicalToProxyUrl
             )
         )
         return try {
@@ -46,46 +43,88 @@ internal class LocalMavenPinningWorkspace(
         }
     }
 
-    fun reconstructActiveLockfiles(activeMavenRepos: Set<String>) {
+    fun snapshotActiveLockfiles(activeMavenRepos: Set<String>): Map<String, String> =
+        activeLockfiles(activeMavenRepos)
+            .associate { (repoName, lockfile) -> repoName to lockfile.readText() }
+
+    fun reconstructActiveLockfiles(
+        activeMavenRepos: Set<String>,
+        baselineLockfilesByRepoName: Map<String, String> = emptyMap(),
+    ) {
         val reconstructor = MavenInstallLockfileReconstructor(repositoryRewrite)
-        activeMavenRepos
-            .map { repoName -> repoName to rootDirectory.resolve(repoName.mavenInstallJsonName()) }
-            .filter { (_, lockfile) -> lockfile.exists() }
+        activeLockfiles(activeMavenRepos)
             .forEach { (repoName, lockfile) ->
                 lockfile.writeText(
                     reconstructor.reconstruct(
                         lockfileContents = lockfile.readText(),
                         canonicalRepositoryInputs = repositoryInputs.repositoriesByName[repoName]
-                            ?: error("Missing maven_install repository inputs for $repoName")
+                            ?.map { input -> input.repositoryInputSpec }
+                            ?: error("Missing maven_install repository inputs for $repoName"),
+                        baselineLockfileContents = baselineLockfilesByRepoName[repoName]
                     )
                 )
             }
     }
 
+    private fun activeLockfiles(activeMavenRepos: Set<String>): Sequence<Pair<String, File>> =
+        activeMavenRepos
+            .asSequence()
+            .map { repoName -> repoName to rootDirectory.resolve(mavenInstallJsonName(repoName)) }
+            .filter { (_, lockfile) -> lockfile.exists() }
+
 }
 
-private fun MavenInstallRepositoryRewrite.canonicalToProxyUrl(): Map<String, String> =
-    proxyToCanonicalUrl.entries.associate { (proxyUrl, canonicalUrl) -> canonicalUrl to proxyUrl }
-
-private fun String.mavenInstallJsonName(): String =
-    if (this == "maven") {
+internal fun mavenInstallJsonName(repoName: String): String =
+    if (repoName == "maven") {
         "maven_install.json"
     } else {
-        "${this}_install.json"
+        "${repoName}_install.json"
     }
 
-private fun String.withoutOverrideTargets(shortIds: Set<String>): String {
-    if (shortIds.isEmpty()) return this
-    return lineSequence()
-        .filterNot { line ->
-            val overrideTargetKey = line.overrideTargetKey()
-            overrideTargetKey != null && overrideTargetKey in shortIds
-        }
+private fun workspaceWithoutMetadataOnlyOverrideTargets(
+    workspace: String,
+    shortIds: Set<String>,
+): String {
+    if (shortIds.isEmpty()) return workspace
+    val overrideTargetsFilter = OverrideTargetsFilter(removedShortIds = shortIds)
+    return workspace.lineSequence()
+        .filter(overrideTargetsFilter::shouldKeep)
         .joinToString(separator = "\n", postfix = "\n")
 }
 
-private fun String.overrideTargetKey(): String? {
-    val trimmed = trimStart()
+private class OverrideTargetsFilter(
+    private val removedShortIds: Set<String>,
+) {
+    private var insideOverrideTargets = false
+    private var braceDepth = 0
+
+    fun shouldKeep(line: String): Boolean {
+        enterOverrideTargetsBlockIfNeeded(line)
+        val overrideTargetKey = if (insideOverrideTargets) overrideTargetKey(line) else null
+        val keepLine = overrideTargetKey == null || overrideTargetKey !in removedShortIds
+        advanceBlockState(line)
+        return keepLine
+    }
+
+    private fun enterOverrideTargetsBlockIfNeeded(line: String) {
+        if (!insideOverrideTargets && line.trimStart().startsWith("override_targets")) {
+            insideOverrideTargets = true
+        }
+    }
+
+    private fun advanceBlockState(line: String) {
+        if (!insideOverrideTargets) return
+        braceDepth += line.count { char -> char == '{' }
+        braceDepth -= line.count { char -> char == '}' }
+        if (braceDepth <= 0) {
+            insideOverrideTargets = false
+            braceDepth = 0
+        }
+    }
+}
+
+private fun overrideTargetKey(line: String): String? {
+    val trimmed = line.trimStart()
     if (!trimmed.startsWith('"')) return null
     val closingQuoteIndex = trimmed.indexOf('"', startIndex = 1)
     if (closingQuoteIndex <= 1) return null
