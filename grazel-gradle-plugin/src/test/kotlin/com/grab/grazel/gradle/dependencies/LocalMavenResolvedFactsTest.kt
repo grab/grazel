@@ -29,6 +29,7 @@ import org.junit.Test
 import org.junit.rules.TemporaryFolder
 import java.io.File
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 class LocalMavenResolvedFactsTest {
 
@@ -194,8 +195,8 @@ class LocalMavenResolvedFactsTest {
         )
 
         assertEquals(0, queries)
-        assertEquals(pom, resolver.resolvePom("com.example:library:1.2.3"))
-        assertEquals(pom, resolver.resolvePom("com.example:library:1.2.3"))
+        assertEquals(PomFileResolution.Found(pom), resolver.resolvePom("com.example:library:1.2.3"))
+        assertEquals(PomFileResolution.Found(pom), resolver.resolvePom("com.example:library:1.2.3"))
         assertEquals(1, queries)
     }
 
@@ -206,18 +207,21 @@ class LocalMavenResolvedFactsTest {
             pomArtifactQuery = { error("Unknown component should not query Gradle") }
         )
 
-        assertEquals(null, resolver.resolvePom("com.example:missing:1.0"))
+        assertEquals(PomFileResolution.Unknown, resolver.resolvePom("com.example:missing:1.0"))
     }
 
     @Test
-    fun `pom resolver returns null for known component with no pom file`() {
+    fun `pom resolver returns unavailable for known component with no pom file`() {
         val component = fakeComponent("com.example", "broken", "1.0")
         val resolver = GradlePomFileResolver(
             componentIdsByGav = mapOf("com.example:broken:1.0" to component),
             pomArtifactQuery = { null }
         )
 
-        assertEquals(null, resolver.resolvePom("com.example:broken:1.0"))
+        val resolution = resolver.resolvePom("com.example:broken:1.0")
+
+        assertTrue(resolution is PomFileResolution.Unavailable)
+        assertEquals("com.example:broken:1.0", resolution.gav)
     }
 
     @Test
@@ -233,7 +237,7 @@ class LocalMavenResolvedFactsTest {
             }
         )
 
-        assertEquals(pom, resolver.resolvePom("com.example:library:1.2.3"))
+        assertEquals(PomFileResolution.Found(pom), resolver.resolvePom("com.example:library:1.2.3"))
     }
 
     @Test
@@ -254,7 +258,7 @@ class LocalMavenResolvedFactsTest {
             }
         )
 
-        assertEquals(pom, resolver.resolvePom("com.example:library:1.2.3"))
+        assertEquals(PomFileResolution.Found(pom), resolver.resolvePom("com.example:library:1.2.3"))
         assertEquals(1, queries)
     }
 
@@ -270,7 +274,7 @@ class LocalMavenResolvedFactsTest {
             }
         )
 
-        assertEquals(pom, resolver.resolvePom("com.example:additional:1.2.3"))
+        assertEquals(PomFileResolution.Found(pom), resolver.resolvePom("com.example:additional:1.2.3"))
     }
 
     private fun fakeArtifact(

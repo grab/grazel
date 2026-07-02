@@ -301,6 +301,8 @@ constructor(
                     ?.snapshotActiveLockfiles(allRepos.keys)
                     .orEmpty()
                 pin(workspaceFile)
+                // RJE pin scripts embed repository URLs captured while WORKSPACE is temporarily proxied.
+                // WORKSPACE is restored before execution so generated source stays canonical.
                 val workQueue = gradleServices.workerExecutor.noIsolation()
                 pinScripts.forEach { (script, _) ->
                     workQueue.submit(PinningWorkAction::class.java) { pinScript.set(script) }
@@ -375,6 +377,7 @@ constructor(
                 "${stats.alternateArtifactMisses} known alternate artifact probes, " +
                 "${stats.artifactMisses} artifact misses, " +
                 "${stats.knownPomFailures} known POM failures, " +
+                "${stats.requestFailures} request failures, " +
                 "${stats.checksumHits} checksum hits, " +
                 "${stats.writeThroughCacheHits} write-through cache hits, " +
                 "${stats.bytesServed} bytes served, in " +

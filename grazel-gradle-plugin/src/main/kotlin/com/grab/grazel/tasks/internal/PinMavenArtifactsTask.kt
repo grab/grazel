@@ -18,7 +18,6 @@ package com.grab.grazel.tasks.internal
 
 import com.grab.grazel.di.GradleServices
 import com.grab.grazel.di.GrazelComponent
-import com.grab.grazel.gradle.dependencies.LocalMavenProxyStats
 import com.grab.grazel.gradle.dependencies.LocalMavenProxyService
 import com.grab.grazel.gradle.dependencies.LocalMavenResolvedFactsBuilder
 import com.grab.grazel.gradle.dependencies.model.ResolvedDependency
@@ -35,6 +34,7 @@ import com.grab.grazel.migrate.dependencies.MavenInstallRepositoryInputs
 import com.grab.grazel.migrate.dependencies.MavenInstallRepositoryRewrite
 import com.grab.grazel.migrate.dependencies.activeMavenInstallLockfileFallbackFacts
 import com.grab.grazel.migrate.dependencies.repositoryUrls
+import com.grab.grazel.proxy.LocalMavenProxyStats
 import com.grab.grazel.util.fromJson
 import com.grab.grazel.util.GradleProvider
 import dagger.Lazy
@@ -194,6 +194,7 @@ private fun localMavenResolutionStatsFrom(proxyStats: LocalMavenProxyStats): Loc
         knownPomFailures = proxyStats.knownPomFailures,
         originFallbacks = proxyStats.originFallbacks,
         originFailures = proxyStats.originFailures,
+        requestFailures = proxyStats.requestFailures,
         checksumHits = proxyStats.checksumHits,
         writeThroughCacheHits = proxyStats.writeThroughCacheHits,
         bytesServed = proxyStats.bytesServed

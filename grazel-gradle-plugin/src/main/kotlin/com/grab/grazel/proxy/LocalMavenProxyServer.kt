@@ -14,9 +14,11 @@
  * limitations under the License.
  */
 
-package com.grab.grazel.gradle.dependencies
+package com.grab.grazel.proxy
 
 import com.grab.grazel.gradle.RepositoryAuth
+import com.grab.grazel.gradle.dependencies.PomFileResolution
+import com.grab.grazel.gradle.dependencies.PomFileResolver
 import com.grab.grazel.maven.MavenPath
 import com.grab.grazel.maven.isConcreteMavenArtifactPath
 import io.ktor.client.HttpClient
@@ -56,6 +58,7 @@ internal data class LocalMavenProxyStats(
     val knownPomFailures: Long = 0,
     val originFallbacks: Long = 0,
     val originFailures: Long = 0,
+    val requestFailures: Long = 0,
     val checksumHits: Long = 0,
     val writeThroughCacheHits: Long = 0,
     val bytesServed: Long = 0,
@@ -87,7 +90,7 @@ internal class LocalMavenProxyServer(
     private var allowedOriginArtifactPaths: Set<String> = emptySet()
     private var indexedArtifactGavs: Set<String> = emptySet()
     private var knownMainArtifactExtensionsByGav: Map<String, Set<String>> = emptyMap()
-    private var pomFileResolver: PomFileResolver = PomFileResolver { null }
+    private var pomFileResolver: PomFileResolver = PomFileResolver { PomFileResolution.Unknown }
     private var engine: ApplicationEngine? = null
     private var boundBaseUrl: String? = null
 
@@ -138,7 +141,7 @@ internal class LocalMavenProxyServer(
                     val response = try {
                         serve(repoIndex, path)
                     } catch (exception: Exception) {
-                        counters.knownPomFailures.incrementAndGet()
+                        counters.requestFailures.incrementAndGet()
                         ServedResponse.Bytes(
                             status = HttpStatusCode.InternalServerError,
                             bytes = exception.message.orEmpty().toByteArray()
@@ -261,15 +264,15 @@ internal class LocalMavenProxyServer(
         countContentHit: Boolean,
     ): ServedResponse {
         val gav = gavFromMavenPath(path)
-        return try {
-            val canServeGradleBackedPom = gav in indexedArtifactGavs
-            val gradleBackedPom = if (canServeGradleBackedPom) {
-                pomFileResolver.resolvePom(gav)
-            } else {
-                null
-            }
-            gradleBackedPom
-                ?.takeIf { pom -> pom.exists() }
+        val canServeGradleBackedPom = gav in indexedArtifactGavs
+        val pomResolution = if (canServeGradleBackedPom) {
+            pomFileResolver.resolvePom(gav)
+        } else {
+            PomFileResolution.Unknown
+        }
+        when (pomResolution) {
+            is PomFileResolution.Found -> pomResolution.file
+                .takeIf { pom -> pom.exists() }
                 ?.let { pom ->
                     return fileResponse(
                         status = HttpStatusCode.OK,
@@ -281,15 +284,18 @@ internal class LocalMavenProxyServer(
                         }
                     )
                 }
-            if (canServeGradleBackedPom && gav in knownComponentGavs) {
+
+            PomFileResolution.Unknown -> Unit
+            is PomFileResolution.Unavailable -> if (canServeGradleBackedPom && gav in knownComponentGavs) {
                 counters.knownPomFailures.incrementAndGet()
-                return hardFailure("Missing Gradle-resolved POM for known component $gav at $path")
+                return hardFailure(pomResolution.message)
             }
-            serveFromCacheOrOrigin(repoIndex, path)
-        } catch (exception: Exception) {
-            counters.knownPomFailures.incrementAndGet()
-            hardFailure(exception.message.orEmpty())
         }
+        if (canServeGradleBackedPom && gav in knownComponentGavs) {
+            counters.knownPomFailures.incrementAndGet()
+            return hardFailure("Missing Gradle-resolved POM for known component $gav at $path")
+        }
+        return serveFromCacheOrOrigin(repoIndex, path)
     }
 
     private fun hardFailure(message: String): ServedResponse =
@@ -412,6 +418,7 @@ internal class LocalMavenProxyServer(
         val knownPomFailures = AtomicLong()
         val originFallbacks = AtomicLong()
         val originFailures = AtomicLong()
+        val requestFailures = AtomicLong()
         val checksumHits = AtomicLong()
         val writeThroughCacheHits = AtomicLong()
         val bytesServed = AtomicLong()
@@ -426,6 +433,7 @@ internal class LocalMavenProxyServer(
             knownPomFailures = knownPomFailures.get(),
             originFallbacks = originFallbacks.get(),
             originFailures = originFailures.get(),
+            requestFailures = requestFailures.get(),
             checksumHits = checksumHits.get(),
             writeThroughCacheHits = writeThroughCacheHits.get(),
             bytesServed = bytesServed.get(),

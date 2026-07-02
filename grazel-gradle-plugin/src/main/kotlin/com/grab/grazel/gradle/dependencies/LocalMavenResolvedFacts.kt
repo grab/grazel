@@ -288,7 +288,13 @@ private fun sameFileContent(first: File, second: File): Boolean {
 }
 
 internal fun interface PomFileResolver {
-    fun resolvePom(gav: String): File?
+    fun resolvePom(gav: String): PomFileResolution
+}
+
+internal sealed interface PomFileResolution {
+    data class Found(val file: File) : PomFileResolution
+    data class Unavailable(val gav: String, val message: String) : PomFileResolution
+    object Unknown : PomFileResolution
 }
 
 internal class GradlePomFileResolver(
@@ -298,30 +304,33 @@ internal class GradlePomFileResolver(
 ) : PomFileResolver {
     private val pomFilesByGav = ConcurrentHashMap<String, PomFileResolution>()
 
-    override fun resolvePom(gav: String): File? {
-        return when (val resolution = pomFilesByGav.computeIfAbsent(gav, ::resolvePomUncached)) {
-            is PomFileResolution.Found -> resolution.file
-            PomFileResolution.Missing -> null
-        }
-    }
+    override fun resolvePom(gav: String): PomFileResolution =
+        pomFilesByGav.computeIfAbsent(gav, ::resolvePomUncached)
 
     private fun resolvePomUncached(gav: String): PomFileResolution {
         val cachedPom = pomCacheLookup.findPomFile(gav)
             ?.takeIf { pom -> pom.exists() }
-        val componentPom = cachedPom ?: componentIdsByGav[gav]
-            ?.let { componentId ->
-                runCatching { pomArtifactQuery.findPomFile(componentId) }.getOrNull()
-            }
+        if (cachedPom != null) {
+            return PomFileResolution.Found(cachedPom)
+        }
+        val componentId = componentIdsByGav[gav] ?: return PomFileResolution.Unknown
+        val componentPom = runCatching {
+            pomArtifactQuery.findPomFile(componentId)
+        }.getOrElse { exception ->
+            return PomFileResolution.Unavailable(
+                gav = gav,
+                message = "Failed to resolve Gradle Maven POM for known component $gav: " +
+                    exception.message.orEmpty()
+            )
+        }
         return if (componentPom != null && componentPom.exists()) {
             PomFileResolution.Found(componentPom)
         } else {
-            PomFileResolution.Missing
+            PomFileResolution.Unavailable(
+                gav = gav,
+                message = "Missing Gradle-resolved POM for known component $gav"
+            )
         }
-    }
-
-    private sealed interface PomFileResolution {
-        data class Found(val file: File) : PomFileResolution
-        object Missing : PomFileResolution
     }
 
     companion object {

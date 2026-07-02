@@ -91,7 +91,11 @@ private fun externalRepositoryInputs(variableName: String): List<MavenInstallRep
                 canonicalUrl = url
             )
         }
-        else -> error("Unsupported external Maven repository variable for local pinning: $variableName")
+        else -> error(
+            "Unsupported external Maven repository variable for local pinning: $variableName. " +
+                "Add explicit expansion support for this variable or opt it out with " +
+                "excludeExternalRepositoryVariables(\"<maven_repo_name>\", \"$variableName\")."
+        )
     }
 
 internal fun repositoryUrls(mavenInstallRepositoryInputs: MavenInstallRepositoryInputs): Set<String> =

@@ -77,6 +77,7 @@ internal class MavenInstallLockfileReconstructor(
         lockfileContents: String,
         canonicalRepositoryInputs: List<String>,
         baselineLockfileContents: String? = null,
+        requireBaselineForPomPackagingArtifacts: Boolean = false,
     ): String {
         val rewrittenLockfile = rewriteUrls(Json.parseToJsonElement(lockfileContents).jsonObject)
         val baselineLockfile = baselineLockfileContents
@@ -95,6 +96,9 @@ internal class MavenInstallLockfileReconstructor(
                 )
             }
             ?: rewrittenLockfile
+        if (requireBaselineForPomPackagingArtifacts && baselineLockfile == null) {
+            requireNoPomPackagingArtifactsWithoutBaseline(lockfile)
+        }
         val normalizedLockfile = lockfileWithPomPackagingArtifactsSkipped(
             lockfile = lockfile,
             baselineArtifactNames = baselineArtifactNames
@@ -116,6 +120,17 @@ internal class MavenInstallLockfileReconstructor(
                 resolvedHash.mapValuesTo(linkedMapOf()) { (_, hash) -> JsonPrimitive(hash) }
             )
         )
+    }
+
+    private fun requireNoPomPackagingArtifactsWithoutBaseline(lockfile: JsonObject) {
+        val pomPackagingArtifacts = lockfile.getValue("artifacts")
+            .jsonObject
+            .keys
+            .filter(::isPomPackagingRoot)
+        check(pomPackagingArtifacts.isEmpty()) {
+            "Local Maven reconstruction requires a baseline lockfile before it can safely " +
+                "classify POM-packaging artifacts: ${pomPackagingArtifacts.joinToString()}"
+        }
     }
 
     private fun lockfileWithBaselineFacts(

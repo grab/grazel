@@ -14,9 +14,11 @@
  * limitations under the License.
  */
 
-package com.grab.grazel.gradle.dependencies
+package com.grab.grazel.proxy
 
 import com.grab.grazel.gradle.RepositoryAuth
+import com.grab.grazel.gradle.dependencies.PomFileResolution
+import com.grab.grazel.gradle.dependencies.PomFileResolver
 import com.sun.net.httpserver.HttpServer
 import org.junit.Rule
 import org.junit.Test
@@ -674,6 +676,19 @@ class LocalMavenProxyServerTest {
     }
 
     @Test
+    fun `origin request exceptions are counted separately from known pom failures`() {
+        newProxy(
+            repositories = listOf(proxyOrigin(url = "http://127.0.0.1:1"))
+        ).use { proxy ->
+            val response = get("${proxy.baseUrl()}/r/0/com/example/parent/1.0/parent-1.0.pom")
+
+            assertEquals(500, response.code)
+            assertEquals(0, proxy.stats().knownPomFailures)
+            assertEquals(1, proxy.stats().requestFailures)
+        }
+    }
+
+    @Test
     fun `active lockfile fallback cannot mask missing known Gradle artifacts`() {
         val path = "com/example/library/1.0/library-1.0.jar"
         FixtureOriginServer(
@@ -712,7 +727,18 @@ class LocalMavenProxyServerTest {
                 knownComponentGavs = knownComponentGavs,
                 metadataOnlyGavs = metadataOnlyGavs,
                 allowedOriginArtifactPaths = allowedOriginArtifactPaths,
-                pomFileResolver = PomFileResolver { gav -> pomFilesByGav[gav] }
+                pomFileResolver = PomFileResolver { gav ->
+                    pomFilesByGav[gav]?.let { pomFile ->
+                        if (pomFile.exists()) {
+                            PomFileResolution.Found(pomFile)
+                        } else {
+                            PomFileResolution.Unavailable(
+                                gav = gav,
+                                message = "Configured test POM does not exist for $gav"
+                            )
+                        }
+                    } ?: PomFileResolution.Unknown
+                }
             )
         }
     }

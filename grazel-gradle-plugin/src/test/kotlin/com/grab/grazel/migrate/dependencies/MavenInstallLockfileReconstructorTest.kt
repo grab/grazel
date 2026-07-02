@@ -83,6 +83,22 @@ class MavenInstallLockfileReconstructorTest {
     }
 
     @Test
+    fun `reconstruct fails local proxy first pin for pom packaging artifacts without baseline`() {
+        val failure = assertFailsWith<IllegalStateException> {
+            reconstructor().reconstruct(
+                lockfileContents = POM_PACKAGING_LOCALHOST_LOCKFILE,
+                canonicalRepositoryInputs = CANONICAL_REPOSITORY_INPUTS,
+                baselineLockfileContents = null,
+                requireBaselineForPomPackagingArtifacts = true
+            )
+        }
+
+        assertThat(failure)
+            .hasMessageThat()
+            .contains("requires a baseline lockfile")
+    }
+
+    @Test
     fun `reconstruct marks new pom packaging artifacts skipped when baseline lockfile exists`() {
         val reconstructed = reconstructor().reconstruct(
             lockfileContents = POM_PACKAGING_LOCALHOST_LOCKFILE,

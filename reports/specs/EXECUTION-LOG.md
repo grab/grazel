@@ -4109,3 +4109,71 @@ evidence in item-specific logs so context compaction can recover state quickly.
     `localhost`/`127.0.0.1`;
   - `reports/scripts/verify-sample-bucket-labels.sh` still fails with the
     known pre-existing appcompat/constraintlayout assertion.
+
+### Item 38 post-goal proxy review polish
+
+- Review follow-up decisions:
+  - moved HTTP proxy serving infrastructure from `gradle.dependencies` to
+    `com.grab.grazel.proxy`; kept `LocalMavenProxyService` in
+    `gradle.dependencies` because it is the Gradle BuildService wiring layer;
+  - kept unknown external repository variables fail-closed, but made the error
+    actionable with the `excludeExternalRepositoryVariables("<repo>",
+    "<variable>")` opt-out hook;
+  - split POM resolver outcomes into `Found`, `Unknown`, and `Unavailable` so
+    known-but-unreadable Gradle POMs are not conflated with origin fallback
+    misses;
+  - added `requestFailures` so route/origin infrastructure exceptions are not
+    counted as known POM failures;
+  - documented the RJE pin script assumption: scripts embed proxy URLs while
+    WORKSPACE is temporarily proxied, then WORKSPACE is restored before script
+    execution;
+  - local proxy reconstruction now requires a baseline lockfile before handling
+    POM-packaging artifacts, avoiding silent first-ever pin classification.
+- TDD red run:
+  `./gradlew :grazel-gradle-plugin:test --tests
+  "com.grab.grazel.gradle.dependencies.LocalMavenResolvedFactsTest" --tests
+  "com.grab.grazel.gradle.dependencies.LocalMavenProxyServerTest" --tests
+  "com.grab.grazel.migrate.dependencies.MavenInstallLockfileReconstructorTest"
+  --console=plain --no-daemon` failed on missing `PomFileResolution`,
+  `requestFailures`, and `requireBaselineForPomPackagingArtifacts`.
+- Verification after fixes:
+  - focused suite rerun with package-adjusted
+    `com.grab.grazel.proxy.LocalMavenProxyServerTest` passed in `18s`;
+  - `./gradlew :grazel-gradle-plugin:test --console=plain --no-daemon` passed
+    in `40s`;
+  - `git diff --check` and `git diff --check master...HEAD` passed after
+    marking moved proxy files intent-to-add for whitespace coverage;
+  - `./gradlew migrateToBazel --console=plain --no-daemon` passed in `10s` and
+    produced no generated-file diff;
+  - `reports/scripts/verify-default-task-graph.sh` passed;
+  - `reports/scripts/verify-pax-size-guard.sh --mode preserving` passed with
+    unchanged PAX counts `11/11/1945`.
+- PAX was not mutated or committed in this follow-up. Current PAX diff is only
+  the maintainer-requested default proxy hook in `build.gradle`; generated PAX
+  files remain clean against the committed baseline.
+
+### Item 38 post-polish forced PAX proxy repin
+
+- Forced PAX repin after the proxy package/review polish by perturbing the root
+  `maven_install.json` repository hash, keeping a temporary backup at
+  `/tmp/pax-maven-install.grazel-force-pin.bak`.
+- Command:
+  `cd /Users/arun.sampathkumar/work/pax-android && ./gradlew migrateToBazel
+  --no-daemon --console=plain --stacktrace --rerun-tasks`.
+- Result: passed in `13m10s` with `4749` executed tasks. The local Maven proxy
+  path was exercised for all materialized repos and `pinMavenArtifacts`
+  reported each repo up to date after repin.
+- Proxy summary from the run: `787` artifacts from Gradle index, `788` POMs
+  from Gradle index, `0` origin fallbacks, `30` origin failures, `45` lockfile
+  artifact fallbacks, `52` metadata-only artifact fallbacks, `1713` known
+  alternate artifact probes, `0` artifact misses, `0` known POM failures, `0`
+  request failures, `3716` checksum hits, `849` write-through cache hits,
+  `1921502568` bytes served in `75041ms`.
+- Post-run PAX guardrails:
+  - root `maven_install.json` is byte-identical to the backup after repin;
+  - generated Maven install JSONs and `WORKSPACE` contain no
+    `localhost`/`127.0.0.1`;
+  - PAX status remains only the maintainer-requested `build.gradle` proxy hook;
+  - PAX `git diff --check` passed;
+  - `reports/scripts/verify-pax-size-guard.sh --mode preserving` passed with
+    unchanged counts `11/11/1945`.
