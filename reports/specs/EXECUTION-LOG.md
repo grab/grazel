@@ -4052,6 +4052,23 @@ evidence in item-specific logs so context compaction can recover state quickly.
     `localhost`/`127.0.0.1`;
   - `reports/scripts/verify-sample-bucket-labels.sh` still fails with the
     known pre-existing appcompat/constraintlayout assertion.
+- Final forced PAX proxy repin was rerun after this review fix to avoid
+  relying on inference. With temporary
+  `excludeExternalRepositoryVariables("maven", "DAGGER_REPOSITORIES")`,
+  `experiments.localMavenResolution`, and a perturbed root
+  `maven_install.json` repository hash, PAX
+  `./gradlew migrateToBazel --no-daemon --console=plain --stacktrace
+  --rerun-tasks` passed in `13m37s`:
+  `build/item38-debug/pax-forced-after-skipped-merge-review-fix-migrate.log`.
+  Proxy summary: `787` Gradle artifact hits, `788` Gradle POM hits, `0`
+  origin fallbacks, `30` origin failures, `45` lockfile fallbacks, `52`
+  metadata-only artifact fallbacks, `1713` alternate artifact probes, `0`
+  artifact misses, `0` known POM failures, `3716` checksum hits, `849`
+  write-through cache hits, `1921502568` bytes served in `118134ms`.
+- Final forced PAX generated diff was byte-identical: only the temporary
+  `build.gradle` lines appeared, and no generated Maven install JSON or
+  `WORKSPACE` contained `localhost`/`127.0.0.1`. Temporary PAX edits were
+  removed and PAX status is clean.
 
 ### Item 38 review follow-up on skipped merge
 
