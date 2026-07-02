@@ -6,8 +6,8 @@ evidence in item-specific logs so context compaction can recover state quickly.
 ## Active State
 
 - 2026-07-02 CURRENT TRUTH - Item39/40/41 goal:
-  - Grazel is on `arun/dependencies-refactor` at local commit `e934f43`
-    (`Polish local Maven proxy pinning`). Do not push.
+  - Grazel is on `arun/dependencies-refactor` at local commit `c548db3`
+    (`Refactor RJE lockfile reconstruction`). Do not push.
   - Active goal order from
     `/Users/arun.sampathkumar/.codex/attachments/8cab9421-a14c-4fe9-8b8b-58be07754ff0/pasted-text-1.txt`:
     status/docs checkpoint -> finish and commit proxy package-boundary cleanup
@@ -18,9 +18,24 @@ evidence in item-specific logs so context compaction can recover state quickly.
     branch `arun/grazel-refactor`, commit `d4105d1f64bd` (`Update bazeline`).
     Current PAX worktree status is the maintainer-requested local proxy hook
     only: `M build.gradle`. Do not commit or push PAX.
-  - Current uncommitted Grazel checkpoint matches the approved step-0 scope:
-    proxy package-boundary cleanup, Item39/40/41 spec docs, roadmap index
-    updates, and this execution log. Preserve these changes; do not revert them.
+  - Step-0 proxy package-boundary/spec checkpoint was committed locally as
+    `c4e0cb2` (`docs: add next quality refactor specs`).
+  - Item39 was committed locally as `c548db3` after local tests and PAX
+    force-repin verification. Detailed evidence:
+    `reports/specs/execution-log/item39-rje-lockfile-reconstructor-shape.md`.
+  - Item39 PAX force-repin checkpoint: perturbing one
+    `android_test_maven_install.json` hash caused `pinMavenArtifacts` to
+    repin all 11 repos through the local Maven proxy. The run passed in
+    `10m 6s`, served 787 artifacts and 788 POMs from the Gradle index,
+    reported 0 artifact misses / 0 request failures, restored lockfiles to
+    baseline, and left PAX status at `M build.gradle` only.
+  - Item39 local verification passed: focused collaborator tests, full
+    `:grazel-gradle-plugin:test`, local `migrateToBazel`, default task graph,
+    PAX size guard, and diff checks. `verify-sample-bucket-labels.sh` still has
+    only the documented pre-existing appcompat/constraintlayout exclude waiver.
+  - Current uncommitted Grazel checkpoint after `c548db3` is docs/status only:
+    `CURRENT-GOAL-ANCHOR.md` and this execution log were corrected so context
+    compaction sees Item40 as active.
   - Step-0 verification rerun on 2026-07-02:
     - `./gradlew :grazel-gradle-plugin:test --tests
       "com.grab.grazel.proxy.LocalMavenProxyServiceTest" --tests
@@ -35,9 +50,12 @@ evidence in item-specific logs so context compaction can recover state quickly.
     - `reports/scripts/verify-default-task-graph.sh` passed;
     - `reports/scripts/verify-pax-size-guard.sh --mode preserving` passed
       with unchanged PAX counts `11/11/1945`.
-  - Current resource check before local verification: Data volume is 92% used
-    with about 33 GiB free. No cache cleanup performed; avoid expensive
-    concurrent Gradle/Bazel jobs.
+  - Latest resource check before PAX force-repin: Data volume was 95% used
+    with about 24 GiB free. No cache cleanup performed because the run fit;
+    avoid expensive concurrent Gradle/Bazel jobs and re-check before the next
+    PAX gate.
+  - Next action: commit this docs/status checkpoint if clean, then start
+    Item40 (`2026-07-02-item40-small-altitude-hygiene-design.md`).
 
 - 2026-07-01 CURRENT TRUTH - Item34/35 goal:
   - Grazel is on `arun/dependencies-refactor` at local commit `85c6136`

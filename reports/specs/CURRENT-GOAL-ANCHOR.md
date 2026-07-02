@@ -11,11 +11,15 @@
 2. `reports/specs/2026-06-26-item1-baseline-and-safety-net-design.md`
 3. `reports/specs/ALTITUDE-LAYERING-ROADMAP.md`
 4. Active specs:
-   - `2026-06-29-item34-workspace-tag-plan-service-shape-design.md`
-   - `2026-07-01-item35-task-progress-reporting-design.md`
+   - `2026-07-02-item39-rje-lockfile-reconstructor-shape-design.md`
+   - `2026-07-02-item40-small-altitude-hygiene-design.md`
+   - `2026-07-02-item41-branch-wide-code-quality-hardening-design.md`
 
 Recently completed specs that should not be re-opened as active work unless code regresses:
 
+- `2026-07-02-item39-rje-lockfile-reconstructor-shape-design.md`
+- `2026-06-29-item34-workspace-tag-plan-service-shape-design.md`
+- `2026-07-01-item35-task-progress-reporting-design.md`
 - `2026-06-29-item30-workspace-resolution-input-boundary-design.md`
 - `2026-06-29-item31-declared-metadata-fanout-default-decision-design.md`
 - `2026-06-29-item32-true-project-declared-metadata-fanout-design.md`
@@ -33,13 +37,14 @@ Do not execute from superseded files directly.
 Current continuation order:
 
 ```text
-status/docs truth checkpoint -> 34 -> 35 -> simplify/adversarial review -> final Grazel/PAX gates
+status/docs truth checkpoint -> Item40 -> Item41 -> simplify/adversarial review -> final Grazel/PAX gates
 ```
 
-Current checkpoint: Items 30, 31, 32, and 33 are completed. Item 32 is true
-source-project declared-metadata fanout and is not pending implementation.
-Before code work on Item 34/35, reconcile stale status docs and commit a local
-docs-only checkpoint if the diff contains only approved status/spec/log updates.
+Current checkpoint: Item39 is locally committed as `c548db3`
+(`Refactor RJE lockfile reconstruction`) after a PAX force-repin through the
+local Maven proxy passed. Items 34 and 35 are also completed historical work.
+Item40 is the active preserving altitude-hygiene slice; Item41 follows as the
+branch-wide source-shape quality gate.
 
 Earlier primary order, now historical:
 
@@ -65,12 +70,12 @@ PAX baseline source:
 ```text
 repo:   /Users/arun.sampathkumar/work/pax-android
 branch: arun/grazel-refactor
-sha:    cfa1057ed58ccb2a795a5f679f072a8f604ff48e
+sha:    d4105d1f64bd2f1930e1030e42647a214002c48d
 ```
 
-The maintainer may create a local PAX generated-output baseline commit before this goal so
-`git diff` is a direct regression signal. Do not push PAX. Do not commit PAX again during the
-goal unless the maintainer explicitly asks for a new local baseline commit.
+The current PAX worktree is expected to have only the maintainer local proxy
+hook in `build.gradle`. Do not push PAX. Do not commit PAX unless the
+maintainer explicitly asks for a new local baseline commit.
 
 ## Hard Invariants
 
@@ -102,14 +107,17 @@ re-derivation round-trips, not by LOC.
 
 ## Item Intent
 
-- **34:** Clean the workspace tag-plan service shape without changing emitted tags. Stop routing
-  the tag plan through `WorkspacePlanBuilder`/`ComputeWorkspacePlanTask`; load it from
-  `target-tag-plan.json`; split read-only tag lookup from mutable render-plan state; isolate the
-  consumer-first render-plan back-edge. Empty generated diff.
-- **35:** Add user-facing progress reporting for long-running dependency-refactor tasks. Progress
-  uses `ProgressLogger` through a pure-JVM `ProgressReporter` lambda seam; permanent summaries use
-  `logger.quiet` with capitalized plain messages; diagnostics stay on `info`/`warn`. Generated
-  output remains empty-diff.
+- **39:** Completed. Split RJE lockfile reconstruction into named parser/model,
+  URL rewrite, baseline merge, POM skip normalization, hash/Starlark, and
+  render seams. PAX force-repin via local Maven proxy passed with unchanged
+  generated baseline.
+- **40:** Fix small branch altitude hygiene without touching `Dependencies.kt`:
+  typed bucket/test facts instead of suffix classification, variant-owned KSP
+  root planning, `usesService(...)` wiring, structural merge determinism, and
+  only trivial local re-derivation cleanup. Empty generated diff.
+- **41:** Branch-wide code-quality hardening over changed Kotlin files plus
+  fan-out files. Requires inventory, subagent fanout, simplify-pass,
+  adversarial review, and final PAX guard. Empty generated diff.
 
 ## Operational Constraints
 
