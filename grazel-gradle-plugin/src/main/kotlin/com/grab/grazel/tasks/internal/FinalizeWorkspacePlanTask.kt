@@ -95,6 +95,8 @@ internal abstract class FinalizeWorkspacePlanTask : DefaultTask() {
                 workspaceRenderPlan.set(
                     rootProject.layout.buildDirectory.file("grazel/workspace-render-plan.json")
                 )
+                usesService(workspacePlanService)
+                usesService(workspaceRenderPlanService)
                 this.workspacePlanService.set(workspacePlanService)
                 this.workspaceRenderPlanService.set(workspaceRenderPlanService)
                 configureAction(this)

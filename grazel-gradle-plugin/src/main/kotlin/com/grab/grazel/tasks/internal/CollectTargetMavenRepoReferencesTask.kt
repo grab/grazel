@@ -144,6 +144,10 @@ constructor(
             configure {
                 group = GRAZEL_TASK_GROUP
                 description = "Collect Maven repository references from target reference facts"
+                usesService(grazelComponent.dependencyGraphsService())
+                usesService(grazelComponent.workspaceRenderPlanService())
+                usesService(grazelComponent.workspaceTargetTagPlanService())
+                usesService(grazelComponent.dependencyResolutionService())
                 action(this)
             }
         }

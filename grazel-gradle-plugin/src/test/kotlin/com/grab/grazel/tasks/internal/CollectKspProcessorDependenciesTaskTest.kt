@@ -16,6 +16,7 @@
 
 package com.grab.grazel.tasks.internal
 
+import com.grab.grazel.gradle.variant.WorkspaceKspProcessorClasspathInput
 import org.gradle.api.provider.SetProperty
 import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.Internal
@@ -107,5 +108,32 @@ class CollectKspProcessorDependenciesTaskTest {
         task.action()
 
         assertTrue(outputFile.get().asFile.exists())
+    }
+
+    @Test
+    fun `ksp processor dependency task wires planner inputs without classifying configuration names`() {
+        val project = ProjectBuilder.builder()
+            .withProjectDir(temporaryFolder.newFolder("planner-input-project"))
+            .build()
+        val task = project.tasks
+            .register("collectKspProcessorDependencies", CollectKspProcessorDependenciesTask::class.java)
+            .get()
+        val processorClasspath = project.configurations.create("notNamedLikeKspClasspath")
+        val input = WorkspaceKspProcessorClasspathInput(
+            project = project,
+            declarationConfigurations = emptySet(),
+            processorClasspath = processorClasspath,
+            directDependencyShortIds = setOf("com.example:planned-processor")
+        )
+
+        CollectKspProcessorDependenciesTask.addKspProcessorClasspathInput(
+            task = task,
+            input = input
+        )
+
+        assertEquals(
+            setOf("com.example:planned-processor"),
+            task.kspDirectDependencyShortIds.get()
+        )
     }
 }

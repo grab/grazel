@@ -61,7 +61,7 @@ private data class MainBucketPlanResult(
 internal class BucketOwnershipPlanner(
     private val declaredDependencyMetadata: DeclaredDependencyMetadata,
     private val precomputedKspDependencies: Set<ResolvedDependency>
-    ) {
+) {
     fun plan(input: OwnershipPlannerInput): List<ResolveDependenciesResult> {
         val mainBuckets = planMainBuckets(input)
         val aggregateMainCoveredDeps = mainBuckets.coveredDependencies()
@@ -397,10 +397,26 @@ internal class BucketOwnershipPlanner(
         variantType: VariantType,
         baseBucketName: String
     ): Map<ProjectDependencyBucket, Map<String, ResolvedDependency>> {
-        val testSuffix = variantType.testSuffix
+        val testBucketNames = typedTestBucketNames(
+            variantType = variantType,
+            baseBucketName = baseBucketName
+        )
         return input.testHierarchyBucketClosures.filterKeys { bucket ->
-            bucket.bucketName == baseBucketName || bucket.bucketName.endsWith(testSuffix)
+            bucket.bucketName in testBucketNames
         }
+    }
+
+    private fun typedTestBucketNames(
+        variantType: VariantType,
+        baseBucketName: String
+    ): Set<String> {
+        return declaredDependencyMetadata.projects
+            .values
+            .asSequence()
+            .flatMap { projectMetadata -> projectMetadata.variants.asSequence() }
+            .filter { variant -> variant.variantType == variantType }
+            .mapTo(sortedSetOf(), DeclaredVariantDependencyMetadata::name)
+            .apply { add(baseBucketName) }
     }
 
     private fun concreteTestLeafName(
@@ -583,12 +599,6 @@ internal class BucketOwnershipPlanner(
             testBucketNames.forEach { testBucketName ->
                 if (testBucketName == baseBucketName) return@forEach
                 add(testBucketName)
-                if (testBucketName.endsWith(Test.testSuffix)) {
-                    add(testBucketName.removeSuffix(Test.testSuffix))
-                }
-                if (testBucketName.endsWith(AndroidTest.testSuffix)) {
-                    add(testBucketName.removeSuffix(AndroidTest.testSuffix))
-                }
             }
         }
     }
@@ -606,21 +616,33 @@ internal class BucketOwnershipPlanner(
     private fun DependencyBucketPlacementPlan.outputBucketNameForTestBucket(
         bucketName: String
     ): String {
-        if (bucketName == baseBucketName || bucketName.endsWith(testSuffixForBaseBucket())) {
+        if (bucketName == baseBucketName || isTypedTestBucket(bucketName)) {
             return bucketName
         }
         val scopedBucketName = bucketName + testSuffixForBaseBucket()
-        return if (scopedBucketName in bucketAncestors || scopedBucketName in leafAncestors) {
+        return if (isTypedTestBucket(scopedBucketName)) {
             scopedBucketName
         } else {
             baseBucketName
         }
     }
 
+    private fun DependencyBucketPlacementPlan.isTypedTestBucket(bucketName: String): Boolean {
+        return variantTypesByBucketName[bucketName] == testVariantTypeForBaseBucket()
+    }
+
     private fun DependencyBucketPlacementPlan.testSuffixForBaseBucket(): String {
         return when (baseBucketName) {
             TEST_VARIANT -> Test.testSuffix
             ANDROID_TEST_VARIANT -> AndroidTest.testSuffix
+            else -> error("Unsupported test base bucket $baseBucketName")
+        }
+    }
+
+    private fun DependencyBucketPlacementPlan.testVariantTypeForBaseBucket(): VariantType {
+        return when (baseBucketName) {
+            TEST_VARIANT -> Test
+            ANDROID_TEST_VARIANT -> AndroidTest
             else -> error("Unsupported test base bucket $baseBucketName")
         }
     }

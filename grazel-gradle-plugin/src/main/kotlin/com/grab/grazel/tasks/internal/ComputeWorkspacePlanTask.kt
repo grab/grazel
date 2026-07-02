@@ -88,6 +88,7 @@ internal abstract class ComputeWorkspacePlanTask : DefaultTask() {
         ): TaskProvider<ComputeWorkspacePlanTask> {
             return rootProject.tasks.register<ComputeWorkspacePlanTask>(TASK_NAME) {
                 workspacePlan.set(rootProject.layout.buildDirectory.file("grazel/workspace-plan.json"))
+                usesService(workspacePlanService)
                 this.workspacePlanService.set(workspacePlanService)
                 configureAction(this)
             }

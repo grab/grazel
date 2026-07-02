@@ -17,7 +17,6 @@
 package com.grab.grazel.tasks.internal
 
 import com.grab.grazel.di.GradleServices
-import com.grab.grazel.gradle.MigrationChecker
 import com.grab.grazel.gradle.dependencies.KspProcessorClassExtractor
 import com.grab.grazel.gradle.dependencies.ResolvedComponentsVisitor
 import com.grab.grazel.gradle.dependencies.model.ResolveDependenciesResult
@@ -25,13 +24,11 @@ import com.grab.grazel.gradle.dependencies.model.ResolveDependenciesResult.Compa
 import com.grab.grazel.gradle.dependencies.model.ResolveDependenciesResult.Companion.Scope.KSP
 import com.grab.grazel.gradle.dependencies.model.ResolvedDependency
 import com.grab.grazel.gradle.variant.DEFAULT_VARIANT
-import com.grab.grazel.gradle.variant.createWorkspaceKspProcessorClasspath
+import com.grab.grazel.gradle.variant.WorkspaceKspProcessorClasspathInput
 import com.grab.grazel.util.withProgress
 import com.grab.grazel.util.writeJson
-import dagger.Lazy
 import org.gradle.api.DefaultTask
 import org.gradle.api.Project
-import org.gradle.api.artifacts.ExternalDependency
 import org.gradle.api.artifacts.component.ModuleComponentIdentifier
 import org.gradle.api.artifacts.result.ResolvedComponentResult
 import org.gradle.api.file.ConfigurableFileCollection
@@ -145,56 +142,30 @@ internal abstract class CollectKspProcessorDependenciesTask : DefaultTask() {
         private const val TASK_NAME = "collectKspProcessorDependencies"
 
         internal fun register(
-            rootProject: Project,
-            migrationChecker: Lazy<MigrationChecker>
+            rootProject: Project
         ): TaskProvider<CollectKspProcessorDependenciesTask> {
-            val taskProvider = rootProject.tasks
+            return rootProject.tasks
                 .register<CollectKspProcessorDependenciesTask>(TASK_NAME) {
                     kspRootComponents.convention(emptyList())
                     kspDirectDependencyShortIds.convention(emptySet())
                     kspArtifacts.convention(emptyList())
                     kspDependencies.set(rootProject.layout.buildDirectory.file("grazel/ksp-dependencies.json"))
                 }
-
-            rootProject.gradle.projectsEvaluated {
-                val migratableProjects = rootProject.subprojects
-                    .filter { project -> migrationChecker.get().canMigrate(project) }
-                taskProvider.configure {
-                    migratableProjects.forEach { project ->
-                        addProjectKspConfigurations(
-                            task = this,
-                            project = project
-                        )
-                    }
-                }
-            }
-
-            return taskProvider
         }
 
-        private fun addProjectKspConfigurations(
+        internal fun addKspProcessorClasspathInput(
             task: CollectKspProcessorDependenciesTask,
-            project: Project
+            input: WorkspaceKspProcessorClasspathInput
         ) {
-            val kspClasspath = createWorkspaceKspProcessorClasspath(project) ?: return
-
-            val directDepShortIds = kspClasspath.declarationConfigurations
-                .asSequence()
-                .flatMap { configuration -> configuration.allDependencies }
-                .filterIsInstance<ExternalDependency>()
-                .filter { dependency -> !dependency.group.isNullOrBlank() }
-                .mapTo(TreeSet()) { dependency -> "${dependency.group}:${dependency.name}" }
-            if (directDepShortIds.isEmpty()) return
-
             task.kspDirectDependencyShortIds.addAll(
-                project.provider {
-                    directDepShortIds
+                input.project.provider {
+                    input.directDependencyShortIds
                 }
             )
 
             task.kspArtifacts.addAll(
-                project.provider {
-                    kspClasspath.processorClasspath.incoming
+                input.project.provider {
+                    input.processorClasspath.incoming
                         .artifactView {
                             isLenient = true
                             componentFilter { id -> id is ModuleComponentIdentifier }
@@ -204,8 +175,8 @@ internal abstract class CollectKspProcessorDependenciesTask : DefaultTask() {
                             val id = artifact.id.componentIdentifier as? ModuleComponentIdentifier
                                 ?: return@mapNotNull null
                             val shortId = "${id.group}:${id.module}"
-                            if (shortId in directDepShortIds) {
-                                project.objects
+                            if (shortId in input.directDependencyShortIds) {
+                                input.project.objects
                                     .newInstance(KspArtifactInput::class.java)
                                     .apply {
                                         this.shortId.set(shortId)
@@ -217,8 +188,8 @@ internal abstract class CollectKspProcessorDependenciesTask : DefaultTask() {
                 }
             )
 
-            task.kspRootComponents.add(kspClasspath.processorClasspath.incoming.resolutionResult.rootComponent)
-            task.kspClasspathFiles.from(kspClasspath.processorClasspath)
+            task.kspRootComponents.add(input.processorClasspath.incoming.resolutionResult.rootComponent)
+            task.kspClasspathFiles.from(input.processorClasspath)
         }
     }
 

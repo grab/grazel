@@ -6,8 +6,8 @@ evidence in item-specific logs so context compaction can recover state quickly.
 ## Active State
 
 - 2026-07-02 CURRENT TRUTH - Item39/40/41 goal:
-  - Grazel is on `arun/dependencies-refactor` at local commit `c548db3`
-    (`Refactor RJE lockfile reconstruction`). Do not push.
+  - Grazel is on `arun/dependencies-refactor` at the current local HEAD
+    checkpoint (`refactor: tighten dependency task boundaries`). Do not push.
   - Active goal order from
     `/Users/arun.sampathkumar/.codex/attachments/8cab9421-a14c-4fe9-8b8b-58be07754ff0/pasted-text-1.txt`:
     status/docs checkpoint -> finish and commit proxy package-boundary cleanup
@@ -33,8 +33,8 @@ evidence in item-specific logs so context compaction can recover state quickly.
     `:grazel-gradle-plugin:test`, local `migrateToBazel`, default task graph,
     PAX size guard, and diff checks. `verify-sample-bucket-labels.sh` still has
     only the documented pre-existing appcompat/constraintlayout exclude waiver.
-  - Current uncommitted Grazel checkpoint after `c548db3` is docs/status only:
-    `CURRENT-GOAL-ANCHOR.md` and this execution log were corrected so context
+  - Status-anchor checkpoint after `c548db3` was committed locally as
+    `ec4c563` (`Update dependency refactor status anchor`), so context
     compaction sees Item40 as active.
   - Step-0 verification rerun on 2026-07-02:
     - `./gradlew :grazel-gradle-plugin:test --tests
@@ -54,8 +54,30 @@ evidence in item-specific logs so context compaction can recover state quickly.
     with about 24 GiB free. No cache cleanup performed because the run fit;
     avoid expensive concurrent Gradle/Bazel jobs and re-check before the next
     PAX gate.
-  - Next action: commit this docs/status checkpoint if clean, then start
-    Item40 (`2026-07-02-item40-small-altitude-hygiene-design.md`).
+  - Item40 is complete and committed in the current local HEAD checkpoint
+    (`refactor: tighten dependency task boundaries`). It implemented typed
+    bucket/test facts, variant-owned KSP processor-root planning, explicit
+    `usesService(...)` wiring, structural declared-metadata merge ordering, and
+    a local variant-compression build-type lookup cleanup. Focused Item40 tests
+    passed twice; the latest run included declared-metadata collector ordering
+    coverage and passed in `28s`:
+    `./gradlew :grazel-gradle-plugin:test --tests
+    "com.grab.grazel.gradle.dependencies.BucketOwnershipPlannerTest" --tests
+    "com.grab.grazel.gradle.variant.WorkspaceKspProcessorClasspathPlannerTest"
+    --tests "com.grab.grazel.tasks.internal.CollectKspProcessorDependenciesTaskTest"
+    --tests "com.grab.grazel.gradle.dependencies.DeclaredDependencyMetadataMergerTest"
+    --tests "com.grab.grazel.gradle.dependencies.DeclaredDependencyMetadataCollectorTest"
+    --console=plain --no-daemon`.
+  - Item40 broader gates also passed: full `:grazel-gradle-plugin:test`
+    (`38s`), local `migrateToBazel` (`9s` with no generated diff), default
+    task graph, PAX size guard (`11/11/1945`), diff checks, PAX
+    `migrateToBazel` (`10m 53s`, only `M build.gradle` in PAX), PAX APK build
+    (`248.453s`), and focused PAX Bazel tests (`19.622s`, 3/3 targets passed).
+    `verify-sample-bucket-labels.sh` still fails only on the documented
+    pre-existing appcompat/constraintlayout exclude waiver.
+  - Detailed Item40 evidence is in
+    `reports/specs/execution-log/item40-small-altitude-hygiene.md`.
+  - Next action: continue to Item41 branch-wide code-quality hardening.
 
 - 2026-07-01 CURRENT TRUTH - Item34/35 goal:
   - Grazel is on `arun/dependencies-refactor` at local commit `85c6136`

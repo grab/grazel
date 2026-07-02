@@ -185,9 +185,11 @@ constructor(
             }
         }
 
+        val buildTypeByVariantName = variants.associate { variant ->
+            variant.variantName to variant.buildType
+        }
         fun buildTypeFn(variantName: String): String {
-            val matchedVariant = variants.find { it.variantName == variantName }
-            return matchedVariant?.buildType ?: "debug"
+            return buildTypeByVariantName[variantName] ?: "debug"
         }
 
         val resultWithDecisions = variantCompressor.get().compress(
@@ -242,6 +244,10 @@ constructor(
                     compressionResultsFile.set(
                         rootProject.layout.buildDirectory.file("grazel/compression-results.json")
                     )
+                    usesService(grazelComponent.dependencyGraphsService())
+                    usesService(grazelComponent.variantCompressionService())
+                    usesService(grazelComponent.workspaceTargetTagPlanService())
+                    usesService(grazelComponent.dependencyResolutionService())
                     dependencyResolutionService.set(grazelComponent.dependencyResolutionService())
                     configureAction(this)
                 }

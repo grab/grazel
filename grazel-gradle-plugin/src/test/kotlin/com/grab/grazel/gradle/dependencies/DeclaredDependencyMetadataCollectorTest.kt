@@ -159,6 +159,39 @@ class DeclaredDependencyMetadataCollectorTest {
     }
 
     @Test
+    fun `declared dependency bucket maps are sorted by short id`() {
+        val project = ProjectBuilder.builder().withName("library").build()
+        val implementation = project.configurations.create("implementation")
+
+        project.dependencies.add("implementation", "com.example:zeta:1.0")
+        project.dependencies.add("implementation", "com.example:alpha:1.0")
+
+        val metadata = DeclaredDependencyMetadataCollector().collect(
+            variantsByProject = mapOf(
+                project to listOf(
+                    variant(
+                        project = project,
+                        variantConfigurations = setOf(implementation)
+                    )
+                )
+            ),
+            projects = listOf(project)
+        )
+
+        val bucketDependencies = metadata.collectDeclaredMainDependenciesByProjectBucket(
+            projectPaths = listOf(project.path)
+        )
+
+        assertEquals(
+            listOf("com.example:alpha", "com.example:zeta"),
+            bucketDependencies
+                .getValue(ProjectDependencyBucket(project.path, DEFAULT_VARIANT))
+                .keys
+                .toList()
+        )
+    }
+
+    @Test
     fun `declared dependency bucketing ignores legacy id-only metadata`() {
         val metadata = DeclaredDependencyMetadata(
             projects = mapOf(

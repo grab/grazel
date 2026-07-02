@@ -89,6 +89,7 @@ internal abstract class ComputeWorkspaceDependenciesTask : DefaultTask() {
                     workspaceDependencies.set(
                         rootProject.layout.buildDirectory.file("grazel/dependencies.json")
                     )
+                    usesService(dependencyResolutionService)
                     this.dependencyResolutionService.set(dependencyResolutionService)
                 }
         }

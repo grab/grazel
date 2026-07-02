@@ -41,7 +41,8 @@ internal data class DependencyBucketPlacementPlan(
     val leafBuckets: Map<String, Map<String, ResolvedDependency>>,
     val bucketAncestors: Map<String, Set<String>>,
     val leafAncestors: Map<String, Set<String>>,
-    val bucketDescendantLeaves: Map<String, Set<String>>
+    val bucketDescendantLeaves: Map<String, Set<String>>,
+    val variantTypesByBucketName: Map<String, VariantType>
 ) {
     fun coveredDependencies(): List<CoveredDependency> {
         return buildList {
@@ -226,6 +227,7 @@ internal class DependencyBucketPlacementEngine {
             graph.ancestorsOf(bucketName)
         }.toSortedMap()
         val bucketDescendantLeaves = selectedDescendantLeafNamesByBucket
+        val variantTypesByBucketName = graph.variantTypesByBucketName
         val outputLeafNames = (leafNames + selectedLeafBuckets.keys).toSortedSet()
         val leafBuckets = outputLeafNames
             .mapNotNull { leafName ->
@@ -261,7 +263,8 @@ internal class DependencyBucketPlacementEngine {
             leafBuckets = leafBuckets,
             bucketAncestors = bucketAncestors,
             leafAncestors = leafAncestors,
-            bucketDescendantLeaves = bucketDescendantLeaves
+            bucketDescendantLeaves = bucketDescendantLeaves,
+            variantTypesByBucketName = variantTypesByBucketName
         )
     }
 
@@ -374,6 +377,9 @@ private class BucketPlacementGraph(
 ) {
     private val leafVariants = variants.filter(BucketPlacementVariantInput::leaf)
     val leafVariantNames = leafVariants.map(BucketPlacementVariantInput::name).toSortedSet()
+    val variantTypesByBucketName = variants
+        .associate { variant -> variant.name to variant.variantType }
+        .toSortedMap()
     private val parentNames = variants
         .flatMap(BucketPlacementVariantInput::extendsFrom)
         .toSortedSet()

@@ -98,6 +98,7 @@ constructor(
             rootProject = rootProject,
             targetTagPlanCollector = grazelComponent.workspaceTargetTagPlanCollector(),
             action = {
+                usesService(grazelComponent.dependencyResolutionService())
                 dependencyResolutionService.set(grazelComponent.dependencyResolutionService())
                 action(this)
             }

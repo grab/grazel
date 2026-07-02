@@ -16,40 +16,110 @@
 
 package com.grab.grazel.gradle.variant
 
-import com.grab.grazel.gradle.hasKsp
 import org.gradle.api.Project
+import org.gradle.api.artifacts.ExternalDependency
 import org.gradle.api.artifacts.Configuration
 
-internal data class WorkspaceKspProcessorClasspathResult(
+internal data class WorkspaceKspProcessorClasspathInput(
+    val project: Project,
     val declarationConfigurations: Set<Configuration>,
-    val processorClasspath: Configuration
+    val processorClasspath: Configuration,
+    val directDependencyShortIds: Set<String>
 )
 
-internal fun createWorkspaceKspProcessorClasspath(project: Project): WorkspaceKspProcessorClasspathResult? {
-    if (!project.hasKsp) return null
+internal object WorkspaceKspProcessorClasspathPlanner {
+    fun plan(
+        migratableProjects: Iterable<Project>,
+        variantsByProject: Map<Project, Iterable<Variant<*>>>
+    ): List<WorkspaceKspProcessorClasspathInput> {
+        val inputsByClasspath = linkedMapOf<KspProcessorClasspathKey, MutableKspProcessorClasspathInput>()
+        migratableProjects
+            .sortedBy(Project::getPath)
+            .forEach { project ->
+                (variantsByProject[project] ?: emptyList())
+                    .sortedWith(compareBy<Variant<*>> { variant -> variant.variantType.name }.thenBy { variant -> variant.name })
+                    .forEach { variant ->
+                        safeKspConfigurations(variant).forEach { processorClasspath ->
+                            val declarationConfigurations = declarationConfigurationsFor(processorClasspath)
+                            val directShortIds = directDependencyShortIds(declarationConfigurations)
+                            if (directShortIds.isNotEmpty()) {
+                                inputsByClasspath
+                                    .getOrPut(
+                                        KspProcessorClasspathKey(
+                                            projectPath = project.path,
+                                            configurationName = processorClasspath.name
+                                        )
+                                    ) {
+                                        MutableKspProcessorClasspathInput(
+                                            project = project,
+                                            processorClasspath = processorClasspath
+                                        )
+                                    }
+                                    .add(
+                                        declarationConfigurations = declarationConfigurations,
+                                        directDependencyShortIds = directShortIds
+                                    )
+                            }
+                        }
+                    }
+            }
 
-    val declarationConfigurations = project.configurations
-        .filter { configuration -> configuration.isKspDeclarationBucket }
-        .toSet()
-    if (declarationConfigurations.isEmpty()) return null
-
-    val processorClasspath = project.configurations.maybeCreate(WORKSPACE_KSP_PROCESSOR_CLASSPATH_NAME)
-    if (processorClasspath.extendsFrom.isEmpty()) {
-        processorClasspath.apply {
-            isCanBeResolved = true
-            isCanBeConsumed = false
-            isVisible = false
-            setExtendsFrom(declarationConfigurations)
-        }
+        return inputsByClasspath
+            .values
+            .map(MutableKspProcessorClasspathInput::toInput)
+            .sortedWith(compareBy<WorkspaceKspProcessorClasspathInput> { input -> input.project.path }
+                .thenBy { input -> input.processorClasspath.name })
     }
 
-    return WorkspaceKspProcessorClasspathResult(
-        declarationConfigurations = declarationConfigurations,
-        processorClasspath = processorClasspath
-    )
+    private fun safeKspConfigurations(variant: Variant<*>): Set<Configuration> {
+        return try {
+            variant.kspConfiguration
+        } catch (e: Exception) {
+            emptySet()
+        }
+    }
 }
 
-private const val WORKSPACE_KSP_PROCESSOR_CLASSPATH_NAME = "grazelKspProcessorClasspath"
+private data class KspProcessorClasspathKey(
+    val projectPath: String,
+    val configurationName: String
+)
 
-private val Configuration.isKspDeclarationBucket: Boolean
-    get() = name.startsWith("ksp") && "classpath" !in name.lowercase()
+private class MutableKspProcessorClasspathInput(
+    private val project: Project,
+    private val processorClasspath: Configuration
+) {
+    private val declarationConfigurations = linkedSetOf<Configuration>()
+    private val directDependencyShortIds = sortedSetOf<String>()
+
+    fun add(
+        declarationConfigurations: Set<Configuration>,
+        directDependencyShortIds: Set<String>
+    ) {
+        this.declarationConfigurations.addAll(declarationConfigurations)
+        this.directDependencyShortIds.addAll(directDependencyShortIds)
+    }
+
+    fun toInput(): WorkspaceKspProcessorClasspathInput {
+        return WorkspaceKspProcessorClasspathInput(
+            project = project,
+            declarationConfigurations = declarationConfigurations.toSet(),
+            processorClasspath = processorClasspath,
+            directDependencyShortIds = directDependencyShortIds.toSortedSet()
+        )
+    }
+}
+
+private fun declarationConfigurationsFor(processorClasspath: Configuration): Set<Configuration> {
+    val inheritedConfigurations = processorClasspath.extendsFrom.toSet()
+    return inheritedConfigurations.ifEmpty { setOf(processorClasspath) }
+}
+
+private fun directDependencyShortIds(configurations: Set<Configuration>): Set<String> {
+    return configurations
+        .asSequence()
+        .flatMap { configuration -> configuration.allDependencies.asSequence() }
+        .filterIsInstance<ExternalDependency>()
+        .filter { dependency -> !dependency.group.isNullOrBlank() }
+        .mapTo(sortedSetOf()) { dependency -> "${dependency.group}:${dependency.name}" }
+}

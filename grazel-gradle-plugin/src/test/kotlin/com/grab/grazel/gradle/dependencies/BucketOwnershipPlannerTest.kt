@@ -752,6 +752,68 @@ class BucketOwnershipPlannerTest {
     }
 
     @Test
+    fun `unit test bucket projection uses variant type instead of rendered suffix`() {
+        val debugTestDependency = dependency("com.example:debug-test-only:1.0")
+
+        val results: List<ResolveDependenciesResult> = planner(
+            metadata = metadata(
+                ":app" to listOf(
+                    declaredVariant(DEFAULT_VARIANT, AndroidBuild, leaf = false),
+                    declaredVariant("debug", AndroidBuild, leaf = false, buildType = "debug"),
+                    declaredVariant(
+                        "freeDebug",
+                        AndroidBuild,
+                        leaf = true,
+                        buildType = "debug",
+                        extendsFrom = setOf(DEFAULT_VARIANT, "debug", "free")
+                    ),
+                    declaredVariant(
+                        "paidDebug",
+                        AndroidBuild,
+                        leaf = true,
+                        buildType = "debug",
+                        extendsFrom = setOf(DEFAULT_VARIANT, "debug", "paid")
+                    ),
+                    declaredVariant(TEST_VARIANT, TestVariantType, leaf = false),
+                    declaredVariant(
+                        "debugSpec",
+                        TestVariantType,
+                        leaf = false,
+                        extendsFrom = setOf(TEST_VARIANT, "debug")
+                    ),
+                    declaredVariant(
+                        "freeDebugSpec",
+                        TestVariantType,
+                        leaf = true,
+                        extendsFrom = setOf("debugSpec", "freeDebug")
+                    ),
+                    declaredVariant(
+                        "paidDebugSpec",
+                        TestVariantType,
+                        leaf = true,
+                        extendsFrom = setOf("debugSpec", "paidDebug")
+                    )
+                )
+            )
+        ).plan(
+            input(
+                leafUnitTestClosures = mapOf(
+                    bucket(":app", "freeDebug") to deps(debugTestDependency),
+                    bucket(":app", "paidDebug") to deps(debugTestDependency)
+                )
+            )
+        )
+
+        assertEquals(
+            compileSummary(results),
+            listOf("com.example:debug-test-only:1.0"),
+            compileIdsFor(results, "debugSpec")
+        )
+        assertEquals(emptyList<String>(), compileIdsFor(results, TEST_VARIANT))
+        assertEquals(emptyList<String>(), compileIdsFor(results, "debugSpecUnitTest"))
+    }
+
+    @Test
     fun `result order keeps main buckets before test androidTest and lint`() {
         val defaultDependency = dependency("com.example:default-lib:1.0")
         val debugDependency = dependency("com.example:debug-lib:1.0")

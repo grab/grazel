@@ -183,6 +183,7 @@ constructor(
             configure {
                 group = GRAZEL_TASK_GROUP
                 description = "Generate $BUILD_BAZEL for root project"
+                usesService(grazelComponent.dependencyResolutionService())
                 action(this)
             }
         }

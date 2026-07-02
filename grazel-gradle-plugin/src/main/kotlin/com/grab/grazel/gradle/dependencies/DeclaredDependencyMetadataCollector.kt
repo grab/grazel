@@ -139,7 +139,7 @@ internal object DeclaredDependencyMetadataMerger {
         return DeclaredDependencyMetadata(
             projects = projectMetadata
                 .sortedBy { (projectPath, _) -> projectPath }
-                .associate { (projectPath, metadata) -> projectPath to metadata }
+                .associateTo(sortedMapOf()) { (projectPath, metadata) -> projectPath to metadata }
         )
     }
 
@@ -293,6 +293,7 @@ private fun mergeByProjectBucket(
                 .mapValues { (_, duplicateDeclarations) ->
                     duplicateDeclarations.reduce(::mergeDependencyMetadataByMaxVersion)
                 }
+                .toSortedMap()
         }
         .toSortedMap(
             compareBy<ProjectDependencyBucket> { bucket -> bucket.projectPath }

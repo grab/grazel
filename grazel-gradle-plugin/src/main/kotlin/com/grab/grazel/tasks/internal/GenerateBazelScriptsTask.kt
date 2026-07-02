@@ -183,6 +183,10 @@ constructor(
                 configure {
                     group = GRAZEL_TASK_GROUP
                     description = "Generate $BUILD_BAZEL for this project"
+                    usesService(grazelComponent.workspacePlanService())
+                    usesService(grazelComponent.workspaceRenderPlanService())
+                    usesService(grazelComponent.workspaceTargetTagPlanService())
+                    usesService(grazelComponent.dependencyResolutionService())
                     configureAction(this)
                 }
             }

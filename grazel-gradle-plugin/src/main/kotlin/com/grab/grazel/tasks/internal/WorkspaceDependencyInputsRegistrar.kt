@@ -23,6 +23,7 @@ import com.grab.grazel.gradle.dependencies.WorkspaceDependencyRootInput
 import com.grab.grazel.gradle.dependencies.WorkspaceDependencyRootInputPlanner
 import com.grab.grazel.gradle.variant.Variant
 import com.grab.grazel.gradle.variant.VariantBuilder
+import com.grab.grazel.gradle.variant.WorkspaceKspProcessorClasspathPlanner
 import dagger.Lazy
 import org.gradle.api.Project
 import org.gradle.api.provider.Provider
@@ -47,8 +48,7 @@ internal object WorkspaceDependencyInputsRegistrar {
             rootProject = rootProject
         )
         val kspProcessorDependenciesTask = CollectKspProcessorDependenciesTask.register(
-            rootProject = rootProject,
-            migrationChecker = migrationChecker
+            rootProject = rootProject
         )
         val workspaceRootMetadataTask = CollectWorkspaceDependencyRootMetadataTask.register(rootProject)
         val resolveWorkspaceDependenciesTask = ResolveWorkspaceDependenciesTask.register(rootProject)
@@ -79,10 +79,22 @@ internal object WorkspaceDependencyInputsRegistrar {
                 migratableProjects = migratableProjects,
                 variantsByProject = variantsByProject
             )
+            val kspProcessorInputs = WorkspaceKspProcessorClasspathPlanner.plan(
+                migratableProjects = migratableProjects,
+                variantsByProject = variantsByProject
+            )
             val declaredMetadataSources = DeclaredProjectMetadataPlanner.plan(
                 projects = migratableProjects,
                 variantsByProject = variantsByProject
             )
+            kspProcessorDependenciesTask.configure {
+                kspProcessorInputs.forEach { input ->
+                    CollectKspProcessorDependenciesTask.addKspProcessorClasspathInput(
+                        task = this,
+                        input = input
+                    )
+                }
+            }
             resolveWorkspaceDependenciesTask.configure {
                 rootInputs.forEach { rootInput ->
                     addRootComponent(

@@ -22,7 +22,9 @@ import org.gradle.api.Project
 import org.gradle.api.artifacts.Configuration
 import org.gradle.testfixtures.ProjectBuilder
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.util.SortedMap
 
 class DeclaredDependencyMetadataMergerTest {
     @Test
@@ -38,6 +40,7 @@ class DeclaredDependencyMetadataMergerTest {
         )
 
         assertEquals(listOf(":app", ":lib"), forward.projects.keys.toList())
+        assertTrue(forward.projects is SortedMap<*, *>)
         assertEquals(forward, reverse)
     }
 
