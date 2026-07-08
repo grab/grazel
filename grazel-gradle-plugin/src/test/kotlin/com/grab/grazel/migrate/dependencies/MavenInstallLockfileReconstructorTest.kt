@@ -17,13 +17,14 @@
 package com.grab.grazel.migrate.dependencies
 
 import com.google.common.truth.Truth.assertThat
+import com.grab.grazel.bazel.rules.DAGGER_REPOSITORY_URLS
 import com.grab.grazel.bazel.rules.repositoryInputSpec
 import com.grab.grazel.util.Json
+import com.grab.grazel.util.ROOT_PATH
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.junit.Test
-import java.io.File
 import kotlin.test.assertFailsWith
 
 class MavenInstallLockfileReconstructorTest {
@@ -249,18 +250,18 @@ class MavenInstallLockfileReconstructorTest {
             repositoryRewrite = MavenInstallRepositoryRewrite(proxyToCanonicalUrl = emptyMap())
         )
 
-        CHECKED_IN_LOCKFILES.forEach { path ->
-            val lockfile = File(path)
-            if (lockfile.exists()) {
-                val lockfileContents = lockfile.readText()
-                assertThat(
-                    reconstructor.reconstruct(
-                        lockfileContents = lockfileContents,
-                        canonicalRepositoryInputs = canonicalRepositoryInputsFromLockfileRepositories(lockfileContents)
-                    )
+        CHECKED_IN_LOCKFILES.forEach { name ->
+            val lockfile = ROOT_PATH.resolve(name).toFile()
+            assertThat(lockfile.exists())
+                .isTrue()
+            val lockfileContents = lockfile.readText()
+            assertThat(
+                reconstructor.reconstruct(
+                    lockfileContents = lockfileContents,
+                    canonicalRepositoryInputs =
+                        canonicalRepositoryInputsFromLockfileRepositories(lockfileContents)
                 )
-                    .isEqualTo(lockfile.readText())
-            }
+            ).isEqualTo(lockfileContents)
         }
     }
 }
@@ -284,7 +285,17 @@ private fun canonicalRepositoryInputsFromLockfileRepositories(lockfileContents: 
         .getValue("repositories")
         .jsonObject
         .keys
+        .map { repoUrl -> repoUrl.toDeclaredRepositoryUrl() }
         .map(::repositoryInputSpec)
+
+/**
+ * rje records repo URLs with a trailing slash in the lockfile's `repositories` section, but computes
+ * `__INPUT_ARTIFACTS_HASH["repositories"]` over the originally-declared strings. [DAGGER_REPOSITORY_URLS]
+ * are declared without a trailing slash, so map them back to their declared form to reproduce the exact
+ * input rje hashed (the original strings are otherwise unrecoverable from the normalized lockfile).
+ */
+private fun String.toDeclaredRepositoryUrl(): String =
+    DAGGER_REPOSITORY_URLS.firstOrNull { declared -> "$declared/" == this } ?: this
 
 private val CHECKED_IN_LOCKFILES = listOf(
     "android_test_maven_install.json",
