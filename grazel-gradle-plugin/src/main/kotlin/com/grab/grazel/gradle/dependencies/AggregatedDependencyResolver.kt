@@ -679,7 +679,8 @@ internal class AggregatedDependencyResolver(
                             rootExcludeRulesByShortId = metadata.rootExcludeRulesByShortId,
                             ownerProjectPath = visitResult.directProjectPath,
                             ownerProjectVariantDisplayName = visitResult.directProjectVariantDisplayName,
-                            shortId = shortId
+                            ownerProjectVariantAttrName = visitResult.directProjectVariantName,
+                            shortId = shortId,
                         )
                     } else {
                         metadata.rootExcludeRulesByShortId.getOrDefault(shortId, emptySet())

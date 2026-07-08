@@ -16,6 +16,7 @@
 
 package com.grab.grazel.gradle.dependencies
 
+import com.android.build.gradle.internal.attributes.VariantAttr
 import com.grab.grazel.gradle.dependencies.ResolvedComponentsVisitor.Companion.IGNORED_ARTIFACTS
 import com.grab.grazel.util.ansiCyan
 import com.grab.grazel.util.ansiGreen
@@ -79,7 +80,14 @@ internal class ResolvedComponentsVisitor {
          * dependency. This stays raw because AGP/Gradle names are configuration-like strings such
          * as `paidDebugRuntimeElements`.
          */
-        val directProjectVariantDisplayName: String? = null
+        val directProjectVariantDisplayName: String? = null,
+        /**
+         * The AGP [VariantAttr] name stamped on the resolved variant for the project edge that owns
+         * this direct external dependency. This is the typed attribute value (e.g. "paidDebug")
+         * and serves as a direct key into `variantHierarchyNamesByName`. Null for JVM libraries and
+         * any component that does not carry the AGP variant attribute.
+         */
+        val directProjectVariantName: String? = null
     ) : Comparable<VisitResult> {
         override fun compareTo(
             other: VisitResult
@@ -136,7 +144,8 @@ internal class ResolvedComponentsVisitor {
             node: ResolvedComponentNode,
             dfsResult: DependencyTraversalResult,
             directProjectPath: String?,
-            directProjectVariantDisplayName: String?
+            directProjectVariantDisplayName: String?,
+            directProjectVariantName: String?
         ) {
             if (!node.isProject) {
                 transform(
@@ -147,7 +156,8 @@ internal class ResolvedComponentsVisitor {
                         requiresJetifier = dfsResult.requiresJetifier,
                         directFromProject = traverseProjectNodes && directProjectPath != null,
                         directProjectPath = directProjectPath,
-                        directProjectVariantDisplayName = directProjectVariantDisplayName
+                        directProjectVariantDisplayName = directProjectVariantDisplayName,
+                        directProjectVariantName = directProjectVariantName
                     )
                 )?.let(result::add)
             }
@@ -157,7 +167,8 @@ internal class ResolvedComponentsVisitor {
             val selected: ResolvedComponentNode,
             val requested: ComponentSelector,
             val constraint: Boolean,
-            val selectedVariantDisplayName: String
+            val selectedVariantDisplayName: String,
+            val selectedVariantAttrName: String?
         )
 
         /**
@@ -176,11 +187,13 @@ internal class ResolvedComponentsVisitor {
             level: Int = 0,
             directProjectPath: String? = null,
             directProjectVariantDisplayName: String? = null,
-            projectVariantDisplayName: String? = null
+            directProjectVariantName: String? = null,
+            projectVariantDisplayName: String? = null,
+            projectVariantAttrName: String? = null
         ): DependencyTraversalResult {
             if (node in visited) {
                 val cachedResult = dfsResults[node] ?: return DependencyTraversalResult(emptySet(), false)
-                emit(node, cachedResult, directProjectPath, directProjectVariantDisplayName)
+                emit(node, cachedResult, directProjectPath, directProjectVariantDisplayName, directProjectVariantName)
                 return cachedResult
             }
             visited.add(node)
@@ -197,7 +210,9 @@ internal class ResolvedComponentsVisitor {
                         selected = it.selected,
                         requested = it.requested,
                         constraint = it.isConstraint,
-                        selectedVariantDisplayName = it.resolvedVariant.displayName
+                        selectedVariantDisplayName = it.resolvedVariant.displayName,
+                        selectedVariantAttrName = it.resolvedVariant.attributes
+                            .getAttribute(VariantAttr.ATTRIBUTE)?.name
                     )
                 }
                 .let { seq ->
@@ -205,14 +220,15 @@ internal class ResolvedComponentsVisitor {
                     else seq.filter { (selected, _, _) -> !selected.isProject }
                 }
                 .filter { (dep, _, _) -> IGNORED_ARTIFACTS.none { dep.toString().startsWith(it) } }
-                .forEach { (child, requested, constraint, selectedVariantDisplayName) ->
+                .forEach { (child, requested, constraint, selectedVariantDisplayName, selectedVariantAttrName) ->
                     if (traverseProjectNodes && child.isProject) {
                         // Descend through the project node. Its external children are handled as
                         // direct when that project node becomes their parent below.
                         val childResult = dfs(
                             child,
                             level + 1,
-                            projectVariantDisplayName = selectedVariantDisplayName
+                            projectVariantDisplayName = selectedVariantDisplayName,
+                            projectVariantAttrName = selectedVariantAttrName
                         )
                         allDependencies.addAll(childResult.dependencies)
                         requiresJetifier = requiresJetifier || childResult.requiresJetifier
@@ -234,7 +250,8 @@ internal class ResolvedComponentsVisitor {
                             child,
                             level + 1,
                             directProjectPath = childDirectProjectPath,
-                            directProjectVariantDisplayName = projectVariantDisplayName
+                            directProjectVariantDisplayName = projectVariantDisplayName,
+                            directProjectVariantName = projectVariantAttrName
                         )
                         val directDepResult = DependencyResult(
                             dependency = child,
@@ -253,7 +270,7 @@ internal class ResolvedComponentsVisitor {
             val dfsResult = DependencyTraversalResult(allDependencies, requiresJetifier)
             dfsResults[node] = dfsResult
 
-            emit(node, dfsResult, directProjectPath, directProjectVariantDisplayName)
+            emit(node, dfsResult, directProjectPath, directProjectVariantDisplayName, directProjectVariantName)
             return dfsResult
         }
 

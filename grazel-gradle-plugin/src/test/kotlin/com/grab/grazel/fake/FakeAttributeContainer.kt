@@ -40,9 +40,7 @@ class FakeAttributeContainer : AttributeContainer {
         TODO("Not yet implemented")
     }
 
-    override fun <T : Any?> getAttribute(p0: Attribute<T>): T? {
-        TODO("Not yet implemented")
-    }
+    override fun <T : Any?> getAttribute(p0: Attribute<T>): T? = null
 
     override fun isEmpty(): Boolean {
         TODO("Not yet implemented")

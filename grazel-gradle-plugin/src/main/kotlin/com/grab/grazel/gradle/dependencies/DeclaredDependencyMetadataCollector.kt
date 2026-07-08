@@ -380,13 +380,39 @@ internal data class ProjectExcludeRules(
     val hasRules: Boolean
         get() = bucketRulesByShortId.isNotEmpty() || variantRulesByName.isNotEmpty()
 
-    fun rulesFor(shortId: String, selectedVariantDisplayName: String?): Set<ExcludeRule> {
-        val selectedVariantNames = selectedVariantHierarchyNames(
-            displayName = selectedVariantDisplayName,
-            variantHierarchyNamesByName = variantHierarchyNamesByName
-        )
-        if (selectedVariantNames.isNotEmpty()) {
-            return selectedVariantNames
+    /**
+     * Returns the exclude rules that apply to [shortId] for the given resolved variant.
+     *
+     * Resolution uses the typed AGP [VariantAttr] name ([selectedVariantAttrName]) to look up the
+     * variant hierarchy directly — no string-matching required. Falls back to the display-name
+     * heuristic ([selectedVariantHierarchyNames]) when the attribute is absent (JVM libs,
+     * apiElements/runtimeElements edges).
+     *
+     * @param shortId The dependency short ID (group:artifact) to look up rules for.
+     * @param selectedVariantDisplayName Raw Gradle display name of the resolved variant
+     *   (e.g. "paidDebugRuntimeElements"). Used as fallback when [selectedVariantAttrName] is null.
+     * @param selectedVariantAttrName AGP VariantAttr name from the resolved variant attributes
+     *   (e.g. "paidDebug"). Null when the attribute is not present.
+     */
+    fun rulesFor(
+        shortId: String,
+        selectedVariantDisplayName: String?,
+        selectedVariantAttrName: String? = null,
+    ): Set<ExcludeRule> {
+        // Typed attribute path: direct map lookup, no string-matching.
+        val attrHierarchyNames = selectedVariantAttrName
+            ?.let { variantHierarchyNamesByName[it] }
+            .orEmpty()
+        // Fall back to display-name heuristic when the attribute is absent or unmapped.
+        val hierarchyNames = attrHierarchyNames.ifEmpty {
+            selectedVariantHierarchyNames(
+                displayName = selectedVariantDisplayName,
+                variantHierarchyNamesByName = variantHierarchyNamesByName
+            )
+        }
+
+        if (hierarchyNames.isNotEmpty()) {
+            return hierarchyNames
                 .mapNotNull { variantName -> variantRulesByName[variantName]?.get(shortId) }
                 .let(::intersectExcludeRuleSets)
         }
@@ -611,13 +637,15 @@ internal fun excludeRulesForDependency(
     rootExcludeRulesByShortId: Map<String, Set<ExcludeRule>>,
     ownerProjectPath: String?,
     ownerProjectVariantDisplayName: String?,
-    shortId: String
+    ownerProjectVariantAttrName: String? = null,
+    shortId: String,
 ): Set<ExcludeRule> {
     val ownerRules = ownerProjectPath
         ?.let { path ->
             excludeRulesByProjectPath[path]?.rulesFor(
                 shortId = shortId,
-                selectedVariantDisplayName = ownerProjectVariantDisplayName
+                selectedVariantDisplayName = ownerProjectVariantDisplayName,
+                selectedVariantAttrName = ownerProjectVariantAttrName,
             )
         }
         .orEmpty()
