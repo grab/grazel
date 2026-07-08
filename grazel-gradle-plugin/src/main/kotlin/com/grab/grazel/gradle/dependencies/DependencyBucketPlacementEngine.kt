@@ -544,6 +544,18 @@ private fun BucketPlacementVariantInput.appliesTo(
     return parentNames.isNotEmpty() && parentNames.all { parentName -> parentName in leafVariant.extendsFrom }
 }
 
+/**
+ * Typed decomposition of a single candidate owner-bucket name.
+ *
+ * Carrying the typed [flavors] and [buildType] that were used to construct the bucket name lets
+ * [ownerVariantFor] read the decomposition directly instead of re-deriving it from the
+ * synthesised string via substring/endsWith matching.
+ */
+private data class OwnerBucketSpec(
+    val flavors: List<String>,
+    val buildType: String?
+)
+
 private fun ownerVariantFor(
     variants: Collection<DeclaredVariantDependencyMetadata>,
     projectPath: String,
@@ -563,26 +575,28 @@ private fun ownerVariantFor(
             variantType = matchingLeaf.variantType
         )
     }
-    val matchingLeafCandidates = variants.filter { variant ->
-        variant.androidLeafVariant && ownerAppliesToLeaf(ownerName = bucketName, leafVariant = variant)
-    }
+    // Build each leaf's spec map exactly once, then use it for both filtering and spec lookup.
+    val specsByLeaf: Map<DeclaredVariantDependencyMetadata, Map<String, OwnerBucketSpec>> =
+        variants
+            .filter { it.androidLeafVariant }
+            .associateWith { candidateOwnerBucketSpecs(it) }
+
+    val matchingLeafCandidates = specsByLeaf
+        .filter { (_, specs) -> specs.containsKey(bucketName) }
+        .keys
+        .toList()
     if (matchingLeafCandidates.isEmpty()) return null
 
-    val flavorNames = matchingLeafCandidates
-        .flatMap(DeclaredVariantDependencyMetadata::productFlavors)
-        .distinct()
-        .sortedByDescending(String::length)
-    val buildTypeNames = matchingLeafCandidates
-        .mapNotNull(DeclaredVariantDependencyMetadata::buildType)
-        .distinct()
-        .sortedByDescending(String::length)
-    val ownerFlavors = flavorNames
-        .filter { flavorName -> bucketName.contains(flavorName, ignoreCase = true) }
+    // Look up the typed spec for bucketName from any candidate leaf — every qualifying leaf
+    // has an identical OwnerBucketSpec for a given name (the spec is constructed from the
+    // typed parts that produced the name, so there is no ambiguity).
+    val spec = specsByLeaf[matchingLeafCandidates.first()]?.get(bucketName) ?: return null
+
+    val ownerFlavors = spec.flavors
         .sortedWith(compareBy { flavorName ->
             matchingLeafCandidates.first().productFlavors.indexOf(flavorName).takeIf { it >= 0 } ?: Int.MAX_VALUE
         })
-    val ownerBuildType = buildTypeNames
-        .firstOrNull { buildTypeName -> bucketName.endsWith(buildTypeName, ignoreCase = true) }
+    val ownerBuildType = spec.buildType
     return BucketPlacementVariantInput(
         name = bucketName,
         extendsFrom = (setOf(DEFAULT_VARIANT) + ownerFlavors + listOfNotNull(ownerBuildType)).toSortedSet(),
@@ -594,29 +608,40 @@ private fun ownerVariantFor(
     )
 }
 
-private fun ownerAppliesToLeaf(
-    ownerName: String,
+/**
+ * Returns all candidate owner-bucket specs for [leafVariant], keyed by bucket name.
+ *
+ * Each [OwnerBucketSpec] carries the typed [OwnerBucketSpec.flavors] and
+ * [OwnerBucketSpec.buildType] that were used to synthesise the name, so callers can
+ * consume the typed decomposition instead of re-parsing the name.
+ */
+private fun candidateOwnerBucketSpecs(
     leafVariant: DeclaredVariantDependencyMetadata
-): Boolean {
-    return candidateOwnerBucketNames(leafVariant).contains(ownerName)
-}
-
-private fun candidateOwnerBucketNames(
-    leafVariant: DeclaredVariantDependencyMetadata
-): Set<String> {
-    if (!leafVariant.androidLeafVariant) return emptySet()
+): Map<String, OwnerBucketSpec> {
+    if (!leafVariant.androidLeafVariant) return emptyMap()
     val flavors = leafVariant.productFlavors
-    val flavorCombinations = orderedCombinations(flavors)
+    val flavorCombinations: Map<String, List<String>> = orderedCombinations(flavors)
     val buildType = leafVariant.buildType
-    return buildSet {
-        addAll(flavors)
-        buildType?.let(::add)
-        addAll(flavorCombinations)
-        if (buildType != null) {
-            addAll(flavorCombinations.map { flavorBucket -> flavorBucket + buildType.bucketPartCapitalized() })
-            flavors.forEach { flavorName -> add(flavorName + buildType.bucketPartCapitalized()) }
+    return buildMap {
+        flavors.forEach { flavor ->
+            put(flavor, OwnerBucketSpec(flavors = listOf(flavor), buildType = null))
         }
-        add(leafVariant.name)
+        buildType?.let { bt ->
+            put(bt, OwnerBucketSpec(flavors = emptyList(), buildType = bt))
+        }
+        flavorCombinations.forEach { (comboName, comboFlavors) ->
+            put(comboName, OwnerBucketSpec(flavors = comboFlavors, buildType = null))
+        }
+        if (buildType != null) {
+            // Merge the single-flavor and combo+buildType entries into one loop.
+            val allFlavourSources: Map<String, List<String>> =
+                flavors.associateBy({ it }, { listOf(it) }) + flavorCombinations
+            allFlavourSources.forEach { (baseName, baseFlavors) ->
+                val withBt = baseName + buildType.bucketPartCapitalized()
+                put(withBt, OwnerBucketSpec(flavors = baseFlavors, buildType = buildType))
+            }
+        }
+        put(leafVariant.name, OwnerBucketSpec(flavors = flavors, buildType = buildType))
     }
 }
 
@@ -626,25 +651,31 @@ private fun String.bucketPartCapitalized(): String {
     }
 }
 
-private fun orderedCombinations(parts: List<String>): Set<String> {
-    if (parts.size < 2) return emptySet()
-    val combinations = sortedSetOf<String>()
-
-    fun visit(index: Int, selected: List<String>) {
-        if (index == parts.size) {
-            if (selected.size >= 2) {
-                combinations += selected.joinToString(separator = "") { part ->
-                    if (selected.first() == part) part else part.bucketPartCapitalized()
-                }
+/**
+ * Returns every size-≥2 ordered subset of [parts] as a mapping from the synthesised
+ * bucket name to the typed flavor list that produced it.
+ *
+ * The name follows the same convention as before: the first part is lower-cased as-is,
+ * each subsequent part has its first character capitalised.
+ *
+ * Returning the typed subset alongside the name lets callers build [OwnerBucketSpec]
+ * entries without any string-scanning — eliminating the `comboName.contains(f)` pattern
+ * that breaks when a flavor name is a substring of a combo name built from other flavors.
+ */
+private fun orderedCombinations(parts: List<String>): Map<String, List<String>> {
+    if (parts.size < 2) return emptyMap()
+    // Enumerate all subsets of size ≥ 2 by iterating over bitmasks.
+    val n = parts.size
+    return buildMap {
+        for (mask in 0 until (1 shl n)) {
+            val subset = parts.filterIndexed { index, _ -> (mask shr index) and 1 == 1 }
+            if (subset.size < 2) continue
+            val name = subset.joinToString(separator = "") { part ->
+                if (part == subset.first()) part else part.bucketPartCapitalized()
             }
-            return
+            put(name, subset)
         }
-        visit(index + 1, selected)
-        visit(index + 1, selected + parts[index])
     }
-
-    visit(index = 0, selected = emptyList())
-    return combinations
 }
 
 internal fun DeclaredDependencyMetadata.mainBucketVariantsByProject(): List<BucketPlacementVariantInput> {

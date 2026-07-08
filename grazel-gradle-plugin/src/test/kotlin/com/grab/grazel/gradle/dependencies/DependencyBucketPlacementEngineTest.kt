@@ -910,6 +910,125 @@ class DependencyBucketPlacementEngineTest {
         )
     }
 
+    @Test
+    fun `owner bucket flavors are derived from typed decomposition not substring matching`() {
+        // "driver" contains "er" as a substring — the old string-matching code would incorrectly
+        // include "er" as an owner flavor for the "driver" bucket because
+        // bucketName.contains("er", ignoreCase = true) == true.
+        // Leaf 1: two-dimension leaf — flavors ["er", "driver"], bucket "erDriver"
+        // Leaf 2: single-dimension leaf — flavors ["driver"], bucket "driver"
+        // Both leaves have "driver" in their candidateOwnerBucketNames, so ownerVariantFor
+        // for bucketName="driver" collects matchingLeafCandidates = [leaf1, leaf2].
+        // Old code: distinct flavorNames = ["driver", "er"] (sorted by length desc),
+        //   "driver".contains("driver") = true, "driver".contains("er") = true
+        //   → ownerFlavors = ["driver", "er"] (WRONG — "er" is not a component of "driver")
+        // New code uses typed spec from candidateOwnerBucketNames → ownerFlavors = ["driver"] (CORRECT)
+        val dependency = dependency("com.example:driver-only:1.0")
+        val metadata = DeclaredDependencyMetadata(
+            projects = mapOf(
+                ":app" to ProjectDeclaredDependencyMetadata(
+                    variants = listOf(
+                        // Leaf with two flavor dimensions: "er" (dim1) + "driver" (dim2)
+                        declaredMainLeaf(
+                            name = "erDriverDebug",
+                            extendsFrom = setOf(DEFAULT_VARIANT, "debug", "er", "driver"),
+                            buildType = "debug",
+                            productFlavors = listOf("er", "driver"),
+                            declaredDependencyDeclarations = setOf(
+                                DeclaredExternalDependency(
+                                    configurationName = "driverImplementation",
+                                    bucketName = "driver",
+                                    id = dependency.id
+                                )
+                            )
+                        ),
+                        // Leaf with single flavor dimension: "driver" only
+                        declaredMainLeaf(
+                            name = "driverDebug",
+                            extendsFrom = setOf(DEFAULT_VARIANT, "debug", "driver"),
+                            buildType = "debug",
+                            productFlavors = listOf("driver")
+                        )
+                    )
+                )
+            )
+        )
+
+        val variants = metadata.mainBucketVariants(":app")
+        val driverOwner = variants.single { it.name == "driver" }
+
+        // The owner bucket "driver" must only carry the typed flavor ["driver"],
+        // NOT the spurious "er" that substring matching would inject.
+        assertEquals(
+            "owner bucket 'driver' must have exactly [driver] as productFlavors, not spurious substring matches",
+            listOf("driver"),
+            driverOwner.productFlavors
+        )
+        assertEquals(
+            "owner bucket 'driver' extendsFrom must be {main, driver} — not include 'er'",
+            setOf(DEFAULT_VARIANT, "driver"),
+            driverOwner.extendsFrom
+        )
+        assertEquals(
+            "owner bucket 'driver' must have null buildType",
+            null,
+            driverOwner.buildType
+        )
+    }
+
+    @Test
+    fun `combo owner bucket flavors exclude standalone flavor whose name is substring of combo name`() {
+        // Reproduces the combination-path bug in candidateOwnerBucketSpecs.
+        // Flavors: ["free", "demo", "freedemo"] — three distinct names across two dimensions.
+        // orderedCombinations produces "freeDemo" from the subset {free, demo}.
+        // The old code filters flavors via comboName.contains(f, ignoreCase=true):
+        //   "freeDemo".contains("free")     = true  ✓
+        //   "freeDemo".contains("demo")     = true  ✓
+        //   "freeDemo".contains("freedemo") = true  ✗ (substring collision — BUG)
+        // So the old code sets comboFlavors = ["free","demo","freedemo"] for the "freeDemo" bucket.
+        // The fix threads the typed subset out of orderedCombinations so no string scan is needed.
+        val dependency = dependency("com.example:combo-only:1.0")
+        val metadata = DeclaredDependencyMetadata(
+            projects = mapOf(
+                ":app" to ProjectDeclaredDependencyMetadata(
+                    variants = listOf(
+                        // Three-flavor leaf: dim1={"free","freedemo"} dim2={"demo"}
+                        // Produces a combo "freeDemo" from the subset {free, demo}.
+                        declaredMainLeaf(
+                            name = "freeDemoDebug",
+                            extendsFrom = setOf(DEFAULT_VARIANT, "debug", "free", "demo", "freedemo"),
+                            buildType = "debug",
+                            productFlavors = listOf("free", "demo", "freedemo"),
+                            declaredDependencyDeclarations = setOf(
+                                DeclaredExternalDependency(
+                                    configurationName = "freeDemoImplementation",
+                                    bucketName = "freeDemo",
+                                    id = dependency.id
+                                )
+                            )
+                        )
+                    )
+                )
+            )
+        )
+
+        val variants = metadata.mainBucketVariants(":app")
+        val freeDemoOwner = variants.single { it.name == "freeDemo" }
+
+        // The combo owner "freeDemo" must carry exactly ["free","demo"] — NOT the spurious "freedemo"
+        // that the substring scan injects because "freeDemo".contains("freedemo", ignoreCase=true) == true.
+        assertEquals(
+            "combo owner 'freeDemo' must have productFlavors [free, demo], not spurious 'freedemo'",
+            listOf("free", "demo"),
+            freeDemoOwner.productFlavors
+        )
+        assertEquals(
+            "combo owner 'freeDemo' extendsFrom must be {main, free, demo} — not include 'freedemo'",
+            setOf(DEFAULT_VARIANT, "free", "demo"),
+            freeDemoOwner.extendsFrom
+        )
+    }
+
     private fun leaf(
         name: String,
         buildType: String,
