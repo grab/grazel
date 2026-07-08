@@ -37,6 +37,7 @@ import com.grab.grazel.gradle.variant.Variant
 import com.grab.grazel.gradle.variant.VariantBuilder
 import com.grab.grazel.gradle.variant.VariantGraphKey
 import com.grab.grazel.gradle.variant.VariantType
+import com.grab.grazel.gradle.variant.declaredDependencyConfigurations
 import com.grab.grazel.gradle.variant.declarationBucketName
 import com.grab.grazel.gradle.variant.id
 import com.grab.grazel.gradle.variant.isTest
@@ -340,9 +341,8 @@ internal class DefaultDependenciesDataSource @Inject constructor(
             .filter { variant -> variant.variantType == grazelVariant.variantType }
             .filter { variant -> variant.name in directDeclarationVariantNames }
             .flatMap { variant ->
-                variant.variantConfigurations
+                variant.declaredDependencyConfigurations
                     .asSequence()
-                    .filter { configuration -> configuration.isExternalDependencyDeclaration }
                     .flatMap { configuration ->
                         configuration.dependencies
                             .filterIsInstance<ExternalDependency>()
@@ -596,18 +596,6 @@ internal class DefaultDependenciesDataSource @Inject constructor(
     }
 
     private val ExternalDependency.shortId get() = module.group + ":" + module.name
-
-    private val Configuration.isExternalDependencyDeclaration: Boolean
-        get() {
-            val normalizedName = name.lowercase()
-            if ("dependenciesmetadata" in normalizedName || "classpath" in normalizedName) {
-                return false
-            }
-            return normalizedName.endsWith("implementation") ||
-                normalizedName.endsWith("api") ||
-                normalizedName.endsWith("compileonly") ||
-                normalizedName.endsWith("runtimeonly")
-        }
 
     override fun collectKspPluginDeps(
         project: Project,
