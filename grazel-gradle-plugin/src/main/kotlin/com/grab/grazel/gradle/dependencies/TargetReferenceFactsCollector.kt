@@ -22,9 +22,10 @@ import com.grab.grazel.bazel.starlark.BazelDependency.ProjectDependency
 import com.grab.grazel.bazel.starlark.BazelDependency.StringDependency
 import com.grab.grazel.gradle.dependencies.model.TargetReferenceFacts
 import com.grab.grazel.gradle.dependencies.model.WorkspaceRenderPlan
+import com.grab.grazel.migrate.dependencies.BASE_MAVEN_REPO
+import com.grab.grazel.migrate.dependencies.MAVEN_COMPILE_FILTER_TAG_PREFIX
 
 internal object TargetReferenceFactsCollector {
-    private val tagLabelPattern = Regex("""^@(maven)//:""")
     private val projectLabelPattern = Regex("""^//([^:]+):([^:]+)$""")
 
     fun from(
@@ -47,7 +48,9 @@ internal object TargetReferenceFactsCollector {
                 dependencies.asSequence()
                     .filterIsInstance<MavenDependency>()
                     .map(MavenDependency::repo) +
-                    tags.asSequence().mapNotNull { tag -> tag.mavenRepoFromTag() }
+                    tags.asSequence()
+                        .filter { tag -> tag.isMavenCompileFilterTag() }
+                        .map { BASE_MAVEN_REPO }
                 ).toSortedSet(),
             projectTargets = dependencies
                 .asSequence()
@@ -61,8 +64,8 @@ internal object TargetReferenceFactsCollector {
         )
     }
 
-    private fun String.mavenRepoFromTag(): String? =
-        tagLabelPattern.find(this)?.groupValues?.get(1)
+    private fun String.isMavenCompileFilterTag(): Boolean =
+        startsWith(MAVEN_COMPILE_FILTER_TAG_PREFIX)
 
     private fun BazelDependency.projectReference(): Pair<String, String>? =
         when (this) {

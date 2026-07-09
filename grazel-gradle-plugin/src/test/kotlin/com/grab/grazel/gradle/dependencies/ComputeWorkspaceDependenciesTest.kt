@@ -501,6 +501,17 @@ class ComputeWorkspaceDependenciesTest {
         )
     }
 
+    @Test
+    fun `returns empty WorkspaceDependencies when results list is empty`() {
+        val workspaceDependencies = ComputeWorkspaceDependencies().computeFromResults(emptyList())
+
+        assertEquals(emptyMap<String, List<ResolvedDependency>>(), workspaceDependencies.variantDeps)
+        assertEquals(emptyMap<String, List<ResolvedDependency>>(), workspaceDependencies.aggregatedRepos)
+        assertEquals(emptyMap<String, Set<String>>(), workspaceDependencies.transitiveClasspath)
+        assertEquals(emptyMap<String, Map<String, Set<String>>>(), workspaceDependencies.variantTransitiveClasspath)
+        assertEquals(emptyMap<String, Set<String>>(), workspaceDependencies.reachableMainBucketsByProject)
+    }
+
     private fun result(
         variantName: String,
         vararg dependencies: ResolvedDependency

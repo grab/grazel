@@ -18,13 +18,19 @@ package com.grab.grazel.migrate.dependencies
 
 import com.grab.grazel.gradle.variant.DEFAULT_VARIANT
 
+/** Name of the aggregated `maven_install` repository that the default variant maps to. */
+const val BASE_MAVEN_REPO = "maven"
+
+/** Label prefix of a compile-filter tag pointing at the aggregated `@maven` repository. */
+const val MAVEN_COMPILE_FILTER_TAG_PREFIX = "@$BASE_MAVEN_REPO//:"
+
 fun String.toMavenRepoName() = when (this) {
-    DEFAULT_VARIANT -> "maven"
+    DEFAULT_VARIANT -> BASE_MAVEN_REPO
     else -> replace("([a-z])([A-Z]+)".toRegex(), "\$1_\$2")
         .toLowerCase() + "_maven"
 }
 
 fun String.toMaterializedMavenRepoName() = when {
-    this == "maven" || endsWith("_maven") -> this
+    this == BASE_MAVEN_REPO || endsWith("_maven") -> this
     else -> toMavenRepoName()
 }

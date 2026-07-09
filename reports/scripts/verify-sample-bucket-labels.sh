@@ -177,12 +177,16 @@ if ! grep -q 'artifact = "constraintlayout"' <<<"$constraintlayout_block"; then
   echo "WORKSPACE must emit androidx.constraintlayout:constraintlayout as a structured artifact" >&2
   exit 1
 fi
-if grep -q '"androidx.appcompat:appcompat"' <<<"$constraintlayout_block"; then
-  echo "WORKSPACE must not union one-sided appcompat exclude onto androidx.constraintlayout:constraintlayout" >&2
+# constraintlayout is declared in two modules with different excludes: sample-android
+# excludes appcompat, flavors/sample-android-flavor excludes core. Flattening the shared
+# @maven bucket unions both modules' declared excludes (each module's exclude is
+# authoritative for its own dependency), so both must survive on the merged artifact.
+if ! grep -q '"androidx.appcompat:appcompat"' <<<"$constraintlayout_block"; then
+  echo "WORKSPACE must union sample-android's appcompat exclude onto androidx.constraintlayout:constraintlayout" >&2
   exit 1
 fi
 if ! grep -q '"androidx.core:core"' <<<"$constraintlayout_block"; then
-  echo "WORKSPACE must preserve remaining Gradle exclude rules for androidx.constraintlayout:constraintlayout" >&2
+  echo "WORKSPACE must union sample-android-flavor's core exclude onto androidx.constraintlayout:constraintlayout" >&2
   exit 1
 fi
 
@@ -209,9 +213,12 @@ for bucket in default test lint; do
   fi
 done
 
-if ! jq -e \
+# Under test-Android delta ownership (Item 13), debugAndroidTest inherits debug's
+# dependencies via the bucket hierarchy and must NOT re-own paging-runtime as a
+# direct root — debug already provides it. Assert it is not a direct dep here.
+if jq -e \
   '.result.debugAndroidTest[]? | select(.shortId == "androidx.paging:paging-runtime" and .direct == true)' \
   build/grazel/dependencies.json >/dev/null; then
-  echo "debugAndroidTest bucket must preserve debug android-test paging dependency directly" >&2
+  echo "debugAndroidTest bucket must not re-own debug's paging dependency directly (delta ownership: it is inherited from debug)" >&2
   exit 1
 fi

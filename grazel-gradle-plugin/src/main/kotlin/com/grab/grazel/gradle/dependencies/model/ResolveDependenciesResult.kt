@@ -143,17 +143,6 @@ private data class ResolvedDependencyNotation(
     }
 }
 
-internal fun ResolvedDependency.merge(other: ResolvedDependency): ResolvedDependency {
-    return copy(
-        direct = direct || other.direct,
-        dependencies = (dependencies + other.dependencies).toSortedSet(),
-        jetifierSource = jetifierSource ?: other.jetifierSource,
-        overrideTarget = overrideTarget ?: other.overrideTarget,
-        excludeRules = excludeRules.intersectWith(other.excludeRules),
-        processorClass = processorClass ?: other.processorClass,
-    )
-}
-
 internal fun Set<ExcludeRule>.intersectWith(other: Set<ExcludeRule>): Set<ExcludeRule> =
     when {
         isEmpty() || other.isEmpty() -> emptySet()

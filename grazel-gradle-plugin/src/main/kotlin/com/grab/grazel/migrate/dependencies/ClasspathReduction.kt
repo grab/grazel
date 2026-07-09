@@ -21,7 +21,7 @@ import com.grab.grazel.bazel.starlark.BazelDependency.MavenDependency
 import com.grab.grazel.bazel.starlark.BazelDependency.ProjectDependency
 import java.util.TreeSet
 
-private fun MavenDependency.mavenTag(): String = copy(repo = "maven").toString()
+private fun MavenDependency.mavenTag(): String = copy(repo = BASE_MAVEN_REPO).toString()
 
 fun calculateMavenDependencyTags(
     deps: Iterable<MavenDependency>
@@ -65,7 +65,7 @@ fun replaceMavenDependencyTags(
     mavenDependencies: Iterable<MavenDependency>
 ): List<String> {
     return TreeSet<String>().apply {
-        existingTags.filterNotTo(this) { tag -> tag.startsWith("@maven//:") }
+        existingTags.filterNotTo(this) { tag -> tag.startsWith(MAVEN_COMPILE_FILTER_TAG_PREFIX) }
         mavenDependencies.forEach { add(it.mavenTag()) }
     }.toList()
 }

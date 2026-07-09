@@ -24,6 +24,15 @@ internal class ComputeWorkspaceDependencies {
      *   [AggregatedDependencyResolver].
      */
     fun computeFromResults(results: List<ResolveDependenciesResult>): WorkspaceDependencies {
+        if (results.isEmpty()) {
+            return WorkspaceDependencies(
+                variantDeps = emptyMap(),
+                aggregatedRepos = emptyMap(),
+                transitiveClasspath = emptyMap(),
+                variantTransitiveClasspath = emptyMap(),
+                reachableMainBucketsByProject = emptyMap()
+            )
+        }
         // Group already-resolved bucket results by classpath and short id.
         // Maximum compatible version is picked using [maxVersionReducer] because different
         // buckets can carry different resolved versions of the same dependency.
