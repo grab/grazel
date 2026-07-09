@@ -822,7 +822,11 @@ class AggregatedDependencyResolverTest {
             ),
             variantHierarchyNamesByName = mapOf(
                 DEFAULT_VARIANT to setOf(DEFAULT_VARIANT),
-                "test" to setOf("test")
+                "test" to setOf("test"),
+                // Sentinel keys seeded at construction sites so runtimeElements resolves via
+                // normal startsWith scan rather than the deleted when-branch.
+                "apiElements" to setOf(DEFAULT_VARIANT),
+                "runtimeElements" to setOf(DEFAULT_VARIANT)
             )
         )
 

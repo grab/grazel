@@ -19,6 +19,7 @@ package com.grab.grazel.gradle.dependencies
 import com.grab.grazel.gradle.dependencies.model.ExcludeRule
 import com.grab.grazel.gradle.dependencies.model.ResolvedDependency
 import com.grab.grazel.gradle.dependencies.model.intersectWith
+import com.grab.grazel.maven.MavenCoordinates
 import com.grab.grazel.gradle.isAndroidApplication
 import com.grab.grazel.gradle.isAndroidTest
 import com.grab.grazel.gradle.variant.DEFAULT_VARIANT
@@ -183,7 +184,11 @@ internal data class DeclaredDependencyMetadata(
                     .associate { variant -> variant.name to variant.excludeRulesByShortId }
                     .filterValues { it.isNotEmpty() }
                 val variantHierarchyNamesByName = variants
-                    .associate { variant -> variant.name to (setOf(variant.name) + variant.extendsFrom) }
+                    .associate { variant -> variant.name to (setOf(variant.name) + variant.extendsFrom) } +
+                    mapOf(
+                        "apiElements" to setOf(DEFAULT_VARIANT),
+                        "runtimeElements" to setOf(DEFAULT_VARIANT)
+                    )
 
                 ProjectExcludeRules(
                     bucketRulesByShortId = bucketRules,
@@ -400,11 +405,10 @@ internal data class ProjectExcludeRules(
         selectedVariantAttrName: String? = null,
     ): Set<ExcludeRule> {
         // Typed attribute path: direct map lookup, no string-matching.
-        val attrHierarchyNames = selectedVariantAttrName
-            ?.let { variantHierarchyNamesByName[it] }
-            .orEmpty()
-        // Fall back to display-name heuristic when the attribute is absent or unmapped.
-        val hierarchyNames = attrHierarchyNames.ifEmpty {
+        // When the attr is non-null, use the map directly with no display-name fallback.
+        val hierarchyNames = if (selectedVariantAttrName != null) {
+            variantHierarchyNamesByName[selectedVariantAttrName].orEmpty()
+        } else {
             selectedVariantHierarchyNames(
                 displayName = selectedVariantDisplayName,
                 variantHierarchyNamesByName = variantHierarchyNamesByName
@@ -438,12 +442,6 @@ internal fun selectedVariantHierarchyNames(
         emptySet()
     }
     return hierarchyNames
-        .ifEmpty {
-            when (displayName) {
-                "apiElements", "runtimeElements" -> variantHierarchyNamesByName[DEFAULT_VARIANT].orEmpty()
-                else -> emptySet()
-            }
-        }
 }
 
 private fun ModuleDependency.extractExcludeRules(): Set<ExcludeRule> {
@@ -597,14 +595,10 @@ private fun toDeclaredResolvedDependency(
     declaredDependencyId: String,
     excludeRulesByShortId: Map<String, Set<ExcludeRule>>
 ): ResolvedDependency? {
-    val chunks = declaredDependencyId.split(":")
-    if (chunks.size != 3) return null
-    val (group, name, version) = chunks
-    if (group.isBlank() || name.isBlank() || version.isBlank()) return null
-    val shortId = "$group:$name"
+    val coords = MavenCoordinates.parseOrNull(declaredDependencyId) ?: return null
     return ResolvedDependency
-        .fromId("$group:$name:$version", DECLARED_DEPENDENCY_REPOSITORY)
-        .copy(excludeRules = excludeRulesByShortId[shortId].orEmpty())
+        .fromId(coords.gav, DECLARED_DEPENDENCY_REPOSITORY)
+        .copy(excludeRules = excludeRulesByShortId[coords.shortId].orEmpty())
 }
 
 private fun mergeExcludeRulesByShortId(

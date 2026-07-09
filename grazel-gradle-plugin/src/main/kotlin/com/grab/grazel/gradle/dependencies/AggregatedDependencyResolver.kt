@@ -243,7 +243,11 @@ internal class AggregatedDependencyResolver(
                 .filter { variant ->
                     variant.variantType == AndroidBuild || variant.variantType == JvmBuild
                 }
-                .associate { variant -> variant.name to (setOf(variant.name) + variant.extendsFrom) }
+                .associate { variant -> variant.name to (setOf(variant.name) + variant.extendsFrom) } +
+                mapOf(
+                    "apiElements" to setOf(DEFAULT_VARIANT),
+                    "runtimeElements" to setOf(DEFAULT_VARIANT)
+                )
             return selectedVariantHierarchyNames(
                 displayName = selectedVariantDisplayName,
                 variantHierarchyNamesByName = variantHierarchyNamesByName

@@ -302,6 +302,45 @@ class DeclaredDependencyMetadataCollectorTest {
         )
     }
 
+    @Test
+    fun `rulesFor resolves exclude rules via typed attr map when selectedVariantAttrName is non-null`() {
+        // Arrange: a hierarchy where "paidDebug" extends paid/debug/default.
+        val shortId = "com.example:library"
+        val paidDebugRule = ExcludeRule("com.example", "paid-debug-blocked")
+        val defaultRule = ExcludeRule("com.example", "default-blocked")
+        val rules = ProjectExcludeRules(
+            bucketRulesByShortId = mapOf(shortId to setOf(paidDebugRule, defaultRule)),
+            variantRulesByName = mapOf(
+                "paidDebug" to mapOf(shortId to setOf(paidDebugRule)),
+                DEFAULT_VARIANT to mapOf(shortId to setOf(defaultRule))
+            ),
+            variantHierarchyNamesByName = mapOf(
+                "paidDebug" to setOf("paidDebug", DEFAULT_VARIANT),
+                DEFAULT_VARIANT to setOf(DEFAULT_VARIANT)
+            )
+        )
+
+        // The display name deliberately does NOT start with any variant key so the
+        // display-name heuristic would return emptySet() and fall through to the bucket
+        // rules — proving that when a non-null attr is supplied, only the typed path is used.
+        val result = rules.rulesFor(
+            shortId = shortId,
+            selectedVariantDisplayName = "unrelated-display-name",
+            selectedVariantAttrName = "paidDebug"
+        )
+
+        // Typed path: variantHierarchyNamesByName["paidDebug"] = {paidDebug, default}
+        // → intersect variantRulesByName["paidDebug"][shortId] ∩ variantRulesByName["default"][shortId]
+        // = {paidDebugRule} ∩ {defaultRule} = {} → but intersection of all resolved sets, so
+        // intersectExcludeRuleSets({paidDebugRule}, {defaultRule}) = {} (no common rule).
+        // The typed path reaches variant rules, not the bucket fallback, so the result differs
+        // from what the display-name-only path would produce (bucketRulesByShortId).
+        assertEquals(
+            emptySet<ExcludeRule>(),
+            result
+        )
+    }
+
     private fun variant(
         project: Project,
         variantConfigurations: Set<Configuration>,

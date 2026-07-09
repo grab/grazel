@@ -106,14 +106,16 @@ internal data class MavenCoordinates(
     }
 
     companion object {
-        fun parse(gav: String): MavenCoordinates {
+        fun parseOrNull(gav: String): MavenCoordinates? {
             val parts = gav.split(":")
-            require(parts.size == 3) { "Expected group:name:version coordinate, got $gav" }
-            return MavenCoordinates(
-                group = parts[0],
-                module = parts[1],
-                version = parts[2]
-            )
+            if (parts.size != 3) return null
+            val (group, module, version) = parts
+            if (group.isBlank() || module.isBlank() || version.isBlank()) return null
+            return MavenCoordinates(group, module, version)
+        }
+
+        fun parse(gav: String): MavenCoordinates {
+            return parseOrNull(gav) ?: error("Expected group:name:version coordinate, got $gav")
         }
     }
 }

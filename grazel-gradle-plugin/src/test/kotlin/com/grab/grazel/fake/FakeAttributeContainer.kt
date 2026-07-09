@@ -20,7 +20,9 @@ import org.gradle.api.attributes.Attribute
 import org.gradle.api.attributes.AttributeContainer
 import org.gradle.api.provider.Provider
 
-class FakeAttributeContainer : AttributeContainer {
+class FakeAttributeContainer(
+    private val attributes: Map<Attribute<*>, Any?> = emptyMap()
+) : AttributeContainer {
     override fun getAttributes(): AttributeContainer {
         TODO("Not yet implemented")
     }
@@ -40,7 +42,8 @@ class FakeAttributeContainer : AttributeContainer {
         TODO("Not yet implemented")
     }
 
-    override fun <T : Any?> getAttribute(p0: Attribute<T>): T? = null
+    @Suppress("UNCHECKED_CAST")
+    override fun <T : Any?> getAttribute(p0: Attribute<T>): T? = attributes[p0] as T?
 
     override fun isEmpty(): Boolean {
         TODO("Not yet implemented")
