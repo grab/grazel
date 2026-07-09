@@ -30,8 +30,6 @@ class FakeProgressLogger : ProgressLogger {
         private set
     var started = false
         private set
-    var status: String = ""
-        private set
     var failed = false
         private set
     var completed = false

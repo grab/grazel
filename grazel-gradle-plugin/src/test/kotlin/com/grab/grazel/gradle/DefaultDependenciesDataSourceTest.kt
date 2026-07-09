@@ -27,7 +27,6 @@ import com.grab.grazel.gradle.dependencies.DependencyResolutionService
 import com.grab.grazel.gradle.dependencies.IGNORED_ARTIFACT_GROUPS
 import com.grab.grazel.gradle.dependencies.MavenArtifact
 import com.grab.grazel.gradle.dependencies.ArtifactsConfig
-import com.grab.grazel.gradle.ANDROID_TEST_PLUGIN
 import com.grab.grazel.gradle.variant.DEFAULT_VARIANT
 import com.grab.grazel.gradle.variant.Variant
 import com.grab.grazel.gradle.variant.VariantBuilder

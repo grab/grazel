@@ -195,14 +195,18 @@ internal class LocalMavenProxyServer(
             return ServedResponse.Bytes(HttpStatusCode.NotFound, ByteArray(0))
         }
         if (concreteGav in metadataOnlyGavs) {
-            return serveMetadataOnlyArtifact(repoIndex, path, countContentHit)
+            return serveArtifactWithFallbackCounter(
+                repoIndex, path, countContentHit, counters.metadataOnlyArtifactFallbacks
+            )
         }
         if (concreteGav in knownComponentGavs) {
             counters.artifactMisses.incrementAndGet()
             return hardFailure("Missing Gradle-resolved artifact for Maven path $path")
         }
         if (concreteGav != null && path in allowedOriginArtifactPaths) {
-            return serveLockfileArtifact(repoIndex, path, countContentHit)
+            return serveArtifactWithFallbackCounter(
+                repoIndex, path, countContentHit, counters.lockfileArtifactFallbacks
+            )
         }
         if (concreteGav != null) {
             counters.artifactMisses.incrementAndGet()
@@ -218,26 +222,15 @@ internal class LocalMavenProxyServer(
             artifactExtension(path) !in knownExtensions
     }
 
-    private suspend fun serveMetadataOnlyArtifact(
+    private suspend fun serveArtifactWithFallbackCounter(
         repoIndex: Int,
         path: String,
         countContentHit: Boolean,
+        fallbackCounter: AtomicLong,
     ): ServedResponse {
         val response = serveFromCacheOrOrigin(repoIndex, path)
         if (countContentHit && response.status == HttpStatusCode.OK) {
-            counters.metadataOnlyArtifactFallbacks.incrementAndGet()
-        }
-        return response
-    }
-
-    private suspend fun serveLockfileArtifact(
-        repoIndex: Int,
-        path: String,
-        countContentHit: Boolean,
-    ): ServedResponse {
-        val response = serveFromCacheOrOrigin(repoIndex, path)
-        if (countContentHit && response.status == HttpStatusCode.OK) {
-            counters.lockfileArtifactFallbacks.incrementAndGet()
+            fallbackCounter.incrementAndGet()
         }
         return response
     }

@@ -20,7 +20,6 @@ import com.grab.grazel.bazel.rules.Visibility
 import com.grab.grazel.bazel.rules.androidInstrumentationBinary
 import com.grab.grazel.bazel.starlark.BazelDependency
 import com.grab.grazel.bazel.starlark.StatementsBuilder
-import com.grab.grazel.migrate.BazelBuildTarget
 
 /**
  * Represents a Bazel build target for com.android.test modules.

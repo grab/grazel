@@ -312,13 +312,6 @@ internal data class ProjectDeclaredDependencyMetadata(
     val projectType: DeclaredProjectType = DeclaredProjectType.OTHER,
     val variants: List<DeclaredVariantDependencyMetadata> = emptyList()
 ) {
-    val hasMetadata: Boolean
-        get() = variants.any { variant ->
-            variant.declaredDependencyDeclarations.isNotEmpty() ||
-                variant.declaredProjectDependencies.isNotEmpty() ||
-                variant.excludeRulesByShortId.isNotEmpty() ||
-                variant.compileOnlyDependenciesByShortId.isNotEmpty()
-        }
 }
 
 @Serializable
@@ -368,7 +361,7 @@ private fun Variant<*>.configurationNamesOf(
 ): Set<String> {
     return try {
         configurationNames(configurationsProvider())
-    } catch (e: Exception) {
+    } catch (_: Exception) {
         emptySet()
     }
 }
@@ -463,11 +456,12 @@ internal fun Configuration.extractExcludeRulesByShortId(): Map<String, Set<Exclu
     )
 }
 
-internal fun extractExcludeRulesByShortId(
-    configurations: Iterable<Configuration>
+private fun aggregateExcludeRulesByShortId(
+    configurations: Iterable<Configuration>,
+    perConfiguration: (Configuration) -> Map<String, Set<ExcludeRule>>
 ): Map<String, Set<ExcludeRule>> {
     return configurations.asSequence()
-        .flatMap { configuration -> configuration.extractExcludeRulesByShortId().asSequence() }
+        .flatMap { configuration -> perConfiguration(configuration).asSequence() }
         .groupBy({ it.key }, { it.value })
         .mapValues { (_, ruleSets) ->
             intersectExcludeRuleSets(ruleSets)
@@ -499,16 +493,10 @@ private fun excludeRulesByShortId(
 
 internal fun extractDeclaredExcludeRulesByShortId(
     configurations: Iterable<Configuration>
-): Map<String, Set<ExcludeRule>> {
-    return configurations.asSequence()
-        .flatMap { configuration -> configuration.extractDeclaredExcludeRulesByShortId().asSequence() }
-        .groupBy({ it.key }, { it.value })
-        .mapValues { (_, ruleSets) ->
-            intersectExcludeRuleSets(ruleSets)
-        }
-        .filterValues { it.isNotEmpty() }
-        .toSortedMap()
-}
+): Map<String, Set<ExcludeRule>> = aggregateExcludeRulesByShortId(
+    configurations,
+    Configuration::extractDeclaredExcludeRulesByShortId
+)
 
 private fun Variant<*>.extractDeclaredExternalDependencyDeclarations(): Set<DeclaredExternalDependency> {
     return declaredDependencyConfigurations

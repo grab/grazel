@@ -725,7 +725,7 @@ class LocalMavenProxyServerTest {
                 knownComponentGavs = knownComponentGavs,
                 metadataOnlyGavs = metadataOnlyGavs,
                 allowedOriginArtifactPaths = allowedOriginArtifactPaths,
-                pomFileResolver = PomFileResolver { gav ->
+                pomFileResolver = { gav ->
                     pomFilesByGav[gav]?.let { pomFile ->
                         if (pomFile.exists()) {
                             PomFileResolution.Found(pomFile)

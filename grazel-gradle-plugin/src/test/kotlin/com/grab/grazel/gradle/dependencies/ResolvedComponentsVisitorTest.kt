@@ -53,9 +53,7 @@ class ResolvedComponentsVisitorTest {
         val grazelComponent = rootProject.createGrazelComponent()
         variantBuilder = grazelComponent.variantBuilder().get()
         compileConfigurations = variantBuilder.build(androidProject)
-            .asSequence()
-            .filter { it.variantType == VariantType.AndroidBuild }
-            .first()
+            .first { it.variantType == VariantType.AndroidBuild }
             .compileConfiguration
     }
 

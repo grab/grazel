@@ -96,10 +96,6 @@ fun StatementsBuilder.buildConfig(
     }
 }
 
-fun StatementsBuilder.loadResValue() {
-    load("@$GRAB_BAZEL_COMMON//tools/res_value:res_value.bzl", "res_value")
-}
-
 fun resValue(
     name: String,
     strings: Map<String, String>
@@ -273,22 +269,6 @@ internal fun StatementsBuilder.androidLibrary(
 internal const val DATABINDING_GROUP = "androidx.databinding"
 internal const val ANDROIDX_GROUP = "androidx.annotation"
 internal const val ANNOTATION_ARTIFACT = "annotation"
-
-fun StatementsBuilder.loadCustomRes() {
-    load("@$GRAB_BAZEL_COMMON//tools/custom_res:custom_res.bzl", "custom_res")
-}
-
-fun customRes(
-    target: String,
-    dirName: String,
-    resourceFiles: Assignee
-): Assignee = Assignee {
-    rule("custom_res") {
-        "target" `=` target.quote
-        "dir_name" `=` dirName.quote
-        "resource_files" `=` resourceFiles
-    }
-}
 
 fun StatementsBuilder.androidUnitTest(
     name: String,

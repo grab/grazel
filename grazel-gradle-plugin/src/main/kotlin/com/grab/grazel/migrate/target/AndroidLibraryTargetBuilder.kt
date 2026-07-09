@@ -125,7 +125,7 @@ constructor(
             }
 
             variantsBySuffix.values.map { variantsForSuffix ->
-                val representative = variantsForSuffix.sortedBy { it.variantName }.first()
+                val representative = variantsForSuffix.minBy { it.variantName }
                 unitTestDataExtractor.extract(project, representative).toUnitTestTarget()
             }
         } else {

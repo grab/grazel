@@ -208,7 +208,7 @@ constructor(
     private fun toMavenRepository(repository: DefaultMavenArtifactRepository): DefaultMavenRepository {
         val passwordCredentials = try {
             repository.getCredentials(PasswordCredentials::class.java)
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             // We only support basic auth now
             null
         }

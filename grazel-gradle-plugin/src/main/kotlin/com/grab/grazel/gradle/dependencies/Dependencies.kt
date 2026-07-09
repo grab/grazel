@@ -50,9 +50,7 @@ import org.gradle.api.artifacts.Configuration
 import org.gradle.api.artifacts.Dependency
 import org.gradle.api.artifacts.ExternalDependency
 import org.gradle.api.artifacts.ProjectDependency
-import org.gradle.api.artifacts.ResolvedDependency
 import org.gradle.api.artifacts.component.ModuleComponentIdentifier
-import org.gradle.api.internal.artifacts.DefaultResolvedDependency
 import java.io.File
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap

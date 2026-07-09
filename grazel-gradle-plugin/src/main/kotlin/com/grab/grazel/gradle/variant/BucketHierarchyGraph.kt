@@ -135,7 +135,7 @@ private fun BucketHierarchyNode.canExtendFrom(parent: BucketHierarchyNode): Bool
     }
 }
 
-private val bucketHierarchyNodeComparator = compareBy<BucketHierarchyNode>(
+private val bucketHierarchyNodeComparator = compareBy(
     BucketHierarchyNode::projectPath,
     { node -> node.variantType.name },
     BucketHierarchyNode::name

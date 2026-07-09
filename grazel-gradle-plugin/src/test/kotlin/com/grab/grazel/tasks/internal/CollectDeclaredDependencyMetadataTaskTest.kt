@@ -189,7 +189,7 @@ class CollectDeclaredDependencyMetadataTaskTest {
         val metadata = collectDeclaredDependencyMetadata(
             metadataSources = metadataSources,
             maxWorkerCount = 4,
-            reporter = ProgressReporter { message ->
+            reporter = { message ->
                 assertEquals(callerThread, Thread.currentThread())
                 progressMessages += message
             }

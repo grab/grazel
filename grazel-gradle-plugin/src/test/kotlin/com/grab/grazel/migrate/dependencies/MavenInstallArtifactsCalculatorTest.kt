@@ -491,7 +491,7 @@ class MavenInstallArtifactsCalculatorTest {
             setOf("androidx.work:work-runtime:2.10.2"),
             androidTestRepo.artifacts.map { it.id }.toSet()
         )
-        assertEquals(emptyMap<String, String>(), androidTestRepo.overrideTargets)
+        assertEquals(emptyMap(), androidTestRepo.overrideTargets)
     }
 
     @Test
@@ -965,7 +965,7 @@ class MavenInstallArtifactsCalculatorTest {
             gpsRepo.artifacts.map { it.id }.toSet()
         )
         assertEquals(
-            emptyMap<String, String>(),
+            emptyMap(),
             gpsRepo.overrideTargets
         )
     }
@@ -1517,7 +1517,7 @@ class MavenInstallArtifactsCalculatorTest {
         )
 
         assertEquals(
-            emptyMap<String, String>(),
+            emptyMap(),
             result.single { it.name == "debug_maven" }.overrideTargets
         )
     }

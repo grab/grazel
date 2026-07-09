@@ -221,8 +221,6 @@ class VariantCompressorTest : GrazelPluginTest() {
 
     @Test
     fun `compress mixed scenario - some compressed some expanded`() {
-        val depProject = buildProject("dependency", parent = project)
-
         val variants = mapOf(
             // Debug variants are equivalent and not blocked
             "freeDebug" to createData("library-free-debug", "freeDebug"),

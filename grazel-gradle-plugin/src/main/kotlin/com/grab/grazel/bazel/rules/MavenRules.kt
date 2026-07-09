@@ -223,17 +223,6 @@ sealed class MavenInstallArtifact : StarlarkType {
             }
         }
 
-        data class DetailedExclusion(
-            val group: String,
-            val artifact: String
-        ) : Exclusion() {
-            override fun StatementsBuilder.statements() {
-                rule("maven.exclusion") {
-                    "group" `=` group.quote
-                    "artifact" `=` artifact.quote
-                }
-            }
-        }
     }
 
     data class DetailedArtifact(

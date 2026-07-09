@@ -19,7 +19,6 @@ package com.grab.grazel.tasks.internal
 import com.grab.grazel.extension.DeclaredDependencyMetadataAggregationMode
 import com.grab.grazel.gradle.MigrationChecker
 import com.grab.grazel.gradle.dependencies.DeclaredProjectMetadataPlanner
-import com.grab.grazel.gradle.dependencies.WorkspaceDependencyRootInput
 import com.grab.grazel.gradle.dependencies.WorkspaceDependencyRootInputPlanner
 import com.grab.grazel.gradle.variant.Variant
 import com.grab.grazel.gradle.variant.VariantBuilder
@@ -75,7 +74,7 @@ internal object WorkspaceDependencyInputsRegistrar {
                 rootProject = rootProject,
                 migrationChecker = migrationChecker.get()
             )
-            val rootInputs = planRootInputs(
+            val rootInputs = WorkspaceDependencyRootInputPlanner.plan(
                 migratableProjects = migratableProjects,
                 variantsByProject = variantsByProject
             )
@@ -97,18 +96,19 @@ internal object WorkspaceDependencyInputsRegistrar {
             }
             resolveWorkspaceDependenciesTask.configure {
                 rootInputs.forEach { rootInput ->
-                    addRootComponent(
-                        task = this,
-                        rootInput = rootInput
+                    workspaceDependencyRootComponents.add(
+                        rootInput.configuration.incoming.resolutionResult.rootComponent
                     )
                 }
             }
             workspaceRootMetadataTask.configure {
                 rootInputs.forEach { rootInput ->
-                    addRootMetadata(
-                        task = this,
-                        rootProject = rootProject,
-                        rootInput = rootInput
+                    workspaceDependencyRootMetadataItems.add(
+                        rootProject.objects
+                            .newInstance(WorkspaceDependencyRootMetadataInput::class.java)
+                            .apply {
+                                setMetadata(rootProject.provider { rootInput.toMetadata() })
+                            }
                     )
                 }
             }
@@ -162,37 +162,4 @@ internal object WorkspaceDependencyInputsRegistrar {
             .sortedBy { project -> project.path }
     }
 
-    private fun planRootInputs(
-        migratableProjects: List<Project>,
-        variantsByProject: Map<Project, Iterable<Variant<*>>>
-    ): List<WorkspaceDependencyRootInput> {
-        return WorkspaceDependencyRootInputPlanner
-            .plan(
-                migratableProjects = migratableProjects,
-                variantsByProject = variantsByProject
-            )
-    }
-
-    private fun addRootComponent(
-        task: ResolveWorkspaceDependenciesTask,
-        rootInput: WorkspaceDependencyRootInput
-    ) {
-        task.workspaceDependencyRootComponents.add(
-            rootInput.configuration.incoming.resolutionResult.rootComponent
-        )
-    }
-
-    private fun addRootMetadata(
-        task: CollectWorkspaceDependencyRootMetadataTask,
-        rootProject: Project,
-        rootInput: WorkspaceDependencyRootInput
-    ) {
-        task.workspaceDependencyRootMetadataItems.add(
-            rootProject.objects
-                .newInstance(WorkspaceDependencyRootMetadataInput::class.java)
-                .apply {
-                    setMetadata(rootProject.provider { rootInput.toMetadata() })
-                }
-        )
-    }
 }

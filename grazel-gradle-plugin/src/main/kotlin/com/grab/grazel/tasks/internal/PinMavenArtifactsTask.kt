@@ -27,7 +27,6 @@ import com.grab.grazel.migrate.dependencies.ArtifactPinner
 import com.grab.grazel.migrate.dependencies.LocalMavenResolutionPinContext
 import com.grab.grazel.migrate.dependencies.LocalMavenResolutionPinContextFactory
 import com.grab.grazel.migrate.dependencies.LocalMavenResolutionStats
-import com.grab.grazel.migrate.dependencies.LocalMavenResolutionStatsProvider
 import com.grab.grazel.migrate.dependencies.MavenInstallRepositoryInputs
 import com.grab.grazel.migrate.dependencies.MavenInstallRepositoryRewrite
 import com.grab.grazel.migrate.dependencies.repositoryUrls
@@ -143,9 +142,7 @@ constructor(
                 ),
                 metadataOnlyShortIds = facts.metadataOnlyGavs
                     .mapTo(sortedSetOf()) { gav -> MavenCoordinates.parse(gav).shortId },
-                stats = LocalMavenResolutionStatsProvider {
-                    localMavenResolutionStatsFrom(service.stats())
-                }
+                stats = { localMavenResolutionStatsFrom(service.stats()) }
             )
         }
     }

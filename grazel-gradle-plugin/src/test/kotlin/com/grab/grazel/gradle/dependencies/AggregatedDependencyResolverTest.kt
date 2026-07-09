@@ -28,7 +28,6 @@ import com.grab.grazel.gradle.variant.ANDROID_TEST_VARIANT
 import com.grab.grazel.gradle.variant.TEST_VARIANT
 import com.grab.grazel.gradle.variant.DEFAULT_VARIANT
 import com.grab.grazel.gradle.variant.JvmVariant
-import com.grab.grazel.gradle.variant.Variant
 import com.grab.grazel.gradle.variant.VariantType.AndroidTest
 import com.grab.grazel.gradle.variant.VariantType.AndroidBuild
 import com.grab.grazel.gradle.variant.VariantType.JvmBuild

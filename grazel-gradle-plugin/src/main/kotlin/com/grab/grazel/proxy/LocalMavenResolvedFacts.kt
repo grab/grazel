@@ -258,7 +258,7 @@ private fun putMavenFile(
     when {
         existing == null -> index[path] = file
         existing == file -> Unit
-        sameFileContent(existing, file) -> Unit
+        Files.equal(existing, file) -> Unit
         else -> error(
             "Gradle cache has multiple different files for Maven path $path: " +
                 "${existing.absolutePath} and ${file.absolutePath}"
@@ -274,17 +274,13 @@ private fun singleMavenFileOrNull(
         when {
             selected == null -> file
             selected == file -> selected
-            sameFileContent(selected, file) -> selected
+            Files.equal(selected, file) -> selected
             else -> error(
                 "Gradle cache has multiple different files for Maven path $path: " +
                     "${selected.absolutePath} and ${file.absolutePath}"
             )
         }
     }
-}
-
-private fun sameFileContent(first: File, second: File): Boolean {
-    return Files.equal(first, second)
 }
 
 internal fun interface PomFileResolver {
@@ -341,7 +337,7 @@ internal class GradlePomFileResolver(
         ): GradlePomFileResolver {
             return GradlePomFileResolver(
                 componentIdsByGav = componentIdsByGav,
-                pomArtifactQuery = PomArtifactQuery { componentId ->
+                pomArtifactQuery = { componentId ->
                     project
                         .dependencies
                         .createArtifactResolutionQuery()
@@ -366,8 +362,7 @@ internal class GradlePomFileResolver(
                     coordinates
                         .mavenRelativePaths(pomFileName)
                         .asSequence()
-                        .mapNotNull(moduleCacheFileResolver::resolveArtifact)
-                        .firstOrNull()
+                        .firstNotNullOfOrNull(moduleCacheFileResolver::resolveArtifact)
                 }
             )
         }

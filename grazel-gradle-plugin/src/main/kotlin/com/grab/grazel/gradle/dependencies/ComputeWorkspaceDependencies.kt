@@ -6,7 +6,6 @@ import com.grab.grazel.gradle.dependencies.model.ResolveDependenciesResult.Compa
 import com.grab.grazel.gradle.dependencies.model.ResolvedDependency
 import com.grab.grazel.gradle.dependencies.model.WorkspaceDependencies
 import com.grab.grazel.gradle.dependencies.model.allDependencies
-import com.grab.grazel.gradle.variant.DEFAULT_VARIANT
 import com.grab.grazel.util.KSP_MAVEN
 import java.util.stream.Collector
 import java.util.stream.Collectors

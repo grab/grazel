@@ -225,7 +225,7 @@ interface ConfigurationParsingVariant<VariantData> : Variant<VariantData> {
                     KotlinPlatformType.androidJvm
                 )
             }
-        } catch (e: IllegalArgumentException) {
+        } catch (_: IllegalArgumentException) {
             // Can happen if the configuration was already resolved in the same gradle execution
             // For example, running both assemble and migrateToBazel at the same time. Rare case but
             // we catch it.

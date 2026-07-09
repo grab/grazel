@@ -143,14 +143,14 @@ val Variant<*>.workspaceProductFlavorNames: List<String>
 private val Variant<*>.safeWorkspaceRuntimeConfigurations: Set<Configuration>
     get() = try {
         runtimeConfiguration
-    } catch (e: Exception) {
+    } catch (_: Exception) {
         emptySet()
     }
 
 private val Variant<*>.safeWorkspaceCompileConfigurations: Set<Configuration>
     get() = try {
         compileConfiguration
-    } catch (e: Exception) {
+    } catch (_: Exception) {
         emptySet()
     }
 
@@ -161,16 +161,6 @@ private fun matchingWorkspaceConfigurationNames(
     val requestedNames = names.toSet()
     return configurations.filter { configuration -> configuration.name in requestedNames }.toSet()
 }
-
-/**
- * Returns true if this variant only extends from default variants (default, test, androidTest).
- * Such variants define the hierarchy structure and must always resolve dependencies to create
- * proper maven buckets for downstream composite variants.
- */
-val Variant<*>.extendsOnlyFromDefaultVariants: Boolean
-    get() = extendsFrom.isEmpty() || extendsFrom.all {
-        it == DEFAULT_VARIANT || it == TEST_VARIANT || it == ANDROID_TEST_VARIANT
-    }
 
 val Variant<*>.id get() = name + variantType.toString()
 

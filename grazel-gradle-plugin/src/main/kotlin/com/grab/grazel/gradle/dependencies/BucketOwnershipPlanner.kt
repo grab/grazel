@@ -22,6 +22,7 @@ import com.grab.grazel.gradle.dependencies.model.ResolveDependenciesResult.Compa
 import com.grab.grazel.gradle.dependencies.model.ResolvedDependency
 import com.grab.grazel.gradle.variant.ANDROID_TEST_VARIANT
 import com.grab.grazel.gradle.variant.DEFAULT_VARIANT
+import com.grab.grazel.gradle.variant.LINT_VARIANT
 import com.grab.grazel.gradle.variant.TEST_VARIANT
 import com.grab.grazel.gradle.variant.VariantType
 import com.grab.grazel.gradle.variant.VariantType.AndroidTest
@@ -434,8 +435,7 @@ internal class BucketOwnershipPlanner(
             .filter(DeclaredVariantDependencyMetadata::androidLeafVariant)
             .filter { variant -> mainLeafName in variant.extendsFrom || variant.name == mainLeafName }
             .map(DeclaredVariantDependencyMetadata::name)
-            .sorted()
-            .firstOrNull()
+            .minOrNull()
             ?: baseBucketName
     }
 
@@ -445,7 +445,7 @@ internal class BucketOwnershipPlanner(
         baseBucketName: String
     ): Map<ProjectDependencyBucket, Map<String, ResolvedDependency>> {
         return leafClosures.entries.fold(
-            linkedMapOf<ProjectDependencyBucket, Map<String, ResolvedDependency>>()
+            linkedMapOf()
         ) { mappedClosures, (bucket, dependencies) ->
             val testBucket = ProjectDependencyBucket(
                 projectPath = bucket.projectPath,
@@ -632,7 +632,7 @@ internal class BucketOwnershipPlanner(
         if (bucketName == plan.baseBucketName || isTypedTestBucket(plan, bucketName)) {
             return bucketName
         }
-        val scopedBucketName = bucketName + testSuffixForBaseBucket(plan)
+        val scopedBucketName = bucketName + testVariantTypeForBaseBucket(plan).testSuffix
         return if (isTypedTestBucket(plan, scopedBucketName)) {
             scopedBucketName
         } else {
@@ -645,14 +645,6 @@ internal class BucketOwnershipPlanner(
         bucketName: String
     ): Boolean {
         return plan.variantTypesByBucketName[bucketName] == testVariantTypeForBaseBucket(plan)
-    }
-
-    private fun testSuffixForBaseBucket(plan: DependencyBucketPlacementPlan): String {
-        return when (plan.baseBucketName) {
-            TEST_VARIANT -> Test.testSuffix
-            ANDROID_TEST_VARIANT -> AndroidTest.testSuffix
-            else -> error("Unsupported test base bucket ${plan.baseBucketName}")
-        }
     }
 
     private fun testVariantTypeForBaseBucket(plan: DependencyBucketPlacementPlan): VariantType {
@@ -693,7 +685,7 @@ internal class BucketOwnershipPlanner(
         mainBuckets.filteredPerLeafBuckets.forEach { (leaf, deps) -> results.add(buildResult(leaf, deps)) }
         testBuckets.forEach { (bucketName, deps) -> results.add(buildResult(bucketName, deps)) }
         androidTestBuckets.forEach { (bucketName, deps) -> results.add(buildResult(bucketName, deps)) }
-        if (input.lintDeps.isNotEmpty()) results.add(buildResult("lint", input.lintDeps))
+        if (input.lintDeps.isNotEmpty()) results.add(buildResult(LINT_VARIANT, input.lintDeps))
 
         return results
     }
@@ -849,8 +841,7 @@ private fun withoutDeclaredPlaceholdersCoveredByDefault(
     defaultDeps: Map<String, ResolvedDependency>
 ): Map<String, Map<String, ResolvedDependency>> {
     if (dependenciesByBucket.isEmpty() || defaultDeps.isEmpty()) return dependenciesByBucket
-    val defaultCoveredDepsByShortId = defaultDeps
-        .let { dependencies -> coveredDependenciesForBucket(dependencies, DEFAULT_VARIANT) }
+    val defaultCoveredDepsByShortId = coveredDependenciesForBucket(defaultDeps, DEFAULT_VARIANT)
         .let(::groupCoveredDependenciesByShortId)
     return dependenciesByBucket.mapValues { (_, dependencies) ->
         dependencies

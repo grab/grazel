@@ -159,7 +159,7 @@ private data class ResolvedArtifactHashInfo(
     var dependencyHashes: Map<String, Int>? = null,
 ) {
     fun toStarlarkFields(): StarlarkValue.DictValue {
-        val fields = linkedMapOf<String, StarlarkValue>(
+        val fields = linkedMapOf(
             "standard" to StarlarkValue.DictValue(standard),
             "sha" to sha
         )
