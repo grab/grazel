@@ -159,13 +159,8 @@ constructor(
 
             fun checkRepoOutOfDate(mavenRepo: String, rootArtifacts: List<ResolvedDependency>): Boolean {
                 val dep = selectPinStatusProbeArtifact(rootArtifacts)
-                val (group, name) = dep.shortId.split(":")
                 progress.progress("Checking $mavenRepo's pin status")
-                val target = MavenDependency(
-                    repo = mavenRepo,
-                    group = group,
-                    name = name
-                ).toString()
+                val target = MavenDependency.fromShortId(dep.shortId, mavenRepo).toString()
                 val args = listOf(target, "--nobuild")
                 val outputStream = BazelLogParsingOutputStream(
                     logger = logger,

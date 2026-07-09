@@ -163,7 +163,15 @@ internal class DefaultDependenciesDataSource @Inject constructor(
 
     private val MavenArtifact.isBom: Boolean get() = name.isBomArtifactName()
 
+    private data class DirectVariantDeclaration(
+        val bucketName: String,
+        val configurationName: String,
+        val dependency: ExternalDependency
+    )
+
     private val transitiveMavenDepsByVariant = ConcurrentHashMap<VariantGraphKey, Set<MavenDependency>>()
+    private val directDeclarationsByVariant =
+        ConcurrentHashMap<VariantGraphKey, Map<String, List<DirectVariantDeclaration>>>()
 
     override fun projectDependencies(
         project: Project, vararg variantTypes: VariantType
@@ -213,11 +221,6 @@ internal class DefaultDependenciesDataSource @Inject constructor(
     ): List<BazelDependency> {
         val allVariants = variantBuilder.build(project)
         val grazelVariant: Variant<*> = findGrazelVariantByKey(allVariants, variantKey)
-        data class DirectVariantDeclaration(
-            val bucketName: String,
-            val configurationName: String,
-            val dependency: ExternalDependency
-        )
 
         fun ExternalDependency.shouldUseForBazel(): Boolean {
             if (group in IGNORED_ARTIFACT_GROUPS) return false
@@ -324,6 +327,16 @@ internal class DefaultDependenciesDataSource @Inject constructor(
                 ".$versionlessHint"
         }
 
+        /**
+         * Reachability-based gate: returns `true` (fail hard) when the current project/bucket is
+         * reachable from a binary root, `false` (skip silently) when the module or bucket is
+         * unreachable or inactive.
+         *
+         * This is intentional, not a simple flag. When no reachability data is available (e.g. the
+         * project has no binary root in scope), [hasMainBucketReachability] returns `false` and the
+         * function defaults to `true` — preserving the strict fail-hard behavior rather than silently
+         * swallowing resolution failures.
+         */
         fun shouldFailOnMissingMavenDependency(lookupVariants: Set<String>): Boolean {
             val resolutionService = dependencyResolutionService.get()
             if (!resolutionService.hasMainBucketReachability()) return true
@@ -332,32 +345,34 @@ internal class DefaultDependenciesDataSource @Inject constructor(
             }
         }
 
-        val directDeclarationVariantNames = buildSet {
-            add(grazelVariant.name)
-            addAll(grazelVariant.extendsFrom)
-        }
-        val directVariantDeclarationsByShortId = allVariants
-            .asSequence()
-            .filter { variant -> variant.variantType == grazelVariant.variantType }
-            .filter { variant -> variant.name in directDeclarationVariantNames }
-            .flatMap { variant ->
-                variant.declaredDependencyConfigurations
-                    .asSequence()
-                    .flatMap { configuration ->
-                        configuration.dependencies
-                            .filterIsInstance<ExternalDependency>()
-                            .asSequence()
-                            .map { dependency ->
-                                DirectVariantDeclaration(
-                                    bucketName = configuration.declarationBucketName(),
-                                    configurationName = configuration.name,
-                                    dependency = dependency
-                                )
-                            }
-                    }
+        val directVariantDeclarationsByShortId = directDeclarationsByVariant.computeIfAbsent(variantKey) {
+            val directDeclarationVariantNames = buildSet {
+                add(grazelVariant.name)
+                addAll(grazelVariant.extendsFrom)
             }
-            .filter { declaration -> declaration.dependency.shouldUseForBazel() }
-            .groupBy { declaration -> declaration.dependency.shortId }
+            allVariants
+                .asSequence()
+                .filter { variant -> variant.variantType == grazelVariant.variantType }
+                .filter { variant -> variant.name in directDeclarationVariantNames }
+                .flatMap { variant ->
+                    variant.declaredDependencyConfigurations
+                        .asSequence()
+                        .flatMap { configuration ->
+                            configuration.dependencies
+                                .filterIsInstance<ExternalDependency>()
+                                .asSequence()
+                                .map { dependency ->
+                                    DirectVariantDeclaration(
+                                        bucketName = configuration.declarationBucketName(),
+                                        configurationName = configuration.name,
+                                        dependency = dependency
+                                    )
+                                }
+                        }
+                }
+                .filter { declaration -> declaration.dependency.shouldUseForBazel() }
+                .groupBy { declaration -> declaration.dependency.shortId }
+        }
 
         return grazelVariant.migratableConfigurations
             .asSequence()
@@ -463,17 +478,13 @@ internal class DefaultDependenciesDataSource @Inject constructor(
         val resolutionService = dependencyResolutionService.get()
 
         fun labelFor(shortId: String): MavenDependency {
-            val (group, name) = shortId.split(":")
+            val dep = MavenDependency.fromShortId(shortId)
             val dependency = resolutionService.getMavenDependency(
                 variants = labelLookupVariantHierarchy,
-                group = group,
-                name = name
+                group = dep.group,
+                name = dep.name
             )
-            return MavenDependency(
-                repo = dependency?.repo ?: "maven",
-                group = group,
-                name = name
-            )
+            return MavenDependency.fromShortId(shortId, dependency?.repo ?: "maven")
         }
 
         return grazelVariant

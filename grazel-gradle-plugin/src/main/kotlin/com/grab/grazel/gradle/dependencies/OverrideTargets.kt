@@ -21,13 +21,8 @@ import com.grab.grazel.gradle.dependencies.model.OverrideTarget
 import com.grab.grazel.migrate.dependencies.toMavenRepoName
 
 internal fun mavenOverrideTarget(shortId: String, bucketName: String): OverrideTarget {
-    val (group, name) = shortId.split(":")
     return OverrideTarget(
         artifactShortId = shortId,
-        label = MavenDependency(
-            repo = bucketName.toMavenRepoName(),
-            group = group,
-            name = name
-        )
+        label = MavenDependency.fromShortId(shortId, bucketName.toMavenRepoName())
     )
 }

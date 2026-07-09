@@ -92,5 +92,12 @@ sealed class BazelDependency : Comparable<BazelDependency> {
             val name = name.toBazelPath()
             return "@$repo//:${group}_$name"
         }
+
+        companion object {
+            fun fromShortId(shortId: String, repo: String = "maven"): MavenDependency {
+                val (group, name) = shortId.split(":")
+                return MavenDependency(repo = repo, group = group, name = name)
+            }
+        }
     }
 }

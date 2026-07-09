@@ -26,21 +26,14 @@ internal class DefaultBucketDependencyReducer {
         classPaths: Map<String, Map<String, ResolvedDependency>>
     ): Map<String, Map<String, ResolvedDependency>> {
         val defaultClasspath = classPaths.getValue(DEFAULT_VARIANT)
-        return classPaths
-            .entries
-            .parallelStream()
-            .filter { it.key != DEFAULT_VARIANT }
-            .filter { it.value.isNotEmpty() }
-            .collect(
-                Collectors.toConcurrentMap({ it.key }, { (_, dependencies) ->
-                    dependencies.entries
-                        .parallelStream()
-                        .filter { (shortId, dependency) ->
-                            !containsDefaultOwnerEquivalent(defaultClasspath, shortId, dependency)
-                        }
-                        .collect(Collectors.toMap({ it.key }, { it.value }))
-                })
-            ).apply { put(DEFAULT_VARIANT, defaultClasspath) }
+        return reduceNonDefaultBuckets(classPaths) { default, bucket ->
+            bucket.entries
+                .parallelStream()
+                .filter { (shortId, dependency) ->
+                    !containsDefaultOwnerEquivalent(default, shortId, dependency)
+                }
+                .collect(Collectors.toMap({ it.key }, { it.value }))
+        }.apply { put(DEFAULT_VARIANT, defaultClasspath) }
     }
 
     private fun containsDefaultOwnerEquivalent(

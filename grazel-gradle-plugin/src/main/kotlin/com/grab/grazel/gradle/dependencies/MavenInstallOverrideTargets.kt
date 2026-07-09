@@ -39,11 +39,6 @@ internal fun calculateMavenInstallOverrideTargets(
 }
 
 private fun String.isExactSelfOverride(shortId: String, owningMavenRepoName: String): Boolean {
-    val (group, name) = shortId.split(":")
-    val ownLabel = MavenDependency(
-        repo = owningMavenRepoName,
-        group = group,
-        name = name
-    ).toString()
+    val ownLabel = MavenDependency.fromShortId(shortId, owningMavenRepoName).toString()
     return this == ownLabel
 }

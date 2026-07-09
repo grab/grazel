@@ -27,40 +27,29 @@ internal class DefaultOverrideCarrierPlanner {
         flattenedClasspath: Map<String, Map<String, ResolvedDependency>>
     ): Map<String, List<ResolvedDependency>> {
         val defaultFlatClasspath = flattenedClasspath.getValue(DEFAULT_VARIANT)
-        return flattenedClasspath
-            .entries
-            .parallelStream()
-            .filter { it.key != DEFAULT_VARIANT }
-            .filter { it.value.isNotEmpty() }
-            .collect(
-                Collectors.toConcurrentMap(
-                    { (shortId, _) -> shortId },
-                    { (_, dependencies) ->
-                        dependencies.entries
-                            .parallelStream()
-                            .filter { (shortId, dependency) ->
-                                val defaultDependency = defaultFlatClasspath[shortId]
-                                dependency.isDirectOverrideCarrier() ||
-                                    !dependency.isCoveredByDefaultFlatClasspath(defaultDependency)
-                            }
-                            .collect(
-                                Collectors.toMap(
-                                    { (shortId, _) -> shortId },
-                                    { (shortId, dependency) ->
-                                        val defaultDependency = defaultFlatClasspath[shortId]
-                                        if (defaultDependency != null && dependency.shouldUseDefaultVersion(defaultDependency)) {
-                                            defaultDependency.copy(
-                                                direct = false,
-                                                overrideTarget = mavenOverrideTarget(
-                                                    shortId,
-                                                    DEFAULT_VARIANT
-                                                )
-                                            )
-                                        } else dependency
-                                    })
-                            )
-                    })
-            ).apply { put(DEFAULT_VARIANT, defaultFlatClasspath) }
+        return reduceNonDefaultBuckets(flattenedClasspath) { default, bucket ->
+            bucket.entries
+                .parallelStream()
+                .filter { (shortId, dependency) ->
+                    val defaultDependency = default[shortId]
+                    dependency.isDirectOverrideCarrier() ||
+                        !dependency.isCoveredByDefaultFlatClasspath(defaultDependency)
+                }
+                .collect(
+                    Collectors.toMap(
+                        { (shortId, _) -> shortId },
+                        { (shortId, dependency) ->
+                            val defaultDependency = default[shortId]
+                            if (defaultDependency != null && dependency.shouldUseDefaultVersion(defaultDependency)) {
+                                defaultDependency.copy(
+                                    direct = false,
+                                    overrideTarget = mavenOverrideTarget(shortId, DEFAULT_VARIANT)
+                                )
+                            } else dependency
+                        }
+                    )
+                )
+        }.apply { put(DEFAULT_VARIANT, defaultFlatClasspath) }
             .mapValues { it.value.values.sortedBy(ResolvedDependency::id) }
     }
 
