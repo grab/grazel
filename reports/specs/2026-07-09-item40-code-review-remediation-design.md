@@ -61,14 +61,14 @@ for the whole batch (non-destructive `git stash create` snapshot → migrate →
    hardwires it, so the typed fast-path is unreachable from tests). Add a `selectedVariantAttrName`-style
    parameter to the fake dependency builder and a test asserting the typed attr path resolves exclude
    rules via the map lookup (not the display-name fallback).
-5. **TEMP shadow-divergence logging** (removed after PAX): in `rulesFor`, also compute the old
-   `ifEmpty { selectedVariantHierarchyNames(...) }` result and `logger.warn("GRAZEL_A_DIVERGENCE|...")`
-   when it differs from the new result. Marked `// TEMP:`.
+5. **Temporary shadow-divergence logging** (removed after PAX): in `rulesFor`, also compute the old
+   `ifEmpty { selectedVariantHierarchyNames(...) }` result and log a warning when it differs from the new
+   result. Clearly marked as temporary so it strips cleanly.
 
 ### Gate
-Unit + golden empty-diff on the sample; then the final PAX run must show **zero `GRAZEL_A_DIVERGENCE`**
-and byte-identical output. Any divergence = a real attr-present-but-unmapped case → report before
-proceeding. Strip the TEMP logging after PAX is green.
+Unit + golden empty-diff on the sample; then the final PAX run must show **zero shadow divergence** and
+byte-identical output. Any divergence = a real attr-present-but-unmapped case → report before proceeding.
+Strip the temporary logging after PAX is green.
 
 ---
 
@@ -167,8 +167,8 @@ the behaviour is reachability-based). **No code/behaviour change.** Finding #2 i
 1. Group A worker (impl + typed-path test + TEMP shadow logging) → sample unit + golden gate.
 2. Groups B, C, D, E, F worker(s) → sample unit + golden gate each. (May be one worker across B–F since
    they touch mostly distinct files; watch the `Dependencies.kt` overlap between E and #5-site.)
-3. **One** final PAX run (byte-identical + zero `GRAZEL_A_DIVERGENCE`).
-4. Strip Group A TEMP logging; quick unit compile.
+3. **One** final PAX run (byte-identical + zero shadow divergence).
+4. Strip Group A temporary logging; quick unit compile.
 5. Commit as reviewable units (Group A; DRY B/C/D; perf E; doc F — or grouped sensibly).
 
 ## Hard constraints
