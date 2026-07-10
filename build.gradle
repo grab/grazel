@@ -167,6 +167,7 @@ grazel {
     }
     experiments {
         minSdkVersionWorkaround.set(true)
+        localMavenResolution.set(true)
     }
     test {
         testSizeProvider = { testData ->
