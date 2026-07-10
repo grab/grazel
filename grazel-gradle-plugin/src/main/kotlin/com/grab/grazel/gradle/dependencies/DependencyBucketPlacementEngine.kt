@@ -44,17 +44,8 @@ internal data class DependencyBucketPlacementPlan(
     val bucketDescendantLeaves: Map<String, Set<String>>,
     val variantTypesByBucketName: Map<String, VariantType>
 ) {
-    fun coveredDependencies(): List<CoveredDependency> {
-        return buildList {
-            addAll(coveredDependenciesForBucket(defaultBucket, baseBucketName))
-            hierarchyBuckets.forEach { (bucketName, deps) ->
-                addAll(coveredDependenciesForBucket(deps, bucketName))
-            }
-            leafBuckets.forEach { (bucketName, deps) ->
-                addAll(coveredDependenciesForBucket(deps, bucketName))
-            }
-        }
-    }
+    fun coveredDependencies(): List<CoveredDependency> =
+        allCoveredDependencies(baseBucketName, defaultBucket, hierarchyBuckets, leafBuckets)
 }
 
 internal class DependencyBucketPlacementEngine {

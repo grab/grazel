@@ -154,6 +154,21 @@ internal fun coveredDependenciesForBucket(
     return dependenciesByShortId.values.map { dependency -> CoveredDependency(bucketName, dependency) }
 }
 
+/**
+ * The covered dependencies of a whole plan: its base bucket plus every hierarchy and leaf bucket,
+ * each tagged with its bucket name. Shared by the main and placement-plan covered-dependency walks.
+ */
+internal fun allCoveredDependencies(
+    baseBucketName: String,
+    defaultBucket: Map<String, ResolvedDependency>,
+    hierarchyBuckets: Map<String, Map<String, ResolvedDependency>>,
+    leafBuckets: Map<String, Map<String, ResolvedDependency>>
+): List<CoveredDependency> = buildList {
+    addAll(coveredDependenciesForBucket(defaultBucket, baseBucketName))
+    hierarchyBuckets.forEach { (bucketName, deps) -> addAll(coveredDependenciesForBucket(deps, bucketName)) }
+    leafBuckets.forEach { (bucketName, deps) -> addAll(coveredDependenciesForBucket(deps, bucketName)) }
+}
+
 private fun CoveredDependency.toOverrideTarget(): OverrideTarget {
     return mavenOverrideTarget(dependency.shortId, bucketName)
 }
