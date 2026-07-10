@@ -100,8 +100,8 @@ private fun fallbackForLockfileArtifact(
         }
         .mapTo(sortedSetOf()) { (classifierKey, _) ->
             mavenPathForLockfileArtifact(
-                key = key,
-                version = version,
+                coordinates = coordinates,
+                extension = key.extension,
                 classifierKey = classifierKey
             )
         }
@@ -112,20 +112,16 @@ private fun fallbackForLockfileArtifact(
 }
 
 private fun mavenPathForLockfileArtifact(
-    key: MavenInstallLockfileArtifactKey,
-    version: String,
+    coordinates: MavenCoordinates,
+    extension: String,
     classifierKey: String,
 ): String {
     val classifier = classifierKey
         .takeUnless { value -> value == "jar" }
         .orEmpty()
     val fileName = listOfNotNull(
-        "${key.artifact}-$version",
+        "${coordinates.module}-${coordinates.version}",
         classifier.takeIf(String::isNotBlank)
-    ).joinToString(separator = "-") + ".${key.extension}"
-    return MavenCoordinates(
-        group = key.group,
-        module = key.artifact,
-        version = version
-    ).canonicalMavenRelativePath(fileName)
+    ).joinToString(separator = "-") + ".$extension"
+    return coordinates.canonicalMavenRelativePath(fileName)
 }

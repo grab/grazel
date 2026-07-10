@@ -76,7 +76,7 @@ internal class LocalMavenPinningWorkspace(
 }
 
 internal fun mavenInstallJsonName(repoName: String): String =
-    if (repoName == "maven") {
+    if (repoName == BASE_MAVEN_REPO) {
         "maven_install.json"
     } else {
         "${repoName}_install.json"

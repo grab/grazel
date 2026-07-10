@@ -19,6 +19,7 @@ package com.grab.grazel.proxy
 import com.grab.grazel.di.qualifiers.RootProject
 import com.grab.grazel.gradle.RepositoryAuth
 import com.grab.grazel.gradle.RepositoryWithAuth
+import com.grab.grazel.maven.LocalMavenResolutionStats
 import com.grab.grazel.maven.mavenRepositoryUrlWithBasicCredentials
 import org.gradle.api.Project
 import org.gradle.api.file.DirectoryProperty
@@ -58,8 +59,8 @@ internal abstract class LocalMavenProxyService :
         }
     }
 
-    fun stats(): LocalMavenProxyStats = synchronized(lock) {
-        server?.stats() ?: LocalMavenProxyStats()
+    fun stats(): LocalMavenResolutionStats = synchronized(lock) {
+        server?.stats() ?: LocalMavenResolutionStats()
     }
 
     private fun activeServer(proxyPlans: List<LocalMavenRepositoryProxyPlan>): LocalMavenProxyServer {
@@ -148,8 +149,9 @@ private fun localMavenRepositoryProxyMappingsFrom(
 ): LocalMavenProxyRepositoryMappings {
     val proxyToCanonicalUrl = linkedMapOf<String, String>()
     val canonicalToProxyUrl = linkedMapOf<String, String>()
+    val normalizedBaseUrl = baseUrl.trimEnd('/')
     proxyPlans.forEachIndexed { index, plan ->
-        val proxyUrl = "${baseUrl.trimEnd('/')}/r/$index/"
+        val proxyUrl = "$normalizedBaseUrl/r/$index/"
         proxyToCanonicalUrl[proxyUrl] = plan.canonicalUrlForGeneratedOutput
         plan.canonicalAliases.forEach { canonicalUrl ->
             canonicalToProxyUrl[canonicalUrl] = proxyUrl

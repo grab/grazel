@@ -17,6 +17,7 @@
 package com.grab.grazel.migrate.dependencies
 
 import com.grab.grazel.gradle.dependencies.model.ResolvedDependency
+import com.grab.grazel.maven.LocalMavenResolutionStats
 
 internal fun interface LocalMavenResolutionPinContextFactory {
     fun create(
@@ -34,19 +35,3 @@ internal data class LocalMavenResolutionPinContext(
 internal fun interface LocalMavenResolutionStatsProvider {
     fun snapshot(): LocalMavenResolutionStats
 }
-
-internal data class LocalMavenResolutionStats(
-    val artifactHits: Long = 0,
-    val artifactMisses: Long = 0,
-    val alternateArtifactMisses: Long = 0,
-    val lockfileArtifactFallbacks: Long = 0,
-    val metadataOnlyArtifactFallbacks: Long = 0,
-    val gradlePomHits: Long = 0,
-    val knownPomFailures: Long = 0,
-    val originFallbacks: Long = 0,
-    val originFailures: Long = 0,
-    val requestFailures: Long = 0,
-    val checksumHits: Long = 0,
-    val writeThroughCacheHits: Long = 0,
-    val bytesServed: Long = 0,
-)

@@ -26,12 +26,10 @@ import com.grab.grazel.maven.MavenCoordinates
 import com.grab.grazel.migrate.dependencies.ArtifactPinner
 import com.grab.grazel.migrate.dependencies.LocalMavenResolutionPinContext
 import com.grab.grazel.migrate.dependencies.LocalMavenResolutionPinContextFactory
-import com.grab.grazel.migrate.dependencies.LocalMavenResolutionStats
 import com.grab.grazel.migrate.dependencies.MavenInstallRepositoryInputs
 import com.grab.grazel.migrate.dependencies.MavenInstallRepositoryRewrite
 import com.grab.grazel.migrate.dependencies.repositoryUrls
 import com.grab.grazel.proxy.LocalMavenProxyService
-import com.grab.grazel.proxy.LocalMavenProxyStats
 import com.grab.grazel.proxy.LocalMavenResolvedFactsBuilder
 import com.grab.grazel.proxy.activeMavenInstallLockfileFallbackIndex
 import com.grab.grazel.util.fromJson
@@ -142,7 +140,7 @@ constructor(
                 ),
                 metadataOnlyShortIds = facts.metadataOnlyGavs
                     .mapTo(sortedSetOf()) { gav -> MavenCoordinates.parse(gav).shortId },
-                stats = { localMavenResolutionStatsFrom(service.stats()) }
+                stats = { service.stats() }
             )
         }
     }
@@ -179,23 +177,6 @@ constructor(
         }
     }
 }
-
-private fun localMavenResolutionStatsFrom(proxyStats: LocalMavenProxyStats): LocalMavenResolutionStats =
-    LocalMavenResolutionStats(
-        artifactHits = proxyStats.artifactHits,
-        artifactMisses = proxyStats.artifactMisses,
-        alternateArtifactMisses = proxyStats.alternateArtifactMisses,
-        lockfileArtifactFallbacks = proxyStats.lockfileArtifactFallbacks,
-        metadataOnlyArtifactFallbacks = proxyStats.metadataOnlyArtifactFallbacks,
-        gradlePomHits = proxyStats.gradlePomHits,
-        knownPomFailures = proxyStats.knownPomFailures,
-        originFallbacks = proxyStats.originFallbacks,
-        originFailures = proxyStats.originFailures,
-        requestFailures = proxyStats.requestFailures,
-        checksumHits = proxyStats.checksumHits,
-        writeThroughCacheHits = proxyStats.writeThroughCacheHits,
-        bytesServed = proxyStats.bytesServed
-    )
 
 internal fun pinnableRepoResolutionGavs(
     pinnableRepos: Map<String, List<ResolvedDependency>>,

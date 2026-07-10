@@ -140,11 +140,12 @@ internal class DefaultRepositoryDataSource @Inject constructor(
             .setProperty<Repository>()
             .convention(rootProject.provider {
                 allRepositoriesByName.map { (name, repo) ->
+                    val credentials = repo.passwordCredentialsOrNull
                     Repository(
                         name = name,
                         url = repo.url.toString(),
-                        username = repo.passwordCredentialsOrNull?.username,
-                        password = repo.passwordCredentialsOrNull?.password,
+                        username = credentials?.username,
+                        password = credentials?.password,
                     )
                 }.toSet()
             })

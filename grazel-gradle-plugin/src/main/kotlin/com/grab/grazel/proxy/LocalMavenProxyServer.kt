@@ -17,6 +17,7 @@
 package com.grab.grazel.proxy
 
 import com.grab.grazel.gradle.RepositoryAuth
+import com.grab.grazel.maven.LocalMavenResolutionStats
 import com.grab.grazel.maven.MavenPath
 import com.grab.grazel.maven.isConcreteMavenArtifactPath
 import io.ktor.client.HttpClient
@@ -45,22 +46,6 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicLong
 import kotlin.io.path.createTempFile
 import kotlin.io.path.moveTo
-
-internal data class LocalMavenProxyStats(
-    val artifactHits: Long = 0,
-    val artifactMisses: Long = 0,
-    val alternateArtifactMisses: Long = 0,
-    val lockfileArtifactFallbacks: Long = 0,
-    val metadataOnlyArtifactFallbacks: Long = 0,
-    val gradlePomHits: Long = 0,
-    val knownPomFailures: Long = 0,
-    val originFallbacks: Long = 0,
-    val originFailures: Long = 0,
-    val requestFailures: Long = 0,
-    val checksumHits: Long = 0,
-    val writeThroughCacheHits: Long = 0,
-    val bytesServed: Long = 0,
-)
 
 internal data class LocalMavenProxyOrigin(
     val name: String,
@@ -126,7 +111,7 @@ internal class LocalMavenProxyServer(
         }
     }
 
-    fun stats(): LocalMavenProxyStats = counters.snapshot()
+    fun stats(): LocalMavenResolutionStats = counters.snapshot()
 
     private fun startServerLocked(): String {
         val server = embeddedServer(ServerCIO, host = "127.0.0.1", port = 0) {
@@ -414,7 +399,7 @@ internal class LocalMavenProxyServer(
         val writeThroughCacheHits = AtomicLong()
         val bytesServed = AtomicLong()
 
-        fun snapshot(): LocalMavenProxyStats = LocalMavenProxyStats(
+        fun snapshot(): LocalMavenResolutionStats = LocalMavenResolutionStats(
             artifactHits = artifactHits.get(),
             artifactMisses = artifactMisses.get(),
             alternateArtifactMisses = alternateArtifactMisses.get(),
