@@ -161,6 +161,35 @@ risk. Local gate + **full PAX sweep**.
   transform is reverted. Only transforms that leave the golden byte-identical
   survive into the commit.
 
+### Tier 3 outcome (2026-07-14): both generalisations investigated and declined — no Commit 3
+
+Both altitude items were examined against the current tree and deliberately **not
+applied**, because the safe dedup was already done and the residual differences are
+intentional, not accidental duplication:
+
+- **Main vs Test/AndroidTest pipeline unification — declined.** The shared per-bucket
+  declared-metadata plumbing (`addDeclaredOutputMetadata`, `applyDeclaredMetadata`,
+  `mergeBucket`, `allCoveredDependencies`, …) is already factored into shared helpers
+  by the earlier `/simplify` pass (`be28f62`). What remains differs in load-bearing
+  ways: `planMainBuckets` iterates projects **unsorted** over three fixed
+  sub-collections with direct metadata; `plannedTestBuckets` iterates **sorted**
+  (`toSortedMap`), remaps output-bucket names, dual-keys the metadata lookup, populates
+  conditionally, and runs a test-only coverage-subtraction pipeline
+  (`visibleMainOnlyDependencies` → `withoutTestDependenciesCoveredByEveryLeaf` →
+  `testOnlyDependencies`) that main has no equivalent of. A shared helper would either
+  flip the sorted/unsorted iteration (moves the golden hash) or become a leaky
+  lambda-bag — forced unification, not real dedup.
+- **`canCover*` predicate merge — declined.** The only literally repeated sub-expression
+  is the two-token `a.direct && b.direct`; the predicates otherwise diverge on purpose
+  (`canCover` guards directness as an *implication* `!dep.direct || this.direct`, while
+  the others use a *conjunction*). A `bothDirect(...)` helper adds indirection without
+  meaningful dedup and would force reordering conjuncts that intentionally mirror the
+  KDoc prose — obscuring a deliberate distinction rather than clarifying it.
+
+Conclusion: the bucket algorithm already sits at appropriate altitude; the deferred
+items are resolved as "no change warranted", not left open. The gate plan collapses to a
+single final PAX sweep validating the documentation + structure commits.
+
 ## Verification Plan
 
 Uses `reports/specs/VERIFICATION-GATES.md` (with the corrected step 2). Local
