@@ -68,6 +68,17 @@ internal class DeclaredDependencyMetadataCollector {
 }
 
 internal class DeclaredProjectMetadataSnapshotter {
+    /**
+     * Captures a full, serializable declared-dependency snapshot for [project] up front, so that
+     * [AggregatedDependencyResolver] and its downstream resolution never need to touch live Gradle
+     * `Variant`/`Configuration` objects. Field order/coupling here directly determines what's
+     * available downstream: [DeclaredVariantDependencyMetadata.declaredDependencyDeclarations]
+     * feeds bucket-name/membership derivation, `excludeRulesByShortId` feeds
+     * [ProjectExcludeRules] construction, and `compileOnlyDependenciesByShortId` is resolved
+     * eagerly here (via [extractCompileOnlyDependenciesByShortId]) because compileOnly deps are
+     * never seen on a resolved classpath and so must be captured as declared metadata or lost.
+     * Variants are sorted by (name, variantType) before mapping purely for deterministic output.
+     */
     fun snapshot(
         project: Project,
         variants: Collection<Variant<*>>
@@ -167,6 +178,18 @@ internal data class DeclaredDependencyMetadata(
         val EMPTY = DeclaredDependencyMetadata()
     }
 
+    /**
+     * Builds a [ProjectExcludeRules] per project scoped to [variantTypes] (expanded with each
+     * type's JVM counterpart via [toJvmVariantType], since a JVM library project has no
+     * Android-typed variants but must still match Android-typed lookups from the resolver side).
+     * `bucketRulesByShortId` intersects exclude rules only across the subset of those variants whose
+     * name is in [variantNames] (the specific hierarchy this call cares about), while
+     * `variantRulesByName` retains every variant's own rules unscoped for later per-variant lookup
+     * in [ProjectExcludeRules.rulesFor]. `apiElements`/`runtimeElements` synthetic hierarchy entries
+     * are added so that AGP's default-config API/runtime elements — which have no corresponding
+     * declared variant — still fall back to the [DEFAULT_VARIANT] hierarchy. Projects with no rules
+     * at all are dropped ([ProjectExcludeRules.hasRules]) to keep the resulting map minimal.
+     */
     fun collectExcludeRulesByProjectPath(
         variantTypes: Set<VariantType>,
         variantNames: Set<String>
@@ -417,6 +440,14 @@ internal data class ProjectExcludeRules(
     }
 }
 
+/**
+ * Fallback (non-typed) variant resolution used when no AGP `VariantAttr` name is available: finds
+ * every known variant name that is a case-insensitive prefix of the raw Gradle [displayName] (e.g.
+ * "paidDebug" prefixing "paidDebugRuntimeElements"), then keeps only the *longest* matching
+ * prefix(es) — a shorter match like "paid" would otherwise also match and incorrectly pull in an
+ * unrelated flavor's hierarchy. Ties at the longest length are all unioned in, since a display name
+ * can legitimately match more than one equally-specific variant name.
+ */
 internal fun selectedVariantHierarchyNames(
     displayName: String?,
     variantHierarchyNamesByName: Map<String, Set<String>>
@@ -613,6 +644,18 @@ private fun intersectExcludeRuleSets(ruleSets: Iterable<Set<ExcludeRule>>): Set<
     return result
 }
 
+/**
+ * Combines the owning project's exclude rules with a root-project fallback, applied conditionally
+ * rather than always additively:
+ * - When there is no owning project (external, non-project-traversing root), only the root's own
+ *   rules apply.
+ * - When the owner *is* the root project and it happened to contribute no rules of its own, the
+ *   root's rules still apply as a fallback (so a root-level `exclude` isn't lost just because the
+ *   dependency also happens to be routed through the root project's own variant).
+ * - In every other case (owner is a non-root project) the root's rules are NOT applied — only the
+ *   owning project's own rules count, since the exclude is scoped to that project's dependency
+ *   declaration, not the root.
+ */
 internal fun excludeRulesForDependency(
     excludeRulesByProjectPath: Map<String, ProjectExcludeRules>,
     rootProjectPath: String,

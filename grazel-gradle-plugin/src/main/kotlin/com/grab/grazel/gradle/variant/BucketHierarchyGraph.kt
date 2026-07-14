@@ -33,6 +33,15 @@ private data class NodeNameKey(
     val name: String
 )
 
+/**
+ * Immutable DAG of [BucketHierarchyNode]s (variant configuration buckets) linked by their
+ * `extendsFrom` relationships. Ancestor and leaf-descendant closures are computed lazily and
+ * cached per node since callers typically only query a subset of nodes.
+ *
+ * Iteration order (and therefore the order in which ancestors/descendants are reported) is always
+ * normalized via [bucketHierarchyNodeComparator] rather than left to hash-map/insertion order, so
+ * that downstream consumers (e.g. render-plan generation) get deterministic output across runs.
+ */
 internal class BucketHierarchyGraph private constructor(
     private val entriesByNode: Map<BucketHierarchyNode, BucketHierarchyEntry>,
     private val predecessorsByNode: Map<BucketHierarchyNode, Set<BucketHierarchyNode>>
@@ -64,6 +73,14 @@ internal class BucketHierarchyGraph private constructor(
     }
 
     companion object {
+        /**
+         * Resolves each entry's predecessors by name-matching its declared `extendsFrom` names
+         * against other nodes *within the same project only* (cross-project name collisions are
+         * not linked). A same-named match is only accepted as a predecessor if
+         * [BucketHierarchyNode.canExtendFrom] allows the pairing - this is what prevents, e.g., a
+         * lint bucket from silently inheriting from an unrelated Android/JVM build bucket that
+         * happens to share a name.
+         */
         fun from(entries: Collection<BucketHierarchyEntry>): BucketHierarchyGraph {
             val entriesByNode = entries
                 .associateBy(BucketHierarchyEntry::node)
@@ -91,6 +108,11 @@ internal class BucketHierarchyGraph private constructor(
         return ancestorsByNode[node].orEmpty()
     }
 
+    /**
+     * DFS over [predecessorsByNode] guarded by a `visited` set so that any accidental cycle in
+     * the extends-from edges terminates instead of recursing forever, and so a node reachable via
+     * multiple paths is only visited/added once.
+     */
     private fun computeAncestorsOf(node: BucketHierarchyNode): Set<BucketHierarchyNode> {
         val visited = linkedSetOf<BucketHierarchyNode>()
 
@@ -120,6 +142,14 @@ internal class BucketHierarchyGraph private constructor(
 
 }
 
+/**
+ * Implicit rule table for which [VariantType] a bucket may extend from: build variants
+ * (Android/JVM) never cross into each other or into test-ish types, [VariantType.Test] may extend
+ * either build type as well as itself, [VariantType.AndroidTest] additionally extends
+ * [VariantType.Test], and [VariantType.Lint] is self-contained. Getting an entry here wrong
+ * silently mislinks buckets rather than failing loudly, since [from] just filters out
+ * disallowed pairings.
+ */
 private fun BucketHierarchyNode.canExtendFrom(parent: BucketHierarchyNode): Boolean {
     return parent.variantType in when (variantType) {
         VariantType.AndroidBuild -> setOf(VariantType.AndroidBuild)

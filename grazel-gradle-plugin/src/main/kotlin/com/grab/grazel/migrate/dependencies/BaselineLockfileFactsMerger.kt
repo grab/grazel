@@ -23,6 +23,16 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 
+/**
+ * Reconciles a freshly-reconstructed lockfile (rewritten from proxy URLs back to canonical, see
+ * [MavenLockfileRepositoryUrlRewriter]) against the baseline lockfile that shipped before local
+ * Maven resolution ran. The goal is byte-identical RJE output: reconstruction is a best-effort
+ * re-derivation, so wherever an artifact's facts already match the baseline in every field except
+ * `shasums`, we treat the baseline's shasum as authoritative and additionally assert
+ * ([requireSameShasums]) that reconstruction produced the *same* shasum - a mismatch there means
+ * reconstruction silently resolved a different artifact and must fail loudly rather than emit a
+ * lockfile that diffs from what rules_jvm_external itself would produce.
+ */
 internal object BaselineLockfileFactsMerger {
 
     fun merge(
@@ -68,6 +78,18 @@ internal object BaselineLockfileFactsMerger {
         }
     }
 
+    /**
+     * If reconstruction "skipped" (failed to resolve) an artifact that the baseline lockfile
+     * actually resolved, that is a regression, not a legitimate skip - so it fails hard via [check]
+     * rather than silently carrying the skip forward. Conversely, artifacts the baseline already
+     * skipped are always preserved. The invariant-violation set is names from
+     * [currentSkippedArtifacts] that are in "baseline artifacts" (i.e. baseline actually resolved
+     * them) and not in "current artifacts" (i.e. current didn't resolve them either, so the skip
+     * wasn't superseded by a real resolution) - the `filter`/`filterNot` pair are independent
+     * predicates over disjoint sets, so their order doesn't matter. Results are deduplicated via
+     * [toSortedSet] because the two skip lists may overlap and RJE lockfiles expect a stable,
+     * sorted skipped array.
+     */
     private fun mergedSkippedArtifacts(
         currentSkipped: JsonArray?,
         currentArtifactNames: Set<String>,

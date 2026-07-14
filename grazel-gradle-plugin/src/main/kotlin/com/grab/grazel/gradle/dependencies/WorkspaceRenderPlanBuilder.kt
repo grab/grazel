@@ -37,6 +37,25 @@ internal class WorkspaceRenderPlanBuilder(
     private val alwaysMaterializedVariantRepos = alwaysMaterializedVariants
         .mapTo(sortedSetOf(), String::toMavenRepoName)
 
+    /**
+     * Decides the final set of maven_install repos to actually render, since [WorkspacePlan] may
+     * contain repo candidates that no target ever references. Starting set is
+     * [referencedRepoNames] (from [TargetReferenceFactsCollector]) plus repos that are always
+     * materialized regardless of reference — either a fixed set of variant names
+     * (`alwaysMaterializedVariants`, e.g. default/test/androidTest/lint) or any [AGGREGATED]-kind
+     * repo, since aggregated repos back cross-cutting concerns rather than a single referenceable
+     * target. Both sides of that starting set are additionally filtered to repos that
+     * [hasMaterializedRoot] — a repo with no direct, non-overridden pin input has nothing to render
+     * even if referenced or nominally "always materialized".
+     *
+     * From that starting set, a worklist BFS follows each materialized repo's own
+     * `overrideTargets` label values transitively: an override target that itself points at another
+     * *candidate* repo ([referencedMavenRepo] against [overrideTargetRepos]) pulls that repo into
+     * the materialized set too, since a rendered `maven_install` referencing an unmaterialized repo
+     * by label would break the generated `WORKSPACE`. The worklist guards re-adding an
+     * already-materialized repo (`materializedRepoNames.add` returning false) to terminate on any
+     * cycle in override-target references.
+     */
     fun build(
         workspacePlan: WorkspacePlan,
         referencedRepoNames: Set<String> = emptySet()

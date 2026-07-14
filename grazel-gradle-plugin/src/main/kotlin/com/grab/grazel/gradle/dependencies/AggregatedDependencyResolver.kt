@@ -72,6 +72,25 @@ internal class AggregatedDependencyResolver(
      */
     fun resolve(): List<ResolveDependenciesResult> = ResolutionSession().resolve()
 
+    /**
+     * One-shot, stateful engine for a single [resolve] call: walks every workspace dependency root
+     * in [workspaceDependencyRoots], resolves each root's classpath, and buckets the resulting
+     * closures by [AggregatedDependencyRootKind] into the mutable maps below. State is accumulated
+     * across roots (not per-root) because later roots depend on reachability/exclusion facts
+     * discovered while processing earlier main-hierarchy roots — hence this is a fresh instance per
+     * [resolve] invocation rather than a reusable service.
+     *
+     * Key accumulated state and how it is used downstream:
+     * - [reachableMainProjectPaths] / [reachableMainBucketNamesByProject]: which sub-projects and
+     *   variant buckets are actually reachable from a main (app) hierarchy root, used to prune
+     *   declared-dependency buckets that no root ever reaches.
+     * - [mainProjectEdgeScopes]: per-root DFS results (see [collectMainProjectEdgeScope]) recording
+     *   exclude rules attached to `project(...)` dependency edges, later intersected in
+     *   [withoutDependenciesExcludedByEveryReachableRoot].
+     * - The `*Closures` maps hold merged [ResolvedDependency] maps per [ProjectDependencyBucket],
+     *   unioned across all roots contributing to that bucket, and are handed to
+     *   [BucketOwnershipPlanner] once all roots have been visited.
+     */
     private inner class ResolutionSession {
         private val projectMetadataByPath = declaredDependencyMetadata.projects
         private val migratableProjectPaths = projectMetadataByPath.keys.sorted()
@@ -278,6 +297,13 @@ internal class AggregatedDependencyResolver(
             return bucket.bucketName in reachableMainBucketNamesByProject[bucket.projectPath].orEmpty()
         }
 
+        /**
+         * A declared dependency is only dropped from [bucket] if *every* main-hierarchy root scope
+         * that can reach `bucket.projectPath` excludes it — a single reachable root without the
+         * exclusion is enough to keep it (intersection, not union, of exclusions). This mirrors
+         * Gradle semantics where a `project(...)` edge's `exclude` only applies along that edge, so
+         * a dependency excluded via one app variant's edge but not another's must still be resolved.
+         */
         private fun withoutDependenciesExcludedByEveryReachableRoot(
             dependenciesByProjectBucket: Map<ProjectDependencyBucket, Map<String, ResolvedDependency>>
         ): Map<ProjectDependencyBucket, Map<String, ResolvedDependency>> {
@@ -316,6 +342,20 @@ internal class AggregatedDependencyResolver(
             return projectType == DeclaredProjectType.OTHER || bucket.bucketName != DEFAULT_VARIANT
         }
 
+        /**
+         * DFS over declared `project(...)` dependency edges reachable from [projectPath] for the
+         * given [variantNames], recording (a) every reachable project path, (b) which of its
+         * variant/bucket names are reached, and (c) exclude-rule short IDs attached per target
+         * project. This is the load-bearing pass that later filters declared-dependency buckets to
+         * only those actually wired into an app's dependency graph, and that seeds the
+         * per-root exclusion intersection in [withoutDependenciesExcludedByEveryReachableRoot].
+         *
+         * [scopeReachableProjectPaths] doubles as the visited set, so a project already visited in
+         * this DFS is not revisited (guards against cycles / diamond dependencies) — but its edges'
+         * exclude rules are still recorded before the cycle check via [visit]'s ordering: excludes
+         * are collected for every edge out of a project the first time it's visited, so this must
+         * remain a single-pass, not-revisit DFS to keep results deterministic.
+         */
         private fun collectMainProjectEdgeScope(
             projectPath: String,
             variantNames: Set<String>,
@@ -375,6 +415,18 @@ internal class AggregatedDependencyResolver(
             )
         }
 
+        /**
+         * Visits every eligible workspace dependency root and dispatches per [AggregatedDependencyRootKind]
+         * to resolve, exclude-filter and bucket its classpath. Ordering matters: for a given root,
+         * reachability state (`reachableMainProjectPaths` / `reachableMainBucketNamesByProject` /
+         * `mainProjectEdgeScopes`) is populated from [collectMainProjectEdgeScope] *before* the
+         * closure is resolved so that `resolveRootToDependencyMap` can consult it while walking the
+         * root, and MAIN_HIERARCHY/MAIN_LEAF roots must be processed (in [workspaceDependencyRoots]
+         * order) before any TEST_HIERARCHY/UNIT_TEST/ANDROID_TEST root that depends on the same
+         * project's main reachability facts. TEST_HIERARCHY/UNIT_TEST/ANDROID_TEST kinds reuse
+         * `reachableMainProjectPaths`/`reachableMainBucketNamesByProject` read-only (never mutate
+         * them), since test classpaths ride on top of already-established main reachability.
+         */
         private fun collectRootClosures() {
             val rootsToResolve = workspaceDependencyRoots.filter { root ->
                 shouldResolveMainHierarchyRoot(root.metadata)
@@ -552,6 +604,22 @@ internal class AggregatedDependencyResolver(
             }
         }
 
+        /**
+         * Merges purely-declared (never resolved via a classpath, e.g. `compileOnly` or projects
+         * with no resolvable root) dependency buckets into the same hierarchy closures the resolved
+         * roots populated, in a specific order that each filter depends on:
+         * 1. compileOnly buckets are added unconditionally (subject only to
+         *    [shouldAddDeclaredHierarchyDependency]) since they never appear on a runtime classpath
+         *    and so cannot be discovered by root traversal at all.
+         * 2. declared "main" (implementation/api) buckets are added only if the bucket is both
+         *    non-OTHER-eligible ([shouldAddDeclaredHierarchyDependency]) *and* actually reached by a
+         *    main-hierarchy root ([isReachableMainBucket]) — this must run after [collectRootClosures]
+         *    has populated reachability — and are then passed through
+         *    [withoutDependenciesExcludedByEveryReachableRoot] so a dependency excluded on every
+         *    reachable edge is still dropped even though it was never resolved.
+         * 3. declared test buckets are added last and unconditionally into the test hierarchy
+         *    closures, since test source sets have no equivalent reachability gating.
+         */
         private fun addDeclaredMetadataClosures(): Map<ProjectDependencyBucket, Map<String, ResolvedDependency>> {
             val compileOnlyDependenciesByBucket = declaredDependencyMetadata
                 .collectCompileOnlyDependenciesByProjectBucket(projectMetadataByPath.keys)
@@ -596,6 +664,15 @@ internal class AggregatedDependencyResolver(
 
     }
 
+    /**
+     * Widens [leafHierarchyNames] (a single leaf variant plus its `extendsFrom` chain) with the
+     * names of any [testType] test variant that extends — directly or transitively via its own
+     * `extendsFrom` — one of those leaf names. Both the test variant's own name and everything it
+     * extends from are unioned in, not just the matched test variant, because exclude-rule lookups
+     * ([ProjectExcludeRules.rulesFor]) need the full hierarchy to find rules attached anywhere along
+     * the chain. Used only to scope exclude-rule collection for UNIT_TEST/ANDROID_TEST roots — the
+     * leaf variant itself may have no test variant pointing at it, in which case this is a no-op.
+     */
     private fun variantNamesForLeafTest(
         variants: Collection<DeclaredVariantDependencyMetadata>,
         leafHierarchyNames: Set<String>,
@@ -613,6 +690,27 @@ internal class AggregatedDependencyResolver(
         return leafHierarchyNames + relevantTestVariantNames
     }
 
+    /**
+     * Walks one resolved root's component graph via [ResolvedComponentsVisitor] into a
+     * `shortId -> ResolvedDependency` map. Two aspects are load-bearing for byte-identical,
+     * reproducible output across builds:
+     * - BOM/platform (pom-only) components are dropped ([Component.isBomComponent]) since
+     *   `rules_jvm_external` rejects pom-packaged artifacts, and (when [AggregatedDependencyRootMetadata.traverseProjectNodes]
+     *   is set) any node not directly reached from a project edge is skipped — project-node
+     *   traversal roots only care about what a `project(...)` edge itself contributes.
+     * - Visit results are explicitly sorted (component string, repository, direct project path/
+     *   variant, directFromProject, requiresJetifier) *before* being folded into [depMap], so that
+     *   iteration order — and therefore which duplicate short-ID wins ties in
+     *   [mergeDependencyMetadataByMaxVersion] — is deterministic regardless of the underlying
+     *   Gradle resolution graph's internal (unordered) traversal order.
+     *
+     * Exclude rules per dependency are computed differently depending on whether this root
+     * traverses project nodes: project-traversing roots resolve rules per-owner via
+     * [excludeRulesForDependency] (owner + root precedence), non-traversing roots use the root's
+     * own flat `rootExcludeRulesByShortId` map directly. Duplicate short IDs encountered while
+     * walking (e.g. reached via multiple paths) are folded together with
+     * [mergeDependencyMetadataByMaxVersion] rather than overwritten.
+     */
     private fun resolveRootToDependencyMap(
         aggregatedRoot: AggregatedDependencyRoot,
         excludeRulesByProjectPath: Map<String, ProjectExcludeRules> = emptyMap(),
@@ -733,6 +831,26 @@ internal class AggregatedDependencyResolver(
 
 }
 
+/**
+ * Picks a winner between two [ResolvedDependency] records for the same short ID and merges the
+ * loser's metadata into it. Winner selection order:
+ * 1. A declared-only record (never seen on a resolved classpath, see [ResolvedDependency.isDeclaredMetadata])
+ *    always loses to a resolved one, regardless of version — resolution reflects Gradle's actual
+ *    conflict-resolved version and must take precedence over a manifest declaration.
+ * 2. Otherwise (both or neither declared) the higher [versionInfo] wins; exact ties keep [candidate]
+ *    to preserve encounter order.
+ *
+ * Post-selection merge rules differ by field because they encode different semantics:
+ * - `dependencies` (transitive edge set) is unioned only when both sides resolved to the *same*
+ *   version — merging transitive edges across differing versions would fabricate an edge set that
+ *   never existed for either resolved graph.
+ * - `excludeRules`: when exactly one side is declared-only metadata, rules are unioned (a manifest
+ *   declaration's excludes are additive since it was never actually resolved with them applied);
+ *   when both sides are real resolved records, rules are intersected, matching the "excluded only if
+ *   excluded everywhere" semantics used elsewhere in this file.
+ * - `requiresJetifier`, `jetifierSource`, `overrideTarget`, `processorClass` all prefer the winner's
+ *   value but fall back to the loser's so metadata isn't silently dropped when only one side carries it.
+ */
 internal fun mergeDependencyMetadataByMaxVersion(
     existing: ResolvedDependency,
     candidate: ResolvedDependency

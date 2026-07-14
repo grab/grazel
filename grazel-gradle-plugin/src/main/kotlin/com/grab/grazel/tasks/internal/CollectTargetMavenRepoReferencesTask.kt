@@ -78,6 +78,14 @@ constructor(
         set(layout.buildDirectory.file("grazel/target-maven-repo-references.json"))
     }
 
+    /**
+     * Orders projects consumers-first ([ProjectReachabilityOrder.consumersFirstGroups]) with any
+     * subprojects absent from the dependency graph appended afterwards, before delegating to
+     * [collectTargetMavenRepoReferencesByGroup]. This ordering is required for correctness, not
+     * just efficiency: fact collection incrementally populates the render plan as it goes (see
+     * [collectProjectReferences]), so a consumer must be visited after the projects it depends on
+     * have already contributed their facts to the render plan.
+     */
     @TaskAction
     fun action() {
         logger.logHeap("CollectTargetMavenRepoReferences:start")
@@ -145,6 +153,14 @@ constructor(
     }
 }
 
+/**
+ * Runs the single accumulation pass and only *after* it completes normalizes the accumulated
+ * facts and republishes them into [workspaceRenderPlanService]. The render plan is also populated
+ * incrementally mid-pass (see [collectProjectReferences]) with pre-normalization state; this final
+ * normalize-then-republish step is what downstream readers actually rely on as the settled,
+ * de-duplicated view - the ordering between raw accumulation and normalization is load-bearing,
+ * not incidental.
+ */
 internal fun collectTargetMavenRepoReferencesByGroup(
     projectGroups: List<ProjectReachabilityGroup>,
     canMigrate: (Project) -> Boolean,
@@ -192,6 +208,13 @@ private fun collectTargetMavenRepoReferencesSinglePass(
     return accumulated
 }
 
+/**
+ * Publishes the accumulated facts *before* the migratability check, so the render plan reflects
+ * partial/pre-merge state even for a project that turns out to be non-migratable and gets
+ * skipped. Downstream lookups against the render plan can therefore observe this project's
+ * accumulated-so-far facts despite it contributing nothing further itself - an intentional but
+ * easy-to-miss ordering dependency between publishing and filtering.
+ */
 private fun collectProjectReferences(
     accumulated: TargetReferenceFacts,
     project: Project,

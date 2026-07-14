@@ -27,6 +27,17 @@ import com.grab.grazel.migrate.dependencies.toMavenRepoName
 internal class WorkspacePlanBuilder(
     private val configuredOverrideTargets: Map<String, String> = emptyMap()
 ) {
+    /**
+     * The seam between resolution/bucketing output ([WorkspaceDependencies]) and maven_install
+     * rendering ([WorkspaceRenderPlanBuilder]): turns per-variant root artifacts into [VARIANT]-kind
+     * repos and per-aggregated-bucket artifacts into [AGGREGATED]-kind repos, computing each
+     * variant repo's own override targets ([calculateMavenInstallOverrideTargets]) against
+     * [configuredOverrideTargets] — aggregated repos deliberately have no override targets computed
+     * here since they aggregate artifacts across variants rather than owning a single variant's
+     * override semantics. Variant repos are keyed by [toMavenRepoName] before merging with
+     * aggregated repos, so a name collision between the two would silently let one clobber the
+     * other in the final `+` — callers must keep variant and aggregated bucket names disjoint.
+     */
     fun build(
         workspaceDependencies: WorkspaceDependencies
     ): WorkspacePlan {

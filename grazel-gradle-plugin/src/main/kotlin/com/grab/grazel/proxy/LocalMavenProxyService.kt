@@ -63,6 +63,13 @@ internal abstract class LocalMavenProxyService :
         server?.stats() ?: LocalMavenResolutionStats()
     }
 
+    /**
+     * Reuses the currently running embedded server only when its origin list is unchanged
+     * from the last configure() call; otherwise closes it and starts a fresh one. This
+     * close-before-replace ordering is required to avoid leaking a bound port/thread every
+     * time the repository configuration changes (e.g. across builds or reconfiguration), since
+     * origins determine the `/r/{index}` routing table baked into the server.
+     */
     private fun activeServer(proxyPlans: List<LocalMavenRepositoryProxyPlan>): LocalMavenProxyServer {
         val origins = proxyPlans.map { plan -> plan.origin }
         server?.takeIf { serverOrigins == origins }?.let { activeServer ->
@@ -169,6 +176,15 @@ private data class LocalMavenRepositoryProxyPlan(
     val canonicalUrlForGeneratedOutput: String,
 )
 
+/**
+ * Builds one proxy plan per configured repository (in declared order, so their `/r/{index}`
+ * slots are deterministic), then synthesizes additional trailing plans for any
+ * [canonicalRepositoryUrls] not already covered by a repository's [LocalMavenRepositoryProxyPlan.canonicalAliases]
+ * — e.g. URLs referenced only via generated lockfiles/output rather than an actual declared
+ * repository. The synthesized plans are sorted so their indices are stable across runs despite
+ * coming from a set. Callers depend on the resulting list order matching the `/r/{index}`
+ * routes handed out in [localMavenRepositoryProxyMappingsFrom].
+ */
 private fun localMavenRepositoryProxyPlans(
     repositories: List<RepositoryWithAuth>,
     canonicalRepositoryUrls: Set<String>,
@@ -202,6 +218,14 @@ private fun localMavenRepositoryProxyPlans(
     return repositoryPlans + externalPlans
 }
 
+/**
+ * Chooses which URL variant to emit for a repository in generated output (e.g. lockfiles): the
+ * credentialed URL wins if it's a recognized canonical URL, else the plain URL if that's
+ * recognized instead, else — only when [canonicalRepositoryUrls] is empty, meaning no
+ * canonical-URL constraint is in play at all — the credentialed URL is preferred by default;
+ * otherwise plain URL is the final fallback. The empty-set case matters because it changes the
+ * default preference from "plain" to "credentialed".
+ */
 private fun canonicalUrlForGeneratedOutput(
     repository: RepositoryWithAuth,
     canonicalRepositoryUrls: Set<String>,

@@ -35,6 +35,13 @@ internal fun MatchedVariant.isReachableProjectVariant(
     isReachableBucket: ((String) -> Boolean)?
 ): Boolean = variant.isReachableTargetVariant(isReachableBucket)
 
+/**
+ * Checks reachability against the exact variant name first, then - if that fails - retries
+ * against the name with its `AndroidTest`/`UnitTest` suffix stripped ([removeTypedTestSuffix]).
+ * This fallback is load-bearing: typed test variants (e.g. `debugAndroidTest`) are not themselves
+ * declaration buckets, so their reachability has to be inferred from the base build variant
+ * (`debug`) they were generated from.
+ */
 internal fun isReachableTargetVariant(
     variantName: String,
     isReachableBucket: ((String) -> Boolean)?
@@ -66,6 +73,13 @@ internal fun reachableCompressedTargetSuffixes(
     .map { (_, suffix) -> suffix }
     .toSet()
 
+/**
+ * Bazel macros (e.g. Kotlin/Android library macros) can expand a single logical target into
+ * several physical target names (`_lib`, `_kt`, `lib_` prefixed variants in addition to the bare
+ * name). A reference to any one of these variant spellings counts as a reference to the logical
+ * target, so all must be checked; omitting one here would make a target whose only reference is
+ * through that spelling look unreachable and get dropped.
+ */
 internal fun isReferencedGeneratedTarget(
     targetName: String,
     referencedTargetNames: Set<String>
@@ -91,6 +105,15 @@ internal fun reachableBucketPredicate(
     }
 }
 
+/**
+ * A Kotlin project's facts are collected if any of three independent signals hold, checked with
+ * OR short-circuit in this order: (1) no bucket-reachability data exists at all for the workspace
+ * (nothing to filter by, so default to including it), (2) its default-variant bucket is directly
+ * reachable, or (3) the render plan already recorded a reference to this project path from
+ * elsewhere. The ordering matters for cost (bucket data absence is cheapest to check) but not for
+ * correctness; however, all three must be considered since dropping any one can make an otherwise
+ * legitimately-referenced Kotlin project silently skip fact collection entirely.
+ */
 internal fun isReachableJvmProject(
     project: Project,
     dependencyResolutionService: GradleProvider<DefaultDependencyResolutionService>,

@@ -31,6 +31,18 @@ internal object MavenInstallWorkspaceRepositoryRewriter {
 
 private val quotedStringRegex = Regex(""""([^"]+)"""")
 
+/**
+ * Line-oriented nested-depth state machine that scopes URL rewriting to only the `repositories =
+ * [...]` list inside a `maven_install(...)` call, without a real Starlark parser. It tracks two
+ * independent depth counters - one for the enclosing `maven_install(` parens, one for the
+ * `repositories[` brackets - because a rewrite must only happen once both are open; this avoids
+ * rewriting quoted URLs that happen to appear elsewhere in the WORKSPACE (e.g. in comments or
+ * unrelated string literals) while still being resilient to `maven_install` and `repositories`
+ * spanning many lines. It is brittle to any reordering that puts a second `maven_install(`-prefixed
+ * or `repositories`-prefixed line inside the block before the tracked one closes, or to a comment
+ * line coincidentally starting with the same tokens (`enterMavenInstallIfNeeded` /
+ * `enterRepositoriesIfNeeded` only check for a leading token, not that the line is actual code).
+ */
 private class MavenInstallRepositoryBlockRewriter(
     private val urlReplacements: Map<String, String>,
 ) {

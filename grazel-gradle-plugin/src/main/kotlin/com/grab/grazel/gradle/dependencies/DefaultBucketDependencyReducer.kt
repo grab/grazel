@@ -22,6 +22,16 @@ import java.util.stream.Collectors
 
 internal class DefaultBucketDependencyReducer {
 
+    /**
+     * Drops any non-default bucket entry that's already equivalent to a same-shortId entry in the
+     * default classpath, via [reduceNonDefaultBuckets] (whose contract requires re-inserting
+     * [DEFAULT_VARIANT] here, since that helper deliberately excludes it from its result).
+     * [containsDefaultOwnerEquivalent] applies an asymmetric guard: a *declared* (user-metadata)
+     * bucket entry is never considered covered by a *non-declared* default entry, because a
+     * declared entry can carry override/exclude intent the plain default resolution doesn't
+     * capture - only a like-for-like (declared-covers-declared, or plain-covers-plain/declared)
+     * comparison is safe to drop.
+     */
     fun reduce(
         classPaths: Map<String, Map<String, ResolvedDependency>>
     ): Map<String, Map<String, ResolvedDependency>> {

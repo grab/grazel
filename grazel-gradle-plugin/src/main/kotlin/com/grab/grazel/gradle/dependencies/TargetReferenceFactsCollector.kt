@@ -28,6 +28,18 @@ import com.grab.grazel.migrate.dependencies.MAVEN_COMPILE_FILTER_TAG_PREFIX
 internal object TargetReferenceFactsCollector {
     private val projectLabelPattern = Regex("""^//([^:]+):([^:]+)$""")
 
+    /**
+     * Aggregates every dependency-like reference a target makes (deps, plugins, lint checks,
+     * associates, the single `instruments` target) into the two facts
+     * [WorkspaceRenderPlanBuilder]/render-plan discovery need: which maven repos are referenced and
+     * which project targets are referenced (by project path -> target names). `repoNames` also
+     * infers a repo from [tags] carrying a `MAVEN_COMPILE_FILTER_TAG_PREFIX` tag — a maven-filtering
+     * tag implies a dependency on [BASE_MAVEN_REPO] even when no [MavenDependency] literally appears
+     * in `deps`, so tag scanning is a required second source, not a redundant one. Project
+     * references are recognized either as a typed [ProjectDependency] or as a [StringDependency]
+     * matching the `//path:target` label pattern, since some call sites pass raw label strings
+     * instead of typed dependencies.
+     */
     fun from(
         deps: Iterable<BazelDependency> = emptyList(),
         tags: Iterable<String> = emptyList(),

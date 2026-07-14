@@ -58,6 +58,15 @@ private class KspProcessorClasspathState(
 }
 
 internal object WorkspaceKspProcessorClasspathPlanner {
+    /**
+     * Aggregates KSP processor classpaths across every migratable project/variant into one entry
+     * per distinct project+configuration-name pair ([KspProcessorClasspathKey]), merging in each
+     * contributing variant's declaration configurations and direct dependency short ids rather
+     * than emitting a duplicate entry per variant that happens to share the same classpath
+     * configuration. Projects and variants are walked in a fixed sort order (by project path,
+     * then variant type/name) purely so the merged result - and thus the generated workspace
+     * output - stays stable across runs regardless of Gradle's configuration/iteration order.
+     */
     fun plan(
         migratableProjects: Iterable<Project>,
         variantsByProject: Map<Project, Iterable<Variant<*>>>

@@ -86,6 +86,33 @@ internal class DependencyBucketPlacementEngine {
         }
     }
 
+    /**
+     * The core ownership placement algorithm for a single project: decides which bucket (default,
+     * hierarchy, or leaf) should own each resolved dependency, aiming to place every dependency as
+     * high in the variant hierarchy as its actual usage supports so it's declared exactly once.
+     *
+     * The algorithm proceeds in dependency order - each stage's output feeds the next's coverage
+     * checks, so a dependency already placed higher up is never re-declared lower down:
+     *
+     * 1. **Default bucket**: seeded from explicit `hierarchyBucketClosures[baseBucketName]` plus,
+     *    when there's more than one leaf, dependencies inferred to be common to *every* leaf's
+     *    closure ([intersectByBucketOwner]). [withoutDependenciesOwnedByNonDefaultHierarchy] then
+     *    prevents a dependency from being promoted to default if some other, non-default hierarchy
+     *    bucket already claims exclusive ownership of it (unless default independently agrees).
+     * 2. **Hierarchy buckets**: explicitly-declared buckets are selected first, in descending
+     *    ancestor-depth order (deepest/most-specific first) so a child bucket's dependencies are
+     *    placed before a shared ancestor is considered - each selection subtracts what default and
+     *    already-selected sibling/ancestor buckets ([selectedCoveredDepsFor]) cover. Buckets with no
+     *    explicit closure are then inferred, ordered by how many leaves they cover (widest first)
+     *    then by depth, so broader inferred buckets get first claim on shared dependencies.
+     * 3. **Leaf buckets**: whatever remains after subtracting default and all selected ancestor
+     *    hierarchy buckets is the leaf's own residual - the true leaf-specific dependencies.
+     *
+     * This ordering (deepest-explicit -> widest-inferred -> leaf-residual) is itself an invariant:
+     * reordering it would change which bucket "wins" a shared dependency and could either
+     * over-promote a leaf-only dependency to a shared ancestor or leave duplicate declarations
+     * scattered across sibling buckets.
+     */
     fun plan(
         variants: Collection<BucketPlacementVariantInput>,
         hierarchyBucketClosures: Map<String, Map<String, ResolvedDependency>>,
@@ -259,6 +286,15 @@ internal class DependencyBucketPlacementEngine {
         )
     }
 
+    /**
+     * A bucket's candidate dependencies are the union of what's explicitly declared for it
+     * (resolved against its descendant leaves' metadata) and what's inferred purely from
+     * intersecting its descendant leaves' closures. Short-circuits to empty when there are leaf
+     * closures overall but this bucket covers none of the selected leaves - such a bucket cannot
+     * legitimately own anything, since ownership is defined relative to which leaves see it. This
+     * result feeds directly into [selectHierarchyBucket]'s covered-dependency subtraction, so an
+     * empty/wrong candidate set here silently drops or misplaces dependencies downstream.
+     */
     private fun candidateDepsFor(
         bucketName: String,
         descendantLeafNames: Set<String>,
@@ -289,6 +325,18 @@ internal class DependencyBucketPlacementEngine {
         )
     }
 
+    /**
+     * Reconciles an explicitly-declared dependency's metadata against the matching entries in its
+     * descendant leaf closures, since the explicit declaration alone may be missing detail (e.g.
+     * exclude rules) that only the resolved leaf closures actually carry. A declared-metadata
+     * placeholder ([ResolvedDependency.isDeclaredMetadata]) has no real resolution to disambiguate
+     * with, so all matching leaf entries are simply merged together. For a real dependency, leaf
+     * candidates are first narrowed to the same version, then preferred by an owner matching the
+     * exact same exclude rules/jetifier requirement/source (the leaf that most likely represents
+     * the "true" resolution) before falling back to merging all same-version candidates - this
+     * multi-tier matching avoids blindly merging metadata from a leaf that resolved a
+     * same-version-but-differently-configured (e.g. different excludes) copy of the dependency.
+     */
     private fun withResolvedLeafMetadata(
         dependencies: Map<String, ResolvedDependency>,
         leafClosures: Collection<Map<String, ResolvedDependency>>
@@ -326,6 +374,14 @@ internal class DependencyBucketPlacementEngine {
         return dependencies.filterKeys { shortId -> leafClosures.any { leafClosure -> shortId in leafClosure } }
     }
 
+    /**
+     * The seam between explicit (user/build-declared) and inferred (leaf-intersection) ownership
+     * for a bucket: explicit entries always win as the base, but when an inferred entry exists for
+     * the same shortId, its extra information is folded in via
+     * [ResolvedDependency.withInferredClosureMetadata] rather than discarded - an explicit
+     * declaration and an intersection-derived observation of the same dependency are both partially
+     * true and need to be reconciled, not one replacing the other outright.
+     */
     private fun withInferredClosure(
         explicitDependencies: Map<String, ResolvedDependency>,
         inferredDependencies: Map<String, ResolvedDependency>
@@ -344,6 +400,19 @@ internal class DependencyBucketPlacementEngine {
         return merged.toSortedMap()
     }
 
+    /**
+     * Field-by-field merge rule for what survives when an explicit (`this`) and inferred
+     * ([inferredDependency]) view of the same dependency disagree. Each field's merge reflects why
+     * the two views can differ in the first place:
+     * - [direct] and [requiresJetifier] are OR'd - either view observing it as a root dependency, or
+     *   as requiring jetifier, makes it so.
+     * - [dependencies] (the transitive closure) is only unioned when both views agree on
+     *   [version] - closures for different versions of a dependency are not interchangeable, so
+     *   merging them would fabricate a closure that never actually existed for the explicit version.
+     * - The remaining nullable metadata fields fall back to the inferred value only when the
+     *   explicit view didn't record one, since an explicit declaration's own value (when present)
+     *   is authoritative.
+     */
     private fun ResolvedDependency.withInferredClosureMetadata(
         inferredDependency: ResolvedDependency
     ): ResolvedDependency {
@@ -362,6 +431,15 @@ internal class DependencyBucketPlacementEngine {
     }
 }
 
+/**
+ * Wraps [BucketHierarchyGraph] with the specific view [DependencyBucketPlacementEngine.plan] needs:
+ * a graph that includes not just the declared [variants] but also any bucket name referenced only
+ * as a parent/ancestor (via `extendsFrom`) or as [baseBucketName] - these "synthetic" nodes are
+ * added so ancestor/depth queries work uniformly even for buckets that were never themselves
+ * declared as a variant (e.g. an implied flavor grouping bucket). Ancestor and descendant-leaf name
+ * sets are the two properties placement leans on repeatedly for its coverage checks, so both are
+ * computed lazily and cached per bucket name rather than walking the graph on every query.
+ */
 private class BucketPlacementGraph(
     variants: Collection<BucketPlacementVariantInput>,
     private val baseBucketName: String
@@ -474,6 +552,14 @@ private class BucketPlacementGraph(
     }
 }
 
+/**
+ * Bridges user-declared dependency buckets (e.g. `demoImplementation`) - which don't necessarily
+ * correspond to any variant Gradle itself materializes - into the variant graph placement operates
+ * on. For every bucket name a leaf variant's declared dependencies reference, a synthetic "declared
+ * owner" [BucketPlacementVariantInput] is derived ([ownerVariantFor]) and wired as an `extendsFrom`
+ * parent of every leaf it applies to. Without this, a dependency declared under a non-variant
+ * bucket name would have nowhere to be placed in the hierarchy the placement engine reasons about.
+ */
 internal fun DeclaredDependencyMetadata.mainBucketVariants(projectPath: String): List<BucketPlacementVariantInput> {
     val androidBuildVariants = projects[projectPath]
         ?.variants
@@ -527,6 +613,13 @@ internal fun DeclaredDependencyMetadata.mainBucketVariants(projectPath: String):
         .toList()
 }
 
+/**
+ * A synthesized owner bucket variant should extend [leafVariant] if either the leaf already
+ * declares this owner name directly in its `extendsFrom`, or - for a multi-part owner name (e.g. a
+ * flavor+buildType combo) - every one of its non-default constituent parts is already among the
+ * leaf's `extendsFrom`. The latter check is what lets a combo owner bucket (never itself declared
+ * as a variant) still correctly attach to exactly the leaves that belong to every one of its parts.
+ */
 private fun BucketPlacementVariantInput.appliesTo(
     leafVariant: DeclaredVariantDependencyMetadata
 ): Boolean {
@@ -547,6 +640,15 @@ private data class OwnerBucketSpec(
     val buildType: String?
 )
 
+/**
+ * Resolves a candidate owner-bucket name (as referenced by a declared dependency) back to a full
+ * [BucketPlacementVariantInput], since placement needs the owner's typed flavor/buildType
+ * decomposition, not just its name. A direct match against an existing leaf variant is tried first;
+ * otherwise the name is matched against every leaf's synthesized [candidateOwnerBucketSpecs] map -
+ * any qualifying leaf yields an identical [OwnerBucketSpec] for a given name (the spec was built
+ * from the exact typed parts that produced that name), so it's safe to read the spec off the first
+ * matching leaf rather than needing agreement across all of them.
+ */
 private fun ownerVariantFor(
     variants: Collection<DeclaredVariantDependencyMetadata>,
     projectPath: String,

@@ -42,6 +42,18 @@ internal data class LocalMavenResolvedFacts(
 internal class LocalMavenResolvedFactsBuilder(
     private val project: Project
 ) {
+    /**
+     * Orchestrates the facts the proxy trusts as "Gradle-resolved". Order matters: the
+     * component index and the resolved-artifact index are built first from live configuration
+     * resolution; only the *gap* between all known GAVs (resolved components plus
+     * [additionalGavs]) and what the artifact index already covers is looked up in Gradle's
+     * module cache on disk, since that lookup is comparatively expensive and unnecessary for
+     * GAVs already resolved through the configuration graph. The module-cache results are then
+     * merged in as a fallback (never overriding an already-resolved artifact), and
+     * metadata-only GAVs are derived last, from the *merged* index, so a component with no
+     * resolvable artifact anywhere is correctly classified as metadata-only rather than
+     * missing.
+     */
     fun build(
         configurations: Iterable<Configuration>,
         additionalGavs: Iterable<String> = emptyList(),
@@ -98,6 +110,14 @@ internal object ResolvedArtifactIndexBuilder {
         )
     }
 
+    /**
+     * Indexes resolved artifacts by every Maven path they could be requested under, using
+     * `putIfAbsent` so the first configuration to contribute a given path wins. Since
+     * [indexConfigurations] feeds configurations here in a fixed (name-sorted) order, that sort
+     * order is what actually determines which file "wins" when multiple configurations resolve
+     * conflicting files for the same Maven path — this is deliberate first-writer-wins
+     * semantics, not an arbitrary iteration artifact.
+     */
     fun indexArtifacts(artifacts: Iterable<ResolvedArtifactResult>): Map<String, File> {
         val index = sortedMapOf<String, File>()
         artifacts.forEach { artifact ->
@@ -173,6 +193,14 @@ internal class GradleModuleCacheFileResolver(
     fun cacheDirectory(coordinates: MavenCoordinates): File =
         coordinates.cacheDirectory(modulesCacheRoot)
 
+    /**
+     * Gradle's `modules-2` cache stores each artifact under a hash-named subdirectory
+     * (`<group>/<module>/<version>/<hash>/<file>`) with no guaranteed enumeration order, so
+     * both the hash directories and the files within each are explicitly sorted by name here
+     * to give deterministic candidate ordering — required so that matching logic (e.g.
+     * [singleMavenFileOrNull]) behaves reproducibly across JVM/filesystem runs rather than
+     * depending on incidental directory-listing order.
+     */
     private fun cacheFilesUncached(coordinates: MavenCoordinates): List<File> =
         cacheDirectory(coordinates)
             .listFiles()
@@ -249,6 +277,14 @@ internal fun metadataOnlyComponentGavs(
         .toSortedSet()
 }
 
+/**
+ * Enforces that a single Maven path can only ever map to one physical file: a new mapping is
+ * accepted only if there's no existing entry, or the existing entry is the same file (by
+ * identity or, failing that, byte-for-byte content via [Files.equal]). Any genuine divergence
+ * hard-fails rather than silently picking a winner, since silently choosing one would mean the
+ * proxy could serve different bytes for the same path across requests depending on unrelated
+ * indexing order.
+ */
 private fun putMavenFile(
     index: MutableMap<String, File>,
     path: String,
@@ -266,6 +302,13 @@ private fun putMavenFile(
     }
 }
 
+/**
+ * Same single-file-per-path invariant as [putMavenFile], applied via fold to a candidate list
+ * of module-cache matches for one path: any two candidates that aren't identical or
+ * byte-equal ([Files.equal]) are treated as a genuine conflict and hard-fail rather than
+ * arbitrarily selecting one, since the caller ([resolveArtifactUncached]) needs a single
+ * unambiguous file to serve for that path.
+ */
 private fun singleMavenFileOrNull(
     files: List<File>,
     path: String,
@@ -303,6 +346,15 @@ internal class GradlePomFileResolver(
     override fun resolvePom(gav: String): PomFileResolution =
         pomFilesByGav.computeIfAbsent(gav, ::resolvePomUncached)
 
+    /**
+     * Chains a cheap module-cache lookup before falling back to Gradle's artifact resolution
+     * query, since the latter can trigger network/POM resolution and is comparatively
+     * expensive. An exception from the query is deliberately captured and mapped to
+     * [PomFileResolution.Unavailable] rather than rethrown or treated as [PomFileResolution.Unknown]:
+     * the proxy server ([LocalMavenProxyServer.servePom]) hard-fails on `Unavailable` for known
+     * components but silently falls through to origin on `Unknown`, so the distinction changes
+     * observable behavior.
+     */
     private fun resolvePomUncached(gav: String): PomFileResolution {
         val cachedPom = pomCacheLookup.findPomFile(gav)
             ?.takeIf { pom -> pom.exists() }

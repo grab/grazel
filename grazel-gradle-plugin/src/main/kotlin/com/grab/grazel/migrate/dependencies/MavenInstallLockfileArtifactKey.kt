@@ -24,6 +24,14 @@ internal data class MavenInstallLockfileArtifactKey(
     val isPomPackagingRoot: Boolean
         get() = extension == "pom"
 
+    /**
+     * Reproduces rules_jvm_external's own key suffix convention for per-shasum-type hash entries in
+     * [RulesJvmExternalLockfileHasher]. A `jar` shasum contributes no suffix (it's the artifact's
+     * primary/default hash), while any other classifier (e.g. `sources`, `javadoc`) appends
+     * `:jar:<type>` when the artifact's own extension is `jar`, or just `:<type>` otherwise. This
+     * must byte-match RJE's internal key scheme exactly, since these suffixed keys become dependency
+     * hash lookup keys that feed the final Starlark-hash computation.
+     */
     fun resolvedArtifactHashSuffix(shasumType: String): String {
         if (shasumType == "jar") return ""
         val artifactTypePrefix = if (extension == "jar") ":jar" else ""

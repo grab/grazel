@@ -76,6 +76,13 @@ internal interface ArtifactPinner {
     )
 }
 
+// These patterns toggle the exact commented-out block that rules_jvm_external's own WORKSPACE
+// codegen emits for pinning (the `maven_install_json` attribute plus the generated
+// `..._pinned_maven_install` load/call). There is no structured way to flip "pinned mode" on a
+// WORKSPACE file short of re-parsing and re-emitting it, so [pin]/[unpin] instead toggle the
+// leading `#` via regex. This is only correct because the generated text format is stable; any
+// change to how rules_jvm_external renders these lines (spacing, load alias naming, etc.) will
+// silently break pinning without a compile-time signal.
 private const val MAVEN_INSTALL_JSON_MARKER = "maven_install_json "
 private const val PINNED_MAVEN_INSTALL_MARKER = "#maven_install_json"
 private val COMMENTED_PINNED_LOAD_REGEX = Regex(
@@ -126,13 +133,17 @@ constructor(
     }
 
     /**
-     * Determine if we have to run pinning artifacts again. There are two major cases that is checked
-     * for
-     *   1. First time run where no maven install json was generated. In that case, we return early
-     *      and force pinning to run again
-     *   2. Incremental run where maven install json already exists but might be out of date. In that
-     *      case, run the build with `fail_if_repin_required=true` and check if build fails due to
-     *      out of date maven install json.
+     * Probes pin status without actually repinning. The [PINNED_MAVEN_INSTALL_MARKER] check is a
+     * cheap short-circuit: if the WORKSPACE still has a repo's pinned load/call commented out, no
+     * maven_install.json has ever been generated for it, so pinning is unconditionally required and
+     * we skip straight to `true` rather than paying for a bazel build.
+     *
+     * Otherwise we temporarily flip `fail_if_repin_required` to `true` (see [failWhenOutOfDate]) so
+     * that building a single probe target per repo fails fast with rules_jvm_external's own
+     * out-of-date signal, which [BazelLogParsingOutputStream.isOutOfDate] parses from stderr. The
+     * flag flip is reverted in the `.also { }` regardless of outcome so this method never leaves the
+     * WORKSPACE in a mutated state - callers (including the [pinArtifacts] validation pass) rely on
+     * that.
      */
     internal fun shouldRunPinning(
         workspaceFile: File,
@@ -214,6 +225,28 @@ constructor(
             .forEach(File::delete)
     }
 
+    /**
+     * Full pin orchestration. Ordering here is load-bearing and mirrors why local Maven resolution
+     * needs a temporary WORKSPACE:
+     *
+     * 1. Pin scripts are generated while the WORKSPACE is temporarily rewritten to point at local
+     *    proxy repositories ([LocalMavenPinningWorkspace.withProxyRepositories]), because the RJE
+     *    pin scripts generated in that state embed the proxy URLs. Only once that call returns
+     *    (its `finally` has already restored the canonical WORKSPACE) and script generation
+     *    succeeded do we snapshot baseline lockfiles
+     *    ([LocalMavenPinningWorkspace.snapshotActiveLockfiles]) - this just reads the existing
+     *    maven_install.json files already on disk and has no dependency on WORKSPACE content.
+     * 2. The WORKSPACE is switched to pinned mode ([pin]) and the pin scripts are executed via
+     *    worker actions only *after* [withProxyRepositories] has already restored the canonical
+     *    WORKSPACE text (the `finally` inside that function runs before this lambda returns), so
+     *    the maven_install.json committed to the repo never leaks proxy URLs.
+     * 3. Reconstruction ([LocalMavenPinningWorkspace.reconstructActiveLockfiles]) then rewrites the
+     *    just-pinned lockfile's proxy URLs back to canonical and reconciles it against the
+     *    snapshotted baseline - it must run strictly after step 2's restore, never before.
+     * 4. Only when local Maven resolution produced a reconstruction do we re-validate via
+     *    [validateLocalMavenReconstruction] and log stats; a plain pin (no local Maven context) skips
+     *    both since there is nothing to reconstruct.
+     */
     override fun pinArtifacts(
         workspaceFile: File,
         workspacePlan: WorkspacePlan,
@@ -381,6 +414,18 @@ constructor(
         )
     }
 
+    /**
+     * A maven_install.json can go corrupt (e.g. truncated by a killed process) in a way that makes
+     * rules_jvm_external report the repo as out-of-date *and* fail the build, which looks identical
+     * to a legitimate out-of-date-but-otherwise-healthy repo from the caller's perspective. The
+     * combination `isOutOfDate && !isSuccess` is the only reliable signal that recovery (rather than
+     * a hard failure) is the right move: it means the file cannot even be parsed to determine repin
+     * necessity, not merely that it is stale. Recovery unpins the WORKSPACE and deletes all
+     * maven_install.json files so the next pinning pass regenerates them from scratch, then retries
+     * [bazelBlock] exactly once - a second failure is allowed to propagate rather than looping
+     * forever. The `!isOutOfDate && !isSuccess` branch is a distinct, unrecoverable failure (nothing
+     * to do with pinning) and fails immediately without retry.
+     */
     override fun ensureSafeToRun(
         logger: Logger,
         gradleServices: GradleServices,
@@ -428,6 +473,14 @@ internal fun collectPinnableMavenInstallRepos(
         .filter { (_, pinInputs) -> pinInputs.isNotEmpty() }
         .toMap()
 
+/**
+ * Picks the artifact used to probe a repo's pin status in [DefaultArtifactPinner.shouldRunPinning].
+ * Direct, non-overridden dependencies are preferred because they resolve to a target Bazel can
+ * build standalone with `--nobuild` to surface rules_jvm_external's out-of-date signal; an
+ * override-targeted or purely transitive dependency may not have a buildable target of its own, or
+ * may mask staleness behind the override, giving a false negative for repin necessity. Falling back
+ * to `.first()` guarantees a probe always exists even when every input is overridden.
+ */
 internal fun selectPinStatusProbeArtifact(pinInputs: List<ResolvedDependency>): ResolvedDependency =
     pinInputs.firstOrNull { dependency -> dependency.direct && dependency.overrideTarget == null }
         ?: pinInputs.firstOrNull { dependency -> dependency.overrideTarget == null }

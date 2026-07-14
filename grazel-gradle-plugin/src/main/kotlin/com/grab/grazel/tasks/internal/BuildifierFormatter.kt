@@ -21,6 +21,14 @@ import org.gradle.api.file.ProjectLayout
 import org.gradle.process.ExecOperations
 import java.io.File
 
+/**
+ * Formats [source] out-of-place through a temp file rather than in-place, because buildifier
+ * infers file type (BUILD vs .bzl vs WORKSPACE) from the path/name it is given, which may not
+ * match [source]'s staged name. The temp copy therefore keeps [source]'s original filename so
+ * buildifier's inference stays correct, and only after formatting is the result copied back under
+ * [destination]'s real name - losing either rename would either mis-detect the file type or leave
+ * the formatted output under the wrong filename.
+ */
 internal fun formatWithBuildifier(
     buildifierScript: File,
     source: File,
@@ -31,8 +39,6 @@ internal fun formatWithBuildifier(
 ) {
     if (!source.exists()) return
 
-    // Buildifier can infer file type from the path it sees; preserve the staged
-    // source filename while formatting a temp copy.
     val tmpFile = projectLayout
         .buildDirectory
         .file("grazel/${source.name}.tmp")

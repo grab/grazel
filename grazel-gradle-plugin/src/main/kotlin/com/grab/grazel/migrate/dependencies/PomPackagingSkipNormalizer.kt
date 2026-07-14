@@ -30,6 +30,15 @@ internal object PomPackagingSkipNormalizer {
         }
     }
 
+    /**
+     * rules_jvm_external resolves POM-packaging root artifacts (parent/BOM POMs with no jar) as
+     * "skipped" rather than as a normal resolved artifact. Local Maven reconstruction can't tell on
+     * its own whether a given POM-packaging artifact was genuinely skipped by RJE or is simply new,
+     * so it defers to the baseline: only artifacts *not already present in the baseline's resolved
+     * set* are folded into `skipped` here, since a baseline that resolved them proves they aren't
+     * meant to be skipped. Existing skip entries are preserved and the result is deduplicated via
+     * [toSortedSet] to match RJE's stable, sorted `skipped` array formatting.
+     */
     fun normalize(
         lockfile: RulesJvmExternalLockfile,
         baselineArtifactNames: Set<String>,

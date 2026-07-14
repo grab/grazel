@@ -89,6 +89,14 @@ constructor(
                 androidUnitTestData(project).map(AndroidUnitTestData::referenceFacts)
             ).merged()
 
+    /**
+     * An app variant is included if it is reachable through the normal bucket-hierarchy
+     * predicate ([isReachableTargetVariant]) OR its generated binary target name is directly
+     * referenced by another already-rendered target ([isReferencedGeneratedTarget]). The fallback
+     * matters because a variant can be a legitimate build target even when nothing in the
+     * dependency graph reaches its configuration bucket - it may only be pulled in via a
+     * target-name reference recorded in the render plan from a previous pass.
+     */
     private fun androidBinaryFacts(project: Project): TargetReferenceFacts {
         val isReachableBucket = reachableBucketPredicate(project, dependencyResolutionService)
         val referencedTargetNames = workspaceRenderPlanService.get().referencedTargetNames(project.path)
@@ -179,6 +187,13 @@ constructor(
             }
     }
 
+    /**
+     * When variant compression is active, multiple reachable test variants can resolve to the
+     * same compressed suffix; emitting one extracted [AndroidUnitTestData] per variant in that
+     * case would produce duplicate/ambiguous test targets. Instead, variants are grouped by their
+     * resolved suffix and only the alphabetically-first (`minBy variantName`) variant per group is
+     * extracted, giving a stable, deterministic representative across runs.
+     */
     private fun androidUnitTestData(project: Project): List<AndroidUnitTestData> {
         val compressionResult = variantCompressionService.get().get(project.path)
         val testVariants = reachableMatchedVariants(project, VariantType.Test)
@@ -218,6 +233,12 @@ constructor(
             .toSet()
     }
 
+    /**
+     * [targetsBySuffix] is keyed by *compressed* target suffix, not variant name, so reachable
+     * variant names must first be translated through [variantToSuffix] before they can be used to
+     * filter it. Skipping this indirection (e.g. filtering `targetsBySuffix` by variant name
+     * directly) would silently drop every entry since the keys never match.
+     */
     private fun VariantCompressionResult.reachableAndroidLibraryData(
         reachableVariantNames: Set<String>
     ): List<AndroidLibraryData> {

@@ -51,10 +51,31 @@ private data class MainBucketPlanResult(
         allCoveredDependencies(DEFAULT_VARIANT, defaultDeps, hierarchyBuckets, filteredPerLeafBuckets)
 }
 
+/**
+ * Decides, for every Gradle variant "bucket" (default classpath, hierarchy bucket such as a
+ * flavor/buildType, or leaf variant) of a project, which resolved dependencies that bucket should
+ * own in the generated Bazel target graph - i.e. it turns a flat, per-variant resolution result
+ * into a deduplicated ownership plan where each dependency is declared exactly once, as high up
+ * the variant hierarchy as its actual usage allows, and test source sets only carry what main
+ * hasn't already covered. This sits between dependency resolution and Bazel target rendering: the
+ * output buckets become individual `maven_install`/target dependency lists.
+ *
+ * Main bucket placement is delegated to [DependencyBucketPlacementEngine]; this class layers test
+ * bucket planning (unit test / android test) and cross-bucket coverage subtraction on top, plus
+ * reconciliation of user-declared dependency metadata (excludes, overrides) back onto the placed
+ * buckets.
+ */
 internal class BucketOwnershipPlanner(
     private val declaredDependencyMetadata: DeclaredDependencyMetadata,
     private val precomputedKspDependencies: Set<ResolvedDependency>
 ) {
+    /**
+     * Orchestrates the three-stage plan: main buckets first (default/hierarchy/leaf), then unit
+     * test buckets - which may skip any dependency already covered by main - then android test
+     * buckets, which additionally skip anything unit test buckets already cover. This ordering is
+     * an invariant: android test coverage subtraction depends on the already-computed unit test
+     * result ([testBuckets]), so unit test buckets must be planned first.
+     */
     fun plan(input: OwnershipPlannerInput): List<ResolveDependenciesResult> {
         val mainBuckets = planMainBuckets(input)
         val aggregateMainCoveredDeps = mainBuckets.coveredDependencies()
@@ -90,6 +111,24 @@ internal class BucketOwnershipPlanner(
     private fun variantsFor(projectPath: String): List<DeclaredVariantDependencyMetadata> =
         declaredDependencyMetadata.projects[projectPath]?.variants.orEmpty()
 
+    /**
+     * Merges each project's independently-placed main bucket plan ([DependencyBucketPlacementPlan])
+     * into project-agnostic default/hierarchy/leaf bucket maps, then layers in two corrections
+     * that only make sense once results from all projects are combined:
+     *
+     * 1. User-declared metadata (excludes, overrides, ...) is applied per output bucket rather than
+     *    per project, since a dependency declared in one project's bucket must also carry that
+     *    metadata for every other project sharing the same output bucket name.
+     * 2. Declared-metadata placeholders that survive placement in a hierarchy/leaf bucket are
+     *    stripped via [withoutDeclaredPlaceholdersCoveredByDefault] whenever the merged default
+     *    bucket already covers the same dependency - otherwise the placeholder would duplicate an
+     *    entry that already exists (and is authoritative) in default.
+     *
+     * Leaf buckets go through an extra pass ([withGlobalAncestorResolvedMetadata]) to backfill
+     * metadata from every ancestor hierarchy bucket - not just the ones from the leaf's own
+     * project - because ancestor bucket names are shared across projects but resolved metadata is
+     * computed per project.
+     */
     private fun planMainBuckets(input: OwnershipPlannerInput): MainBucketPlanResult {
         val mainBucketVariants = declaredDependencyMetadata.mainBucketVariantsByProject()
         val declaredMainDependenciesByBucket = declaredDependencyMetadata
@@ -317,6 +356,15 @@ internal class BucketOwnershipPlanner(
         return mergedBuckets.toSortedMap()
     }
 
+    /**
+     * A leaf bucket's own [DependencyBucketPlacementPlan] only resolves metadata against ancestor
+     * hierarchy buckets from the *same project*. But hierarchy bucket names (e.g. a flavor name)
+     * are shared across projects and get merged in [planMainBuckets], so an ancestor bucket can
+     * carry metadata (e.g. a higher version) contributed by a different project than the leaf's
+     * own. This pass re-merges each leaf dependency against every one of its ancestors' *merged*
+     * versions so leaf metadata reflects the global, cross-project view rather than a stale
+     * per-project snapshot.
+     */
     private fun withGlobalAncestorResolvedMetadata(
         leafBuckets: Map<String, Map<String, ResolvedDependency>>,
         leafAncestorsByName: Map<String, Set<String>>,
@@ -408,6 +456,15 @@ internal class BucketOwnershipPlanner(
             .apply { add(baseBucketName) }
     }
 
+    /**
+     * A main leaf variant (e.g. `demoDebug`) has no test closure of its own; test dependencies are
+     * resolved against a *test* leaf variant (e.g. `demoDebugAndroidTest`) that extends it. When
+     * several declared test leaves extend the same main leaf, [minOrNull] picks the
+     * lexicographically first name as a deterministic tie-break - callers only need one concrete
+     * name per main leaf, and any of the candidates would resolve to the same underlying closure,
+     * so the choice is arbitrary but must be stable across runs. Falls back to [baseBucketName]
+     * (e.g. "test"/"androidTest") when no test leaf extends this main leaf at all.
+     */
     private fun concreteTestLeafName(
         projectPath: String,
         mainLeafName: String,
@@ -467,6 +524,25 @@ internal class BucketOwnershipPlanner(
         )
     }
 
+    /**
+     * For each project's test bucket placement plan, subtracts every dependency that's already
+     * reachable from the buckets a Gradle test source set can actually see, so only genuinely
+     * test-only dependencies survive into the output. For every planned bucket this computes two
+     * independent coverage views and combines them:
+     *
+     * - "visible" coverage ([withoutTestDependenciesCoveredBy]): deps covered by this bucket's own
+     *   ancestor chain (default + hierarchy ancestors) plus any already-covered main/inherited-test
+     *   deps for this bucket's own name and ancestors.
+     * - "every leaf" coverage ([withoutTestDependenciesCoveredByEveryLeaf]): for a non-leaf test
+     *   bucket, a dependency is only dropped if *all* of its concrete descendant test leaves
+     *   independently see it covered too - a dependency covered on only some leaves must stay so
+     *   those leaves that need it still get it.
+     *
+     * Each candidate bucket's dependencies are also remapped to an [outputBucketNameForTestBucket]
+     * before merging, since several distinct internal bucket names can collapse onto the same
+     * emitted test source set. Declared test dependency metadata is looked up under both the raw
+     * bucket name and its output name because declarations may be recorded against either.
+     */
     private fun plannedTestBuckets(
         testBucketPlansByProject: Map<String, DependencyBucketPlacementPlan>,
         baseBucketName: String,
@@ -604,6 +680,19 @@ internal class BucketOwnershipPlanner(
             }
     }
 
+    /**
+     * A placement plan may contain internal bucket names (default, hierarchy, leaf) that don't
+     * correspond 1:1 to an emitted test source set. This decides where a bucket's dependencies
+     * should actually surface:
+     * - the plan's own base bucket name, or any bucket already typed as this test variant, is
+     *   emitted unchanged;
+     * - otherwise, try suffixing the name for this test variant type (e.g. `demo` ->
+     *   `demoAndroidTest`) - this is how a main hierarchy bucket maps to its corresponding typed
+     *   test bucket;
+     * - if that suffixed name isn't itself a real typed test bucket (no such variant was declared),
+     *   collapse everything down to the plan's base bucket name rather than emitting a name nothing
+     *   else recognizes.
+     */
     private fun outputBucketNameForTestBucket(
         plan: DependencyBucketPlacementPlan,
         bucketName: String
@@ -686,6 +775,21 @@ private fun <K> MutableMap<K, Map<String, ResolvedDependency>>.mergeBucket(
     this[key] = this[key]?.let { existing -> unionDependencyMaps(existing, dependencies) } ?: dependencies
 }
 
+/**
+ * Two-pass filter over a test bucket's dependencies against the deps already covered elsewhere:
+ *
+ * 1. [withoutDependenciesCoveredByShortId] does the generic subtraction, which can be too eager -
+ *    it may drop a *direct* test dependency merely because some covering bucket happens to also
+ *    resolve the same shortId, even if that covering entry can't actually satisfy this dependency's
+ *    specific requirements (excludes, jetifier, exact closure).
+ * 2. So any direct dependency the first pass removed is re-checked with [canCoverTestDependency],
+ *    which additionally recognizes deps whose transitive closure is satisfied only with the help of
+ *    "scoped sibling closure" reasoning (see [scopedSiblingClosureDependenciesByShortId]); anything
+ *    that still isn't genuinely coverable is restored.
+ *
+ * The final result re-applies [canCoverTestDependency] to the union of both passes, so a dependency
+ * is dropped only when it is truly coverable by this rule, not merely by shortId collision.
+ */
 private fun withoutTestDependenciesCoveredBy(
     testDependencies: Map<String, ResolvedDependency>,
     coveredByShortId: Map<String, List<CoveredDependency>>,
@@ -717,6 +821,14 @@ private fun withoutTestDependenciesCoveredBy(
     }
 }
 
+/**
+ * For a non-leaf test bucket, a dependency can only be safely dropped if *every* concrete
+ * descendant test leaf independently covers it too - dropping it based on only some leaves
+ * covering it would silently starve the leaves that don't, since a non-leaf bucket's output is
+ * shared by all its leaves. Hence the `all { ... }` (not `any`): this is the "every leaf must
+ * agree" closure invariant, and reversing it to `any` would over-remove dependencies that some
+ * leaves still need directly.
+ */
 private fun withoutTestDependenciesCoveredByEveryLeaf(
     testDependencies: Map<String, ResolvedDependency>,
     leafCoveredDepsByShortId: List<Map<String, List<CoveredDependency>>>,
@@ -738,6 +850,16 @@ private fun withoutTestDependenciesCoveredByEveryLeaf(
     }
 }
 
+/**
+ * A cleanup pass that runs *after* all per-project test buckets have been merged into
+ * [testDependenciesByBucket]: the merge can reintroduce a dependency into the base test bucket
+ * (e.g. plain "test") that is already covered by default or by an inherited test bucket, because
+ * that coverage information wasn't visible while each project's bucket was being filtered in
+ * isolation. Only the base bucket is re-checked here (hierarchy/leaf buckets were already filtered
+ * per-project against their own ancestors). Android test additionally sees unit test's dependencies
+ * as coverage - a dependency already provided via `test` doesn't need to be redeclared for
+ * `androidTest` - which is why [visibleCoveredBucketNames] special-cases [ANDROID_TEST_VARIANT].
+ */
 private fun withoutMergedBaseTestDependenciesCoveredBy(
     testDependenciesByBucket: Map<String, Map<String, ResolvedDependency>>,
     baseBucketName: String,
@@ -775,6 +897,16 @@ private fun withoutMergedBaseTestDependenciesCoveredBy(
         .toSortedMap()
 }
 
+/**
+ * A transitive dependency notation that appears in more than one root's own declared-or-transitive
+ * closure within the same bucket is a "sibling-shared" transitive: several direct roots each
+ * (partially) pull it in. Counting occurrences and comparing against 1 (self) + (1 if already in
+ * that root's own closure) lets [canCoverInheritedTestRoot] treat such a notation as effectively
+ * part of a root's closure even though it isn't literally listed there - covering the common case
+ * where a covering bucket's root closure doesn't itself list a transitive dependency that a sibling
+ * root in this bucket already accounts for. Without this, coverage comparisons would be too strict
+ * and would keep dependencies that are, in practice, already fully provided.
+ */
 private fun scopedSiblingClosureDependenciesByShortId(
     dependencies: Map<String, ResolvedDependency>
 ): Map<String, Set<String>> {
@@ -803,6 +935,24 @@ private fun scopedSiblingClosureDependenciesByShortId(
 private fun ResolvedDependency.toDependencyNotation(): String =
     "$id:$repository:$requiresJetifier:$jetifierSource"
 
+/**
+ * Dispatches to one of three different coverage rules depending on what kind of dependency is
+ * being checked, since "covered" means something different in each case:
+ * - a declared-metadata placeholder ([ResolvedDependency.isDeclaredMetadata]) is only covered by
+ *   another direct declared placeholder with the same identity/version, and exclude rules that
+ *   either agree or are absent on the candidate side ([canCoverDeclaredTestMetadata]) - it carries
+ *   no real artifact to resolve against;
+ * - an undeclared (inherited) direct root is covered only if a candidate matches its full identity
+ *   and closure is a superset ([canCoverInheritedTestRoot]) - there's no user declaration to relax
+ *   the check with;
+ * - a declared test root additionally requires the *declared* dependency's exclude rules (not just
+ *   the candidate's) to agree ([canCoverDeclaredTestRoot]), since the user's own declaration is the
+ *   authoritative source of exclude intent for that root.
+ *
+ * Every higher-level test-bucket coverage/closure computation in this file ultimately routes
+ * through this dispatch, so getting any one branch wrong misattributes dependencies across bucket
+ * boundaries.
+ */
 private fun CoveredDependency.canCoverTestDependency(
     dependency: ResolvedDependency,
     declaredTestDependency: ResolvedDependency?,
@@ -822,6 +972,15 @@ private fun CoveredDependency.canCoverTestDependency(
     }
 }
 
+/**
+ * Declared-metadata placeholders (entries carrying only user-declared overrides/excludes, no real
+ * artifact) can survive placement into a non-default bucket even when the same dependency is
+ * already present in the merged default bucket - since default is merged from all projects only
+ * after per-project placement runs. Left alone, this would emit a redundant declared entry in a
+ * downstream bucket for a dependency default already owns. This strips exactly those placeholders,
+ * using the *default* bucket's coverage ([CoveredDependency.canCover]) as the source of truth,
+ * without touching any non-placeholder (real) dependency.
+ */
 private fun withoutDeclaredPlaceholdersCoveredByDefault(
     dependenciesByBucket: Map<String, Map<String, ResolvedDependency>>,
     defaultDeps: Map<String, ResolvedDependency>
@@ -851,6 +1010,18 @@ private fun CoveredDependency.canCoverDeclaredTestMetadata(dependency: ResolvedD
         (dependency.excludeRules.isEmpty() || dependency.excludeRules == this.dependency.excludeRules)
 }
 
+/**
+ * The load-bearing equality rule for an undeclared (no user override) direct root dependency:
+ * covered requires the *exact same* resolved identity (shortId, version, repository, jetifier
+ * requirement/source) - any of those differing means the covering bucket resolved a materially
+ * different artifact that cannot stand in for this one - plus a closure-superset check so the
+ * covering root's transitive closure (extended with [scopedSiblingClosureDependencies] to account
+ * for sibling-shared transitives) must include everything this dependency transitively needs.
+ * Exclude rules are only compared when the candidate dependency declares some: an empty exclude
+ * set on the candidate is treated as compatible with anything. Both directions ([this] and
+ * [dependency]) must be direct: a transitive dependency can't cover, or be covered as, a root by
+ * this rule.
+ */
 private fun CoveredDependency.canCoverInheritedTestRoot(
     dependency: ResolvedDependency,
     scopedSiblingClosureDependencies: Set<String> = emptySet()

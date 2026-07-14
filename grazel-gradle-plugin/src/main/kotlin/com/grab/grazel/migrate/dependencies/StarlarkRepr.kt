@@ -26,6 +26,14 @@ internal sealed interface StarlarkValue {
 }
 
 internal object StarlarkRepr {
+    /**
+     * Reproduces Starlark's `repr()` text format (`True`/`False`/`None`, `[...]`/`{...}` literal
+     * syntax with `, ` separators) exactly, because the resulting string - not the [StarlarkValue]
+     * structure - is what gets hashed via [String.hashCode] in [hash] to emulate Bazel/RJE's own
+     * repr-based hashing of Starlark values. The string format is therefore load-bearing rather
+     * than cosmetic: any deviation (extra/missing space, different separator) changes the hash even
+     * though the represented value is unchanged.
+     */
     fun render(value: StarlarkValue): String {
         return when (value) {
             StarlarkValue.None -> "None"
@@ -52,6 +60,15 @@ internal object StarlarkRepr {
     fun hash(value: String): Int = value.hashCode()
 }
 
+/**
+ * String escaping matching RJE/Bazel's specific conventions, not standard JSON escaping: control
+ * characters below 0x20 (other than \r, \n, \t) are emitted as `\xHH` rather than JSON's
+ * six-hex-digit backslash-u (`u00HH`) form.
+ * This function feeds both the rendered maven_install.json ([RulesJvmExternalLockfileRenderer]) and
+ * Starlark reprs ([StarlarkRepr.render]) that get hashed, so using standard backslash-u-style escaping
+ * here would produce byte-different output/hashes from what rules_jvm_external itself generates for
+ * any string containing such characters.
+ */
 internal fun rjeJsonString(value: String): String {
     return buildString {
         append('"')

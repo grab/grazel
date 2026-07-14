@@ -23,6 +23,14 @@ internal data class MavenPath(
     val fileName: String,
 ) {
     companion object {
+        /**
+         * Splits a Maven repository-relative path by `/` and derives group/module/version/
+         * fileName purely by position: the last segment is the file name, the two before it
+         * are version and module, and everything before that (dot-joined) is the group. This
+         * is an implicit format contract — it assumes a well-formed `<group-segments>/<module>/
+         * <version>/<file>` layout with at least 4 segments — that every other proxy/index
+         * function in this package relies on rather than re-deriving.
+         */
         fun parse(path: String): MavenPath? {
             val parts = path.split("/")
             if (parts.size < 4) return null
@@ -61,6 +69,14 @@ internal data class MavenCoordinates(
             .let(::File)
     }
 
+    /**
+     * Reconstructs the canonical `<module>-<version>[-classifier].<ext>` filename for this
+     * GAV, deriving the classifier as whatever follows the `<module>-<version>-` prefix. Bails
+     * out to the original [fileName] whenever [looksLikeDifferentVersionedMavenFileName] flags
+     * it as actually belonging to a different version of the same module, since blindly
+     * stripping a prefix in that case would fabricate a bogus classifier rather than leave the
+     * file alone.
+     */
     private fun canonicalMavenFileName(fileName: String): String {
         val extension = fileName.substringAfterLast('.', missingDelimiterValue = "")
             .takeIf { extension -> extension.isNotBlank() }
@@ -83,6 +99,15 @@ internal data class MavenCoordinates(
         }
     }
 
+    /**
+     * Guards [canonicalMavenFileName] against mistaking a same-module, different-version file
+     * for a classified artifact of the selected version. A [baseName] only counts as
+     * "different-versioned" when it starts with `<module>-`, does NOT start with the selected
+     * version's prefix, and the remainder after the module prefix begins with a digit — the
+     * digit check is the load-bearing heuristic distinguishing an actual version segment
+     * (e.g. `module-2.0-sources`) from a classifier that merely happens to not match the
+     * selected version prefix by coincidence.
+     */
     private fun looksLikeDifferentVersionedMavenFileName(
         baseName: String,
         selectedVersionPrefix: String,

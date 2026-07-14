@@ -30,6 +30,14 @@ internal class MavenLockfileRepositoryUrlRewriter(
     private val proxyToCanonicalUrl = repositoryRewrite.proxyToCanonicalUrl
     private val proxyPrefixesByDescendingLength = proxyToCanonicalUrl.keys.sortedByDescending(String::length)
 
+    /**
+     * Walks every section of the lockfile that can contain a repository URL, including object keys
+     * (the `repositories` map is keyed by repository URL, and `services`/`packages` maps may be too)
+     * - not just string values - since [rewriteJson] rewrites both. Each field is listed explicitly
+     * rather than reflectively because [RulesJvmExternalLockfile] fields that aren't touched here
+     * would silently retain stale proxy URLs in the emitted maven_install.json; any new field added
+     * to the lockfile model that can carry a repository URL must be added to this list too.
+     */
     fun rewrite(lockfile: RulesJvmExternalLockfile): RulesJvmExternalLockfile {
         return lockfile.copy(
             inputArtifactsHash = rewriteJson(lockfile.inputArtifactsHash).jsonObject,
@@ -63,6 +71,16 @@ internal class MavenLockfileRepositoryUrlRewriter(
         }
     }
 
+    /**
+     * Proxy prefixes are checked longest-first ([proxyPrefixesByDescendingLength]) so that when one
+     * proxy URL is a prefix of another (e.g. a repo-group proxy nested under a broader mirror
+     * proxy), the more specific match wins - checking shortest-first would let a broader prefix
+     * mask a more specific proxy mapping and rewrite to the wrong canonical repository. Trailing
+     * slashes are normalized in [lockfileRepositoryPrefix] because rules_jvm_external's own
+     * lockfiles are sensitive to exact URL formatting; leaving a canonical URL without a trailing
+     * slash while the original proxy one had it (or vice versa) would produce a lockfile RJE
+     * considers changed even though the effective repository is the same.
+     */
     private fun rewriteUrl(value: String): String {
         val proxyPrefix = proxyPrefixesByDescendingLength
             .firstOrNull { proxyUrl -> value.startsWith(proxyUrl) }

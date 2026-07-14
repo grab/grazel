@@ -73,6 +73,15 @@ internal abstract class CollectKspProcessorDependenciesTask : DefaultTask() {
         description = "Collects KSP processor dependencies for aggregated dependency resolution"
     }
 
+    /**
+     * Walks each KSP classpath's resolved root component via [ResolvedComponentsVisitor], keeping
+     * only components whose short id is in [kspDirectDependencyShortIds] (i.e. dependencies
+     * declared directly on the processor classpath rather than transitively pulled in), but for
+     * each match still flattens and records *its* full transitive dependency set. This couples
+     * processor-class extraction (artifact jars -> service-loader class names) with dependency
+     * graph traversal so the emitted [ResolvedDependency] entries carry both identity and their
+     * complete transitive closure in one pass.
+     */
     @TaskAction
     fun action() {
         val directDependencies = kspDirectDependencyShortIds.get()
@@ -153,6 +162,16 @@ internal abstract class CollectKspProcessorDependenciesTask : DefaultTask() {
                 }
         }
 
+        /**
+         * Wires one [WorkspaceKspProcessorClasspathInput] into the task's lazy providers, keeping
+         * three properties consistent with each other: [kspDirectDependencyShortIds] (the
+         * allow-list), [kspArtifacts] (resolved artifact files filtered down to *only* those
+         * direct short ids, mirroring the same filter used in [action]), and [kspRootComponents]
+         * plus [kspClasspathFiles] (the classpath's resolution root/files needed to walk and
+         * invalidate against). All three must stay filtered/registered consistently per input, or
+         * artifacts and dependency graph data drift apart and processor classes silently fail to
+         * resolve.
+         */
         internal fun addKspProcessorClasspathInput(
             task: CollectKspProcessorDependenciesTask,
             input: WorkspaceKspProcessorClasspathInput

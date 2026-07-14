@@ -288,6 +288,15 @@ internal abstract class MergeDeclaredDependencyMetadataTask : DefaultTask() {
     }
 }
 
+/**
+ * Snapshots declared-dependency metadata for every source project in parallel, bounded by
+ * [maxWorkerCount] via a [Semaphore] so large workspaces don't spawn unbounded concurrent
+ * snapshot work. Each finished snapshot is pushed onto a [Channel] and drained in *receive*
+ * order (i.e. completion order, not submission order) so that progress is reported against
+ * whichever project actually finished, while still emitting exactly [metadataSources] size
+ * results before merging - reordering or racing that receive loop against the launch loop would
+ * either under/over-count completions or misattribute progress messages.
+ */
 internal fun collectDeclaredDependencyMetadata(
     metadataSources: List<DeclaredProjectMetadataSource>,
     maxWorkerCount: Int,

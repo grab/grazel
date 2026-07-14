@@ -64,6 +64,14 @@ internal data class WorkspaceDependencyRootInput(
 }
 
 internal object WorkspaceDependencyRootInputPlanner {
+    /**
+     * Produces the complete set of [WorkspaceDependencyRootInput]s that [AggregatedDependencyResolver]
+     * will dispatch over. Binary-project roots (from app/`com.android.test` projects) are generated
+     * first, followed by lint roots for every migratable project, and the combined list is filtered
+     * to only configurations that [Configuration.isCanBeResolved] — this final filter, not the
+     * per-kind planning above, is what actually excludes non-resolvable configurations, so root
+     * generation itself doesn't need to duplicate that check per kind.
+     */
     fun plan(
         migratableProjects: Iterable<Project>,
         variantsByProject: Map<Project, Iterable<Variant<*>>>
@@ -90,6 +98,21 @@ internal object WorkspaceDependencyRootInputPlanner {
         return rootInputs.filter { rootInput -> rootInput.configuration.isCanBeResolved }
     }
 
+    /**
+     * Generates the MAIN_HIERARCHY / TEST_HIERARCHY / MAIN_LEAF (+ nested UNIT_TEST/ANDROID_TEST)
+     * root inputs for one app or standalone-test project, per variant. Kind selection and ordering
+     * both matter downstream in [AggregatedDependencyResolver.collectRootClosures]:
+     * - MAIN_HIERARCHY roots (every [Variant.isWorkspaceMainHierarchyRoot] AndroidBuild variant) are
+     *   emitted before TEST_HIERARCHY and MAIN_LEAF roots because the resolver establishes main
+     *   reachability from hierarchy roots first, then reuses it while resolving leaf/test roots.
+     * - MAIN_LEAF roots ([Variant.isWorkspaceAndroidLeaf]) additionally spawn nested UNIT_TEST and
+     *   ANDROID_TEST roots sharing the same [metadataVariant], since a leaf variant's test
+     *   classpaths are scoped to that specific leaf, not the whole hierarchy.
+     * - [standaloneTestProject] (an `com.android.test` project rather than an app) remaps every
+     *   hierarchy/leaf root's [targetBuckets] to [ANDROID_TEST_VARIANT] regardless of the variant's
+     *   own name (see [targetBuckets]) — a standalone test project's "main" classpath *is* Bazel's
+     *   androidTest bucket, since the whole module exists only to instrument another target.
+     */
     private fun planBinaryProjectRoots(
         project: Project,
         variants: Iterable<Variant<*>>

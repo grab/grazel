@@ -22,7 +22,20 @@ import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 
+/**
+ * Hand-rolled to match rules_jvm_external's own JSON emitter byte-for-byte rather than delegating
+ * to a generic JSON writer, because the generated maven_install.json is diffed and re-hashed by
+ * RJE itself: any deviation in key order, indentation, or which optional keys are emitted breaks
+ * that comparison even though the JSON would be semantically equivalent.
+ */
 internal object RulesJvmExternalLockfileRenderer {
+    /**
+     * Top-level key order is fixed and does not follow [RulesJvmExternalLockfile]'s property order -
+     * it replicates RJE's own emission order exactly. `conflict_resolution`, `m2local`, and
+     * `skipped` are only written when non-empty/true ([isNonEmptyContainer]), matching RJE's
+     * behavior of omitting these keys entirely rather than emitting empty/false placeholders; always
+     * emitting them would produce a lockfile RJE's own tooling would consider changed.
+     */
     fun render(lockfile: RulesJvmExternalLockfile): String {
         val lines = mutableListOf(
             "{",
@@ -63,6 +76,14 @@ internal object RulesJvmExternalLockfileRenderer {
             else -> true
         }
 
+    /**
+     * Custom pretty-printer mirroring RJE's own JSON emitter: object keys are sorted (unlike
+     * top-level lockfile keys, which follow [render]'s fixed order) and indentation/newline
+     * placement follows RJE's exact 2-space nesting convention. This precision matters for
+     * lockfile diff-stability - a semantically-identical but differently-formatted
+     * maven_install.json would show as a spurious diff in version control and could be rejected by
+     * RJE's signature validation.
+     */
     private fun jsonEncodeIndent(element: JsonElement, prefix: String): String {
         return when (element) {
             is JsonObject -> {

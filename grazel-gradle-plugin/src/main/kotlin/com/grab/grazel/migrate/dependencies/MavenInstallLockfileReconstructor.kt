@@ -21,6 +21,25 @@ internal class MavenInstallLockfileReconstructor(
 ) {
     private val repositoryUrlRewriter = MavenLockfileRepositoryUrlRewriter(repositoryRewrite)
 
+    /**
+     * Re-derives a maven_install.json produced against proxied repository URLs into one that is
+     * byte-identical to what rules_jvm_external would have generated against the canonical
+     * repositories. The steps are strictly ordered because each depends on the previous one's
+     * output:
+     *  1. Rewrite proxy URLs in the freshly-pinned lockfile back to canonical
+     *     ([MavenLockfileRepositoryUrlRewriter]) - hashing and facts merging below must only ever
+     *     see canonical URLs.
+     *  2. Merge in baseline facts ([BaselineLockfileFactsMerger]) so unchanged artifacts keep their
+     *     baseline-verified shasums instead of possibly-divergent freshly-resolved ones.
+     *  3. When there is no baseline at all, POM-packaging root artifacts cannot yet be safely
+     *     classified as resolved vs. skipped, so [requireBaselineForPomPackagingArtifacts] enforces
+     *     that invariant before normalization runs.
+     *  4. [PomPackagingSkipNormalizer.normalize] folds in the resulting POM-packaging skip rule.
+     *  5. Hashes are recomputed last, in the same order RJE computes them (input-artifacts hash
+     *     first, then resolved-artifacts hash over the now-finalized artifact/dependency data) -
+     *     computing them earlier would hash pre-merge, pre-normalization data and produce a lockfile
+     *     RJE itself would reject as tampered.
+     */
     fun reconstruct(
         lockfileContents: String,
         canonicalRepositoryInputs: List<String>,

@@ -19,6 +19,15 @@ package com.grab.grazel.gradle.dependencies
 import com.grab.grazel.bazel.starlark.BazelDependency.MavenDependency
 import com.grab.grazel.gradle.dependencies.model.ResolvedDependency
 
+/**
+ * Merges two sources of `maven_install` override targets: extension-configured overrides (only kept
+ * if [artifacts] actually contains that short ID — an override for an artifact not in this repo
+ * would be meaningless) and overrides already attached to artifacts by
+ * [MavenInstallRootArtifacts]'s owner-promotion logic ([ResolvedDependency.overrideTarget]). A
+ * result is dropped when its label is an exact self-reference back to [owningMavenRepoName]
+ * ([isExactSelfOverride]) — otherwise a promoted artifact could end up pointing a maven_install repo
+ * at itself, which `rules_jvm_external` cannot resolve.
+ */
 internal fun calculateMavenInstallOverrideTargets(
     artifacts: List<ResolvedDependency>,
     owningMavenRepoName: String,

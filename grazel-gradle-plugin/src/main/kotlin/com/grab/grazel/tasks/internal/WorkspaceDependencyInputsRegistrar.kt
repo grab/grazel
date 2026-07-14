@@ -30,6 +30,22 @@ import org.gradle.api.tasks.TaskProvider
 import java.util.concurrent.ConcurrentHashMap
 
 internal object WorkspaceDependencyInputsRegistrar {
+    /**
+     * Wires the KSP, workspace-root-metadata, resolve, compute and (optionally) pin-maven-
+     * artifacts tasks together. `computeTask` only needs `resolveWorkspaceDependenciesTask`'s
+     * output and is configured eagerly, right after registration. The remaining tasks - KSP,
+     * workspace-root-metadata, resolve, declared-dependency-metadata and (optionally)
+     * pin-maven-artifacts - have their per-project inputs (root components, KSP classpath inputs,
+     * declared-metadata sources, etc.) deliberately deferred to inside a `gradle.projectsEvaluated`
+     * callback. Variant and dependency-declaration data is only complete once every subproject has
+     * finished evaluating, so planning ([WorkspaceDependencyRootInputPlanner],
+     * [WorkspaceKspProcessorClasspathPlanner], [DeclaredProjectMetadataPlanner]) must happen there
+     * rather than at registration time. Those task providers configured inside that callback
+     * depend on each other only through these deferred inputs, so their relative configuration
+     * order there is a load-bearing, non-obvious invariant - reordering or moving any of them
+     * outside `projectsEvaluated` would silently configure them against incomplete
+     * variant/dependency data.
+     */
     fun register(
         rootProject: Project,
         variantBuilderProvider: Lazy<VariantBuilder>,

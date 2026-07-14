@@ -25,6 +25,17 @@ internal class LocalMavenPinningWorkspace(
     private val repositoryInputs: MavenInstallRepositoryInputs = MavenInstallRepositoryInputs(emptyMap()),
     private val metadataOnlyShortIds: Set<String> = emptySet(),
 ) {
+    /**
+     * Runs [block] with the WORKSPACE's `maven_install` repository URLs temporarily rewritten to
+     * point at local proxy servers (and any metadata-only `override_targets` entries - see
+     * [metadataOnlyShortIds] - stripped, since those targets don't exist under the proxy). This is
+     * necessary because RJE's pin scripts capture whatever repository URLs are live in the
+     * WORKSPACE at generation time; running them against the proxy is what allows local Maven
+     * resolution to intercept artifact fetches. The original text is captured before rewriting and
+     * restored in `finally` regardless of how [block] completes, so any code that runs after this
+     * call (e.g. lockfile hashing/reconstruction against canonical URLs) sees the real WORKSPACE -
+     * losing that restore would leave proxy URLs baked into the checked-in WORKSPACE.
+     */
     fun <T> withProxyRepositories(block: () -> T): T {
         val workspace = workspaceFile.readText()
         workspaceFile.writeText(
@@ -47,6 +58,14 @@ internal class LocalMavenPinningWorkspace(
         activeLockfiles(activeMavenRepos)
             .associate { (repoName, lockfile) -> repoName to lockfile.readText() }
 
+    /**
+     * Must run after the WORKSPACE has been restored to canonical URLs (i.e. after
+     * [withProxyRepositories] returns) - the reconstructor rewrites proxy URLs recorded in the
+     * just-generated lockfile back to canonical using [repositoryInputs], so it needs the canonical
+     * repository inputs, not the proxy ones. Failing with [error] when a repo has no
+     * [MavenInstallRepositoryInputs] entry is intentional: silently skipping reconstruction for that
+     * repo would leave proxy URLs or an unreconciled baseline in its lockfile.
+     */
     fun reconstructActiveLockfiles(
         activeMavenRepos: Set<String>,
         baselineLockfilesByRepoName: Map<String, String> = emptyMap(),
@@ -93,6 +112,16 @@ private fun workspaceWithoutMetadataOnlyOverrideTargets(
         .joinToString(separator = "\n", postfix = "\n")
 }
 
+/**
+ * Line-by-line brace-depth tracker that removes specific entries from a WORKSPACE
+ * `override_targets = { ... }` dict without parsing Starlark. It only tracks depth once inside the
+ * block (triggered by a line starting with `override_targets`) and closes the block when brace
+ * depth returns to zero, so it assumes each dict entry's braces (if any) are balanced within the
+ * lines they appear on and that `override_targets` is not nested inside another brace-containing
+ * construct on the same opening line. Formatting that violates those assumptions (e.g. a value
+ * spanning multiple unbalanced lines, or nested dicts sharing a line with the `override_targets`
+ * keyword) will mis-scope the removal.
+ */
 private class OverrideTargetsFilter(
     private val removedShortIds: Set<String>,
 ) {
@@ -124,6 +153,13 @@ private class OverrideTargetsFilter(
     }
 }
 
+/**
+ * Heuristically identifies an `override_targets` dict-entry key line of the form `"<short-id>":`
+ * without a real parser. Assumes the key is the first quoted string on the line and that it is
+ * immediately followed (modulo whitespace) by a colon - true for rules_jvm_external's own
+ * pretty-printed WORKSPACE dict entries, but not a general Starlark string/dict grammar (e.g. a
+ * quoted string used as a value rather than a key on its own line would be misread as a key).
+ */
 private fun overrideTargetKey(line: String): String? {
     val trimmed = line.trimStart()
     if (!trimmed.startsWith('"')) return null

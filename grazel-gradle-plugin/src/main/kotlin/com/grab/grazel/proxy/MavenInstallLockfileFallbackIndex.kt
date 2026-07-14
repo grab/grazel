@@ -79,6 +79,13 @@ private data class LockfileArtifactFallback(
     val gav: String?,
 )
 
+/**
+ * Derives which paths for one lockfile artifact entry may be trusted as an origin fallback.
+ * POM entries are allowed through even without a checksum (coursier fetches POMs without
+ * requiring a shasum entry), while every other extension is only trusted per-classifier if
+ * that classifier has a recorded shasum — an artifact the lockfile lists but never actually
+ * checksummed isn't something this proxy should let coursier fetch straight from origin.
+ */
 private fun fallbackForLockfileArtifact(
     artifactKey: String,
     artifactInfo: JsonObject,
@@ -111,6 +118,12 @@ private fun fallbackForLockfileArtifact(
     )
 }
 
+/**
+ * Reconstructs the Maven filename from a lockfile classifier key, treating the literal string
+ * `"jar"` as the sentinel for "no classifier" rather than a real classifier — matching
+ * coursier's `maven_install.json` convention where the main/no-classifier artifact is keyed as
+ * `"jar"` under `shasums` even for non-jar-only cases.
+ */
 private fun mavenPathForLockfileArtifact(
     coordinates: MavenCoordinates,
     extension: String,

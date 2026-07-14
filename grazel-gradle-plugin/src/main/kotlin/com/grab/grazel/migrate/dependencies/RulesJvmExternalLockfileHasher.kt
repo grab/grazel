@@ -53,6 +53,16 @@ internal object RulesJvmExternalLockfileHasher {
             )
         )
 
+    /**
+     * Builds one [ResolvedArtifactHashInfo] per (artifact, shasum-type) pair, keyed by
+     * `<artifact-key><hash-suffix>` via [MavenInstallLockfileArtifactKey.resolvedArtifactHashSuffix],
+     * mirroring rules_jvm_external's own internal Starlark data structures field-for-field so the
+     * final hash in [computeFinalHash] matches byte-for-byte. All iteration is explicitly sorted
+     * (artifacts by name, non-shasum fields by key, shasum types by type) because Starlark
+     * dict/hash construction order is part of what gets hashed - unsorted iteration from a JSON
+     * object would produce a different (but equally "correct" looking) hash on every run depending
+     * on JSON parse order.
+     */
     private fun resolvedArtifactHashes(lockfile: RulesJvmExternalLockfile): Map<String, Int> {
         val allInfos = linkedMapOf<String, ResolvedArtifactHashInfo>()
         lockfile.artifacts.entries.sortedBy { (dependency, _) -> dependency }
@@ -93,6 +103,19 @@ internal object RulesJvmExternalLockfileHasher {
         return computeFinalHash(allInfos)
     }
 
+    /**
+     * Reproduces rules_jvm_external's recursive "hash depends on my dependencies' hashes" scheme
+     * bottom-up, but as an explicit-stack DFS rather than actual recursion, since the dependency
+     * graph can be large enough to blow the JVM call stack. [backupHashes] (each artifact's own
+     * hash computed with no dependency_hashes at all) exists because the dependency graph may
+     * contain artifacts missing from [allInfos] (filtered out upstream) or cycles - in either case
+     * we cannot obtain a "final" hash for that dependency, so we fall back to its context-free hash
+     * rather than fail, matching RJE's own tolerance for incomplete graphs. The `stack`/`remaining`
+     * dance defers a node until all of its dependencies are finalized (or determined unreachable via
+     * backup), and correctness of the emitted hash for every artifact depends on this bottom-up
+     * order being followed exactly - hashing a node before its dependencies are settled would use
+     * a `0` placeholder instead of the correct child hash.
+     */
     private fun computeFinalHash(allInfos: LinkedHashMap<String, ResolvedArtifactHashInfo>): Map<String, Int> {
         val finalHashes = linkedMapOf<String, Int>()
         val backupHashes = allInfos.mapValuesTo(linkedMapOf()) { (_, value) ->
@@ -128,6 +151,14 @@ internal object RulesJvmExternalLockfileHasher {
     private fun starlarkHash(value: StarlarkValue): Int =
         StarlarkRepr.hash(StarlarkRepr.render(value))
 
+    /**
+     * Converts a JSON element into the Starlark type Bazel would have parsed it as. `booleanOrNull`
+     * is checked before `intOrNull` deliberately: both are lenient string-content parses of the same
+     * underlying [JsonPrimitive.content], and true/false booleans in this format are stored as JSON
+     * primitives rather than a dedicated boolean type, so testing int first could never misfire here
+     * but swapping the order would still be wrong in spirit - the ordering must mirror RJE's own
+     * JSON-to-Starlark disambiguation so the resulting repr (and therefore hash) matches exactly.
+     */
     private fun starlarkValue(element: JsonElement): StarlarkValue {
         return when (element) {
             is JsonObject -> StarlarkValue.DictValue(
@@ -158,6 +189,16 @@ private data class ResolvedArtifactHashInfo(
     var dependencies: List<String>? = null,
     var dependencyHashes: Map<String, Int>? = null,
 ) {
+    /**
+     * Assembles the exact ordered dict RJE's own Starlark hash function consumes:
+     * `standard`, `sha`, then optionally `repository`, `dependencies`, `dependency_hashes` - each
+     * included only once that data is known (repository/dependencies/dependency_hashes are populated
+     * in separate passes over the lockfile before hashing). Both field presence and field order are
+     * load-bearing: [StarlarkRepr.render] serializes dicts by iteration order, so a field appearing
+     * out of order or a field included/omitted differently than RJE's own construction would change
+     * the string being hashed and break byte-identical hash reproduction, even though the dict's
+     * "meaning" would be unchanged.
+     */
     fun toStarlarkFields(): StarlarkValue.DictValue {
         val fields = linkedMapOf(
             "standard" to StarlarkValue.DictValue(standard),

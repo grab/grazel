@@ -77,6 +77,14 @@ internal class LocalMavenProxyServer(
     private var engine: ApplicationEngine? = null
     private var boundBaseUrl: String? = null
 
+    /**
+     * Swaps in a fresh snapshot of Gradle-resolved facts and derives the two secondary
+     * indices ([indexedArtifactGavs], [knownMainArtifactExtensionsByGav]) that [serve] and
+     * [servePom] rely on for correctness: the former gates which GAVs may be POM-served from
+     * Gradle at all, the latter drives the alternate-artifact-probe short-circuit in
+     * [isKnownAlternateArtifactProbe]. Must run under [lock] since requests may be served
+     * concurrently against the previous snapshot until this completes.
+     */
     fun configure(
         artifactIndex: Map<String, File>,
         knownComponentGavs: Set<String>,
@@ -146,6 +154,19 @@ internal class LocalMavenProxyServer(
         return "http://127.0.0.1:$port".also { boundBaseUrl = it }
     }
 
+    /**
+     * Central dispatch for a proxied Maven request. The branch order is load-bearing and
+     * encodes the trust hierarchy this proxy exists to enforce: checksums and POMs are handled
+     * first since coursier probes them independently of the artifact index; a Gradle-resolved
+     * artifact (exact index hit) always wins over anything else; known-absent classifier/
+     * extension probes are rejected before touching the network; artifacts belonging to a
+     * fully known component that are nonetheless missing from the index are a hard failure
+     * (never silently fall back to origin, since that would let an origin-only artifact
+     * silently diverge from what Gradle actually resolved); only GAVs with no Gradle knowledge
+     * at all (or explicit lockfile/metadata-only allowances) are permitted to fall through to
+     * [serveFromCacheOrOrigin]. Reordering these branches would change which failures are
+     * silent and which are hard, so do not reshuffle them.
+     */
     private suspend fun serve(
         repoIndex: Int?,
         path: String,
@@ -200,6 +221,13 @@ internal class LocalMavenProxyServer(
         return serveFromCacheOrOrigin(repoIndex, path)
     }
 
+    /**
+     * Short-circuits coursier's routine "does this classifier/extension exist" probes without
+     * an origin round-trip, based on the extensions actually seen for this GAV in
+     * [knownMainArtifactExtensionsByGav]. Correctness depends entirely on that map having been
+     * fully populated for this GAV in [configure] beforehand; an empty entry is treated as "no
+     * information" (falls through rather than rejecting) rather than "known to have none".
+     */
     private fun isKnownAlternateArtifactProbe(path: String, gav: String?): Boolean {
         if (gav == null) return false
         val knownExtensions = knownMainArtifactExtensionsByGav[gav].orEmpty()
@@ -220,6 +248,13 @@ internal class LocalMavenProxyServer(
         return response
     }
 
+    /**
+     * Recurses into [serve] for the base artifact (with `countContentHit = false` so the base
+     * fetch doesn't double-count stats already attributed to the checksum request) and hashes
+     * the exact bytes/file returned, rather than trusting any origin-published checksum. This
+     * keeps checksums byte-identical to whatever this proxy actually served, which matters
+     * since Gradle-resolved artifacts may differ from origin.
+     */
     private suspend fun serveChecksum(repoIndex: Int, checksumPath: String): ServedResponse {
         val basePath = checksumBasePath(checksumPath)
         val baseResponse = serve(repoIndex, basePath, countContentHit = false)
@@ -234,6 +269,17 @@ internal class LocalMavenProxyServer(
         )
     }
 
+    /**
+     * Layers three sources of truth for a POM, short-circuiting as soon as one resolves:
+     * Gradle-resolved POM (only attempted if the GAV is in [indexedArtifactGavs], i.e. Gradle
+     * actually resolved an artifact for it) via [pomFileResolver]; then, only for a GAV that is
+     * additionally a fully [knownComponentGavs] member, a hard failure on
+     * [PomFileResolution.Unavailable] or a missing/nonexistent [PomFileResolution.Found] file —
+     * a known component's POM must never silently come from origin. Everything else (unknown
+     * GAVs, or known components that were never Gradle-indexed as artifacts at all) falls
+     * through to [serveFromCacheOrOrigin]. The [PomFileResolution.Unknown] case intentionally
+     * has no failure branch so unindexed GAVs can still reach the origin fallback.
+     */
     private suspend fun servePom(
         repoIndex: Int,
         path: String,
@@ -280,6 +326,15 @@ internal class LocalMavenProxyServer(
             message.toByteArray()
         )
 
+    /**
+     * Double-checked-locking around a per-`(repoIndex, path)` [Mutex] so concurrent requests
+     * for the same missing path coalesce into a single origin fetch: the cache is checked
+     * before acquiring the mutex (fast path), again immediately after acquiring it (in case a
+     * racing request already wrote through while we waited), and a third time after the fetch
+     * completes as a final belt-and-braces check before writing. The mutex is created lazily
+     * per key and removed again in `finally` once released, so [originMissMutexes] only ever
+     * holds entries for in-flight fetches rather than growing unbounded.
+     */
     private suspend fun serveFromCacheOrOrigin(repoIndex: Int, path: String): ServedResponse {
         val cachedFile = originCacheFile(repoIndex, path)
         if (cachedFile.exists()) {
@@ -359,6 +414,11 @@ internal class LocalMavenProxyServer(
         return ServedResponse.File(status, file)
     }
 
+    /**
+     * Writes via a sibling temp file plus an atomic move-with-overwrite so a reader that races
+     * with an in-progress origin fetch (from another proxy instance or a prior process) never
+     * observes a partially-written cache file.
+     */
     private fun writeThrough(file: File, bytes: ByteArray) {
         file.parentFile.mkdirs()
         val temp = createTempFile(
@@ -457,6 +517,13 @@ private fun concreteGavFromMavenPathOrNull(path: String): String? {
 private fun artifactExtension(path: String): String =
     path.substringAfterLast('.', missingDelimiterValue = "")
 
+/**
+ * Recognizes only the canonical "main" artifact filename for a GAV (`<module>-<version>.<ext>`,
+ * no classifier) and returns its extension; classified artifacts return null. Feeding these
+ * pairs into [knownMainArtifactExtensionsByGav] tells [isKnownAlternateArtifactProbe] which
+ * extensions are known to exist for a GAV so probes for anything else can be rejected without
+ * an origin round-trip.
+ */
 private fun mainArtifactExtensionByGav(path: String): Pair<String, String>? {
     val mavenPath = MavenPath.parse(path) ?: return null
     val extension = artifactExtension(path).takeIf(String::isNotBlank) ?: return null
