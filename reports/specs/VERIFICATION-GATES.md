@@ -63,13 +63,17 @@ Run in order:
    cd /Users/arun.sampathkumar/work/pax-android
    ./gradlew migrateToBazel --no-daemon --console=plain --stacktrace --rerun-tasks
    ```
-2. **Diff shape** (read-only):
+2. **Clean-tree check** (read-only). PAX HEAD now carries the accepted
+   generated output as **committed**, so a byte-identical migrate leaves the
+   tree **clean**:
    ```bash
+   git -C /Users/arun.sampathkumar/work/pax-android status --porcelain
    git -C /Users/arun.sampathkumar/work/pax-android diff --check
-   git -C /Users/arun.sampathkumar/work/pax-android diff --stat | tail -1
    ```
-   Accepted baseline: **1854 files changed, 68 insertions(+), 775167
-   deletions(-)**. A byte-identical plugin change leaves this shape unchanged.
+   Pass condition: `status --porcelain` prints **nothing** — no modified files,
+   no untracked generated files. Any modified/untracked generated file is a
+   **regression**. (Superseded baseline, from when output was uncommitted in the
+   working tree: `1854 files changed, 68 insertions(+), 775167 deletions(-)`.)
 3. **Size guard** (run from the grazel repo root):
    ```bash
    reports/scripts/verify-pax-size-guard.sh --mode preserving
