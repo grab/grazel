@@ -22,7 +22,6 @@ import com.grab.grazel.gradle.dependencies.model.CandidateMavenRepoKind.VARIANT
 import com.grab.grazel.gradle.dependencies.model.ResolvedDependency
 import com.grab.grazel.gradle.dependencies.model.WorkspaceDependencies
 import com.grab.grazel.gradle.dependencies.model.WorkspacePlan
-import com.grab.grazel.migrate.dependencies.toMavenRepoName
 
 internal class WorkspacePlanBuilder(
     private val configuredOverrideTargets: Map<String, String> = emptyMap()

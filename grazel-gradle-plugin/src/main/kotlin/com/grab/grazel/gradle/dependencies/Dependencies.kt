@@ -42,7 +42,6 @@ import com.grab.grazel.gradle.variant.declarationBucketName
 import com.grab.grazel.gradle.variant.id
 import com.grab.grazel.gradle.variant.isTest
 import com.grab.grazel.gradle.variant.migratableConfigurations
-import com.grab.grazel.migrate.dependencies.toMavenRepoName
 import com.grab.grazel.util.GradleProvider
 import com.grab.grazel.util.addTo
 import org.gradle.api.Project

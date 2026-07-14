@@ -18,6 +18,7 @@ package com.grab.grazel.tasks.internal
 
 import com.grab.grazel.di.GradleServices
 import com.grab.grazel.di.GrazelComponent
+import com.grab.grazel.gradle.dependencies.LocalMavenResolvedFactsBuilder
 import com.grab.grazel.gradle.dependencies.model.ResolvedDependency
 import com.grab.grazel.gradle.dependencies.model.WorkspacePlan
 import com.grab.grazel.gradle.dependencies.model.WorkspaceRenderPlan
@@ -30,7 +31,6 @@ import com.grab.grazel.migrate.dependencies.MavenInstallRepositoryInputs
 import com.grab.grazel.migrate.dependencies.MavenInstallRepositoryRewrite
 import com.grab.grazel.migrate.dependencies.repositoryUrls
 import com.grab.grazel.proxy.LocalMavenProxyService
-import com.grab.grazel.proxy.LocalMavenResolvedFactsBuilder
 import com.grab.grazel.proxy.activeMavenInstallLockfileFallbackIndex
 import com.grab.grazel.util.fromJson
 import com.grab.grazel.util.GradleProvider

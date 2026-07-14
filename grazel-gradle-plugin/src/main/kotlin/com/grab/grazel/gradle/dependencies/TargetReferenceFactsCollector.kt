@@ -22,8 +22,6 @@ import com.grab.grazel.bazel.starlark.BazelDependency.ProjectDependency
 import com.grab.grazel.bazel.starlark.BazelDependency.StringDependency
 import com.grab.grazel.gradle.dependencies.model.TargetReferenceFacts
 import com.grab.grazel.gradle.dependencies.model.WorkspaceRenderPlan
-import com.grab.grazel.migrate.dependencies.BASE_MAVEN_REPO
-import com.grab.grazel.migrate.dependencies.MAVEN_COMPILE_FILTER_TAG_PREFIX
 
 internal object TargetReferenceFactsCollector {
     private val projectLabelPattern = Regex("""^//([^:]+):([^:]+)$""")

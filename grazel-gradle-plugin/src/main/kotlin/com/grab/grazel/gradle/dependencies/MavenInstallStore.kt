@@ -18,7 +18,6 @@ package com.grab.grazel.gradle.dependencies
 
 import com.grab.grazel.bazel.starlark.BazelDependency.MavenDependency
 import com.grab.grazel.gradle.variant.DEFAULT_VARIANT
-import com.grab.grazel.migrate.dependencies.toMaterializedMavenRepoName
 import java.util.concurrent.ConcurrentHashMap
 
 /** Data structure to hold information about generated maven repositories in `WORKSPACE` */

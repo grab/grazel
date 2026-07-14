@@ -16,6 +16,7 @@
 
 package com.grab.grazel.migrate.dependencies
 
+import com.grab.grazel.gradle.dependencies.BASE_MAVEN_REPO
 import java.io.File
 
 internal class LocalMavenPinningWorkspace(

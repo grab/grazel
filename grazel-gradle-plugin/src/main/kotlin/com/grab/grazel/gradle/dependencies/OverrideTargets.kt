@@ -18,7 +18,6 @@ package com.grab.grazel.gradle.dependencies
 
 import com.grab.grazel.bazel.starlark.BazelDependency.MavenDependency
 import com.grab.grazel.gradle.dependencies.model.OverrideTarget
-import com.grab.grazel.migrate.dependencies.toMavenRepoName
 
 internal fun mavenOverrideTarget(shortId: String, bucketName: String): OverrideTarget {
     return OverrideTarget(

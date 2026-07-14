@@ -29,6 +29,7 @@ import com.grab.grazel.gradle.dependencies.model.CandidateMavenRepoKind.VARIANT
 import com.grab.grazel.gradle.dependencies.model.ExcludeRule
 import com.grab.grazel.gradle.dependencies.model.ResolvedDependency
 import com.grab.grazel.gradle.dependencies.model.WorkspacePlan
+import com.grab.grazel.gradle.dependencies.toMavenRepoName
 import com.grab.grazel.gradle.variant.DEFAULT_VARIANT
 import com.grab.grazel.maven.MavenCoordinates
 import org.gradle.api.artifacts.repositories.PasswordCredentials

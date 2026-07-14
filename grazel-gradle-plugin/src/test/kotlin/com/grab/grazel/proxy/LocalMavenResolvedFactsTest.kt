@@ -17,6 +17,11 @@
 package com.grab.grazel.proxy
 
 import com.grab.grazel.fake.fakeComponentResult
+import com.grab.grazel.gradle.dependencies.GradleModuleCacheFileIndexBuilder
+import com.grab.grazel.gradle.dependencies.GradlePomFileResolver
+import com.grab.grazel.gradle.dependencies.ResolvedArtifactIndexBuilder
+import com.grab.grazel.gradle.dependencies.ResolvedComponentIndexBuilder
+import com.grab.grazel.gradle.dependencies.metadataOnlyComponentGavs
 import org.gradle.api.artifacts.ModuleIdentifier
 import org.gradle.api.artifacts.component.ComponentArtifactIdentifier
 import org.gradle.api.artifacts.component.ComponentIdentifier

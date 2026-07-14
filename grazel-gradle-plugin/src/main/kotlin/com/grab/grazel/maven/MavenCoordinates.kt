@@ -18,34 +18,6 @@ package com.grab.grazel.maven
 
 import java.io.File
 
-internal data class MavenPath(
-    val coordinates: MavenCoordinates,
-    val fileName: String,
-) {
-    companion object {
-        /**
-         * Splits a Maven repository-relative path by `/` and derives group/module/version/
-         * fileName purely by position: the last segment is the file name, the two before it
-         * are version and module, and everything before that (dot-joined) is the group. This
-         * is an implicit format contract — it assumes a well-formed `<group-segments>/<module>/
-         * <version>/<file>` layout with at least 4 segments — that every other proxy/index
-         * function in this package relies on rather than re-deriving.
-         */
-        fun parse(path: String): MavenPath? {
-            val parts = path.split("/")
-            if (parts.size < 4) return null
-            return MavenPath(
-                coordinates = MavenCoordinates(
-                    group = parts.dropLast(3).joinToString("."),
-                    module = parts[parts.lastIndex - 2],
-                    version = parts[parts.lastIndex - 1],
-                ),
-                fileName = parts.last()
-            )
-        }
-    }
-}
-
 internal data class MavenCoordinates(
     val group: String,
     val module: String,
@@ -143,11 +115,4 @@ internal data class MavenCoordinates(
             return parseOrNull(gav) ?: error("Expected group:name:version coordinate, got $gav")
         }
     }
-}
-
-internal fun isConcreteMavenArtifactPath(path: String): Boolean {
-    if (path.endsWith(".pom") || path.endsWith(".module")) return false
-    if (path.endsWith(".sha1") || path.endsWith(".md5") || path.endsWith(".sha256")) return false
-    if (path.endsWith("maven-metadata.xml")) return false
-    return MavenPath.parse(path) != null
 }

@@ -24,7 +24,6 @@ import com.grab.grazel.gradle.variant.ANDROID_TEST_VARIANT
 import com.grab.grazel.gradle.variant.DEFAULT_VARIANT
 import com.grab.grazel.gradle.variant.LINT_VARIANT
 import com.grab.grazel.gradle.variant.TEST_VARIANT
-import com.grab.grazel.migrate.dependencies.toMavenRepoName
 
 internal class WorkspaceRenderPlanBuilder(
     alwaysMaterializedVariants: Set<String> = setOf(

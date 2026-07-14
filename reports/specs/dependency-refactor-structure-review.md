@@ -3,9 +3,10 @@
 Scope: package placement, file organization, and cross-file ordering/naming for the changed
 code on `arun/dependencies-refactor` (repo root `/Users/arun.sampathkumar/work/grazel`).
 
-**This is a report only. No `.kt` file was edited.** Every recommendation is deferred to human
-review because the branch is byte-identity-gated: any move that shifts imports or line offsets
-can perturb generated-output hashes, and packaging churn on already-reviewed files is expensive.
+**Status (2026-07-14): all six findings resolved on this branch** as the structure tier of the
+pre-merge code-quality pass (see `2026-07-14-branch-code-quality-pass-plan.md`), each verified
+behaviour-preserving through the golden byte-identity gate. Per-finding resolution notes are in the
+Summary section below. The original report text is retained for context.
 
 Findings are ordered by confidence/value. Each carries a risk note covering imports touched,
 Groovy-consumed (public) API surface, and git-blame cost.
@@ -188,11 +189,22 @@ Groovy-consumed (public) API surface, and git-blame cost.
 
 1. Move `toMavenRepoName` naming family from `migrate.dependencies` to `gradle.dependencies`
    (fixes a layering inversion; **public API**, highest blame cost).
+   **Applied:** moved to `gradle/dependencies/MavenRepoNaming.kt` and made `internal` (they are
+   pipeline implementation details, not intended plugin API), removing the public-surface concern.
 2. Rename `MavenRepositoryPath.kt` to match its `MavenPath`/`MavenCoordinates` types (lowest risk).
+   **Applied:** split into `maven/MavenCoordinates.kt` + `maven/MavenPath.kt`.
 3. Move Gradle fact-collection builders out of `proxy/LocalMavenResolvedFacts.kt` into
-   `gradle.dependencies`, splitting the 417-line file (highest effort).
+   `gradle.dependencies`, splitting the file (highest effort).
+   **Applied:** builders/resolvers moved to `gradle/dependencies/LocalMavenResolvedFactsBuilder.kt`,
+   `GradleModuleCacheFileResolver.kt`, `GradlePomFileResolver.kt`; the DTO `LocalMavenResolvedFacts`
+   plus `PomFileResolver`/`PomFileResolution` stay in `proxy` as the hand-off surface.
 4. Relocate the rje package-overview KDoc off `RulesJvmExternalLockfile.kt` to the subsystem anchor.
-5. Rename `TasksManager.kt` -> `TaskManager.kt` to match the class.
-6. Split `JvmVariant`/`JvmVariantData` out of `Variant.kt`.
+   **Moot / superseded:** the misplaced overview block this referenced was reverted before the
+   documentation pass; the pass instead placed the rje orientation directly on the subsystem anchor
+   `MavenInstallLockfileReconstructor` (its ordered-steps class KDoc), which is exactly the desired
+   end-state. `RulesJvmExternalLockfile.kt` now carries only model+parser-scoped docs. No move needed.
+5. Rename `TasksManager.kt` -> `TaskManager.kt` to match the class. **Applied.**
+6. Split `JvmVariant`/`JvmVariantData` out of `Variant.kt`. **Applied:** moved to
+   `gradle/variant/JvmVariant.kt`; `Variant.kt` retains the interface + shared vocabulary.
 
-All are deferred to human review; none were applied.
+All six resolved; verified byte-identical through the golden gate.

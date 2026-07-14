@@ -19,6 +19,8 @@ package com.grab.grazel.migrate.dependencies
 import com.grab.grazel.bazel.starlark.BazelDependency
 import com.grab.grazel.bazel.starlark.BazelDependency.MavenDependency
 import com.grab.grazel.bazel.starlark.BazelDependency.ProjectDependency
+import com.grab.grazel.gradle.dependencies.BASE_MAVEN_REPO
+import com.grab.grazel.gradle.dependencies.MAVEN_COMPILE_FILTER_TAG_PREFIX
 import java.util.TreeSet
 
 private fun MavenDependency.mavenTag(): String = copy(repo = BASE_MAVEN_REPO).toString()

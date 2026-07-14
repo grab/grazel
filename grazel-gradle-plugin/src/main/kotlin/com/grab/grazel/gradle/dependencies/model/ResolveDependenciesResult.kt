@@ -17,6 +17,7 @@
 package com.grab.grazel.gradle.dependencies.model
 
 import com.grab.grazel.bazel.starlark.BazelDependency
+import com.grab.grazel.gradle.dependencies.toMavenRepoName
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import org.gradle.api.artifacts.result.ResolvedComponentResult
