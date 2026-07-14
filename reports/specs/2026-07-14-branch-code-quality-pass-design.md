@@ -77,9 +77,16 @@ actually move.
 
 Comment-only. Cannot alter generated output. Local gate only.
 
-- Re-run the by-feature **Opus documentation workflow**, git-locked: agents
-  receive only file-path lists; no git, no bash-git, no writes outside their
-  assigned files.
+- Re-run the by-feature **documentation workflow** on **Sonnet** agents (never
+  Haiku), git-locked: agents receive only file-path lists; no git, no bash-git,
+  no writes outside their assigned files.
+- **Scope = the diff.** Document only declarations added/materially changed in
+  `origin/master...HEAD`; unchanged neighbours are out of scope.
+- **Complexity stack-ranker.** A ranking phase scores each changed unit; only
+  units above the bar get KDoc. Trivial/self-evident code (getters, data
+  holders, one-line delegators) is left undocumented. Docs must add intent,
+  invariants, and coupling the code cannot state for itself — **regurgitating
+  the signature in prose is a defect**, and the adversarial verifier deletes it.
 - Partition the branch's changed main + test sources into cohesive feature
   clusters:
   1. Bucket algorithm (`BucketOwnershipPlanner`, `DependencyBucketPlacementEngine`,
@@ -92,11 +99,12 @@ Comment-only. Cannot alter generated output. Local gate only.
      `WorkspaceRenderPlanBuilder`, and collaborators).
   6. Artifact pinning (`ArtifactPinner`, `PinMavenArtifactsTask`, pinning
      workspace).
-- One Opus writer per cluster → inline KDoc oriented to a reader with zero
-  prior context. Primary, non-negotiable target: `BucketOwnershipPlanner.kt`.
-- **Adversarial verification pass**: read-only verifier agents check each
-  cluster's docs for factual drift against the code (does the KDoc describe what
-  the code actually does?). Inaccurate docs are corrected before commit.
+- One Sonnet writer per cluster → inline KDoc, on the ranker's document-worthy
+  targets only, oriented to a reader with zero prior context. Primary,
+  non-negotiable target: the complex parts of `BucketOwnershipPlanner.kt`.
+- **Adversarial verification pass**: read-only Sonnet verifiers flag both
+  factual drift (KDoc misdescribing the code) and regurgitation/trivial docs
+  (KDoc that merely restates the code). Both are corrected/deleted before commit.
 - Documentation is descriptive only — no code statements change, so the golden
   hash cannot move. If it does, a doc introduced a non-comment edit and is reverted.
 

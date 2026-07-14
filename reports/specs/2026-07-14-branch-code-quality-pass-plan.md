@@ -90,35 +90,43 @@ git commit -m "docs: correct PAX gate to clean-HEAD semantics"
 
 **Files (documented in place; no signatures change):**
 - Modify (primary): `grazel-gradle-plugin/src/main/kotlin/com/grab/grazel/gradle/dependencies/BucketOwnershipPlanner.kt` (879 lines, 0 KDoc)
-- Modify (clusters): `gradle/dependencies/` (bucket algorithm + workspace/render plan), `proxy/` (local-maven), `migrate/dependencies/` (rje lockfile, pinning), `gradle/variant/` (variant facts) — main + test sources changed on the branch.
+- Modify (clusters): ONLY the `.kt` files that appear in `origin/master...HEAD` (bucket algorithm, local-maven proxy, rje lockfile, variant/config facts, workspace/render plan, pinning). Pre-existing/unchanged files are out of scope.
 - Create (workflow script): `scratchpad/restore-branch-docs.workflow.js`
+
+**Documentation rubric (binding on every agent):**
+- **Scope = the diff.** Document only declarations added or materially changed on this branch. Do not touch unchanged neighbours.
+- **Complexity earns docs.** A stack-ranker gates what gets documented. Only units above the complexity bar get KDoc; simple, self-evident code is left undocumented.
+- **No regurgitation.** A doc that restates the signature/code in prose is a defect (e.g. 4 lines of KDoc paraphrasing 4 obvious lines). KDoc must add what the code cannot say for itself: intent, invariants, why-this-shape, ordering/coupling constraints, non-obvious edge cases. If there is nothing non-obvious to say, add nothing.
+- **Comment-only.** No non-comment token changes → golden hash unchanged.
 
 **Interfaces:**
 - Consumes: the branch diff file-list (computed in Step 1 by the orchestrator, NOT by agents).
-- Produces: inline KDoc only. No code statement changes → golden hash unchanged.
+- Produces: inline KDoc only on high-complexity changed units. No code statement changes → golden hash unchanged.
 
-- [ ] **Step 1: Compute the cluster file-lists (orchestrator only)**
+- [ ] **Step 1: Compute the changed-file list (orchestrator only)**
 
 ```bash
 cd /Users/arun.sampathkumar/work/grazel
 git diff --name-only origin/master...HEAD -- '*.kt' | sort
 ```
-Partition the result into the six clusters from the spec (bucket algorithm; local-maven proxy; rje lockfile; variant/config facts; workspace/render plan; artifact pinning). Keep the six path-lists in the orchestrator; each becomes one agent's `args`.
+Partition ONLY these changed files into the six clusters (bucket algorithm; local-maven proxy; rje lockfile; variant/config facts; workspace/render plan; artifact pinning). Keep the six path-lists in the orchestrator; each becomes one agent's `args`.
 
 - [ ] **Step 2: Author the git-locked doc workflow script**
 
 Write `scratchpad/restore-branch-docs.workflow.js`. Requirements the script MUST enforce:
-- One writer agent per cluster (model: opus), given ONLY its file-path list and the instruction to add KDoc for a zero-context reader — class-level "what/why/how it fits the pipeline" plus non-obvious member docs. Explicitly forbid: editing any file outside the list, running git, changing any non-comment token.
-- After all writers: one adversarial read-only verifier agent per cluster (model: opus) that reads the cluster's files and reports any KDoc that misdescribes the code (drift), returning structured `{file, line, issue}` findings. Verifiers have NO write and NO git access.
-- The orchestrator (this session), not the agents, applies verifier-flagged corrections.
-- `meta.phases`: `[{title:'Document'},{title:'Verify'}]`. Use `pipeline()` so each cluster verifies as soon as its docs are written.
+- **All agents `model: 'sonnet'`** (never Haiku — the git-wipe incident agent was Haiku; and Sonnet is the right tier for substantive documentation judgement).
+- **Rank phase (per cluster).** A ranker agent reads the cluster's changed declarations (given only paths + the changed-symbol names) and returns a structured stack-rank: `{file, symbol, line, complexityScore (1-5), documentWorthy: bool, reason}`. `documentWorthy` is true only for scores at/above the bar (≈3+): non-trivial control flow, load-bearing invariants, cross-file coupling, subtle ordering. Getters, data-class holders, one-line delegators → `documentWorthy: false`.
+- **Write phase (per cluster).** A writer agent receives ONLY its file-path list + the ranker's `documentWorthy` targets for that cluster, and documents exactly those, honouring the rubric above (intent/invariants, never regurgitation). Explicitly forbid: documenting non-worthy units, editing files outside the list, running git, changing any non-comment token.
+- **Verify phase (per cluster).** An adversarial read-only verifier agent reports (a) KDoc that misdescribes the code (drift) and (b) **KDoc that merely regurgitates the code / documents a trivial unit** — both as structured `{file, line, issue, action: 'fix'|'delete'}`. No write, no git.
+- The orchestrator (this session), not the agents, applies verifier-flagged fixes/deletions.
+- `meta.phases`: `[{title:'Rank'},{title:'Document'},{title:'Verify'}]`. Use `pipeline()` so each cluster flows Rank→Document→Verify independently.
 
 - [ ] **Step 3: Run the workflow**
 
 ```bash
 # via the Workflow tool: {scriptPath: "scratchpad/restore-branch-docs.workflow.js"}
 ```
-Then apply any verifier-confirmed doc corrections inline (orchestrator edits, not agents).
+Then apply verifier-confirmed corrections inline (orchestrator edits, not agents): fix drift, delete regurgitated/trivial docs.
 
 - [ ] **Step 4: Confirm docs are comment-only (no code moved)**
 
