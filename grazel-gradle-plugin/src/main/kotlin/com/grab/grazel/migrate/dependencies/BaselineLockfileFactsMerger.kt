@@ -28,10 +28,12 @@ import kotlinx.serialization.json.jsonPrimitive
  * [MavenLockfileRepositoryUrlRewriter]) against the baseline lockfile that shipped before local
  * Maven resolution ran. The goal is byte-identical RJE output: reconstruction is a best-effort
  * re-derivation, so wherever an artifact's facts already match the baseline in every field except
- * `shasums`, we treat the baseline's shasum as authoritative and additionally assert
- * ([requireSameShasums]) that reconstruction produced the *same* shasum - a mismatch there means
- * reconstruction silently resolved a different artifact and must fail loudly rather than emit a
- * lockfile that diffs from what rules_jvm_external itself would produce.
+ * `shasums`, we assert ([requireSameShasums]) that reconstruction also produced the *same* shasum
+ * and otherwise keep the current entry unchanged - there is no substitution of baseline values.
+ * A mismatch there means reconstruction silently resolved a different artifact and must fail
+ * loudly rather than emit a lockfile that diffs from what rules_jvm_external itself would
+ * produce. (The skipped-array merge in [mergedSkippedArtifacts] is what actually reconciles
+ * differing output between current and baseline.)
  */
 internal object BaselineLockfileFactsMerger {
 

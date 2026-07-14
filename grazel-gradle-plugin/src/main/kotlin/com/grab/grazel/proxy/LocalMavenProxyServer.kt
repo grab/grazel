@@ -162,10 +162,12 @@ internal class LocalMavenProxyServer(
      * extension probes are rejected before touching the network; artifacts belonging to a
      * fully known component that are nonetheless missing from the index are a hard failure
      * (never silently fall back to origin, since that would let an origin-only artifact
-     * silently diverge from what Gradle actually resolved); only GAVs with no Gradle knowledge
-     * at all (or explicit lockfile/metadata-only allowances) are permitted to fall through to
-     * [serveFromCacheOrOrigin]. Reordering these branches would change which failures are
-     * silent and which are hard, so do not reshuffle them.
+     * silently diverge from what Gradle actually resolved); a concrete GAV that Gradle has no
+     * knowledge of at all is likewise hard-failed, not sent to origin. Only requests that aren't
+     * concrete artifact paths at all - maven-metadata.xml paths and paths that don't parse as a
+     * GAV - plus the explicit metadata-only and lockfile-allowed-origin allowances, are permitted
+     * to fall through to [serveFromCacheOrOrigin]. Reordering these branches would change which
+     * failures are silent and which are hard, so do not reshuffle them.
      */
     private suspend fun serve(
         repoIndex: Int?,

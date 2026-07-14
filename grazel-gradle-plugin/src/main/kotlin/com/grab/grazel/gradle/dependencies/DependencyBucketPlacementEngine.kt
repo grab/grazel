@@ -644,9 +644,11 @@ private data class OwnerBucketSpec(
  * Resolves a candidate owner-bucket name (as referenced by a declared dependency) back to a full
  * [BucketPlacementVariantInput], since placement needs the owner's typed flavor/buildType
  * decomposition, not just its name. A direct match against an existing leaf variant is tried first;
- * otherwise the name is matched against every leaf's synthesized [candidateOwnerBucketSpecs] map -
- * any qualifying leaf yields an identical [OwnerBucketSpec] for a given name (the spec was built
- * from the exact typed parts that produced that name), so it's safe to read the spec off the first
+ * otherwise the name is matched against every leaf's synthesized [candidateOwnerBucketSpecs] map.
+ * Any qualifying leaf yields the same [OwnerBucketSpec] for a given name (the spec was built from
+ * the exact typed parts that produced that name) *provided* bucket names are unique per typed
+ * decomposition — which holds because AGP enforces flavor-name uniqueness across dimensions; the
+ * code does not itself verify this. Given that convention it's safe to read the spec off the first
  * matching leaf rather than needing agreement across all of them.
  */
 private fun ownerVariantFor(
@@ -681,8 +683,8 @@ private fun ownerVariantFor(
     if (matchingLeafCandidates.isEmpty()) return null
 
     // Look up the typed spec for bucketName from any candidate leaf — every qualifying leaf
-    // has an identical OwnerBucketSpec for a given name (the spec is constructed from the
-    // typed parts that produced the name, so there is no ambiguity).
+    // has the same OwnerBucketSpec for a given name (the spec is constructed from the typed
+    // parts that produced the name), which is unambiguous given AGP's flavor-name uniqueness.
     val spec = specsByLeaf[matchingLeafCandidates.first()]?.get(bucketName) ?: return null
 
     val ownerFlavors = spec.flavors

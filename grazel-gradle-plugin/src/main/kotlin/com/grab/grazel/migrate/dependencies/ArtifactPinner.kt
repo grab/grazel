@@ -134,9 +134,10 @@ constructor(
 
     /**
      * Probes pin status without actually repinning. The [PINNED_MAVEN_INSTALL_MARKER] check is a
-     * cheap short-circuit: if the WORKSPACE still has a repo's pinned load/call commented out, no
-     * maven_install.json has ever been generated for it, so pinning is unconditionally required and
-     * we skip straight to `true` rather than paying for a bazel build.
+     * cheap short-circuit: if the WORKSPACE still has a repo's `maven_install_json` attribute
+     * commented out (the `#maven_install_json` marker), no maven_install.json has ever been
+     * generated for it, so pinning is unconditionally required and we skip straight to `true`
+     * rather than paying for a bazel build.
      *
      * Otherwise we temporarily flip `fail_if_repin_required` to `true` (see [failWhenOutOfDate]) so
      * that building a single probe target per repo fails fast with rules_jvm_external's own

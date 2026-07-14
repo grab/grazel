@@ -44,6 +44,7 @@ internal fun groupCoveredDependenciesByShortId(
  * The foundational set-subtraction primitive reused by every higher-level coverage/closure rule in
  * this cluster: for each dependency, finds among the candidates that [CoveredDependency.canCover]
  * it the *best* kind of match, and reacts differently depending on which kind won:
+ * - if no candidate [CoveredDependency.canCover]s the dependency at all, it is kept unchanged;
  * - an exact artifact-identity match ([hasSameResolvedArtifactIdentityAs]) or a closure
  *   superset match ([rootsSupersetClosureOf]) both fully subtract the dependency - either is
  *   strong enough evidence the covering bucket genuinely already provides it;
@@ -51,7 +52,8 @@ internal fun groupCoveredDependenciesByShortId(
  *   dependency survives but is annotated with an [OverrideTarget] pointing at its cover, so
  *   downstream rendering can defer to the covering bucket's version instead of duplicating a
  *   declaration;
- * - anything else falls through and is kept as-is.
+ * - any other covered case (a same-owner-identity match where the two sides are not both direct)
+ *   is subtracted (dropped), not kept.
  *
  * Preferring exact-identity, then superset-closure, then first-match (in that order) - rather than
  * whichever candidate happened to be found first - is itself an invariant: it ensures the strongest

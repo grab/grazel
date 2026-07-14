@@ -84,9 +84,11 @@ internal class GradleModuleCacheFileResolver(
      * Gradle's `modules-2` cache stores each artifact under a hash-named subdirectory
      * (`<group>/<module>/<version>/<hash>/<file>`) with no guaranteed enumeration order, so
      * both the hash directories and the files within each are explicitly sorted by name here
-     * to give deterministic candidate ordering — required so that matching logic (e.g.
-     * [singleMavenFileOrNull]) behaves reproducibly across JVM/filesystem runs rather than
-     * depending on incidental directory-listing order.
+     * to give deterministic candidate ordering. Because [singleMavenFileOrNull] only returns a
+     * value when all candidates are byte-identical (and hard-fails on any genuine divergence),
+     * this ordering does not change the served bytes — it only makes *which* identical-content
+     * file is returned, and any error-message text, stable across JVM/filesystem runs rather than
+     * dependent on incidental directory-listing order.
      */
     private fun cacheFilesUncached(coordinates: MavenCoordinates): List<File> =
         cacheDirectory(coordinates)

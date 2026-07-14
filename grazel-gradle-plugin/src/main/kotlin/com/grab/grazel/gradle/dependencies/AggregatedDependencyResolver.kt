@@ -848,8 +848,10 @@ internal class AggregatedDependencyResolver(
  *   declaration's excludes are additive since it was never actually resolved with them applied);
  *   when both sides are real resolved records, rules are intersected, matching the "excluded only if
  *   excluded everywhere" semantics used elsewhere in this file.
- * - `requiresJetifier`, `jetifierSource`, `overrideTarget`, `processorClass` all prefer the winner's
- *   value but fall back to the loser's so metadata isn't silently dropped when only one side carries it.
+ * - `requiresJetifier` is OR'd across both sides (true if either side needs jetifying), rather than
+ *   preferring the winner's value.
+ * - `jetifierSource`, `overrideTarget`, `processorClass` all prefer the winner's value but fall back
+ *   to the loser's so metadata isn't silently dropped when only one side carries it.
  */
 internal fun mergeDependencyMetadataByMaxVersion(
     existing: ResolvedDependency,

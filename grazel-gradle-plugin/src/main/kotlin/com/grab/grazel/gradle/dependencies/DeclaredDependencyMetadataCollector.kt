@@ -652,9 +652,9 @@ private fun intersectExcludeRuleSets(ruleSets: Iterable<Set<ExcludeRule>>): Set<
  * - When the owner *is* the root project and it happened to contribute no rules of its own, the
  *   root's rules still apply as a fallback (so a root-level `exclude` isn't lost just because the
  *   dependency also happens to be routed through the root project's own variant).
- * - In every other case (owner is a non-root project) the root's rules are NOT applied — only the
- *   owning project's own rules count, since the exclude is scoped to that project's dependency
- *   declaration, not the root.
+ * - In every other case (owner is a non-root project, or the owner is the root project but declares
+ *   its own rules) the root's rules are NOT applied — only the owning project's own rules count,
+ *   since the exclude is scoped to that project's dependency declaration, not the root.
  */
 internal fun excludeRulesForDependency(
     excludeRulesByProjectPath: Map<String, ProjectExcludeRules>,
