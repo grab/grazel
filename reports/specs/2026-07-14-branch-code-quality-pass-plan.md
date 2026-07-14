@@ -23,6 +23,12 @@
   ./gradlew verifyGrazelGoldenBaseline --console=plain
   ```
   Golden success prints: `Grazel golden baseline verified: migrateToBazel, task graph, bucket labels, and generated-file diff are clean.` Known waiver: `verify-sample-bucket-labels.sh` may fail ONLY on the pre-existing appcompat/constraintlayout one-sided-exclude assertion; any other failure is real.
+- **Operational storage/resource constraints.** Before every expensive Gradle/Bazel run (migrate, APK build) and periodically during long runs:
+  - Check pressure: `df -g /` (warn < 12 Gi free), memory (`memory_pressure`), and that no other build is active.
+  - Do NOT disable the disk cache (`--disk_cache=`). Do NOT add aggressive `--jobs` unless diagnosing a specific resource issue. Prefer default wrapper behaviour.
+  - Watch these roots (baseline sizes 2026-07-14): `~/.gradle/caches` (~8.5 G), `pax-android/bazel-cache` (~28 G), `/private/var/tmp/_bazel_arun.sampathkumar` (~39 G), plus any `bazel-ccache` / `/private/var/tmp/_bazel_*`.
+  - Clean deliberately, only when a private Bazel output root grows very large (> 90 G) or disk is genuinely low: first `bazelisk shutdown` then `bazelisk clean --expunge` in the relevant repo; remove stale private output roots only after confirming they are stale/not active. In PAX, `rm -rf bazel-cache` is the LAST resort — preserving it keeps verification fast.
+  - During background migrate/APK builds, poll disk every ~30 s and stop the run if free drops below the warn threshold (do not let it crash the laptop).
 - **Full PAX sweep (referenced throughout):**
   ```bash
   cd /Users/arun.sampathkumar/work/pax-android
