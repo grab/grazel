@@ -484,7 +484,7 @@ private fun withoutMergedBaseTestDependenciesCoveredBy(
  * A transitive dependency notation that appears in more than one root's own declared-or-transitive
  * closure within the same bucket is a "sibling-shared" transitive: several direct roots each
  * (partially) pull it in. Counting occurrences and comparing against 1 (self) + (1 if already in
- * that root's own closure) lets [canCoverInheritedTestRoot] treat such a notation as effectively
+ * that root's own closure) lets `canCoverInheritedTestRoot` treat such a notation as effectively
  * part of a root's closure even though it isn't literally listed there - covering the common case
  * where a covering bucket's root closure doesn't itself list a transitive dependency that a sibling
  * root in this bucket already accounts for. Without this, coverage comparisons would be too strict

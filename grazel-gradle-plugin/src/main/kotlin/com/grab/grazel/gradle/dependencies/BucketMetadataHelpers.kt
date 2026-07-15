@@ -14,16 +14,15 @@
  * limitations under the License.
  */
 
-package com.grab.grazel.gradle.dependencies
-
-import com.grab.grazel.gradle.dependencies.model.ResolvedDependency
-import com.grab.grazel.util.merge
-
 /**
  * Helpers shared by both main-bucket and test-bucket ownership planning: reconciling user-declared
  * dependency metadata (excludes, overrides) back onto placed buckets, and merging per-bucket
  * dependency maps without losing already-recorded metadata.
  */
+package com.grab.grazel.gradle.dependencies
+
+import com.grab.grazel.gradle.dependencies.model.ResolvedDependency
+import com.grab.grazel.util.merge
 
 internal fun addDeclaredOutputMetadata(
     declaredMetadataByOutputBucket: MutableMap<String, Map<String, ResolvedDependency>>,
