@@ -301,42 +301,6 @@ internal class BucketOwnershipPlanner(
             .filterKeys { shortId -> shortId in dependencies }
     }
 
-    private fun addDeclaredOutputMetadata(
-        declaredMetadataByOutputBucket: MutableMap<String, Map<String, ResolvedDependency>>,
-        bucketName: String,
-        metadata: Map<String, ResolvedDependency>
-    ) {
-        if (metadata.isEmpty()) return
-        declaredMetadataByOutputBucket.mergeBucket(bucketName, metadata)
-    }
-
-    private fun applyDeclaredMetadataByBucket(
-        dependenciesByBucket: Map<String, Map<String, ResolvedDependency>>,
-        declaredMetadataByOutputBucket: Map<String, Map<String, ResolvedDependency>>
-    ): Map<String, Map<String, ResolvedDependency>> {
-        if (dependenciesByBucket.isEmpty() || declaredMetadataByOutputBucket.isEmpty()) return dependenciesByBucket
-        return dependenciesByBucket.mapValues { (bucketName, dependencies) ->
-            applyDeclaredMetadata(
-                dependencies = dependencies,
-                declaredDependencies = declaredMetadataByOutputBucket[bucketName].orEmpty()
-            )
-        }.toSortedMap()
-    }
-
-    private fun applyDeclaredMetadata(
-        dependencies: Map<String, ResolvedDependency>,
-        declaredDependencies: Map<String, ResolvedDependency>
-    ): Map<String, ResolvedDependency> {
-        if (dependencies.isEmpty() || declaredDependencies.isEmpty()) return dependencies
-        return dependencies.mapValues { (shortId, dependency) ->
-            declaredDependencies[shortId]
-                ?.let { declaredDependency ->
-                    mergeDependencyMetadataByMaxVersion(dependency, declaredDependency)
-                }
-                ?: dependency
-        }.toSortedMap()
-    }
-
     private fun mergeDependencyMaps(
         dependencyMaps: Iterable<Map<String, ResolvedDependency>>
     ): Map<String, ResolvedDependency> {
@@ -756,22 +720,6 @@ internal class BucketOwnershipPlanner(
 
         return results
     }
-}
-
-internal fun unionDependencyMaps(
-    runtime: Map<String, ResolvedDependency>,
-    compile: Map<String, ResolvedDependency>
-): Map<String, ResolvedDependency> {
-    if (compile.isEmpty()) return runtime
-    if (runtime.isEmpty()) return compile
-    return listOf(runtime, compile).merge(::mergeDependencyMetadataByMaxVersion)
-}
-
-private fun <K> MutableMap<K, Map<String, ResolvedDependency>>.mergeBucket(
-    key: K,
-    dependencies: Map<String, ResolvedDependency>
-) {
-    this[key] = this[key]?.let { existing -> unionDependencyMaps(existing, dependencies) } ?: dependencies
 }
 
 /**
