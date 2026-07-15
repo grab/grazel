@@ -799,7 +799,7 @@ private fun withoutTestDependenciesCoveredBy(
     val restoredDependencies = testDependencies.filter { (shortId, dependency) ->
         dependency.direct && shortId !in filtered && !coveredByShortId[shortId].orEmpty().any { covered ->
             covered.canCoverTest(
-                dependency = dependency,
+                candidate = dependency,
                 declaredTestDependency = declaredTestDependencies[shortId],
                 scopedSiblingClosureDependencies = scopedSiblingClosureDependenciesByShortId[shortId].orEmpty()
             )
@@ -809,7 +809,7 @@ private fun withoutTestDependenciesCoveredBy(
         val declaredTestDependency = declaredTestDependencies[shortId]
         coveredByShortId[dependency.shortId].orEmpty().any { covered ->
             covered.canCoverTest(
-                dependency = dependency,
+                candidate = dependency,
                 declaredTestDependency = declaredTestDependency,
                 scopedSiblingClosureDependencies = scopedSiblingClosureDependenciesByShortId[shortId].orEmpty()
             )
@@ -837,7 +837,7 @@ private fun withoutTestDependenciesCoveredByEveryLeaf(
         leafCoveredDepsByShortId.all { coveredByShortId ->
             coveredByShortId[shortId].orEmpty().any { covered ->
                 covered.canCoverTest(
-                    dependency = dependency,
+                    candidate = dependency,
                     declaredTestDependency = declaredTestDependency,
                     scopedSiblingClosureDependencies = scopedSiblingClosureDependenciesByShortId[shortId].orEmpty()
                 )

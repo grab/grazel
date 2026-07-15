@@ -61,18 +61,18 @@ internal data class CoveredDependency(
      * boundaries.
      */
     internal fun canCoverTest(
-        dependency: ResolvedDependency,
+        candidate: ResolvedDependency,
         declaredTestDependency: ResolvedDependency?,
         scopedSiblingClosureDependencies: Set<String> = emptySet()
     ): Boolean {
         return when {
-            dependency.isDeclaredMetadata() -> canCoverDeclaredTestMetadata(dependency)
+            candidate.isDeclaredMetadata() -> canCoverDeclaredTestMetadata(candidate)
             declaredTestDependency == null -> canCoverInheritedTestRoot(
-                dependency = dependency,
+                dependency = candidate,
                 scopedSiblingClosureDependencies = scopedSiblingClosureDependencies
             )
             else -> canCoverDeclaredTestRoot(
-                dependency = dependency,
+                dependency = candidate,
                 declaredDependency = declaredTestDependency,
                 scopedSiblingClosureDependencies = scopedSiblingClosureDependencies
             )
