@@ -123,9 +123,8 @@ internal class TestBucketPlanner(
         variantType: VariantType,
         baseBucketName: String
     ): Map<ProjectDependencyBucket, Map<String, ResolvedDependency>> {
-        return leafClosures.entries.fold(
-            linkedMapOf()
-        ) { mappedClosures, (bucket, dependencies) ->
+        val mappedClosures = linkedMapOf<ProjectDependencyBucket, Map<String, ResolvedDependency>>()
+        leafClosures.forEach { (bucket, dependencies) ->
             val testBucket = ProjectDependencyBucket(
                 projectPath = bucket.projectPath,
                 bucketName = concreteTestLeafName(
@@ -136,8 +135,8 @@ internal class TestBucketPlanner(
                 )
             )
             mappedClosures.mergeBucket(testBucket, dependencies)
-            mappedClosures
         }
+        return mappedClosures
     }
 
     private fun testBucketPlans(
@@ -208,16 +207,12 @@ internal class TestBucketPlanner(
                     .let(::groupCoveredDependenciesByShortId)
             }
 
-            fun addPlannedBucket(bucketName: String, dependencies: Map<String, ResolvedDependency>) {
+            plannedBuckets.mergeBucket(plan.baseBucketName, plan.defaultBucket)
+            plan.hierarchyBuckets.toSortedMap().forEach { (bucketName, dependencies) ->
                 plannedBuckets.mergeBucket(bucketName, dependencies)
             }
-
-            addPlannedBucket(plan.baseBucketName, plan.defaultBucket)
-            plan.hierarchyBuckets.toSortedMap().forEach { (bucketName, dependencies) ->
-                addPlannedBucket(bucketName, dependencies)
-            }
             plan.leafBuckets.toSortedMap().forEach { (bucketName, dependencies) ->
-                addPlannedBucket(bucketName, dependencies)
+                plannedBuckets.mergeBucket(bucketName, dependencies)
             }
             plannedBuckets.forEach { (bucketName, dependencies) ->
                 val outputBucketName = outputBucketNameForTestBucket(plan, bucketName)

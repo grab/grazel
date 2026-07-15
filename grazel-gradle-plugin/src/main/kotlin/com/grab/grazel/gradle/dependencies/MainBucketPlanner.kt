@@ -112,9 +112,9 @@ internal class MainBucketPlanner(
             }
         }
         val defaultDeps = applyDeclaredMetadata(
-            dependencies = mergeDependencyMaps(
-                mainBucketPlans.map(DependencyBucketPlacementPlan::defaultBucket)
-            ),
+            dependencies = mainBucketPlans
+                .map(DependencyBucketPlacementPlan::defaultBucket)
+                .merge(::mergeDependencyMetadataByMaxVersion),
             declaredDependencies = declaredMetadataByOutputBucket[DEFAULT_VARIANT].orEmpty()
         )
         val hierarchyBuckets = withoutDeclaredPlaceholdersCoveredByDefault(
@@ -228,12 +228,6 @@ internal class MainBucketPlanner(
         return declaredDependenciesByBucket[ProjectDependencyBucket(projectPath, bucketName)]
             .orEmpty()
             .filterKeys { shortId -> shortId in dependencies }
-    }
-
-    private fun mergeDependencyMaps(
-        dependencyMaps: Iterable<Map<String, ResolvedDependency>>
-    ): Map<String, ResolvedDependency> {
-        return dependencyMaps.merge(::mergeDependencyMetadataByMaxVersion)
     }
 
     private fun mergeNamedBuckets(
