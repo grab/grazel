@@ -31,7 +31,7 @@ internal data class CoveredDependency(
      * ([hasSameResolvedOwnerIdentityAs]), or it's a real (non-placeholder) direct dependency that
      * matches a declared-metadata placeholder's identity ([canCoverDeclaredPlaceholder]) - letting a
      * real resolution stand in for a placeholder that only carries user-declared metadata. The
-     * direct/indirect asymmetry (`!dependency.direct || this.dependency.direct`) means a transitive
+     * direct/indirect asymmetry (`!candidate.direct || dependency.direct`) means a transitive
      * dependency can be covered by either a direct or transitive entry, but a direct (root) dependency
      * can only be covered by another direct entry - a transitive resolution is not strong enough
      * evidence that a root usage is redundant.
@@ -40,6 +40,43 @@ internal data class CoveredDependency(
         return (dependency.hasSameResolvedOwnerIdentityAs(candidate) ||
             dependency.canCoverDeclaredPlaceholder(candidate)) &&
             (!candidate.direct || dependency.direct)
+    }
+
+    /**
+     * Dispatches to one of three different coverage rules depending on what kind of dependency is
+     * being checked, since "covered" means something different in each case:
+     * - a declared-metadata placeholder ([ResolvedDependency.isDeclaredMetadata]) is only covered by
+     *   another direct declared placeholder with the same identity/version, and exclude rules that
+     *   either agree or are absent on the candidate side ([canCoverDeclaredTestMetadata]) - it carries
+     *   no real artifact to resolve against;
+     * - an undeclared (inherited) direct root is covered only if a candidate matches its full identity
+     *   and closure is a superset ([canCoverInheritedTestRoot]) - there's no user declaration to relax
+     *   the check with;
+     * - a declared test root additionally requires the *declared* dependency's exclude rules (not just
+     *   the candidate's) to agree ([canCoverDeclaredTestRoot]), since the user's own declaration is the
+     *   authoritative source of exclude intent for that root.
+     *
+     * Every higher-level test-bucket coverage/closure computation in this file ultimately routes
+     * through this dispatch, so getting any one branch wrong misattributes dependencies across bucket
+     * boundaries.
+     */
+    internal fun canCoverTest(
+        dependency: ResolvedDependency,
+        declaredTestDependency: ResolvedDependency?,
+        scopedSiblingClosureDependencies: Set<String> = emptySet()
+    ): Boolean {
+        return when {
+            dependency.isDeclaredMetadata() -> canCoverDeclaredTestMetadata(dependency)
+            declaredTestDependency == null -> canCoverInheritedTestRoot(
+                dependency = dependency,
+                scopedSiblingClosureDependencies = scopedSiblingClosureDependencies
+            )
+            else -> canCoverDeclaredTestRoot(
+                dependency = dependency,
+                declaredDependency = declaredTestDependency,
+                scopedSiblingClosureDependencies = scopedSiblingClosureDependencies
+            )
+        }
     }
 }
 
@@ -139,6 +176,53 @@ private fun CoveredDependency.rootsSupersetClosureOf(dependency: ResolvedDepende
     return this.dependency.direct &&
         dependency.direct &&
         this.dependency.dependencies.containsAll(dependency.dependencies)
+}
+
+private fun CoveredDependency.canCoverDeclaredTestMetadata(dependency: ResolvedDependency): Boolean {
+    return this.dependency.direct &&
+        dependency.isDeclaredMetadata() &&
+        this.dependency.shortId == dependency.shortId &&
+        this.dependency.version == dependency.version &&
+        (dependency.excludeRules.isEmpty() || dependency.excludeRules == this.dependency.excludeRules)
+}
+
+/**
+ * The load-bearing equality rule for an undeclared (no user override) direct root dependency:
+ * covered requires the *exact same* resolved identity (shortId, version, repository, jetifier
+ * requirement/source) - any of those differing means the covering bucket resolved a materially
+ * different artifact that cannot stand in for this one - plus a closure-superset check so the
+ * covering root's transitive closure (extended with [scopedSiblingClosureDependencies] to account
+ * for sibling-shared transitives) must include everything this dependency transitively needs.
+ * Exclude rules are only compared when the candidate dependency declares some: an empty exclude
+ * set on the candidate is treated as compatible with anything. Both directions ([this] and
+ * [dependency]) must be direct: a transitive dependency can't cover, or be covered as, a root by
+ * this rule.
+ */
+private fun CoveredDependency.canCoverInheritedTestRoot(
+    dependency: ResolvedDependency,
+    scopedSiblingClosureDependencies: Set<String> = emptySet()
+): Boolean {
+    return this.dependency.direct &&
+        dependency.direct &&
+        this.dependency.shortId == dependency.shortId &&
+        this.dependency.version == dependency.version &&
+        this.dependency.repository == dependency.repository &&
+        this.dependency.requiresJetifier == dependency.requiresJetifier &&
+        this.dependency.jetifierSource == dependency.jetifierSource &&
+        (this.dependency.dependencies + scopedSiblingClosureDependencies).containsAll(dependency.dependencies) &&
+        (dependency.excludeRules.isEmpty() || dependency.excludeRules == this.dependency.excludeRules)
+}
+
+private fun CoveredDependency.canCoverDeclaredTestRoot(
+    dependency: ResolvedDependency,
+    declaredDependency: ResolvedDependency,
+    scopedSiblingClosureDependencies: Set<String> = emptySet()
+): Boolean {
+    return canCoverInheritedTestRoot(
+        dependency = dependency,
+        scopedSiblingClosureDependencies = scopedSiblingClosureDependencies
+    ) &&
+        (declaredDependency.excludeRules.isEmpty() || declaredDependency.excludeRules == this.dependency.excludeRules)
 }
 
 /**

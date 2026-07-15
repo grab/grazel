@@ -781,12 +781,12 @@ private fun <K> MutableMap<K, Map<String, ResolvedDependency>>.mergeBucket(
  *    it may drop a *direct* test dependency merely because some covering bucket happens to also
  *    resolve the same shortId, even if that covering entry can't actually satisfy this dependency's
  *    specific requirements (excludes, jetifier, exact closure).
- * 2. So any direct dependency the first pass removed is re-checked with [canCoverTestDependency],
+ * 2. So any direct dependency the first pass removed is re-checked with [CoveredDependency.canCoverTest],
  *    which additionally recognizes deps whose transitive closure is satisfied only with the help of
  *    "scoped sibling closure" reasoning (see [scopedSiblingClosureDependenciesByShortId]); anything
  *    that still isn't genuinely coverable is restored.
  *
- * The final result re-applies [canCoverTestDependency] to the union of both passes, so a dependency
+ * The final result re-applies [CoveredDependency.canCoverTest] to the union of both passes, so a dependency
  * is dropped only when it is truly coverable by this rule, not merely by shortId collision.
  */
 private fun withoutTestDependenciesCoveredBy(
@@ -798,7 +798,7 @@ private fun withoutTestDependenciesCoveredBy(
     val scopedSiblingClosureDependenciesByShortId = scopedSiblingClosureDependenciesByShortId(testDependencies)
     val restoredDependencies = testDependencies.filter { (shortId, dependency) ->
         dependency.direct && shortId !in filtered && !coveredByShortId[shortId].orEmpty().any { covered ->
-            covered.canCoverTestDependency(
+            covered.canCoverTest(
                 dependency = dependency,
                 declaredTestDependency = declaredTestDependencies[shortId],
                 scopedSiblingClosureDependencies = scopedSiblingClosureDependenciesByShortId[shortId].orEmpty()
@@ -808,7 +808,7 @@ private fun withoutTestDependenciesCoveredBy(
     return (filtered + restoredDependencies).filterNot { (shortId, dependency) ->
         val declaredTestDependency = declaredTestDependencies[shortId]
         coveredByShortId[dependency.shortId].orEmpty().any { covered ->
-            covered.canCoverTestDependency(
+            covered.canCoverTest(
                 dependency = dependency,
                 declaredTestDependency = declaredTestDependency,
                 scopedSiblingClosureDependencies = scopedSiblingClosureDependenciesByShortId[shortId].orEmpty()
@@ -836,7 +836,7 @@ private fun withoutTestDependenciesCoveredByEveryLeaf(
         val declaredTestDependency = declaredTestDependencies[shortId]
         leafCoveredDepsByShortId.all { coveredByShortId ->
             coveredByShortId[shortId].orEmpty().any { covered ->
-                covered.canCoverTestDependency(
+                covered.canCoverTest(
                     dependency = dependency,
                     declaredTestDependency = declaredTestDependency,
                     scopedSiblingClosureDependencies = scopedSiblingClosureDependenciesByShortId[shortId].orEmpty()
@@ -932,43 +932,6 @@ private fun ResolvedDependency.toDependencyNotation(): String =
     "$id:$repository:$requiresJetifier:$jetifierSource"
 
 /**
- * Dispatches to one of three different coverage rules depending on what kind of dependency is
- * being checked, since "covered" means something different in each case:
- * - a declared-metadata placeholder ([ResolvedDependency.isDeclaredMetadata]) is only covered by
- *   another direct declared placeholder with the same identity/version, and exclude rules that
- *   either agree or are absent on the candidate side ([canCoverDeclaredTestMetadata]) - it carries
- *   no real artifact to resolve against;
- * - an undeclared (inherited) direct root is covered only if a candidate matches its full identity
- *   and closure is a superset ([canCoverInheritedTestRoot]) - there's no user declaration to relax
- *   the check with;
- * - a declared test root additionally requires the *declared* dependency's exclude rules (not just
- *   the candidate's) to agree ([canCoverDeclaredTestRoot]), since the user's own declaration is the
- *   authoritative source of exclude intent for that root.
- *
- * Every higher-level test-bucket coverage/closure computation in this file ultimately routes
- * through this dispatch, so getting any one branch wrong misattributes dependencies across bucket
- * boundaries.
- */
-private fun CoveredDependency.canCoverTestDependency(
-    dependency: ResolvedDependency,
-    declaredTestDependency: ResolvedDependency?,
-    scopedSiblingClosureDependencies: Set<String> = emptySet()
-): Boolean {
-    return when {
-        dependency.isDeclaredMetadata() -> canCoverDeclaredTestMetadata(dependency)
-        declaredTestDependency == null -> canCoverInheritedTestRoot(
-            dependency = dependency,
-            scopedSiblingClosureDependencies = scopedSiblingClosureDependencies
-        )
-        else -> canCoverDeclaredTestRoot(
-            dependency = dependency,
-            declaredDependency = declaredTestDependency,
-            scopedSiblingClosureDependencies = scopedSiblingClosureDependencies
-        )
-    }
-}
-
-/**
  * Declared-metadata placeholders (entries carrying only user-declared overrides/excludes, no real
  * artifact) can survive placement into a non-default bucket even when the same dependency is
  * already present in the merged default bucket - since default is merged from all projects only
@@ -996,51 +959,4 @@ private fun withoutDeclaredPlaceholdersCoveredByDefault(
     }
         .filterValues(Map<String, ResolvedDependency>::isNotEmpty)
         .toSortedMap()
-}
-
-private fun CoveredDependency.canCoverDeclaredTestMetadata(dependency: ResolvedDependency): Boolean {
-    return this.dependency.direct &&
-        dependency.isDeclaredMetadata() &&
-        this.dependency.shortId == dependency.shortId &&
-        this.dependency.version == dependency.version &&
-        (dependency.excludeRules.isEmpty() || dependency.excludeRules == this.dependency.excludeRules)
-}
-
-/**
- * The load-bearing equality rule for an undeclared (no user override) direct root dependency:
- * covered requires the *exact same* resolved identity (shortId, version, repository, jetifier
- * requirement/source) - any of those differing means the covering bucket resolved a materially
- * different artifact that cannot stand in for this one - plus a closure-superset check so the
- * covering root's transitive closure (extended with [scopedSiblingClosureDependencies] to account
- * for sibling-shared transitives) must include everything this dependency transitively needs.
- * Exclude rules are only compared when the candidate dependency declares some: an empty exclude
- * set on the candidate is treated as compatible with anything. Both directions ([this] and
- * [dependency]) must be direct: a transitive dependency can't cover, or be covered as, a root by
- * this rule.
- */
-private fun CoveredDependency.canCoverInheritedTestRoot(
-    dependency: ResolvedDependency,
-    scopedSiblingClosureDependencies: Set<String> = emptySet()
-): Boolean {
-    return this.dependency.direct &&
-        dependency.direct &&
-        this.dependency.shortId == dependency.shortId &&
-        this.dependency.version == dependency.version &&
-        this.dependency.repository == dependency.repository &&
-        this.dependency.requiresJetifier == dependency.requiresJetifier &&
-        this.dependency.jetifierSource == dependency.jetifierSource &&
-        (this.dependency.dependencies + scopedSiblingClosureDependencies).containsAll(dependency.dependencies) &&
-        (dependency.excludeRules.isEmpty() || dependency.excludeRules == this.dependency.excludeRules)
-}
-
-private fun CoveredDependency.canCoverDeclaredTestRoot(
-    dependency: ResolvedDependency,
-    declaredDependency: ResolvedDependency,
-    scopedSiblingClosureDependencies: Set<String> = emptySet()
-): Boolean {
-    return canCoverInheritedTestRoot(
-        dependency = dependency,
-        scopedSiblingClosureDependencies = scopedSiblingClosureDependencies
-    ) &&
-        (declaredDependency.excludeRules.isEmpty() || declaredDependency.excludeRules == this.dependency.excludeRules)
 }
