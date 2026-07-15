@@ -24,103 +24,104 @@ import com.grab.grazel.gradle.dependencies.model.hasSameResolvedOwnerIdentityAs
 internal data class CoveredDependency(
     val bucketName: String,
     val dependency: ResolvedDependency
-)
+) {
+    /**
+     * The base "is this dependency already covered" predicate all higher-level coverage rules in this
+     * cluster build on: either the covering entry shares the same resolved owner identity
+     * ([hasSameResolvedOwnerIdentityAs]), or it's a real (non-placeholder) direct dependency that
+     * matches a declared-metadata placeholder's identity ([canCoverDeclaredPlaceholder]) - letting a
+     * real resolution stand in for a placeholder that only carries user-declared metadata. The
+     * direct/indirect asymmetry (`!dependency.direct || this.dependency.direct`) means a transitive
+     * dependency can be covered by either a direct or transitive entry, but a direct (root) dependency
+     * can only be covered by another direct entry - a transitive resolution is not strong enough
+     * evidence that a root usage is redundant.
+     */
+    internal fun canCover(candidate: ResolvedDependency): Boolean {
+        return (dependency.hasSameResolvedOwnerIdentityAs(candidate) ||
+            dependency.canCoverDeclaredPlaceholder(candidate)) &&
+            (!candidate.direct || dependency.direct)
+    }
+}
 
-internal fun withoutDependenciesCoveredBy(
-    dependenciesByShortId: Map<String, ResolvedDependency>,
-    coveredDependencies: Iterable<CoveredDependency>
-): Map<String, ResolvedDependency> =
-    withoutDependenciesCoveredByShortId(
-        dependenciesByShortId = dependenciesByShortId,
-        coveredByShortId = groupCoveredDependenciesByShortId(coveredDependencies)
-    )
+internal class Coverage private constructor(
+    private val byShortId: Map<String, List<CoveredDependency>>
+) {
+
+    companion object {
+        fun of(covered: Iterable<CoveredDependency>): Coverage =
+            Coverage(groupCoveredDependenciesByShortId(covered))
+
+        fun ofGrouped(byShortId: Map<String, List<CoveredDependency>>): Coverage =
+            Coverage(byShortId)
+    }
+
+    /**
+     * The foundational set-subtraction primitive reused by every higher-level coverage/closure rule in
+     * this cluster: for each dependency, finds among the candidates that [CoveredDependency.canCover]
+     * it the *best* kind of match, and reacts differently depending on which kind won:
+     * - if no candidate [CoveredDependency.canCover]s the dependency at all, it is kept unchanged;
+     * - an exact artifact-identity match ([hasSameResolvedArtifactIdentityAs]) or a closure
+     *   superset match ([rootsSupersetClosureOf]) both fully subtract the dependency - either is
+     *   strong enough evidence the covering bucket genuinely already provides it;
+     * - otherwise, if only a same-owner-identity match was found and both sides are direct, the
+     *   dependency survives but is annotated with an [OverrideTarget] pointing at its cover, so
+     *   downstream rendering can defer to the covering bucket's version instead of duplicating a
+     *   declaration;
+     * - any other covered case (a same-owner-identity match where the two sides are not both direct)
+     *   is subtracted (dropped), not kept.
+     *
+     * Preferring exact-identity, then superset-closure, then first-match (in that order) - rather than
+     * whichever candidate happened to be found first - is itself an invariant: it ensures the strongest
+     * available evidence decides the outcome even when a bucket has multiple same-shortId candidates.
+     */
+    fun subtract(dependenciesByShortId: Map<String, ResolvedDependency>): Map<String, ResolvedDependency> {
+        return dependenciesByShortId.mapNotNull { (shortId, dependency) ->
+            var firstCoveredDependency: CoveredDependency? = null
+            var exactCoveredDependency: CoveredDependency? = null
+            var supersetClosureCoveredDependency: CoveredDependency? = null
+
+            byShortId[shortId].orEmpty().forEach { covered ->
+                if (covered.canCover(dependency)) {
+                    if (firstCoveredDependency == null) {
+                        firstCoveredDependency = covered
+                    }
+                    if (
+                        exactCoveredDependency == null &&
+                        covered.dependency.hasSameResolvedArtifactIdentityAs(dependency)
+                    ) {
+                        exactCoveredDependency = covered
+                    }
+                    if (
+                        supersetClosureCoveredDependency == null &&
+                        covered.rootsSupersetClosureOf(dependency)
+                    ) {
+                        supersetClosureCoveredDependency = covered
+                    }
+                }
+            }
+            val coveredDependency = exactCoveredDependency
+                ?: supersetClosureCoveredDependency
+                ?: firstCoveredDependency
+            when {
+                coveredDependency == null -> shortId to dependency
+                exactCoveredDependency != null -> null
+                supersetClosureCoveredDependency != null -> null
+                dependency.direct && coveredDependency.dependency.direct -> {
+                    shortId to dependency.copy(
+                        overrideTarget = dependency.overrideTarget ?: coveredDependency.toOverrideTarget()
+                    )
+                }
+                else -> null
+            }
+        }
+            .toMap()
+    }
+}
 
 internal fun groupCoveredDependenciesByShortId(
     coveredDependencies: Iterable<CoveredDependency>
 ): Map<String, List<CoveredDependency>> =
     coveredDependencies.groupBy { it.dependency.shortId }
-
-/**
- * The foundational set-subtraction primitive reused by every higher-level coverage/closure rule in
- * this cluster: for each dependency, finds among the candidates that [CoveredDependency.canCover]
- * it the *best* kind of match, and reacts differently depending on which kind won:
- * - if no candidate [CoveredDependency.canCover]s the dependency at all, it is kept unchanged;
- * - an exact artifact-identity match ([hasSameResolvedArtifactIdentityAs]) or a closure
- *   superset match ([rootsSupersetClosureOf]) both fully subtract the dependency - either is
- *   strong enough evidence the covering bucket genuinely already provides it;
- * - otherwise, if only a same-owner-identity match was found and both sides are direct, the
- *   dependency survives but is annotated with an [OverrideTarget] pointing at its cover, so
- *   downstream rendering can defer to the covering bucket's version instead of duplicating a
- *   declaration;
- * - any other covered case (a same-owner-identity match where the two sides are not both direct)
- *   is subtracted (dropped), not kept.
- *
- * Preferring exact-identity, then superset-closure, then first-match (in that order) - rather than
- * whichever candidate happened to be found first - is itself an invariant: it ensures the strongest
- * available evidence decides the outcome even when a bucket has multiple same-shortId candidates.
- */
-internal fun withoutDependenciesCoveredByShortId(
-    dependenciesByShortId: Map<String, ResolvedDependency>,
-    coveredByShortId: Map<String, List<CoveredDependency>>
-): Map<String, ResolvedDependency> {
-    return dependenciesByShortId.mapNotNull { (shortId, dependency) ->
-        var firstCoveredDependency: CoveredDependency? = null
-        var exactCoveredDependency: CoveredDependency? = null
-        var supersetClosureCoveredDependency: CoveredDependency? = null
-
-        coveredByShortId[shortId].orEmpty().forEach { covered ->
-            if (covered.canCover(dependency)) {
-                if (firstCoveredDependency == null) {
-                    firstCoveredDependency = covered
-                }
-                if (
-                    exactCoveredDependency == null &&
-                    covered.dependency.hasSameResolvedArtifactIdentityAs(dependency)
-                ) {
-                    exactCoveredDependency = covered
-                }
-                if (
-                    supersetClosureCoveredDependency == null &&
-                    covered.rootsSupersetClosureOf(dependency)
-                ) {
-                    supersetClosureCoveredDependency = covered
-                }
-            }
-        }
-        val coveredDependency = exactCoveredDependency
-            ?: supersetClosureCoveredDependency
-            ?: firstCoveredDependency
-        when {
-            coveredDependency == null -> shortId to dependency
-            exactCoveredDependency != null -> null
-            supersetClosureCoveredDependency != null -> null
-            dependency.direct && coveredDependency.dependency.direct -> {
-                shortId to dependency.copy(
-                    overrideTarget = dependency.overrideTarget ?: coveredDependency.toOverrideTarget()
-                )
-            }
-            else -> null
-        }
-    }
-        .toMap()
-}
-
-/**
- * The base "is this dependency already covered" predicate all higher-level coverage rules in this
- * cluster build on: either the covering entry shares the same resolved owner identity
- * ([hasSameResolvedOwnerIdentityAs]), or it's a real (non-placeholder) direct dependency that
- * matches a declared-metadata placeholder's identity ([canCoverDeclaredPlaceholder]) - letting a
- * real resolution stand in for a placeholder that only carries user-declared metadata. The
- * direct/indirect asymmetry (`!dependency.direct || this.dependency.direct`) means a transitive
- * dependency can be covered by either a direct or transitive entry, but a direct (root) dependency
- * can only be covered by another direct entry - a transitive resolution is not strong enough
- * evidence that a root usage is redundant.
- */
-internal fun CoveredDependency.canCover(dependency: ResolvedDependency): Boolean {
-    return (this.dependency.hasSameResolvedOwnerIdentityAs(dependency) ||
-        this.dependency.canCoverDeclaredPlaceholder(dependency)) &&
-        (!dependency.direct || this.dependency.direct)
-}
 
 private fun ResolvedDependency.canCoverDeclaredPlaceholder(dependency: ResolvedDependency): Boolean {
     return direct &&

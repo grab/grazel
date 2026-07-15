@@ -212,9 +212,8 @@ internal class BucketOwnershipPlanner(
                 mainBucketPlans.map { plan ->
                     plan.leafBuckets
                         .mapValues { (leafName, dependencies) ->
-                            withoutDependenciesCoveredBy(
-                                dependenciesByShortId = dependencies,
-                                coveredDependencies = plan.leafAncestors[leafName]
+                            Coverage.of(
+                                plan.leafAncestors[leafName]
                                     .orEmpty()
                                     .flatMap { ancestorName ->
                                         coveredDependenciesForBucket(
@@ -222,7 +221,7 @@ internal class BucketOwnershipPlanner(
                                             bucketName = ancestorName
                                         )
                                     }
-                            )
+                            ).subtract(dependencies)
                         }
                         .filterValues(Map<String, ResolvedDependency>::isNotEmpty)
                 }
@@ -778,7 +777,7 @@ private fun <K> MutableMap<K, Map<String, ResolvedDependency>>.mergeBucket(
 /**
  * Two-pass filter over a test bucket's dependencies against the deps already covered elsewhere:
  *
- * 1. [withoutDependenciesCoveredByShortId] does the generic subtraction, which can be too eager -
+ * 1. [Coverage.subtract] does the generic subtraction, which can be too eager -
  *    it may drop a *direct* test dependency merely because some covering bucket happens to also
  *    resolve the same shortId, even if that covering entry can't actually satisfy this dependency's
  *    specific requirements (excludes, jetifier, exact closure).
@@ -795,10 +794,7 @@ private fun withoutTestDependenciesCoveredBy(
     coveredByShortId: Map<String, List<CoveredDependency>>,
     declaredTestDependencies: Map<String, ResolvedDependency>
 ): Map<String, ResolvedDependency> {
-    val filtered = withoutDependenciesCoveredByShortId(
-        dependenciesByShortId = testDependencies,
-        coveredByShortId = coveredByShortId
-    )
+    val filtered = Coverage.ofGrouped(coveredByShortId).subtract(testDependencies)
     val scopedSiblingClosureDependenciesByShortId = scopedSiblingClosureDependenciesByShortId(testDependencies)
     val restoredDependencies = testDependencies.filter { (shortId, dependency) ->
         dependency.direct && shortId !in filtered && !coveredByShortId[shortId].orEmpty().any { covered ->

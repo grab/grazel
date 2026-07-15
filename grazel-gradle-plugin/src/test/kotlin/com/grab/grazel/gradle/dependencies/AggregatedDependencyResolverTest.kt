@@ -51,10 +51,7 @@ class AggregatedDependencyResolverTest {
         val debugDependency = dependency("com.example:library:2.0")
         val childBucket = mapOf(debugDependency.shortId to debugDependency)
 
-        val filteredBucket = withoutDependenciesCoveredBy(
-            dependenciesByShortId = childBucket,
-            coveredDependencies = listOf(covered("default", defaultDependency))
-        )
+        val filteredBucket = Coverage.of(listOf(covered("default", defaultDependency))).subtract(childBucket)
 
         assertEquals(childBucket, filteredBucket)
     }
@@ -65,10 +62,7 @@ class AggregatedDependencyResolverTest {
         val flavorDependency = dependency("com.example:library:1.0")
         val childBucket = mapOf(flavorDependency.shortId to flavorDependency)
 
-        val filteredBucket = withoutDependenciesCoveredBy(
-            dependenciesByShortId = childBucket,
-            coveredDependencies = listOf(covered("debug", debugDependency))
-        )
+        val filteredBucket = Coverage.of(listOf(covered("debug", debugDependency))).subtract(childBucket)
 
         assertEquals(emptyMap<String, ResolvedDependency>(), filteredBucket)
     }
@@ -81,10 +75,7 @@ class AggregatedDependencyResolverTest {
         )
         val childBucket = mapOf(flavorDependency.shortId to flavorDependency)
 
-        val filteredBucket = withoutDependenciesCoveredBy(
-            dependenciesByShortId = childBucket,
-            coveredDependencies = listOf(covered("debug", debugDependency))
-        )
+        val filteredBucket = Coverage.of(listOf(covered("debug", debugDependency))).subtract(childBucket)
 
         assertEquals(
             mapOf(
@@ -116,10 +107,7 @@ class AggregatedDependencyResolverTest {
         )
         val childBucket = mapOf(flavorDependency.shortId to flavorDependency)
 
-        val filteredBucket = withoutDependenciesCoveredBy(
-            dependenciesByShortId = childBucket,
-            coveredDependencies = listOf(covered("debug", debugDependency))
-        )
+        val filteredBucket = Coverage.of(listOf(covered("debug", debugDependency))).subtract(childBucket)
 
         assertEquals(emptyMap<String, ResolvedDependency>(), filteredBucket)
     }
@@ -136,10 +124,7 @@ class AggregatedDependencyResolverTest {
         )
         val childBucket = mapOf(debugDependency.shortId to debugDependency)
 
-        val filteredBucket = withoutDependenciesCoveredBy(
-            dependenciesByShortId = childBucket,
-            coveredDependencies = listOf(covered("default", defaultDependency))
-        )
+        val filteredBucket = Coverage.of(listOf(covered("default", defaultDependency))).subtract(childBucket)
 
         assertEquals(emptyMap<String, ResolvedDependency>(), filteredBucket)
     }
@@ -158,10 +143,7 @@ class AggregatedDependencyResolverTest {
         )
         val childBucket = mapOf(debugDependency.shortId to debugDependency)
 
-        val filteredBucket = withoutDependenciesCoveredBy(
-            dependenciesByShortId = childBucket,
-            coveredDependencies = listOf(covered("default", defaultDependency))
-        )
+        val filteredBucket = Coverage.of(listOf(covered("default", defaultDependency))).subtract(childBucket)
 
         assertEquals(childBucket, filteredBucket)
     }
@@ -351,10 +333,7 @@ class AggregatedDependencyResolverTest {
         val directChildDependency = dependency("com.example:library:1.0")
         val childBucket = mapOf(directChildDependency.shortId to directChildDependency)
 
-        val filteredBucket = withoutDependenciesCoveredBy(
-            dependenciesByShortId = childBucket,
-            coveredDependencies = listOf(covered("default", transitiveDefaultDependency))
-        )
+        val filteredBucket = Coverage.of(listOf(covered("default", transitiveDefaultDependency))).subtract(childBucket)
 
         assertEquals(childBucket, filteredBucket)
     }
@@ -365,10 +344,7 @@ class AggregatedDependencyResolverTest {
         val testDependency = dependency("com.example:library:2.0")
         val testBucket = mapOf(testDependency.shortId to testDependency)
 
-        val filteredBucket = withoutDependenciesCoveredBy(
-            dependenciesByShortId = testBucket,
-            coveredDependencies = listOf(covered("default", mainDependency))
-        )
+        val filteredBucket = Coverage.of(listOf(covered("default", mainDependency))).subtract(testBucket)
 
         assertEquals(testBucket, filteredBucket)
     }

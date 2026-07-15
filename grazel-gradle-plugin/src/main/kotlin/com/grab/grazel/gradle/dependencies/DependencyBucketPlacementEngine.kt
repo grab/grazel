@@ -209,10 +209,8 @@ internal class DependencyBucketPlacementEngine {
         fun selectHierarchyBucket(bucketName: String) {
             val deps = candidateDepsForBucket(bucketName)
                 .let { dependencies ->
-                    withoutDependenciesCoveredBy(
-                        dependenciesByShortId = dependencies,
-                        coveredDependencies = defaultCoveredDeps + selectedCoveredDepsFor(bucketName)
-                    )
+                    Coverage.of(defaultCoveredDeps + selectedCoveredDepsFor(bucketName))
+                        .subtract(dependencies)
                 }
             if (deps.isNotEmpty()) {
                 selectedHierarchyBuckets[bucketName] = deps
@@ -262,12 +260,11 @@ internal class DependencyBucketPlacementEngine {
                 val residualDeps = leafClosures[leafName]
                     .orEmpty()
                     .let { dependencies ->
-                        withoutDependenciesCoveredBy(
-                            dependenciesByShortId = dependencies,
-                            coveredDependencies = defaultCoveredDeps +
+                        Coverage.of(
+                            defaultCoveredDeps +
                                 ancestorCoveredDeps +
                                 coveredDependenciesForBucket(selectedLeafDeps, leafName)
-                        )
+                        ).subtract(dependencies)
                     }
                 val deps = residualDeps + selectedLeafDeps
                 if (deps.isEmpty()) null else leafName to deps
