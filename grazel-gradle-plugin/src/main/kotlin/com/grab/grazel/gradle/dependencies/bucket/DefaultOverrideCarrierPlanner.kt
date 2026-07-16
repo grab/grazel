@@ -14,8 +14,11 @@
  * limitations under the License.
  */
 
-package com.grab.grazel.gradle.dependencies
+package com.grab.grazel.gradle.dependencies.bucket
 
+import com.grab.grazel.gradle.dependencies.hasSameDefaultOwnerIdentityAs
+import com.grab.grazel.gradle.dependencies.isDeclaredMetadata
+import com.grab.grazel.gradle.dependencies.mavenOverrideTarget
 import com.grab.grazel.gradle.dependencies.model.ResolvedDependency
 import com.grab.grazel.gradle.dependencies.model.versionInfo
 import com.grab.grazel.gradle.variant.DEFAULT_VARIANT

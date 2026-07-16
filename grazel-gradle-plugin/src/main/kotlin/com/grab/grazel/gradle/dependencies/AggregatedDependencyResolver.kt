@@ -16,6 +16,9 @@
 
 package com.grab.grazel.gradle.dependencies
 
+import com.grab.grazel.gradle.dependencies.bucket.BucketOwnershipPlanner
+import com.grab.grazel.gradle.dependencies.bucket.OwnershipPlannerInput
+import com.grab.grazel.gradle.dependencies.bucket.unionDependencyMaps
 import com.grab.grazel.gradle.dependencies.model.ExcludeRule
 import com.grab.grazel.gradle.dependencies.model.ResolveDependenciesResult
 import com.grab.grazel.gradle.dependencies.model.ResolvedDependency

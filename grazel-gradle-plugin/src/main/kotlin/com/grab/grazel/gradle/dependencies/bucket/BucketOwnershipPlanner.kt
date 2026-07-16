@@ -14,8 +14,10 @@
  * limitations under the License.
  */
 
-package com.grab.grazel.gradle.dependencies
+package com.grab.grazel.gradle.dependencies.bucket
 
+import com.grab.grazel.gradle.dependencies.DeclaredDependencyMetadata
+import com.grab.grazel.gradle.dependencies.ProjectDependencyBucket
 import com.grab.grazel.gradle.dependencies.model.ResolveDependenciesResult
 import com.grab.grazel.gradle.dependencies.model.ResolveDependenciesResult.Companion.Scope.COMPILE
 import com.grab.grazel.gradle.dependencies.model.ResolveDependenciesResult.Companion.Scope.KSP

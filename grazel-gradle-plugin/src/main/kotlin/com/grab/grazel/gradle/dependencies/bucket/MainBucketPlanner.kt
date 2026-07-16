@@ -14,8 +14,12 @@
  * limitations under the License.
  */
 
-package com.grab.grazel.gradle.dependencies
+package com.grab.grazel.gradle.dependencies.bucket
 
+import com.grab.grazel.gradle.dependencies.DeclaredDependencyMetadata
+import com.grab.grazel.gradle.dependencies.ProjectDependencyBucket
+import com.grab.grazel.gradle.dependencies.isDeclaredMetadata
+import com.grab.grazel.gradle.dependencies.mergeDependencyMetadataByMaxVersion
 import com.grab.grazel.gradle.dependencies.model.ResolvedDependency
 import com.grab.grazel.gradle.variant.DEFAULT_VARIANT
 import com.grab.grazel.util.merge

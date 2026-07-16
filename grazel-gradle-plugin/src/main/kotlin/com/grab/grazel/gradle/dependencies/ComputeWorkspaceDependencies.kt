@@ -1,5 +1,7 @@
 package com.grab.grazel.gradle.dependencies
 
+import com.grab.grazel.gradle.dependencies.bucket.DefaultBucketDependencyReducer
+import com.grab.grazel.gradle.dependencies.bucket.DefaultOverrideCarrierPlanner
 import com.grab.grazel.gradle.dependencies.model.ResolveDependenciesResult
 import com.grab.grazel.gradle.dependencies.model.ResolveDependenciesResult.Companion.Scope.COMPILE
 import com.grab.grazel.gradle.dependencies.model.ResolveDependenciesResult.Companion.Scope.KSP

@@ -19,6 +19,10 @@ package com.grab.grazel.gradle.dependencies
 import com.grab.grazel.bazel.starlark.BazelDependency.MavenDependency
 import com.grab.grazel.fake.addDependencyTo
 import com.grab.grazel.fake.fakeComponentResult
+import com.grab.grazel.gradle.dependencies.bucket.Coverage
+import com.grab.grazel.gradle.dependencies.bucket.CoveredDependency
+import com.grab.grazel.gradle.dependencies.bucket.intersectByBucketOwner
+import com.grab.grazel.gradle.dependencies.bucket.withoutDependenciesOwnedByNonDefaultHierarchy
 import com.grab.grazel.gradle.dependencies.model.ExcludeRule
 import com.grab.grazel.gradle.dependencies.model.OverrideTarget
 import com.grab.grazel.gradle.dependencies.model.ResolveDependenciesResult.Companion.Scope.COMPILE

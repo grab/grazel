@@ -19,8 +19,9 @@
  * dependency metadata (excludes, overrides) back onto placed buckets, and merging per-bucket
  * dependency maps without losing already-recorded metadata.
  */
-package com.grab.grazel.gradle.dependencies
+package com.grab.grazel.gradle.dependencies.bucket
 
+import com.grab.grazel.gradle.dependencies.mergeDependencyMetadataByMaxVersion
 import com.grab.grazel.gradle.dependencies.model.ResolvedDependency
 import com.grab.grazel.util.merge
 

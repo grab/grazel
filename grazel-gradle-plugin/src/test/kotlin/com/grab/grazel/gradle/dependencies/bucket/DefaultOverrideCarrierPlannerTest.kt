@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.grab.grazel.gradle.dependencies
+package com.grab.grazel.gradle.dependencies.bucket
 
 import com.grab.grazel.bazel.starlark.BazelDependency.MavenDependency
 import com.grab.grazel.gradle.dependencies.model.OverrideTarget
