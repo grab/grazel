@@ -14,6 +14,65 @@
  * limitations under the License.
  */
 
+/**
+ * ## Bucket ownership planning — subsystem flow
+ *
+ * Turns each variant's flat resolved-dependency closure into a deduplicated *ownership plan*: every
+ * dependency declared exactly once, as high in the variant hierarchy as its actual usage allows.
+ * The output ([ResolveDependenciesResult] per bucket) is serialized and later rendered into
+ * `maven_install` / BUILD dependency lists — so this is a plan-then-render pipeline, and the bucket
+ * assignment computed here is the "plan".
+ *
+ * ### The variant hierarchy (example app: flavors demo/full × build types debug/release)
+ *
+ * A dependency is owned by the *highest* bucket whose descendant leaves all use it:
+ *
+ *     default                          deps common to every leaf
+ *     ├── debug      covers leaves: demoDebug, fullDebug
+ *     ├── release    covers leaves: demoRelease, fullRelease
+ *     ├── demo       covers leaves: demoDebug, demoRelease
+ *     └── full       covers leaves: fullDebug, fullRelease
+ *
+ *     leaves = the 4 concrete variants Gradle actually resolves; each extends one build type + one
+ *     flavor (a lattice, not a tree: demoDebug extends both `debug` and `demo`, and `default`).
+ *
+ * ### Flow, decomposed (with inline values)
+ *
+ *     AggregatedDependencyResolver        resolve each leaf's closure:
+ *     (resolution — feeds this)             demoDebug   = okhttp gson timber leakcanary demoSdk
+ *                                           fullDebug   = okhttp gson timber leakcanary fullSdk
+ *                                           demoRelease = okhttp gson timber            demoSdk
+ *                                           fullRelease = okhttp gson timber            fullSdk
+ *            │
+ *     BucketPlacementVariantInputs.kt     describe each leaf's place in the hierarchy:
+ *     (input synthesis)                     demoDebug extendsFrom {default, demo, debug}  (etc.)
+ *            │
+ *     [BucketPlacementGraph]              derive ancestor / descendant-leaf sets:
+ *     (graph adapter)                       debug -> {demoDebug, fullDebug};  demo -> {demoDebug, demoRelease}
+ *            │
+ *     [DependencyBucketPlacementEngine]   the 3-stage set-math, per project:
+ *     (the algorithm)                       1. default   = common to ALL leaves      = {gson, okhttp, timber}
+ *                                           2. hierarchy = (common to leaves under it) minus default
+ *                                                debug={leakcanary}  demo={demoSdk}  full={fullSdk}
+ *                                                release={} -> dropped
+ *                                           3. leaf      = leaf minus default minus ancestors
+ *                                                all four leaves collapse to {} -> dropped
+ *            │
+ *     [MainBucketPlanner] / [TestBucketPlanner]   merge across projects; for test buckets subtract
+ *     assembled by this [BucketOwnershipPlanner]  what main already covers; reconcile declared
+ *                                                 metadata (excludes/overrides); assemble output:
+ *                                           default -> [gson, okhttp, timber]
+ *                                           debug   -> [leakcanary]
+ *                                           demo    -> [demoSdk]
+ *                                           full    -> [fullSdk]
+ *
+ * Test buckets run the *same* placement but additionally subtract whatever `main` already provides
+ * (a Gradle test source set sees main's classpath for free); androidTest further subtracts what unit
+ * `test` covers. "Already provided by another bucket" is decided by [Coverage].
+ *
+ * @see DependencyBucketPlacementEngine for the placement algorithm (stage 1-3 above)
+ * @see Coverage for the "already covered" predicate that drives every subtraction
+ */
 package com.grab.grazel.gradle.dependencies.bucket
 
 import com.grab.grazel.gradle.dependencies.DeclaredDependencyMetadata
