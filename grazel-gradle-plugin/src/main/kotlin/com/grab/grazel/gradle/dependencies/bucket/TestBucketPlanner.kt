@@ -415,7 +415,8 @@ internal class TestBucketPlanner(
 }
 
 /**
- * Two-pass filter over a test bucket's dependencies against the deps already covered elsewhere:
+ * The stricter, test-side counterpart to [Coverage.subtract] - a two-pass filter over a test
+ * bucket's dependencies against the deps already covered elsewhere:
  *
  * 1. [Coverage.subtract] does the generic subtraction, which can be too eager -
  *    it may drop a *direct* test dependency merely because some covering bucket happens to also

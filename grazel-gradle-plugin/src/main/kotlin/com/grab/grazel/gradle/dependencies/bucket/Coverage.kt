@@ -112,6 +112,10 @@ internal class Coverage private constructor(
      * Preferring exact-identity, then superset-closure, then first-match (in that order) - rather than
      * whichever candidate happened to be found first - is itself an invariant: it ensures the strongest
      * available evidence decides the outcome even when a bucket has multiple same-shortId candidates.
+     *
+     * Test-bucket planning applies a stricter variant that layers a restore-then-re-filter pass on top
+     * of this generic subtraction (keyed on [CoveredDependency.canCoverTest] rather than
+     * [CoveredDependency.canCover]); see [TestBucketPlanner] for that test-side counterpart.
      */
     fun subtract(dependenciesByShortId: Map<String, ResolvedDependency>): Map<String, ResolvedDependency> {
         return dependenciesByShortId.mapNotNull { (shortId, dependency) ->
