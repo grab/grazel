@@ -178,6 +178,18 @@ internal class TestBucketPlanner(
      * before merging, since several distinct internal bucket names can collapse onto the same
      * emitted test source set. Declared test dependency metadata is looked up under both the raw
      * bucket name and its output name because declarations may be recorded against either.
+     *
+     * Worked example, project `:app` with android-test leaves `demoDebug` and `fullDebug`:
+     * - `okhttp` is already declared in the `default` bucket. It appears in the placement plan's
+     *   `androidTest` (base) bucket, but since `default` is part of the "visible" coverage for the
+     *   base bucket, [withoutTestDependenciesCoveredBy] drops it - it is reachable without adding it
+     *   to the `androidTest` test source set.
+     * - `espresso-idling-resource` is declared only under `demoDebugAndroidTest` (i.e. only the
+     *   `demoDebug` leaf uses it), and is not present in `default`, `androidTest`, or the
+     *   `fullDebug` leaf's closure. It survives [withoutTestDependenciesCoveredBy] (no ancestor
+     *   covers it) and [withoutTestDependenciesCoveredByEveryLeaf] (not *every* leaf covers it, so
+     *   it isn't dropped from its own leaf bucket), so [planTestBucket] emits it into the
+     *   `demoDebugAndroidTest` output bucket.
      */
     private fun plannedTestBuckets(
         testBucketPlansByProject: Map<String, DependencyBucketPlacementPlan>,
@@ -199,14 +211,6 @@ internal class TestBucketPlanner(
                 .groupBy(CoveredDependency::bucketName)
             val plannedBuckets = linkedMapOf<String, Map<String, ResolvedDependency>>()
 
-            fun coveredDepsByShortIdFor(bucketNames: Set<String>): Map<String, List<CoveredDependency>> {
-                return bucketNames
-                    .asSequence()
-                    .flatMap { bucketName -> coveredDepsByBucket[bucketName].orEmpty().asSequence() }
-                    .toList()
-                    .let(::groupCoveredDependenciesByShortId)
-            }
-
             plannedBuckets.mergeBucket(plan.baseBucketName, plan.defaultBucket)
             plan.hierarchyBuckets.toSortedMap().forEach { (bucketName, dependencies) ->
                 plannedBuckets.mergeBucket(bucketName, dependencies)
@@ -215,60 +219,21 @@ internal class TestBucketPlanner(
                 plannedBuckets.mergeBucket(bucketName, dependencies)
             }
             plannedBuckets.forEach { (bucketName, dependencies) ->
-                val outputBucketName = outputBucketNameForTestBucket(plan, bucketName)
-                val testBucketNames = testBucketNamesForTestBucket(
+                val result = planTestBucket(
+                    projectPath = projectPath,
                     plan = plan,
-                    bucketName = bucketName
+                    bucketName = bucketName,
+                    dependencies = dependencies,
+                    coveredDepsByBucket = coveredDepsByBucket,
+                    declaredTestDependenciesByBucket = declaredTestDependenciesByBucket
                 )
-                val visibleMainBucketNames = visibleMainBucketNamesForTestBucket(
-                    plan = plan,
-                    testBucketNames = testBucketNames
-                )
-                val visibleCoveredDepsByShortId = coveredDepsByShortIdFor(
-                    visibleMainBucketNames + testBucketNames
-                )
-                val leafCoveredDepsByShortId = concreteTestLeafNamesFor(
-                    plan = plan,
-                    bucketName = bucketName
-                )
-                    .map { leafName ->
-                        val leafTestBucketNames = testBucketNamesForTestBucket(
-                            plan = plan,
-                            bucketName = leafName
-                        )
-                        val leafVisibleMainBucketNames = visibleMainBucketNamesForTestBucket(
-                            plan = plan,
-                            testBucketNames = leafTestBucketNames
-                        )
-                        coveredDepsByShortIdFor(
-                            leafVisibleMainBucketNames + leafTestBucketNames
-                        )
-                    }
-                val declaredTestDependencies = declaredTestDependenciesByBucket[
-                    ProjectDependencyBucket(projectPath, bucketName)
-                ].orEmpty() + declaredTestDependenciesByBucket[
-                    ProjectDependencyBucket(projectPath, outputBucketName)
-                ].orEmpty()
-                val visibleMainOnlyDependencies = withoutTestDependenciesCoveredBy(
-                    testDependencies = dependencies,
-                    coveredByShortId = visibleCoveredDepsByShortId,
-                    declaredTestDependencies = declaredTestDependencies
-                )
-                val testOnlyDependencies = withoutTestDependenciesCoveredByEveryLeaf(
-                    testDependencies = visibleMainOnlyDependencies,
-                    leafCoveredDepsByShortId = leafCoveredDepsByShortId,
-                    declaredTestDependencies = declaredTestDependencies
-                )
-                    .toSortedMap()
-                if (testOnlyDependencies.isNotEmpty()) {
+                if (result != null) {
                     addDeclaredOutputMetadata(
                         declaredMetadataByOutputBucket = declaredMetadataByOutputBucket,
-                        bucketName = outputBucketName,
-                        metadata = declaredTestDependencies.filterKeys { shortId ->
-                            shortId in testOnlyDependencies
-                        }
+                        bucketName = result.outputBucketName,
+                        metadata = result.declaredMetadata
                     )
-                    buckets.mergeBucket(outputBucketName, testOnlyDependencies)
+                    buckets.mergeBucket(result.outputBucketName, result.dependencies)
                 }
             }
         }
@@ -281,6 +246,96 @@ internal class TestBucketPlanner(
             ),
             declaredMetadataByOutputBucket = declaredMetadataByOutputBucket
         )
+    }
+
+    /**
+     * Result of planning a single internal bucket within one project's placement plan: the
+     * dependencies that survived coverage subtraction, remapped to their emitted output bucket
+     * name, plus the slice of declared test dependency metadata that corresponds to them.
+     */
+    private data class TestBucketResult(
+        val outputBucketName: String,
+        val dependencies: Map<String, ResolvedDependency>,
+        val declaredMetadata: Map<String, ResolvedDependency>
+    )
+
+    private fun coveredDepsByShortIdFor(
+        coveredDepsByBucket: Map<String, List<CoveredDependency>>,
+        bucketNames: Set<String>
+    ): Map<String, List<CoveredDependency>> {
+        return bucketNames
+            .asSequence()
+            .flatMap { bucketName -> coveredDepsByBucket[bucketName].orEmpty().asSequence() }
+            .toList()
+            .let(::groupCoveredDependenciesByShortId)
+    }
+
+    private fun planTestBucket(
+        projectPath: String,
+        plan: DependencyBucketPlacementPlan,
+        bucketName: String,
+        dependencies: Map<String, ResolvedDependency>,
+        coveredDepsByBucket: Map<String, List<CoveredDependency>>,
+        declaredTestDependenciesByBucket: Map<ProjectDependencyBucket, Map<String, ResolvedDependency>>
+    ): TestBucketResult? {
+        val outputBucketName = outputBucketNameForTestBucket(plan, bucketName)
+        val testBucketNames = testBucketNamesForTestBucket(
+            plan = plan,
+            bucketName = bucketName
+        )
+        val visibleMainBucketNames = visibleMainBucketNamesForTestBucket(
+            plan = plan,
+            testBucketNames = testBucketNames
+        )
+        val visibleCoveredDepsByShortId = coveredDepsByShortIdFor(
+            coveredDepsByBucket,
+            visibleMainBucketNames + testBucketNames
+        )
+        val leafCoveredDepsByShortId = concreteTestLeafNamesFor(
+            plan = plan,
+            bucketName = bucketName
+        )
+            .map { leafName ->
+                val leafTestBucketNames = testBucketNamesForTestBucket(
+                    plan = plan,
+                    bucketName = leafName
+                )
+                val leafVisibleMainBucketNames = visibleMainBucketNamesForTestBucket(
+                    plan = plan,
+                    testBucketNames = leafTestBucketNames
+                )
+                coveredDepsByShortIdFor(
+                    coveredDepsByBucket,
+                    leafVisibleMainBucketNames + leafTestBucketNames
+                )
+            }
+        val declaredTestDependencies = declaredTestDependenciesByBucket[
+            ProjectDependencyBucket(projectPath, bucketName)
+        ].orEmpty() + declaredTestDependenciesByBucket[
+            ProjectDependencyBucket(projectPath, outputBucketName)
+        ].orEmpty()
+        val visibleMainOnlyDependencies = withoutTestDependenciesCoveredBy(
+            testDependencies = dependencies,
+            coveredByShortId = visibleCoveredDepsByShortId,
+            declaredTestDependencies = declaredTestDependencies
+        )
+        val testOnlyDependencies = withoutTestDependenciesCoveredByEveryLeaf(
+            testDependencies = visibleMainOnlyDependencies,
+            leafCoveredDepsByShortId = leafCoveredDepsByShortId,
+            declaredTestDependencies = declaredTestDependencies
+        )
+            .toSortedMap()
+        return if (testOnlyDependencies.isNotEmpty()) {
+            TestBucketResult(
+                outputBucketName = outputBucketName,
+                dependencies = testOnlyDependencies,
+                declaredMetadata = declaredTestDependencies.filterKeys { shortId ->
+                    shortId in testOnlyDependencies
+                }
+            )
+        } else {
+            null
+        }
     }
 
     private fun testBucketNamesForTestBucket(
