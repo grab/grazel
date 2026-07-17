@@ -18,13 +18,13 @@ package com.grab.grazel.gradle.dependencies
 
 import com.grab.grazel.gradle.dependencies.bucket.BucketOwnershipPlanner
 import com.grab.grazel.gradle.dependencies.bucket.OwnershipPlannerInput
-import com.grab.grazel.gradle.dependencies.bucket.mergeBucket
-import com.grab.grazel.gradle.dependencies.bucket.unionDependencyMaps
 import com.grab.grazel.gradle.dependencies.model.ExcludeRule
 import com.grab.grazel.gradle.dependencies.model.ResolveDependenciesResult
 import com.grab.grazel.gradle.dependencies.model.ResolvedDependency
 import com.grab.grazel.gradle.dependencies.model.intersectWith
 import com.grab.grazel.gradle.dependencies.model.versionInfo
+import com.grab.grazel.gradle.dependencies.resolution.BucketTarget
+import com.grab.grazel.gradle.dependencies.resolution.DependencyBucketAccumulator
 import com.grab.grazel.gradle.dependencies.resolution.MainProjectEdgeScope
 import com.grab.grazel.gradle.dependencies.resolution.MainReachabilityTracker
 import com.grab.grazel.gradle.dependencies.resolution.RootVisitOutcome
@@ -95,12 +95,7 @@ internal class AggregatedDependencyResolver(
         private val mainReachabilityTracker =
             MainReachabilityTracker(declaredDependencyMetadata, migratableProjectPaths)
 
-        private val leafClosures = mutableMapOf<ProjectDependencyBucket, Map<String, ResolvedDependency>>()
-        private val leafUnitTestClosures = mutableMapOf<ProjectDependencyBucket, Map<String, ResolvedDependency>>()
-        private val leafAndroidTestClosures = mutableMapOf<ProjectDependencyBucket, Map<String, ResolvedDependency>>()
-        private val hierarchyBucketClosures = mutableMapOf<ProjectDependencyBucket, Map<String, ResolvedDependency>>()
-        private val testHierarchyBucketClosures = mutableMapOf<ProjectDependencyBucket, Map<String, ResolvedDependency>>()
-        private var lintDeps = emptyMap<String, ResolvedDependency>()
+        private val bucketAccumulator = DependencyBucketAccumulator()
         private var sawBinaryRoot = false
 
         fun resolve(): List<ResolveDependenciesResult> {
@@ -113,7 +108,7 @@ internal class AggregatedDependencyResolver(
             }
 
             val declaredTestDependenciesByBucket = addDeclaredMetadataClosures()
-            if (!hasResolvedClosures()) {
+            if (!bucketAccumulator.hasResolvedClosures()) {
                 logger.warn("Grazel: No leaf variant runtime classpaths resolved")
             }
 
@@ -122,15 +117,15 @@ internal class AggregatedDependencyResolver(
                 precomputedKspDependencies = precomputedKspDependencies
             ).plan(
                 OwnershipPlannerInput(
-                    leafClosures = snapshotDependencyBuckets(leafClosures),
-                    leafUnitTestClosures = snapshotDependencyBuckets(leafUnitTestClosures),
-                    leafAndroidTestClosures = snapshotDependencyBuckets(leafAndroidTestClosures),
-                    hierarchyBucketClosures = snapshotDependencyBuckets(hierarchyBucketClosures),
-                    testHierarchyBucketClosures = snapshotDependencyBuckets(testHierarchyBucketClosures),
+                    leafClosures = bucketAccumulator.leaf(),
+                    leafUnitTestClosures = bucketAccumulator.leafUnitTest(),
+                    leafAndroidTestClosures = bucketAccumulator.leafAndroidTest(),
+                    hierarchyBucketClosures = bucketAccumulator.hierarchy(),
+                    testHierarchyBucketClosures = bucketAccumulator.testHierarchy(),
                     reachableMainBucketNamesByProject = mainReachabilityTracker.reachableMainBucketNamesByProject
                         .mapValues { (_, bucketNames) -> bucketNames.toSortedSet() }
                         .toSortedMap(),
-                    lintDeps = lintDeps.toSortedMap(),
+                    lintDeps = bucketAccumulator.lintDeps.toSortedMap(),
                     declaredTestDependenciesByBucket = snapshotDependencyBuckets(declaredTestDependenciesByBucket)
                 )
             )
@@ -147,45 +142,6 @@ internal class AggregatedDependencyResolver(
 
         private fun variantsFor(projectPath: String): List<DeclaredVariantDependencyMetadata> =
             projectMetadataByPath[projectPath]?.variants.orEmpty()
-
-        private fun addDependenciesToProjectBucket(
-            dependenciesByProjectBucket: MutableMap<ProjectDependencyBucket, Map<String, ResolvedDependency>>,
-            projectPath: String,
-            bucketName: String,
-            closure: Map<String, ResolvedDependency>,
-            keepEmpty: Boolean = true
-        ) {
-            if (!keepEmpty && closure.isEmpty()) return
-            dependenciesByProjectBucket.mergeBucket(ProjectDependencyBucket(projectPath, bucketName), closure)
-        }
-
-        private fun addToHierarchyBucket(
-            projectPath: String,
-            bucketName: String,
-            closure: Map<String, ResolvedDependency>
-        ) {
-            addDependenciesToProjectBucket(
-                dependenciesByProjectBucket = hierarchyBucketClosures,
-                projectPath = projectPath,
-                bucketName = bucketName,
-                closure = closure,
-                keepEmpty = false
-            )
-        }
-
-        private fun addToTestHierarchyBucket(
-            projectPath: String,
-            bucketName: String,
-            closure: Map<String, ResolvedDependency>
-        ) {
-            addDependenciesToProjectBucket(
-                dependenciesByProjectBucket = testHierarchyBucketClosures,
-                projectPath = projectPath,
-                bucketName = bucketName,
-                closure = closure,
-                keepEmpty = false
-            )
-        }
 
         private fun variantHierarchyNames(metadata: AggregatedDependencyRootMetadata): Set<String> {
             return metadata.variantNames.ifEmpty {
@@ -344,8 +300,20 @@ internal class AggregatedDependencyResolver(
                         targetBucketNames(metadata).forEach { bucketName ->
                             when (bucketName) {
                                 TEST_VARIANT, ANDROID_TEST_VARIANT ->
-                                    addToTestHierarchyBucket(metadata.projectPath, bucketName, closure)
-                                else -> addToHierarchyBucket(metadata.projectPath, bucketName, closure)
+                                    bucketAccumulator.fold(
+                                        target = BucketTarget.TEST_HIERARCHY,
+                                        projectPath = metadata.projectPath,
+                                        bucketName = bucketName,
+                                        closure = closure,
+                                        keepEmpty = false
+                                    )
+                                else -> bucketAccumulator.fold(
+                                    target = BucketTarget.HIERARCHY,
+                                    projectPath = metadata.projectPath,
+                                    bucketName = bucketName,
+                                    closure = closure,
+                                    keepEmpty = false
+                                )
                             }
                         }
                     }
@@ -355,24 +323,30 @@ internal class AggregatedDependencyResolver(
                         val targetBuckets = targetBucketNames(metadata)
                         targetBuckets.forEach { bucketName ->
                             when (bucketName) {
-                                DEFAULT_VARIANT -> addToHierarchyBucket(metadata.projectPath, DEFAULT_VARIANT, closure)
+                                DEFAULT_VARIANT -> bucketAccumulator.fold(
+                                    target = BucketTarget.HIERARCHY,
+                                    projectPath = metadata.projectPath,
+                                    bucketName = DEFAULT_VARIANT,
+                                    closure = closure,
+                                    keepEmpty = false
+                                )
                                 TEST_VARIANT ->
-                                    addDependenciesToProjectBucket(
-                                        dependenciesByProjectBucket = leafUnitTestClosures,
+                                    bucketAccumulator.fold(
+                                        target = BucketTarget.LEAF_UNIT_TEST,
                                         projectPath = metadata.projectPath,
                                         bucketName = leafName,
                                         closure = closure
                                     )
                                 ANDROID_TEST_VARIANT ->
-                                    addDependenciesToProjectBucket(
-                                        dependenciesByProjectBucket = leafAndroidTestClosures,
+                                    bucketAccumulator.fold(
+                                        target = BucketTarget.LEAF_ANDROID_TEST,
                                         projectPath = metadata.projectPath,
                                         bucketName = leafName,
                                         closure = closure
                                     )
                                 else -> {
-                                    addDependenciesToProjectBucket(
-                                        dependenciesByProjectBucket = leafClosures,
+                                    bucketAccumulator.fold(
+                                        target = BucketTarget.LEAF,
                                         projectPath = metadata.projectPath,
                                         bucketName = bucketName,
                                         closure = closure
@@ -383,13 +357,19 @@ internal class AggregatedDependencyResolver(
                     }
                     AggregatedDependencyRootKind.TEST_HIERARCHY -> {
                         targetBucketNames(metadata).forEach { bucketName ->
-                            addToTestHierarchyBucket(metadata.projectPath, bucketName, closure)
+                            bucketAccumulator.fold(
+                                target = BucketTarget.TEST_HIERARCHY,
+                                projectPath = metadata.projectPath,
+                                bucketName = bucketName,
+                                closure = closure,
+                                keepEmpty = false
+                            )
                         }
                     }
                     AggregatedDependencyRootKind.UNIT_TEST -> {
                         val leafName = metadata.leafName ?: metadata.bucketName ?: return@rootLoop
-                        addDependenciesToProjectBucket(
-                            dependenciesByProjectBucket = leafUnitTestClosures,
+                        bucketAccumulator.fold(
+                            target = BucketTarget.LEAF_UNIT_TEST,
                             projectPath = metadata.projectPath,
                             bucketName = leafName,
                             closure = closure
@@ -397,15 +377,15 @@ internal class AggregatedDependencyResolver(
                     }
                     AggregatedDependencyRootKind.ANDROID_TEST -> {
                         val leafName = metadata.leafName ?: metadata.bucketName ?: return@rootLoop
-                        addDependenciesToProjectBucket(
-                            dependenciesByProjectBucket = leafAndroidTestClosures,
+                        bucketAccumulator.fold(
+                            target = BucketTarget.LEAF_ANDROID_TEST,
                             projectPath = metadata.projectPath,
                             bucketName = leafName,
                             closure = closure
                         )
                     }
                     AggregatedDependencyRootKind.LINT -> {
-                        lintDeps = unionDependencyMaps(lintDeps, closure)
+                        bucketAccumulator.foldLint(closure)
                     }
                 }
             }
@@ -438,8 +418,20 @@ internal class AggregatedDependencyResolver(
                 .forEach { (bucket, dependencies) ->
                     when (bucket.bucketName) {
                         TEST_VARIANT, ANDROID_TEST_VARIANT ->
-                            addToTestHierarchyBucket(bucket.projectPath, bucket.bucketName, dependencies)
-                        else -> addToHierarchyBucket(bucket.projectPath, bucket.bucketName, dependencies)
+                            bucketAccumulator.fold(
+                                target = BucketTarget.TEST_HIERARCHY,
+                                projectPath = bucket.projectPath,
+                                bucketName = bucket.bucketName,
+                                closure = dependencies,
+                                keepEmpty = false
+                            )
+                        else -> bucketAccumulator.fold(
+                            target = BucketTarget.HIERARCHY,
+                            projectPath = bucket.projectPath,
+                            bucketName = bucket.bucketName,
+                            closure = dependencies,
+                            keepEmpty = false
+                        )
                     }
                 }
 
@@ -449,24 +441,28 @@ internal class AggregatedDependencyResolver(
                 .let(mainReachabilityTracker::filterExcludedByEveryReachableRoot)
                 .filterValues(Map<String, ResolvedDependency>::isNotEmpty)
                 .forEach { (bucket, dependencies) ->
-                    addToHierarchyBucket(bucket.projectPath, bucket.bucketName, dependencies)
+                    bucketAccumulator.fold(
+                        target = BucketTarget.HIERARCHY,
+                        projectPath = bucket.projectPath,
+                        bucketName = bucket.bucketName,
+                        closure = dependencies,
+                        keepEmpty = false
+                    )
                 }
 
             return declaredDependencyMetadata
                 .collectDeclaredTestDependenciesByProjectBucket(projectMetadataByPath.keys)
                 .also { declaredTestDependenciesByBucket ->
                     declaredTestDependenciesByBucket.forEach { (bucket, dependencies) ->
-                        addToTestHierarchyBucket(bucket.projectPath, bucket.bucketName, dependencies)
+                        bucketAccumulator.fold(
+                            target = BucketTarget.TEST_HIERARCHY,
+                            projectPath = bucket.projectPath,
+                            bucketName = bucket.bucketName,
+                            closure = dependencies,
+                            keepEmpty = false
+                        )
                     }
                 }
-        }
-
-        private fun hasResolvedClosures(): Boolean {
-            return leafClosures.isNotEmpty() ||
-                hierarchyBucketClosures.isNotEmpty() ||
-                leafUnitTestClosures.isNotEmpty() ||
-                leafAndroidTestClosures.isNotEmpty() ||
-                testHierarchyBucketClosures.isNotEmpty()
         }
 
     }
