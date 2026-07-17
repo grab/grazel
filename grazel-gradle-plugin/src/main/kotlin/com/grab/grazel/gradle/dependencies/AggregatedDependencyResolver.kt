@@ -18,6 +18,7 @@ package com.grab.grazel.gradle.dependencies
 
 import com.grab.grazel.gradle.dependencies.bucket.BucketOwnershipPlanner
 import com.grab.grazel.gradle.dependencies.bucket.OwnershipPlannerInput
+import com.grab.grazel.gradle.dependencies.bucket.mergeBucket
 import com.grab.grazel.gradle.dependencies.bucket.unionDependencyMaps
 import com.grab.grazel.gradle.dependencies.model.ExcludeRule
 import com.grab.grazel.gradle.dependencies.model.ResolveDependenciesResult
@@ -194,10 +195,7 @@ internal class AggregatedDependencyResolver(
             keepEmpty: Boolean = true
         ) {
             if (!keepEmpty && closure.isEmpty()) return
-            val bucket = ProjectDependencyBucket(projectPath, bucketName)
-            dependenciesByProjectBucket[bucket] = dependenciesByProjectBucket[bucket]
-                ?.let { existing -> unionDependencyMaps(existing, closure) }
-                ?: closure
+            dependenciesByProjectBucket.mergeBucket(ProjectDependencyBucket(projectPath, bucketName), closure)
         }
 
         private fun addToHierarchyBucket(
@@ -273,10 +271,16 @@ internal class AggregatedDependencyResolver(
             return selectedVariantHierarchyNames(
                 displayName = selectedVariantDisplayName,
                 variantHierarchyNamesByName = variantHierarchyNamesByName
-            ).ifEmpty {
-                setOf(DEFAULT_VARIANT).filter { bucketName -> bucketName in variantHierarchyNamesByName }.toSet()
-            }
+            ).orDefaultVariantIn(variantHierarchyNamesByName.keys)
         }
+
+        /**
+         * Falls back to [DEFAULT_VARIANT] when this set of bucket names is empty, but only if
+         * `default` is itself a known name — so an empty result never invents a bucket the project
+         * doesn't actually have.
+         */
+        private fun Set<String>.orDefaultVariantIn(knownNames: Set<String>): Set<String> =
+            ifEmpty { setOf(DEFAULT_VARIANT).filter { name -> name in knownNames }.toSet() }
 
         private fun knownMainBucketNames(projectPath: String, bucketNames: Set<String>): Set<String> {
             val knownBucketNames = variantsFor(projectPath)
@@ -289,11 +293,7 @@ internal class AggregatedDependencyResolver(
             return bucketNames
                 .filter { bucketName -> bucketName in knownBucketNames }
                 .toSet()
-                .ifEmpty {
-                    setOf(DEFAULT_VARIANT)
-                        .filter { bucketName -> bucketName in knownBucketNames }
-                        .toSet()
-                }
+                .orDefaultVariantIn(knownBucketNames)
         }
 
         private fun isReachableMainBucket(bucket: ProjectDependencyBucket): Boolean {
