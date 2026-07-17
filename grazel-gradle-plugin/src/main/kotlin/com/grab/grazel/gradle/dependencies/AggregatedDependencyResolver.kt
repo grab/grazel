@@ -24,6 +24,7 @@ import com.grab.grazel.gradle.dependencies.model.ResolvedDependency
 import com.grab.grazel.gradle.dependencies.model.intersectWith
 import com.grab.grazel.gradle.dependencies.model.versionInfo
 import com.grab.grazel.gradle.dependencies.resolution.BucketTarget
+import com.grab.grazel.gradle.dependencies.resolution.DeclaredMetadataMerger
 import com.grab.grazel.gradle.dependencies.resolution.DependencyBucketAccumulator
 import com.grab.grazel.gradle.dependencies.resolution.MainProjectEdgeScope
 import com.grab.grazel.gradle.dependencies.resolution.MainReachabilityTracker
@@ -107,7 +108,10 @@ internal class AggregatedDependencyResolver(
                 return emptyList()
             }
 
-            val declaredTestDependenciesByBucket = addDeclaredMetadataClosures()
+            val declaredTestDependenciesByBucket = DeclaredMetadataMerger(
+                declaredDependencyMetadata = declaredDependencyMetadata,
+                projectMetadataByPath = projectMetadataByPath
+            ).merge(bucketAccumulator, mainReachabilityTracker)
             if (!bucketAccumulator.hasResolvedClosures()) {
                 logger.warn("Grazel: No leaf variant runtime classpaths resolved")
             }
@@ -163,12 +167,6 @@ internal class AggregatedDependencyResolver(
                 variantTypes = setOf(variantType),
                 variantNames = variantHierarchyNames(metadata)
             )
-        }
-
-        private fun shouldAddDeclaredHierarchyDependency(bucket: ProjectDependencyBucket): Boolean {
-            val projectType = projectMetadataByPath[bucket.projectPath]?.projectType
-                ?: DeclaredProjectType.OTHER
-            return projectType == DeclaredProjectType.OTHER || bucket.bucketName != DEFAULT_VARIANT
         }
 
         /**
@@ -389,80 +387,6 @@ internal class AggregatedDependencyResolver(
                     }
                 }
             }
-        }
-
-        /**
-         * Merges purely-declared (never resolved via a classpath, e.g. `compileOnly` or projects
-         * with no resolvable root) dependency buckets into the same hierarchy closures the resolved
-         * roots populated, in a specific order that each filter depends on:
-         * 1. compileOnly buckets are added unconditionally (subject only to
-         *    [shouldAddDeclaredHierarchyDependency]) since they never appear on a runtime classpath
-         *    and so cannot be discovered by root traversal at all.
-         * 2. declared "main" (implementation/api) buckets are added only if the bucket is both
-         *    non-OTHER-eligible ([shouldAddDeclaredHierarchyDependency]) *and* actually reached by a
-         *    main-hierarchy root ([MainReachabilityTracker.isReachableMainBucket]) — this must run
-         *    after [collectRootClosures] has populated reachability — and are then passed through
-         *    [MainReachabilityTracker.filterExcludedByEveryReachableRoot] so a dependency excluded
-         *    on every reachable edge is still dropped even though it was never resolved.
-         * 3. declared test buckets are added last and unconditionally into the test hierarchy
-         *    closures, since test source sets have no equivalent reachability gating.
-         */
-        private fun addDeclaredMetadataClosures(): Map<ProjectDependencyBucket, Map<String, ResolvedDependency>> {
-            val compileOnlyDependenciesByBucket = declaredDependencyMetadata
-                .collectCompileOnlyDependenciesByProjectBucket(projectMetadataByPath.keys)
-            val declaredMainDependenciesByBucket = declaredDependencyMetadata
-                .collectDeclaredMainDependenciesByProjectBucket(projectMetadataByPath.keys)
-
-            compileOnlyDependenciesByBucket
-                .filter { (bucket, _) -> shouldAddDeclaredHierarchyDependency(bucket) }
-                .forEach { (bucket, dependencies) ->
-                    when (bucket.bucketName) {
-                        TEST_VARIANT, ANDROID_TEST_VARIANT ->
-                            bucketAccumulator.fold(
-                                target = BucketTarget.TEST_HIERARCHY,
-                                projectPath = bucket.projectPath,
-                                bucketName = bucket.bucketName,
-                                closure = dependencies,
-                                keepEmpty = false
-                            )
-                        else -> bucketAccumulator.fold(
-                            target = BucketTarget.HIERARCHY,
-                            projectPath = bucket.projectPath,
-                            bucketName = bucket.bucketName,
-                            closure = dependencies,
-                            keepEmpty = false
-                        )
-                    }
-                }
-
-            declaredMainDependenciesByBucket
-                .filter { (bucket, _) -> shouldAddDeclaredHierarchyDependency(bucket) }
-                .filter { (bucket, _) -> mainReachabilityTracker.isReachableMainBucket(bucket) }
-                .let(mainReachabilityTracker::filterExcludedByEveryReachableRoot)
-                .filterValues(Map<String, ResolvedDependency>::isNotEmpty)
-                .forEach { (bucket, dependencies) ->
-                    bucketAccumulator.fold(
-                        target = BucketTarget.HIERARCHY,
-                        projectPath = bucket.projectPath,
-                        bucketName = bucket.bucketName,
-                        closure = dependencies,
-                        keepEmpty = false
-                    )
-                }
-
-            return declaredDependencyMetadata
-                .collectDeclaredTestDependenciesByProjectBucket(projectMetadataByPath.keys)
-                .also { declaredTestDependenciesByBucket ->
-                    declaredTestDependenciesByBucket.forEach { (bucket, dependencies) ->
-                        bucketAccumulator.fold(
-                            target = BucketTarget.TEST_HIERARCHY,
-                            projectPath = bucket.projectPath,
-                            bucketName = bucket.bucketName,
-                            closure = dependencies,
-                            keepEmpty = false
-                        )
-                    }
-                }
         }
 
     }
