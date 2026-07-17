@@ -21,6 +21,7 @@ import org.gradle.internal.DisplayName
 import org.gradle.internal.component.external.model.DefaultModuleComponentIdentifier
 import org.gradle.internal.component.external.model.DefaultModuleComponentSelector
 import org.gradle.internal.component.external.model.ImmutableCapabilities
+import org.gradle.internal.impldep.com.google.common.collect.ImmutableSet
 import org.gradle.kotlin.dsl.configure
 import org.gradle.kotlin.dsl.dependencies
 import org.gradle.kotlin.dsl.repositories
@@ -125,24 +126,26 @@ class ResolvedComponentsVisitorTest {
                 /* group = */"androidx.percentlayout",
                 /* name = */"percentlayout"
             )
-            addDependency(
-                DefaultResolvedDependencyResult(
-                    /* requested = */ DefaultModuleComponentSelector
-                        .newSelector(/* id = */ percentIdentifier, /* version = */ "1.0.0"),
-                    /* constraint = */ false,
-                    /* selectedComponent = */ percentLayoutComponent,
-                    /* selectedVariant = */ DefaultResolvedVariantResult(
-                        /* owner = */ DefaultModuleComponentIdentifier
-                            .newId(percentIdentifier, "1.0.0"),
-                        /* displayName = */ object : DisplayName {
-                            override fun getDisplayName(): String = ""
-                            override fun getCapitalizedDisplayName(): String = ""
-                        },
-                        /* attributes = */ FakeAttributeContainer(),
-                        /* capabilities = */ ImmutableCapabilities.EMPTY,
-                        /* externalVariant = */ null
-                    ),
-                    /* from = */ percentLayoutComponent
+            addDependencies(
+                ImmutableSet.of(
+                    DefaultResolvedDependencyResult(
+                        /* requested = */ DefaultModuleComponentSelector
+                            .newSelector(/* id = */ percentIdentifier, /* version = */ "1.0.0"),
+                        /* constraint = */ false,
+                        /* selectedComponent = */ percentLayoutComponent,
+                        /* selectedVariant = */ DefaultResolvedVariantResult(
+                            /* owner = */ DefaultModuleComponentIdentifier
+                                .newId(percentIdentifier, "1.0.0"),
+                            /* displayName = */ object : DisplayName {
+                                override fun getDisplayName(): String = ""
+                                override fun getCapitalizedDisplayName(): String = ""
+                            },
+                            /* attributes = */ FakeAttributeContainer(),
+                            /* capabilities = */ ImmutableCapabilities.EMPTY,
+                            /* externalVariant = */ null
+                        ),
+                        /* from = */ percentLayoutComponent
+                    )
                 )
             )
         }

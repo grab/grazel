@@ -7,18 +7,18 @@ import org.gradle.internal.operations.BuildOperationDescriptor
 class FakeProgressLoggerFactory : ProgressLoggerFactory {
     val operations = mutableListOf<FakeProgressLogger>()
 
-    override fun newOperation(loggerCategory: String?) = newLogger()
+    override fun newOperation(loggerCategory: String) = newLogger()
 
-    override fun newOperation(loggerCategory: Class<*>?) = newLogger()
+    override fun newOperation(loggerCategory: Class<*>) = newLogger()
 
     override fun newOperation(
-        loggerCategory: Class<*>?,
-        buildOperationDescriptor: BuildOperationDescriptor?
+        loggerCategory: Class<*>,
+        buildOperationDescriptor: BuildOperationDescriptor
     ): ProgressLogger = newLogger()
 
     override fun newOperation(
-        loggerClass: Class<*>?,
-        parent: ProgressLogger?
+        loggerClass: Class<*>,
+        parent: ProgressLogger
     ) = newLogger()
 
     private fun newLogger(): FakeProgressLogger =
@@ -37,14 +37,14 @@ class FakeProgressLogger : ProgressLogger {
 
     val progressMessages = mutableListOf<String>()
 
-    override fun setDescription(description: String?): ProgressLogger {
-        this.desc = description ?: ""
+    override fun setDescription(description: String): ProgressLogger {
+        this.desc = description
         return this
     }
 
     override fun getDescription(): String = desc
 
-    override fun start(description: String?, status: String?): ProgressLogger {
+    override fun start(description: String, status: String): ProgressLogger {
         setDescription(description)
         started = true
         return this
@@ -54,7 +54,7 @@ class FakeProgressLogger : ProgressLogger {
         started = true
     }
 
-    override fun started(status: String?) {
+    override fun started(status: String) {
         started = true
         progress(status)
     }
@@ -71,7 +71,7 @@ class FakeProgressLogger : ProgressLogger {
         completed = true
     }
 
-    override fun completed(status: String?, failed: Boolean) {
+    override fun completed(status: String, failed: Boolean) {
         completed = true
         this.failed = failed
         progress(status)

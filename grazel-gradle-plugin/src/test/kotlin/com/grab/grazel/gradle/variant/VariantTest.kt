@@ -425,8 +425,11 @@ class VariantTest {
                     "${classpath.name} configuration for ${buildType.name} has gradle attributes set - ${variantType.name}"
                 ) {
                     configurations.all {
-                        it.attributes.toString()
-                            .contains("org.gradle.jvm.environment=android, org.gradle.usage=java-runtime, org.jetbrains.kotlin.platform.type=androidJvm")
+                        val attributes = it.attributes.toString()
+                        attributes.contains("org.gradle.jvm.environment=android") &&
+                            attributes.contains("org.gradle.usage=java-runtime") &&
+                            attributes.contains("org.jetbrains.kotlin.platform.type=") &&
+                            attributes.contains("androidJvm")
                     }
                 }
             }

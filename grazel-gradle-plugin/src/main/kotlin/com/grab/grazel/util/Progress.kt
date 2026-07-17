@@ -20,12 +20,12 @@ import org.gradle.internal.logging.progress.ProgressLogger
 
 object NoOpProgressLogger : ProgressLogger {
     override fun getDescription() = ""
-    override fun setDescription(description: String?) = this
-    override fun start(description: String?, status: String?) = this
+    override fun setDescription(description: String) = this
+    override fun start(description: String, status: String) = this
     override fun started() = Unit
-    override fun started(status: String?) = Unit
+    override fun started(status: String) = Unit
     override fun progress(status: String?) = Unit
     override fun progress(status: String?, failing: Boolean) = Unit
     override fun completed() = Unit
-    override fun completed(status: String?, failed: Boolean) = Unit
+    override fun completed(status: String, failed: Boolean) = Unit
 }

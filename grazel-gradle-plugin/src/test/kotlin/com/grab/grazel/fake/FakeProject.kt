@@ -24,6 +24,7 @@ import org.gradle.api.NamedDomainObjectFactory
 import org.gradle.api.PathValidation
 import org.gradle.api.Project
 import org.gradle.api.ProjectState
+import org.gradle.api.project.IsolatedProject
 import org.gradle.api.Task
 import org.gradle.api.artifacts.Configuration
 import org.gradle.api.artifacts.ConfigurationContainer
@@ -72,6 +73,10 @@ class FakeProject(
     override fun toString(): String = name
 
     override fun compareTo(other: Project?): Int {
+        TODO("Not yet implemented")
+    }
+
+    override fun getIsolated(): IsolatedProject {
         TODO("Not yet implemented")
     }
 

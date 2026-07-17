@@ -17,6 +17,9 @@
 package com.grab.grazel.fake
 
 import org.gradle.api.artifacts.result.ResolvedComponentResult
+import org.gradle.internal.impldep.com.google.common.collect.ImmutableList
+import org.gradle.internal.impldep.com.google.common.collect.ImmutableMap
+import org.gradle.internal.impldep.com.google.common.collect.ImmutableSet
 import org.gradle.api.internal.artifacts.DefaultBuildIdentifier
 import org.gradle.api.internal.artifacts.DefaultModuleIdentifier
 import org.gradle.api.internal.artifacts.DefaultModuleVersionIdentifier
@@ -55,8 +58,8 @@ fun fakeComponentResult(
             ), version
         )
     },
-    /* selectedVariants = */ emptyMap(),
-    /* allVariants = */ emptyList(),
+    /* selectedVariants = */ ImmutableMap.of(),
+    /* allVariants = */ ImmutableList.of(),
     /* repositoryName = */ ""
 ).apply(action)
 
@@ -70,8 +73,9 @@ fun DefaultResolvedComponentResult.addDependencyTo(
         /* group = */ moduleVersion.group,
         /* name = */ moduleVersion.name
     )
-    addDependency(
-        DefaultResolvedDependencyResult(
+    addDependencies(
+        ImmutableSet.of(
+            DefaultResolvedDependencyResult(
             /* requested = */ DefaultModuleComponentSelector
                 .newSelector(/* id = */ moduleIdentifier, /* version = */ moduleVersion.version),
             /* constraint = */ constraint,
@@ -89,6 +93,7 @@ fun DefaultResolvedComponentResult.addDependencyTo(
                 /* externalVariant = */ null
             ),
             /* from = */ this
+            )
         )
     )
 }
