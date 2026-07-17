@@ -29,10 +29,26 @@ import com.grab.grazel.gradle.variant.VariantType.Test
 import com.grab.grazel.gradle.variant.testSuffix
 
 /**
- * Plans test source set buckets (unit test / android test) for every project: places declared test
- * variants via [DependencyBucketPlacementEngine], then subtracts every dependency already reachable
- * from the buckets a Gradle test source set can actually see, so only genuinely test-only
- * dependencies survive into the output.
+ * Plans the unit-test and android-test buckets for every project.
+ *
+ * A test source set does not stand alone: its generated target depends on the corresponding main
+ * target and so inherits main's entire classpath for free. A test bucket is therefore not a fresh
+ * placement but a *residual* - it should declare only what main does not already provide. Planning
+ * runs in two steps: the test variants are placed into their own default/hierarchy/leaf lattice by
+ * the shared [DependencyBucketPlacementEngine] (the same logic main uses), then everything main
+ * already covers is subtracted, leaving only genuinely test-only dependencies. Android-test
+ * additionally subtracts what unit-test covers, since it inherits that source set as well.
+ *
+ * This subtraction is deliberately stricter than the coverage rule main applies among its own
+ * buckets - it uses [CoveredDependency.canCoverTest] rather than [CoveredDependency.canCover]. Main
+ * placement is a partition of a single shared classpath: a dependency appearing in two main buckets
+ * is the same resolved artifact and can be disambiguated in place. A test root, by contrast, can
+ * share a main root's exact resolved identity yet pull a *larger* transitive closure than main did
+ * for that same artifact. Main's copy then would not actually supply those extra transitives, so
+ * treating the root as "already provided" on identity alone would drop it and silently starve the
+ * test target. A main dependency may therefore cover a test root only when it is itself a direct
+ * root whose transitive closure is a superset of the test root's; anything short of that is kept as
+ * the test bucket's own declaration.
  */
 internal class TestBucketPlanner(
     private val declaredDependencyMetadata: DeclaredDependencyMetadata
