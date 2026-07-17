@@ -25,23 +25,18 @@ import com.grab.grazel.gradle.dependencies.model.ResolveDependenciesResult
 import com.grab.grazel.gradle.dependencies.model.ResolvedDependency
 import com.grab.grazel.gradle.dependencies.model.intersectWith
 import com.grab.grazel.gradle.dependencies.model.versionInfo
+import com.grab.grazel.gradle.dependencies.resolution.MainProjectEdgeScope
+import com.grab.grazel.gradle.dependencies.resolution.MainReachabilityTracker
 import com.grab.grazel.gradle.variant.ANDROID_TEST_VARIANT
 import com.grab.grazel.gradle.variant.DEFAULT_VARIANT
 import com.grab.grazel.gradle.variant.TEST_VARIANT
 import com.grab.grazel.gradle.variant.VariantType
 import com.grab.grazel.gradle.variant.VariantType.AndroidBuild
 import com.grab.grazel.gradle.variant.VariantType.AndroidTest
-import com.grab.grazel.gradle.variant.VariantType.JvmBuild
 import com.grab.grazel.gradle.variant.VariantType.Test
 import com.grab.grazel.util.ProgressReporter
 import org.gradle.api.logging.Logger
 import java.util.TreeSet
-
-private data class MainProjectEdgeScope(
-    val reachableProjectPaths: Set<String>,
-    val reachableBucketNamesByProject: Map<String, Set<String>>,
-    val excludedShortIdsByTargetProject: Map<String, Set<String>>
-)
 
 /**
  * Resolves all external dependencies for the migratable project set from task-wired workspace
@@ -85,12 +80,10 @@ internal class AggregatedDependencyResolver(
      * [resolve] invocation rather than a reusable service.
      *
      * Key accumulated state and how it is used downstream:
-     * - [reachableMainProjectPaths] / [reachableMainBucketNamesByProject]: which sub-projects and
-     *   variant buckets are actually reachable from a main (app) hierarchy root, used to prune
-     *   declared-dependency buckets that no root ever reaches.
-     * - [mainProjectEdgeScopes]: per-root DFS results (see [collectMainProjectEdgeScope]) recording
-     *   exclude rules attached to `project(...)` dependency edges, later intersected in
-     *   [withoutDependenciesExcludedByEveryReachableRoot].
+     * - [mainReachabilityTracker]: which sub-projects and variant buckets are actually reachable
+     *   from a main (app) hierarchy root, used to prune declared-dependency buckets that no root
+     *   ever reaches, plus per-root `project(...)` dependency edge exclude scopes intersected in
+     *   [MainReachabilityTracker.filterExcludedByEveryReachableRoot].
      * - The `*Closures` maps hold merged [ResolvedDependency] maps per [ProjectDependencyBucket],
      *   unioned across all roots contributing to that bucket, and are handed to
      *   [BucketOwnershipPlanner] once all roots have been visited.
@@ -98,25 +91,14 @@ internal class AggregatedDependencyResolver(
     private inner class ResolutionSession {
         private val projectMetadataByPath = declaredDependencyMetadata.projects
         private val migratableProjectPaths = projectMetadataByPath.keys.sorted()
-        private val declaredProjectDependencyEdgesCache =
-            mutableMapOf<Triple<String, Set<String>, Boolean>, List<DeclaredProjectDependency>>()
-        private val mainBuildTypeNamesByProject = migratableProjectPaths.associateWith { projectPath ->
-            variantsFor(projectPath)
-                .asSequence()
-                .filter { variant -> variant.variantType == AndroidBuild }
-                .filter(DeclaredVariantDependencyMetadata::androidLeafVariant)
-                .mapNotNull(DeclaredVariantDependencyMetadata::buildType)
-                .toSet()
-        }
+        private val mainReachabilityTracker =
+            MainReachabilityTracker(declaredDependencyMetadata, migratableProjectPaths)
 
         private val leafClosures = mutableMapOf<ProjectDependencyBucket, Map<String, ResolvedDependency>>()
         private val leafUnitTestClosures = mutableMapOf<ProjectDependencyBucket, Map<String, ResolvedDependency>>()
         private val leafAndroidTestClosures = mutableMapOf<ProjectDependencyBucket, Map<String, ResolvedDependency>>()
         private val hierarchyBucketClosures = mutableMapOf<ProjectDependencyBucket, Map<String, ResolvedDependency>>()
         private val testHierarchyBucketClosures = mutableMapOf<ProjectDependencyBucket, Map<String, ResolvedDependency>>()
-        private val reachableMainProjectPaths = sortedSetOf<String>()
-        private val reachableMainBucketNamesByProject = sortedMapOf<String, MutableSet<String>>()
-        private val mainProjectEdgeScopes = mutableListOf<MainProjectEdgeScope>()
         private var lintDeps = emptyMap<String, ResolvedDependency>()
         private var sawBinaryRoot = false
 
@@ -144,7 +126,7 @@ internal class AggregatedDependencyResolver(
                     leafAndroidTestClosures = snapshotDependencyBuckets(leafAndroidTestClosures),
                     hierarchyBucketClosures = snapshotDependencyBuckets(hierarchyBucketClosures),
                     testHierarchyBucketClosures = snapshotDependencyBuckets(testHierarchyBucketClosures),
-                    reachableMainBucketNamesByProject = reachableMainBucketNamesByProject
+                    reachableMainBucketNamesByProject = mainReachabilityTracker.reachableMainBucketNamesByProject
                         .mapValues { (_, bucketNames) -> bucketNames.toSortedSet() }
                         .toSortedMap(),
                     lintDeps = lintDeps.toSortedMap(),
@@ -164,28 +146,6 @@ internal class AggregatedDependencyResolver(
 
         private fun variantsFor(projectPath: String): List<DeclaredVariantDependencyMetadata> =
             projectMetadataByPath[projectPath]?.variants.orEmpty()
-
-        private fun declaredProjectDependencyEdges(
-            projectPath: String,
-            variantNames: Set<String>,
-            selectedOnly: Boolean
-        ): List<DeclaredProjectDependency> {
-            val cacheKey = Triple(projectPath, variantNames.toSortedSet(), selectedOnly)
-            declaredProjectDependencyEdgesCache[cacheKey]?.let { edges -> return edges }
-
-            return variantsFor(projectPath)
-                .asSequence()
-                .filter { variant ->
-                    variant.variantType == AndroidBuild || variant.variantType == JvmBuild
-                }
-                .filter { variant ->
-                    !selectedOnly || variant.name in variantNames
-                }
-                .flatMap { variant -> variant.declaredProjectDependencies.asSequence() }
-                .filter { edge -> edge.targetProjectPath in migratableProjectPaths }
-                .toList()
-                .also { edges -> declaredProjectDependencyEdgesCache[cacheKey] = edges }
-        }
 
         private fun addDependenciesToProjectBucket(
             dependenciesByProjectBucket: MutableMap<ProjectDependencyBucket, Map<String, ResolvedDependency>>,
@@ -248,97 +208,6 @@ internal class AggregatedDependencyResolver(
             )
         }
 
-        private fun addReachableMainBuckets(projectPath: String, bucketNames: Iterable<String>) {
-            val reachableBucketNames = reachableMainBucketNamesByProject
-                .getOrPut(projectPath) { sortedSetOf() }
-            reachableBucketNames.addAll(bucketNames.filter(String::isNotBlank))
-        }
-
-        private fun selectedMainVariantHierarchyNames(
-            projectPath: String,
-            selectedVariantDisplayName: String?
-        ): Set<String> {
-            val variantHierarchyNamesByName = variantsFor(projectPath)
-                .asSequence()
-                .filter { variant ->
-                    variant.variantType == AndroidBuild || variant.variantType == JvmBuild
-                }
-                .associate { variant -> variant.name to (setOf(variant.name) + variant.extendsFrom) } +
-                mapOf(
-                    "apiElements" to setOf(DEFAULT_VARIANT),
-                    "runtimeElements" to setOf(DEFAULT_VARIANT)
-                )
-            return selectedVariantHierarchyNames(
-                displayName = selectedVariantDisplayName,
-                variantHierarchyNamesByName = variantHierarchyNamesByName
-            ).orDefaultVariantIn(variantHierarchyNamesByName.keys)
-        }
-
-        /**
-         * Falls back to [DEFAULT_VARIANT] when this set of bucket names is empty, but only if
-         * `default` is itself a known name — so an empty result never invents a bucket the project
-         * doesn't actually have.
-         */
-        private fun Set<String>.orDefaultVariantIn(knownNames: Set<String>): Set<String> =
-            ifEmpty { setOf(DEFAULT_VARIANT).filter { name -> name in knownNames }.toSet() }
-
-        private fun knownMainBucketNames(projectPath: String, bucketNames: Set<String>): Set<String> {
-            val knownBucketNames = variantsFor(projectPath)
-                .asSequence()
-                .filter { variant ->
-                    variant.variantType == AndroidBuild || variant.variantType == JvmBuild
-                }
-                .map(DeclaredVariantDependencyMetadata::name)
-                .toSet()
-            return bucketNames
-                .filter { bucketName -> bucketName in knownBucketNames }
-                .toSet()
-                .orDefaultVariantIn(knownBucketNames)
-        }
-
-        private fun isReachableMainBucket(bucket: ProjectDependencyBucket): Boolean {
-            return bucket.bucketName in reachableMainBucketNamesByProject[bucket.projectPath].orEmpty()
-        }
-
-        /**
-         * A declared dependency is only dropped from [bucket] if *every* main-hierarchy root scope
-         * that can reach `bucket.projectPath` excludes it — a single reachable root without the
-         * exclusion is enough to keep it (intersection, not union, of exclusions). This mirrors
-         * Gradle semantics where a `project(...)` edge's `exclude` only applies along that edge, so
-         * a dependency excluded via one app variant's edge but not another's must still be resolved.
-         */
-        private fun withoutDependenciesExcludedByEveryReachableRoot(
-            dependenciesByProjectBucket: Map<ProjectDependencyBucket, Map<String, ResolvedDependency>>
-        ): Map<ProjectDependencyBucket, Map<String, ResolvedDependency>> {
-            if (mainProjectEdgeScopes.isEmpty()) return dependenciesByProjectBucket
-            val reachableScopesByProjectPath = mainProjectEdgeScopes
-                .flatMap { scope ->
-                    scope.reachableProjectPaths.map { projectPath -> projectPath to scope }
-                }
-                .groupBy(
-                    keySelector = { (projectPath, _) -> projectPath },
-                    valueTransform = { (_, scope) -> scope }
-                )
-            return dependenciesByProjectBucket.mapValues { (bucket, dependencies) ->
-                val reachableScopes = reachableScopesByProjectPath[bucket.projectPath].orEmpty()
-                dependencies.filterKeys { shortId ->
-                    reachableScopes.isEmpty() ||
-                        reachableScopes.any { scope ->
-                            shortId !in scope.excludedShortIdsByTargetProject[bucket.projectPath].orEmpty()
-                        }
-                }
-            }
-        }
-
-        private fun shouldResolveMainHierarchyRoot(metadata: AggregatedDependencyRootMetadata): Boolean {
-            if (metadata.kind != AggregatedDependencyRootKind.MAIN_HIERARCHY || metadata.variantType != AndroidBuild) {
-                return true
-            }
-            val bucket = metadata.bucketName ?: return true
-            if (bucket == DEFAULT_VARIANT) return true
-            return bucket in mainBuildTypeNamesByProject[metadata.projectPath].orEmpty()
-        }
-
         private fun shouldAddDeclaredHierarchyDependency(bucket: ProjectDependencyBucket): Boolean {
             val projectType = projectMetadataByPath[bucket.projectPath]?.projectType
                 ?: DeclaredProjectType.OTHER
@@ -346,93 +215,21 @@ internal class AggregatedDependencyResolver(
         }
 
         /**
-         * DFS over declared `project(...)` dependency edges reachable from [projectPath] for the
-         * given [variantNames], recording (a) every reachable project path, (b) which of its
-         * variant/bucket names are reached, and (c) exclude-rule short IDs attached per target
-         * project. This is the load-bearing pass that later filters declared-dependency buckets to
-         * only those actually wired into an app's dependency graph, and that seeds the
-         * per-root exclusion intersection in [withoutDependenciesExcludedByEveryReachableRoot].
-         *
-         * [scopeReachableProjectPaths] doubles as the visited set, so a project already visited in
-         * this DFS is not revisited (guards against cycles / diamond dependencies) — but its edges'
-         * exclude rules are still recorded before the cycle check via [visit]'s ordering: excludes
-         * are collected for every edge out of a project the first time it's visited, so this must
-         * remain a single-pass, not-revisit DFS to keep results deterministic.
-         */
-        private fun collectMainProjectEdgeScope(
-            projectPath: String,
-            variantNames: Set<String>,
-            selectedOnly: Boolean
-        ): MainProjectEdgeScope {
-            val scopeReachableProjectPaths = sortedSetOf<String>()
-            val scopeReachableBucketNamesByProject = sortedMapOf<String, MutableSet<String>>()
-            val scopeExcludedShortIdsByTargetProject = sortedMapOf<String, MutableSet<String>>()
-
-            fun addScopedReachableBuckets(
-                currentProjectPath: String,
-                bucketNames: Set<String>
-            ) {
-                val knownBucketNames = knownMainBucketNames(currentProjectPath, bucketNames)
-                if (knownBucketNames.isEmpty()) return
-                scopeReachableBucketNamesByProject
-                    .getOrPut(currentProjectPath) { sortedSetOf() }
-                    .addAll(knownBucketNames)
-            }
-
-            fun visit(
-                currentProjectPath: String,
-                selectedOnlyForProject: Boolean
-            ) {
-                if (!scopeReachableProjectPaths.add(currentProjectPath)) return
-
-                val dependencyEdges = declaredProjectDependencyEdges(
-                    projectPath = currentProjectPath,
-                    variantNames = variantNames,
-                    selectedOnly = selectedOnlyForProject
-                )
-                dependencyEdges.forEach { edge ->
-                    if (edge.excludedShortIds.isNotEmpty()) {
-                        scopeExcludedShortIdsByTargetProject
-                            .getOrPut(edge.targetProjectPath) { sortedSetOf() }
-                            .addAll(edge.excludedShortIds)
-                    }
-                }
-                dependencyEdges.forEach { edge ->
-                    addScopedReachableBuckets(edge.targetProjectPath, variantNames)
-                    visit(
-                        currentProjectPath = edge.targetProjectPath,
-                        selectedOnlyForProject = selectedOnlyForProject
-                    )
-                }
-            }
-
-            visit(projectPath, selectedOnly)
-            return MainProjectEdgeScope(
-                reachableProjectPaths = scopeReachableProjectPaths,
-                reachableBucketNamesByProject = scopeReachableBucketNamesByProject
-                    .mapValues { (_, bucketNames) -> bucketNames.toSortedSet() }
-                    .toSortedMap(),
-                excludedShortIdsByTargetProject = scopeExcludedShortIdsByTargetProject
-                    .mapValues { (_, shortIds) -> shortIds.toSortedSet() }
-                    .toSortedMap()
-            )
-        }
-
-        /**
          * Visits every eligible workspace dependency root and dispatches per [AggregatedDependencyRootKind]
          * to resolve, exclude-filter and bucket its classpath. Ordering matters: for a given root,
-         * reachability state (`reachableMainProjectPaths` / `reachableMainBucketNamesByProject` /
-         * `mainProjectEdgeScopes`) is populated from [collectMainProjectEdgeScope] *before* the
-         * closure is resolved so that `resolveRootToDependencyMap` can consult it while walking the
-         * root, and MAIN_HIERARCHY/MAIN_LEAF roots must be processed (in [workspaceDependencyRoots]
-         * order) before any TEST_HIERARCHY/UNIT_TEST/ANDROID_TEST root that depends on the same
-         * project's main reachability facts. TEST_HIERARCHY/UNIT_TEST/ANDROID_TEST kinds reuse
-         * `reachableMainProjectPaths`/`reachableMainBucketNamesByProject` read-only (never mutate
-         * them), since test classpaths ride on top of already-established main reachability.
+         * reachability state ([MainReachabilityTracker.reachableMainProjectPaths] /
+         * [MainReachabilityTracker.reachableMainBucketNamesByProject]) is populated from
+         * [MainReachabilityTracker.computeScope] *before* the closure is resolved so that
+         * `resolveRootToDependencyMap` can consult it while walking the root, and MAIN_HIERARCHY/
+         * MAIN_LEAF roots must be processed (in [workspaceDependencyRoots] order) before any
+         * TEST_HIERARCHY/UNIT_TEST/ANDROID_TEST root that depends on the same project's main
+         * reachability facts. TEST_HIERARCHY/UNIT_TEST/ANDROID_TEST kinds reuse the tracker's
+         * reachable state read-only (never mutate it), since test classpaths ride on top of
+         * already-established main reachability.
          */
         private fun collectRootClosures() {
             val rootsToResolve = workspaceDependencyRoots.filter { root ->
-                shouldResolveMainHierarchyRoot(root.metadata)
+                mainReachabilityTracker.shouldResolveMainHierarchyRoot(root.metadata)
             }
             rootsToResolve.forEachIndexed rootLoop@{ index, aggregatedRoot ->
                 val metadata = aggregatedRoot.metadata
@@ -443,29 +240,25 @@ internal class AggregatedDependencyResolver(
                     AggregatedDependencyRootKind.MAIN_LEAF,
                     AggregatedDependencyRootKind.TEST_HIERARCHY,
                     AggregatedDependencyRootKind.UNIT_TEST,
-                    AggregatedDependencyRootKind.ANDROID_TEST -> reachableMainProjectPaths
+                    AggregatedDependencyRootKind.ANDROID_TEST -> mainReachabilityTracker.reachableMainProjectPaths
                     else -> null
                 }
                 when (metadata.kind) {
                     AggregatedDependencyRootKind.MAIN_HIERARCHY,
                     AggregatedDependencyRootKind.MAIN_LEAF -> {
-                        val scope = collectMainProjectEdgeScope(
+                        val scope = mainReachabilityTracker.computeScope(
                             projectPath = metadata.projectPath,
                             variantNames = variantHierarchyNames(metadata),
                             selectedOnly = true
                         )
-                        mainProjectEdgeScopes.add(scope)
-                        reachableMainProjectPaths.addAll(scope.reachableProjectPaths)
-                        scope.reachableBucketNamesByProject.forEach { (projectPath, bucketNames) ->
-                            addReachableMainBuckets(projectPath, bucketNames)
-                        }
+                        mainReachabilityTracker.recordMainRoot(metadata, scope)
                         mainProjectEdgeScope = scope
                     }
                     else -> Unit
                 }
                 when (metadata.kind) {
                     AggregatedDependencyRootKind.MAIN_HIERARCHY,
-                    AggregatedDependencyRootKind.MAIN_LEAF -> addReachableMainBuckets(
+                    AggregatedDependencyRootKind.MAIN_LEAF -> mainReachabilityTracker.addReachableMainBuckets(
                         projectPath = metadata.projectPath,
                         bucketNames = variantHierarchyNames(metadata)
                     )
@@ -478,10 +271,10 @@ internal class AggregatedDependencyResolver(
                         aggregatedRoot = aggregatedRoot,
                         excludeRulesByProjectPath = excludeRulesFor(metadata, AndroidBuild),
                         reachableProjectPaths = reachableProjectPaths,
-                        reachableBucketNamesByProject = reachableMainBucketNamesByProject,
+                        reachableBucketNamesByProject = mainReachabilityTracker.reachableMainBucketNamesByProject,
                         projectEdgeExcludedShortIdsByTargetProject = mainProjectEdgeScope
                             ?.excludedShortIdsByTargetProject.orEmpty(),
-                        reachableBucketNamesForProject = ::selectedMainVariantHierarchyNames
+                        reachableBucketNamesForProject = mainReachabilityTracker::selectedMainVariantHierarchyNames
                     )
                     AggregatedDependencyRootKind.TEST_HIERARCHY -> resolveRootToDependencyMap(
                         aggregatedRoot = aggregatedRoot,
@@ -493,8 +286,8 @@ internal class AggregatedDependencyResolver(
                             }
                         ),
                         reachableProjectPaths = reachableProjectPaths,
-                        reachableBucketNamesByProject = reachableMainBucketNamesByProject,
-                        reachableBucketNamesForProject = ::selectedMainVariantHierarchyNames
+                        reachableBucketNamesByProject = mainReachabilityTracker.reachableMainBucketNamesByProject,
+                        reachableBucketNamesForProject = mainReachabilityTracker::selectedMainVariantHierarchyNames
                     )
                     AggregatedDependencyRootKind.UNIT_TEST -> {
                         val leafHierarchyNames = variantHierarchyNames(metadata)
@@ -510,8 +303,8 @@ internal class AggregatedDependencyResolver(
                                     )
                                 ),
                             reachableProjectPaths = reachableProjectPaths,
-                            reachableBucketNamesByProject = reachableMainBucketNamesByProject,
-                            reachableBucketNamesForProject = ::selectedMainVariantHierarchyNames
+                            reachableBucketNamesByProject = mainReachabilityTracker.reachableMainBucketNamesByProject,
+                            reachableBucketNamesForProject = mainReachabilityTracker::selectedMainVariantHierarchyNames
                         )
                     }
                     AggregatedDependencyRootKind.ANDROID_TEST -> {
@@ -528,8 +321,8 @@ internal class AggregatedDependencyResolver(
                                     )
                                 ),
                             reachableProjectPaths = reachableProjectPaths,
-                            reachableBucketNamesByProject = reachableMainBucketNamesByProject,
-                            reachableBucketNamesForProject = ::selectedMainVariantHierarchyNames
+                            reachableBucketNamesByProject = mainReachabilityTracker.reachableMainBucketNamesByProject,
+                            reachableBucketNamesForProject = mainReachabilityTracker::selectedMainVariantHierarchyNames
                         )
                     }
                 }
@@ -616,10 +409,10 @@ internal class AggregatedDependencyResolver(
          *    and so cannot be discovered by root traversal at all.
          * 2. declared "main" (implementation/api) buckets are added only if the bucket is both
          *    non-OTHER-eligible ([shouldAddDeclaredHierarchyDependency]) *and* actually reached by a
-         *    main-hierarchy root ([isReachableMainBucket]) — this must run after [collectRootClosures]
-         *    has populated reachability — and are then passed through
-         *    [withoutDependenciesExcludedByEveryReachableRoot] so a dependency excluded on every
-         *    reachable edge is still dropped even though it was never resolved.
+         *    main-hierarchy root ([MainReachabilityTracker.isReachableMainBucket]) — this must run
+         *    after [collectRootClosures] has populated reachability — and are then passed through
+         *    [MainReachabilityTracker.filterExcludedByEveryReachableRoot] so a dependency excluded
+         *    on every reachable edge is still dropped even though it was never resolved.
          * 3. declared test buckets are added last and unconditionally into the test hierarchy
          *    closures, since test source sets have no equivalent reachability gating.
          */
@@ -641,8 +434,8 @@ internal class AggregatedDependencyResolver(
 
             declaredMainDependenciesByBucket
                 .filter { (bucket, _) -> shouldAddDeclaredHierarchyDependency(bucket) }
-                .filter { (bucket, _) -> isReachableMainBucket(bucket) }
-                .let(::withoutDependenciesExcludedByEveryReachableRoot)
+                .filter { (bucket, _) -> mainReachabilityTracker.isReachableMainBucket(bucket) }
+                .let(mainReachabilityTracker::filterExcludedByEveryReachableRoot)
                 .filterValues(Map<String, ResolvedDependency>::isNotEmpty)
                 .forEach { (bucket, dependencies) ->
                     addToHierarchyBucket(bucket.projectPath, bucket.bucketName, dependencies)
