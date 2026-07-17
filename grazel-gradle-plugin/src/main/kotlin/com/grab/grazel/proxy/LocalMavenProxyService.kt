@@ -123,34 +123,12 @@ private fun toProxyOrigin(repository: RepositoryWithAuth): LocalMavenProxyOrigin
         auth = repository.auth
     )
 
-internal fun localMavenProxyOrigins(
-    repositories: List<RepositoryWithAuth>,
-    canonicalRepositoryUrls: Set<String>,
-): List<LocalMavenProxyOrigin> =
-    localMavenRepositoryProxyPlans(
-        repositories = repositories,
-        canonicalRepositoryUrls = canonicalRepositoryUrls
-    ).map { plan -> plan.origin }
-
 internal data class LocalMavenProxyRepositoryMappings(
     val proxyToCanonicalUrl: Map<String, String>,
     val canonicalToProxyUrl: Map<String, String>,
 )
 
-internal fun localMavenRepositoryProxyMappings(
-    baseUrl: String,
-    repositories: List<RepositoryWithAuth>,
-    canonicalRepositoryUrls: Set<String>,
-): LocalMavenProxyRepositoryMappings =
-    localMavenRepositoryProxyMappingsFrom(
-        baseUrl = baseUrl,
-        proxyPlans = localMavenRepositoryProxyPlans(
-            repositories = repositories,
-            canonicalRepositoryUrls = canonicalRepositoryUrls
-        )
-    )
-
-private fun localMavenRepositoryProxyMappingsFrom(
+internal fun localMavenRepositoryProxyMappingsFrom(
     baseUrl: String,
     proxyPlans: List<LocalMavenRepositoryProxyPlan>,
 ): LocalMavenProxyRepositoryMappings {
@@ -170,7 +148,7 @@ private fun localMavenRepositoryProxyMappingsFrom(
     )
 }
 
-private data class LocalMavenRepositoryProxyPlan(
+internal data class LocalMavenRepositoryProxyPlan(
     val origin: LocalMavenProxyOrigin,
     val canonicalAliases: Set<String>,
     val canonicalUrlForGeneratedOutput: String,
@@ -185,7 +163,7 @@ private data class LocalMavenRepositoryProxyPlan(
  * coming from a set. Callers depend on the resulting list order matching the `/r/{index}`
  * routes handed out in [localMavenRepositoryProxyMappingsFrom].
  */
-private fun localMavenRepositoryProxyPlans(
+internal fun localMavenRepositoryProxyPlans(
     repositories: List<RepositoryWithAuth>,
     canonicalRepositoryUrls: Set<String>,
 ): List<LocalMavenRepositoryProxyPlan> {

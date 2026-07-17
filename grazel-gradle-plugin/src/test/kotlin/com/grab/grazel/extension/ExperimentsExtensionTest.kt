@@ -54,15 +54,15 @@ class ExperimentsExtensionTest {
     }
 
     @Test
-    fun `local maven resolution defaults off and can be enabled`() {
+    fun `local maven resolution defaults on and can be disabled`() {
         val project = ProjectBuilder.builder().build()
         val extension = ExperimentsExtension(project.objects)
 
-        assertFalse(extension.localMavenResolution.get())
-
-        extension.localMavenResolution.set(true)
-
         assertTrue(extension.localMavenResolution.get())
+
+        extension.localMavenResolution.set(false)
+
+        assertFalse(extension.localMavenResolution.get())
     }
 
     @Test

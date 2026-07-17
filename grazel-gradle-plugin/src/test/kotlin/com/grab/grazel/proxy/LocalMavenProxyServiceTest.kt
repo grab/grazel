@@ -25,9 +25,8 @@ class LocalMavenProxyServiceTest {
 
     @Test
     fun `repository mappings restore the credentialed url when it is the generated repository input`() {
-        val mappings = localMavenRepositoryProxyMappings(
+        val mappings = proxyMappings(
             baseUrl = "http://127.0.0.1:12345",
-            repositories = listOf(basicAuthRepository()),
             canonicalRepositoryUrls = setOf("https://user:pass@repo.example/maven2/")
         )
 
@@ -42,9 +41,8 @@ class LocalMavenProxyServiceTest {
 
     @Test
     fun `repository mappings restore the credentialless url when it is the generated repository input`() {
-        val mappings = localMavenRepositoryProxyMappings(
+        val mappings = proxyMappings(
             baseUrl = "http://127.0.0.1:12345/",
-            repositories = listOf(basicAuthRepository()),
             canonicalRepositoryUrls = setOf("https://repo.example/maven2/")
         )
 
@@ -56,9 +54,8 @@ class LocalMavenProxyServiceTest {
 
     @Test
     fun `repository mappings assign proxy indexes for external repository urls`() {
-        val mappings = localMavenRepositoryProxyMappings(
+        val mappings = proxyMappings(
             baseUrl = "http://127.0.0.1:12345/",
-            repositories = listOf(basicAuthRepository()),
             canonicalRepositoryUrls = setOf(
                 "https://repo.example/maven2/",
                 "https://external.example/dagger/"
@@ -76,18 +73,34 @@ class LocalMavenProxyServiceTest {
 
     @Test
     fun `proxy origins include external repository urls`() {
-        val origins = localMavenProxyOrigins(
+        val origins = localMavenRepositoryProxyPlans(
             repositories = listOf(basicAuthRepository()),
             canonicalRepositoryUrls = setOf(
                 "https://repo.example/maven2/",
                 "https://external.example/dagger/"
             )
-        )
+        ).map { plan -> plan.origin }
 
         assertThat(origins.map { origin -> origin.url })
             .containsExactly("https://repo.example/maven2/", "https://external.example/dagger/")
             .inOrder()
     }
+
+    /**
+     * Composes the proxy plans and mappings exactly as [LocalMavenProxyService.configure] does, so
+     * these tests exercise the real production functions rather than a parallel wrapper.
+     */
+    private fun proxyMappings(
+        baseUrl: String,
+        canonicalRepositoryUrls: Set<String>,
+    ): LocalMavenProxyRepositoryMappings =
+        localMavenRepositoryProxyMappingsFrom(
+            baseUrl = baseUrl,
+            proxyPlans = localMavenRepositoryProxyPlans(
+                repositories = listOf(basicAuthRepository()),
+                canonicalRepositoryUrls = canonicalRepositoryUrls
+            )
+        )
 
     private fun basicAuthRepository(): RepositoryWithAuth =
         RepositoryWithAuth(

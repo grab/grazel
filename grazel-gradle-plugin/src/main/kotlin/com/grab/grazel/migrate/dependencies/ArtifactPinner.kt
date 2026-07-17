@@ -398,7 +398,7 @@ constructor(
         elapsedNanos: Long,
     ) {
         logger.quiet(
-            "Local Maven resolution served ${stats.artifactHits} artifacts from Gradle index, " +
+            ("Local Maven resolution served ${stats.artifactHits} artifacts from Gradle index, " +
                 "${stats.gradlePomHits} POMs from Gradle index, " +
                 "${stats.originFallbacks} origin fallbacks, " +
                 "${stats.originFailures} origin failures, " +
@@ -411,7 +411,7 @@ constructor(
                 "${stats.checksumHits} checksum hits, " +
                 "${stats.writeThroughCacheHits} write-through cache hits, " +
                 "${stats.bytesServed} bytes served, in " +
-                "${TimeUnit.NANOSECONDS.toMillis(elapsedNanos)}ms".ansiGreen
+                "${TimeUnit.NANOSECONDS.toMillis(elapsedNanos)}ms").ansiGreen
         )
     }
 

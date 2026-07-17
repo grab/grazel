@@ -187,15 +187,12 @@ internal class LocalMavenProxyServer(
             return fileResponse(
                 status = HttpStatusCode.OK,
                 file = file,
-                onServed = {
-                    if (countContentHit) {
-                        counters.artifactHits.incrementAndGet()
-                    }
-                }
+                countContentHit = countContentHit,
+                onServed = { counters.artifactHits.incrementAndGet() }
             )
         }
         if (isMavenMetadataPath(path)) {
-            return serveFromCacheOrOrigin(repoIndex, path)
+            return serveFromCacheOrOrigin(repoIndex, path, countContentHit)
         }
         val concreteGav = concreteGavFromMavenPathOrNull(path)
         if (isKnownAlternateArtifactProbe(path, concreteGav)) {
@@ -220,7 +217,7 @@ internal class LocalMavenProxyServer(
             counters.artifactMisses.incrementAndGet()
             return hardFailure("Missing Gradle-resolved artifact for Maven path $path")
         }
-        return serveFromCacheOrOrigin(repoIndex, path)
+        return serveFromCacheOrOrigin(repoIndex, path, countContentHit)
     }
 
     /**
@@ -243,7 +240,7 @@ internal class LocalMavenProxyServer(
         countContentHit: Boolean,
         fallbackCounter: AtomicLong,
     ): ServedResponse {
-        val response = serveFromCacheOrOrigin(repoIndex, path)
+        val response = serveFromCacheOrOrigin(repoIndex, path, countContentHit)
         if (countContentHit && response.status == HttpStatusCode.OK) {
             fallbackCounter.incrementAndGet()
         }
@@ -301,11 +298,8 @@ internal class LocalMavenProxyServer(
                     return fileResponse(
                         status = HttpStatusCode.OK,
                         file = pom,
-                        onServed = {
-                            if (countContentHit) {
-                                counters.gradlePomHits.incrementAndGet()
-                            }
-                        }
+                        countContentHit = countContentHit,
+                        onServed = { counters.gradlePomHits.incrementAndGet() }
                     )
                 }
 
@@ -319,7 +313,7 @@ internal class LocalMavenProxyServer(
             counters.knownPomFailures.incrementAndGet()
             return hardFailure("Missing Gradle-resolved POM for known component $gav at $path")
         }
-        return serveFromCacheOrOrigin(repoIndex, path)
+        return serveFromCacheOrOrigin(repoIndex, path, countContentHit)
     }
 
     private fun hardFailure(message: String): ServedResponse =
@@ -337,12 +331,17 @@ internal class LocalMavenProxyServer(
      * per key and removed again in `finally` once released, so [originMissMutexes] only ever
      * holds entries for in-flight fetches rather than growing unbounded.
      */
-    private suspend fun serveFromCacheOrOrigin(repoIndex: Int, path: String): ServedResponse {
+    private suspend fun serveFromCacheOrOrigin(
+        repoIndex: Int,
+        path: String,
+        countContentHit: Boolean,
+    ): ServedResponse {
         val cachedFile = originCacheFile(repoIndex, path)
         if (cachedFile.exists()) {
             return fileResponse(
                 status = HttpStatusCode.OK,
                 file = cachedFile,
+                countContentHit = countContentHit,
                 onServed = { counters.writeThroughCacheHits.incrementAndGet() }
             )
         }
@@ -356,6 +355,7 @@ internal class LocalMavenProxyServer(
                     return fileResponse(
                         status = HttpStatusCode.OK,
                         file = cachedFile,
+                        countContentHit = countContentHit,
                         onServed = { counters.writeThroughCacheHits.incrementAndGet() }
                     )
                 }
@@ -364,6 +364,7 @@ internal class LocalMavenProxyServer(
                     return fileResponse(
                         status = HttpStatusCode.OK,
                         file = cachedFile,
+                        countContentHit = countContentHit,
                         onServed = { counters.writeThroughCacheHits.incrementAndGet() }
                     )
                 }
@@ -374,7 +375,9 @@ internal class LocalMavenProxyServer(
                 val bytes = originResponse.bytes
                 writeThrough(cachedFile, bytes)
                 counters.originFallbacks.incrementAndGet()
-                counters.bytesServed.addAndGet(bytes.size.toLong())
+                if (countContentHit) {
+                    counters.bytesServed.addAndGet(bytes.size.toLong())
+                }
                 ServedResponse.Bytes(HttpStatusCode.OK, bytes)
             }
         } finally {
@@ -409,10 +412,13 @@ internal class LocalMavenProxyServer(
     private fun fileResponse(
         status: HttpStatusCode,
         file: File,
+        countContentHit: Boolean,
         onServed: () -> Unit,
     ): ServedResponse {
-        onServed()
-        counters.bytesServed.addAndGet(file.length())
+        if (countContentHit) {
+            onServed()
+            counters.bytesServed.addAndGet(file.length())
+        }
         return ServedResponse.File(status, file)
     }
 

@@ -70,5 +70,5 @@ data class ExperimentsExtension(private val objects: ObjectFactory) {
 
     val localMavenResolution: Property<Boolean> = objects
         .property<Boolean>()
-        .convention(false)
+        .convention(true)
 }
