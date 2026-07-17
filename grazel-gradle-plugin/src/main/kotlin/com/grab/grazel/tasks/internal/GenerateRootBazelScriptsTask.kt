@@ -141,7 +141,7 @@ constructor(
             fileSystemOperations = fileSystemOperations,
             projectLayout = layout,
         )
-        logger.quiet("Generated WORKSPACE".ansiGreen)
+        //logger.quiet("Generated WORKSPACE".ansiGreen)
         logger.logHeap("GenerateRootBazelScripts:workspace-done")
 
         val rootBuildBazelContents = rootBazelBuilderFactory.get()
@@ -161,7 +161,7 @@ constructor(
                 fileSystemOperations = fileSystemOperations,
                 projectLayout = layout,
             )
-            logger.quiet("Generated $BUILD_BAZEL".ansiGreen)
+            //logger.quiet("Generated $BUILD_BAZEL".ansiGreen)
         }
     }
 
