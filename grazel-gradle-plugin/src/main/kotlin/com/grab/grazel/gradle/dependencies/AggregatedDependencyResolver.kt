@@ -29,6 +29,7 @@ import com.grab.grazel.gradle.dependencies.resolution.DependencyBucketAccumulato
 import com.grab.grazel.gradle.dependencies.resolution.MainReachabilityTracker
 import com.grab.grazel.gradle.dependencies.resolution.RootContributionComputer
 import com.grab.grazel.gradle.dependencies.resolution.RootVisitOutcome
+import com.grab.grazel.gradle.dependencies.resolution.snapshotDependencyBuckets
 import com.grab.grazel.util.ProgressReporter
 import org.gradle.api.logging.Logger
 import java.util.TreeSet
@@ -126,6 +127,10 @@ internal class AggregatedDependencyResolver(
 
                 val contribution = rootContributionComputer.compute(aggregatedRoot)
                 if (contribution.lintClosure == null) {
+                    // MAIN_HIERARCHY/MAIN_LEAF roots already seed their reachability scope earlier,
+                    // inside RootContributionComputer.compute (the classpath walk must observe the
+                    // seeded scope) — so this fold only records what was *discovered* while walking,
+                    // and intentionally does not also seed MAIN scope here (that would double-seed).
                     mainReachabilityTracker.recordReachable(
                         contribution.outcome.reachableProjectPaths,
                         contribution.outcome.reachableBucketNamesByProject
@@ -176,16 +181,6 @@ internal class AggregatedDependencyResolver(
                 )
             )
         }
-
-        private fun snapshotDependencyBuckets(
-            dependenciesByProjectBucket: Map<ProjectDependencyBucket, Map<String, ResolvedDependency>>
-        ): Map<ProjectDependencyBucket, Map<String, ResolvedDependency>> {
-            return dependenciesByProjectBucket.toSortedMap(
-                compareBy<ProjectDependencyBucket> { bucket -> bucket.projectPath }
-                    .thenBy { bucket -> bucket.bucketName }
-            ).mapValues { (_, dependencies) -> dependencies.toSortedMap() }
-        }
-
     }
 
     /**

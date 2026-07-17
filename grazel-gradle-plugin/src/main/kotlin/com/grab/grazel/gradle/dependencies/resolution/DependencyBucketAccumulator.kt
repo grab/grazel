@@ -89,13 +89,4 @@ internal class DependencyBucketAccumulator {
 
     fun testHierarchy(): Map<ProjectDependencyBucket, Map<String, ResolvedDependency>> =
         snapshotDependencyBuckets(testHierarchyBucketClosures)
-
-    private fun snapshotDependencyBuckets(
-        dependenciesByProjectBucket: Map<ProjectDependencyBucket, Map<String, ResolvedDependency>>
-    ): Map<ProjectDependencyBucket, Map<String, ResolvedDependency>> {
-        return dependenciesByProjectBucket.toSortedMap(
-            compareBy<ProjectDependencyBucket> { bucket -> bucket.projectPath }
-                .thenBy { bucket -> bucket.bucketName }
-        ).mapValues { (_, dependencies) -> dependencies.toSortedMap() }
-    }
 }

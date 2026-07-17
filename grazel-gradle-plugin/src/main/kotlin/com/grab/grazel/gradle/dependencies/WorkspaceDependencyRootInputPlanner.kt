@@ -101,7 +101,7 @@ internal object WorkspaceDependencyRootInputPlanner {
     /**
      * Generates the MAIN_HIERARCHY / TEST_HIERARCHY / MAIN_LEAF (+ nested UNIT_TEST/ANDROID_TEST)
      * root inputs for one app or standalone-test project, per variant. Kind selection and ordering
-     * both matter downstream in [AggregatedDependencyResolver.collectRootClosures]:
+     * both matter downstream in AggregatedDependencyResolver.resolve:
      * - MAIN_HIERARCHY roots (every [Variant.isWorkspaceMainHierarchyRoot] AndroidBuild variant) are
      *   emitted before TEST_HIERARCHY and MAIN_LEAF roots because the resolver establishes main
      *   reachability from hierarchy roots first, then reuses it while resolving leaf/test roots.
