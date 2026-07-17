@@ -27,6 +27,7 @@ import com.grab.grazel.gradle.dependencies.model.intersectWith
 import com.grab.grazel.gradle.dependencies.model.versionInfo
 import com.grab.grazel.gradle.dependencies.resolution.MainProjectEdgeScope
 import com.grab.grazel.gradle.dependencies.resolution.MainReachabilityTracker
+import com.grab.grazel.gradle.dependencies.resolution.RootVisitOutcome
 import com.grab.grazel.gradle.variant.ANDROID_TEST_VARIANT
 import com.grab.grazel.gradle.variant.DEFAULT_VARIANT
 import com.grab.grazel.gradle.variant.TEST_VARIANT
@@ -219,13 +220,14 @@ internal class AggregatedDependencyResolver(
          * to resolve, exclude-filter and bucket its classpath. Ordering matters: for a given root,
          * reachability state ([MainReachabilityTracker.reachableMainProjectPaths] /
          * [MainReachabilityTracker.reachableMainBucketNamesByProject]) is populated from
-         * [MainReachabilityTracker.computeScope] *before* the closure is resolved so that
-         * `resolveRootToDependencyMap` can consult it while walking the root, and MAIN_HIERARCHY/
+         * [MainReachabilityTracker.computeScope] *before* the closure is resolved, and MAIN_HIERARCHY/
          * MAIN_LEAF roots must be processed (in [workspaceDependencyRoots] order) before any
          * TEST_HIERARCHY/UNIT_TEST/ANDROID_TEST root that depends on the same project's main
-         * reachability facts. TEST_HIERARCHY/UNIT_TEST/ANDROID_TEST kinds reuse the tracker's
-         * reachable state read-only (never mutate it), since test classpaths ride on top of
-         * already-established main reachability.
+         * reachability facts. Every non-LINT kind folds the [RootVisitOutcome] returned by
+         * `resolveRootToDependencyMap` back into the tracker via
+         * [MainReachabilityTracker.recordReachable], so any `project(...)` edge discovered while
+         * walking a TEST_HIERARCHY/UNIT_TEST/ANDROID_TEST root's classpath also feeds later roots'
+         * reachability facts, mirroring the in-place mutation this replaced.
          */
         private fun collectRootClosures() {
             val rootsToResolve = workspaceDependencyRoots.filter { root ->
@@ -235,14 +237,6 @@ internal class AggregatedDependencyResolver(
                 val metadata = aggregatedRoot.metadata
                 reporter.report("resolving (${index + 1}/${rootsToResolve.size}): ${metadata.projectPath}")
                 var mainProjectEdgeScope: MainProjectEdgeScope? = null
-                val reachableProjectPaths = when (metadata.kind) {
-                    AggregatedDependencyRootKind.MAIN_HIERARCHY,
-                    AggregatedDependencyRootKind.MAIN_LEAF,
-                    AggregatedDependencyRootKind.TEST_HIERARCHY,
-                    AggregatedDependencyRootKind.UNIT_TEST,
-                    AggregatedDependencyRootKind.ANDROID_TEST -> mainReachabilityTracker.reachableMainProjectPaths
-                    else -> null
-                }
                 when (metadata.kind) {
                     AggregatedDependencyRootKind.MAIN_HIERARCHY,
                     AggregatedDependencyRootKind.MAIN_LEAF -> {
@@ -265,33 +259,44 @@ internal class AggregatedDependencyResolver(
                     else -> Unit
                 }
                 val closure = when (metadata.kind) {
-                    AggregatedDependencyRootKind.LINT -> resolveRootToDependencyMap(aggregatedRoot)
+                    AggregatedDependencyRootKind.LINT ->
+                        resolveRootToDependencyMap(aggregatedRoot).dependencies
                     AggregatedDependencyRootKind.MAIN_HIERARCHY,
-                    AggregatedDependencyRootKind.MAIN_LEAF -> resolveRootToDependencyMap(
-                        aggregatedRoot = aggregatedRoot,
-                        excludeRulesByProjectPath = excludeRulesFor(metadata, AndroidBuild),
-                        reachableProjectPaths = reachableProjectPaths,
-                        reachableBucketNamesByProject = mainReachabilityTracker.reachableMainBucketNamesByProject,
-                        projectEdgeExcludedShortIdsByTargetProject = mainProjectEdgeScope
-                            ?.excludedShortIdsByTargetProject.orEmpty(),
-                        reachableBucketNamesForProject = mainReachabilityTracker::selectedMainVariantHierarchyNames
-                    )
-                    AggregatedDependencyRootKind.TEST_HIERARCHY -> resolveRootToDependencyMap(
-                        aggregatedRoot = aggregatedRoot,
-                        excludeRulesByProjectPath = excludeRulesFor(
-                            metadata = metadata,
-                            variantType = metadata.variantType ?: when (metadata.bucketName) {
-                                ANDROID_TEST_VARIANT -> AndroidTest
-                                else -> Test
-                            }
-                        ),
-                        reachableProjectPaths = reachableProjectPaths,
-                        reachableBucketNamesByProject = mainReachabilityTracker.reachableMainBucketNamesByProject,
-                        reachableBucketNamesForProject = mainReachabilityTracker::selectedMainVariantHierarchyNames
-                    )
+                    AggregatedDependencyRootKind.MAIN_LEAF -> {
+                        val outcome = resolveRootToDependencyMap(
+                            aggregatedRoot = aggregatedRoot,
+                            excludeRulesByProjectPath = excludeRulesFor(metadata, AndroidBuild),
+                            projectEdgeExcludedShortIdsByTargetProject = mainProjectEdgeScope
+                                ?.excludedShortIdsByTargetProject.orEmpty(),
+                            reachableBucketNamesForProject = mainReachabilityTracker::selectedMainVariantHierarchyNames
+                        )
+                        mainReachabilityTracker.recordReachable(
+                            outcome.reachableProjectPaths,
+                            outcome.reachableBucketNamesByProject
+                        )
+                        outcome.dependencies
+                    }
+                    AggregatedDependencyRootKind.TEST_HIERARCHY -> {
+                        val outcome = resolveRootToDependencyMap(
+                            aggregatedRoot = aggregatedRoot,
+                            excludeRulesByProjectPath = excludeRulesFor(
+                                metadata = metadata,
+                                variantType = metadata.variantType ?: when (metadata.bucketName) {
+                                    ANDROID_TEST_VARIANT -> AndroidTest
+                                    else -> Test
+                                }
+                            ),
+                            reachableBucketNamesForProject = mainReachabilityTracker::selectedMainVariantHierarchyNames
+                        )
+                        mainReachabilityTracker.recordReachable(
+                            outcome.reachableProjectPaths,
+                            outcome.reachableBucketNamesByProject
+                        )
+                        outcome.dependencies
+                    }
                     AggregatedDependencyRootKind.UNIT_TEST -> {
                         val leafHierarchyNames = variantHierarchyNames(metadata)
-                        resolveRootToDependencyMap(
+                        val outcome = resolveRootToDependencyMap(
                             aggregatedRoot = aggregatedRoot,
                             excludeRulesByProjectPath = declaredDependencyMetadata
                                 .collectExcludeRulesByProjectPath(
@@ -302,14 +307,17 @@ internal class AggregatedDependencyResolver(
                                         testType = Test
                                     )
                                 ),
-                            reachableProjectPaths = reachableProjectPaths,
-                            reachableBucketNamesByProject = mainReachabilityTracker.reachableMainBucketNamesByProject,
                             reachableBucketNamesForProject = mainReachabilityTracker::selectedMainVariantHierarchyNames
                         )
+                        mainReachabilityTracker.recordReachable(
+                            outcome.reachableProjectPaths,
+                            outcome.reachableBucketNamesByProject
+                        )
+                        outcome.dependencies
                     }
                     AggregatedDependencyRootKind.ANDROID_TEST -> {
                         val leafHierarchyNames = variantHierarchyNames(metadata)
-                        resolveRootToDependencyMap(
+                        val outcome = resolveRootToDependencyMap(
                             aggregatedRoot = aggregatedRoot,
                             excludeRulesByProjectPath = declaredDependencyMetadata
                                 .collectExcludeRulesByProjectPath(
@@ -320,10 +328,13 @@ internal class AggregatedDependencyResolver(
                                         testType = AndroidTest
                                     )
                                 ),
-                            reachableProjectPaths = reachableProjectPaths,
-                            reachableBucketNamesByProject = mainReachabilityTracker.reachableMainBucketNamesByProject,
                             reachableBucketNamesForProject = mainReachabilityTracker::selectedMainVariantHierarchyNames
                         )
+                        mainReachabilityTracker.recordReachable(
+                            outcome.reachableProjectPaths,
+                            outcome.reachableBucketNamesByProject
+                        )
+                        outcome.dependencies
                     }
                 }
 
@@ -488,7 +499,9 @@ internal class AggregatedDependencyResolver(
 
     /**
      * Walks one resolved root's component graph via [ResolvedComponentsVisitor] into a
-     * `shortId -> ResolvedDependency` map. Two aspects are load-bearing for byte-identical,
+     * `shortId -> ResolvedDependency` map, returned as [RootVisitOutcome] alongside the
+     * `project(...)` edge reachability discovered along the way (for the caller to fold via
+     * [MainReachabilityTracker.recordReachable]). Two aspects are load-bearing for byte-identical,
      * reproducible output across builds:
      * - BOM/platform (pom-only) components are dropped ([Component.isBomComponent]) since
      *   `rules_jvm_external` rejects pom-packaged artifacts, and (when [AggregatedDependencyRootMetadata.traverseProjectNodes]
@@ -510,14 +523,14 @@ internal class AggregatedDependencyResolver(
     private fun resolveRootToDependencyMap(
         aggregatedRoot: AggregatedDependencyRoot,
         excludeRulesByProjectPath: Map<String, ProjectExcludeRules> = emptyMap(),
-        reachableProjectPaths: MutableSet<String>? = null,
-        reachableBucketNamesByProject: MutableMap<String, MutableSet<String>>? = null,
         projectEdgeExcludedShortIdsByTargetProject: Map<String, Set<String>> = emptyMap(),
         reachableBucketNamesForProject: ((String, String?) -> Set<String>)? = null
-    ): Map<String, ResolvedDependency> {
+    ): RootVisitOutcome {
         val metadata = aggregatedRoot.metadata
         return try {
             val depMap = mutableMapOf<String, ResolvedDependency>()
+            val reachableProjectPaths = mutableSetOf<String>()
+            val reachableBucketNamesByProject = mutableMapOf<String, MutableSet<String>>()
             val visitResults = mutableListOf<ResolvedComponentsVisitor.VisitResult>()
             ResolvedComponentsVisitor().visit(
                 root = aggregatedRoot.root,
@@ -551,13 +564,13 @@ internal class AggregatedDependencyResolver(
                 )
                 .forEach { visitResult ->
                     visitResult.directProjectPath?.let { projectPath ->
-                        reachableProjectPaths?.add(projectPath)
+                        reachableProjectPaths.add(projectPath)
                         val reachableBucketNames = reachableBucketNamesForProject
                             ?.invoke(projectPath, visitResult.directProjectVariantDisplayName)
                             .orEmpty()
                         reachableBucketNamesByProject
-                            ?.getOrPut(projectPath) { sortedSetOf() }
-                            ?.addAll(reachableBucketNames)
+                            .getOrPut(projectPath) { sortedSetOf() }
+                            .addAll(reachableBucketNames)
                     }
                     val component = visitResult.component
                     val moduleVersion = component.moduleVersion ?: return@forEach
@@ -615,7 +628,11 @@ internal class AggregatedDependencyResolver(
                     }
                     depMap[shortId] = mergedDependency
                 }
-            depMap
+            RootVisitOutcome(
+                dependencies = depMap,
+                reachableProjectPaths = reachableProjectPaths,
+                reachableBucketNamesByProject = reachableBucketNamesByProject
+            )
         } catch (e: Exception) {
             throw IllegalStateException(
                 "Failed to resolve aggregated root ${metadata.configurationName} " +

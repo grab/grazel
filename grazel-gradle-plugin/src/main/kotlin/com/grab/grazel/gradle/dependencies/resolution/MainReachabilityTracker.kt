@@ -263,12 +263,15 @@ internal class MainReachabilityTracker(
     }
 
     /**
-     * Folds a [com.grab.grazel.gradle.dependencies.resolution] `RootVisitOutcome` reachability
-     * delta into this tracker. No-op stub for this task; wired in Task 2 once
-     * `resolveRootToDependencyMap` returns a `RootVisitOutcome` instead of mutating out-params.
+     * Folds a [RootVisitOutcome]'s reachability delta into this tracker's accumulated state,
+     * using the same union semantics [recordMainRoot] uses for [MainProjectEdgeScope]: project
+     * paths are unioned into [reachableMainProjectPaths], and bucket names are unioned per
+     * project via [addReachableMainBuckets].
      */
     fun recordReachable(projectPaths: Set<String>, bucketNamesByProject: Map<String, Set<String>>) {
-        // Intentionally a no-op until Task 2 (RootVisitOutcome conversion) wires this in; the
-        // session still folds reachability directly via the mutable maps exposed above.
+        reachableMainProjectPaths.addAll(projectPaths)
+        bucketNamesByProject.forEach { (projectPath, bucketNames) ->
+            addReachableMainBuckets(projectPath, bucketNames)
+        }
     }
 }
