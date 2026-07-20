@@ -17,8 +17,8 @@
 package com.grab.grazel.gradle.dependencies.resolution
 
 import com.grab.grazel.gradle.dependencies.ProjectDependencyBucket
-import com.grab.grazel.gradle.dependencies.bucket.mergeBucket
-import com.grab.grazel.gradle.dependencies.bucket.unionDependencyMaps
+import com.grab.grazel.gradle.dependencies.mergeBucket
+import com.grab.grazel.gradle.dependencies.unionDependencyMaps
 import com.grab.grazel.gradle.dependencies.model.ResolvedDependency
 
 /**

@@ -21,9 +21,9 @@
  */
 package com.grab.grazel.gradle.dependencies.bucket
 
+import com.grab.grazel.gradle.dependencies.mergeBucket
 import com.grab.grazel.gradle.dependencies.mergeDependencyMetadataByMaxVersion
 import com.grab.grazel.gradle.dependencies.model.ResolvedDependency
-import com.grab.grazel.util.merge
 
 internal fun addDeclaredOutputMetadata(
     declaredMetadataByOutputBucket: MutableMap<String, Map<String, ResolvedDependency>>,
@@ -59,20 +59,4 @@ internal fun applyDeclaredMetadata(
             }
             ?: dependency
     }.toSortedMap()
-}
-
-internal fun unionDependencyMaps(
-    runtime: Map<String, ResolvedDependency>,
-    compile: Map<String, ResolvedDependency>
-): Map<String, ResolvedDependency> {
-    if (compile.isEmpty()) return runtime
-    if (runtime.isEmpty()) return compile
-    return listOf(runtime, compile).merge(::mergeDependencyMetadataByMaxVersion)
-}
-
-internal fun <K> MutableMap<K, Map<String, ResolvedDependency>>.mergeBucket(
-    key: K,
-    dependencies: Map<String, ResolvedDependency>
-) {
-    this[key] = this[key]?.let { existing -> unionDependencyMaps(existing, dependencies) } ?: dependencies
 }
