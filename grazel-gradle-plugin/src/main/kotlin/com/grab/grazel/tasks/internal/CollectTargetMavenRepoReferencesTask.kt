@@ -226,10 +226,14 @@ internal fun collectTargetMavenRepoReferencesByGroup(
  * a project which already produced its final facts (see [collectProjectReferences]) is neither
  * re-visited (no [factsForProject] call) nor reported again - in the common case where every
  * project activates in round one, this keeps the cost at exactly one call per project, matching
- * the pre-fixpoint behaviour. A hard round cap guarantees termination even if convergence logic
- * were ever broken: at worst one additional project settles per round, plus one final round to
- * observe that nothing changed and stop, so `totalProjects + 1` rounds are always sufficient for
- * a genuinely convergent accumulation.
+ * the pre-fixpoint behaviour. `everVisited` carries forward alongside it so that a project which
+ * has been visited once but is still neither settled, referenced, nor intrinsically reachable -
+ * i.e. genuinely unreachable-so-far - is skipped in later rounds too (see
+ * [collectTargetMavenRepoReferencesSinglePass]) rather than paying its [factsForProject] cost every
+ * round until something else finally references it. A hard round cap guarantees termination even
+ * if convergence logic were ever broken: at worst one additional project settles per round, plus
+ * one final round to observe that nothing changed and stop, so `totalProjects + 1` rounds are
+ * always sufficient for a genuinely convergent accumulation.
  */
 private fun collectTargetMavenRepoReferencesToFixedPoint(
     projectGroups: List<ProjectReachabilityGroup>,
@@ -242,6 +246,7 @@ private fun collectTargetMavenRepoReferencesToFixedPoint(
     val totalProjects = projectGroups.sumOf { group -> group.projects.size }
     val maxRounds = totalProjects + 1
     val settledProjects = mutableSetOf<String>()
+    val everVisited = mutableSetOf<String>()
     var accumulated = TargetReferenceFacts()
     var round = 0
     while (true) {
@@ -260,6 +265,7 @@ private fun collectTargetMavenRepoReferencesToFixedPoint(
             reporter = reporter,
             accumulated = accumulated,
             settledProjects = settledProjects,
+            everVisited = everVisited,
             isIntrinsicallyReachable = isIntrinsicallyReachable
         )
         if (accumulated == beforeRound) break
@@ -268,6 +274,23 @@ private fun collectTargetMavenRepoReferencesToFixedPoint(
     return accumulated
 }
 
+/**
+ * Skips a project this round - no [factsForProject] call, no progress line - unless it is not yet
+ * settled AND either it hasn't been visited before, or it has since become eligible to produce new
+ * facts (it is now [isIntrinsicallyReachable] or referenced per
+ * [WorkspaceRenderPlanService.isReferencedProjectPath]). A project visited once that is neither
+ * settled nor active is genuinely unreachable-so-far: re-running [factsForProject] on it every
+ * round without a new reference having appeared cannot change the outcome, so it is left alone
+ * until a later round's reference actually activates it.
+ *
+ * The render plan is still republished (cheap - a set union, no [factsForProject] call) for every
+ * not-yet-settled project regardless of whether it is skipped, *before* the skip decision is made:
+ * [WorkspaceRenderPlanService.isReferencedProjectPath] is otherwise only ever refreshed as a
+ * side effect of visiting a project, so without this a reference recorded by a later project in
+ * this same fold (e.g. `c` adding a reference to `util1`) would never become visible to the skip
+ * check for a project ordered after it, and that project would be skipped forever instead of
+ * being activated on the next round.
+ */
 private fun collectTargetMavenRepoReferencesSinglePass(
     projectGroups: List<ProjectReachabilityGroup>,
     canMigrate: (Project) -> Boolean,
@@ -276,6 +299,7 @@ private fun collectTargetMavenRepoReferencesSinglePass(
     reporter: ProgressReporter,
     accumulated: TargetReferenceFacts,
     settledProjects: MutableSet<String>,
+    everVisited: MutableSet<String>,
     isIntrinsicallyReachable: (Project) -> Boolean
 ): TargetReferenceFacts {
     val totalProjects = projectGroups.sumOf { group -> group.projects.size }
@@ -284,8 +308,16 @@ private fun collectTargetMavenRepoReferencesSinglePass(
     projectGroups.forEach { group ->
         current = group.projects.fold(current) { acc, project ->
             if (project.path in settledProjects) {
+                return@fold acc
+            }
+            workspaceRenderPlanService.populateRenderPlan(acc.asRenderPlan())
+            val shouldVisit = project.path !in everVisited ||
+                isIntrinsicallyReachable(project) ||
+                workspaceRenderPlanService.isReferencedProjectPath(project.path)
+            if (!shouldVisit) {
                 acc
             } else {
+                everVisited += project.path
                 visitedProjects += 1
                 reporter.report("collecting ($visitedProjects/$totalProjects): ${project.path}")
                 collectProjectReferences(
