@@ -16,6 +16,7 @@
 
 package com.grab.grazel.android.sample.testutil
 
+import com.grab.grazel.android.sample.testutildep.TestUtilDep
 import com.squareup.moshi.Moshi
 
 /**
@@ -24,10 +25,13 @@ import com.squareup.moshi.Moshi
  *
  * This module is reachable from nowhere else in the sample graph, guarding the
  * referenced-but-unreached generation path: its own `BUILD.bazel` must be generated
- * because the sample lib's `android_unit_test` depends on it.
+ * because the sample lib's `android_unit_test` depends on it. It further depends on
+ * `sample-android-test-util-dep` (reachable from nowhere else at all), extending the guard to
+ * two hops - a two-hop chain is exactly what a single consumers-first collection pass can drop
+ * (see Bug 2 in `CollectTargetMavenRepoReferencesTask`).
  */
 object TestUtil {
-    fun fixtureId(): String = "test-util"
+    fun fixtureId(): String = "test-util-${TestUtilDep.fixtureId()}"
 
     /** Exercises the module's maven dependency so it resolves for a referenced-but-unreached module. */
     fun serialize(value: String): String =

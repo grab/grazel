@@ -20,10 +20,5 @@ plugins {
 }
 
 android {
-    namespace "com.grab.grazel.android.sample.testutil"
-}
-
-dependencies {
-    implementation libs.moshi
-    implementation project(":sample-android-test-util-dep")
+    namespace "com.grab.grazel.android.sample.testutildep"
 }

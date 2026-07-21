@@ -24,11 +24,15 @@ import org.junit.Test
  * Exercises the `testImplementation project(":sample-android-test-util")` edge so the
  * `android_unit_test` target emits a `project(...)` dependency on the test-util library,
  * guarding regeneration of a `BUILD.bazel` for a module reachable only via test scope.
+ *
+ * `TestUtil` itself depends on `sample-android-test-util-dep` (`implementation
+ * project(":sample-android-test-util-dep")`), so this also exercises the second hop of the
+ * chain - a module reachable from nowhere but a reachable-only-via-test-scope module.
  */
 class TestUtilUsageTest {
 
     @Test
     fun usesTestUtilFixture() {
-        assertEquals("test-util", TestUtil.fixtureId())
+        assertEquals("test-util-test-util-dep", TestUtil.fixtureId())
     }
 }

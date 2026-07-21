@@ -1,0 +1,17 @@
+load("@grab_bazel_common//rules:defs.bzl", "android_library")
+
+android_library(
+    name = "sample-android-test-util-dep-debug",
+    srcs = glob([
+        "src/main/java/com/grab/grazel/android/sample/testutildep/TestUtilDep.kt",
+    ]),
+    custom_package = "com.grab.grazel.android.sample.testutildep",
+    lint_options = {
+        "enabled": True,
+        "config": "//:lint.xml",
+    },
+    manifest = "src/main/AndroidManifest.xml",
+    visibility = [
+        "//visibility:public",
+    ],
+)

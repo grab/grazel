@@ -15,6 +15,7 @@ android_library(
         "//visibility:public",
     ],
     deps = [
+        "//sample-android-test-util-dep:sample-android-test-util-dep-debug",
         "@maven//:com_squareup_moshi_moshi",
     ],
 )
