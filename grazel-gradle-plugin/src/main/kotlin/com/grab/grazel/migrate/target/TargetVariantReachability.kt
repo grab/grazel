@@ -19,9 +19,12 @@ package com.grab.grazel.migrate.target
 import com.android.build.gradle.api.BaseVariant
 import com.grab.grazel.gradle.dependencies.DefaultDependencyResolutionService
 import com.grab.grazel.gradle.dependencies.WorkspaceRenderPlanService
+import com.grab.grazel.gradle.variant.DefaultVariantCompressionService
 import com.grab.grazel.gradle.variant.MatchedVariant
 import com.grab.grazel.gradle.variant.DEFAULT_VARIANT
 import com.grab.grazel.gradle.variant.VariantCompressionService
+import com.grab.grazel.gradle.variant.VariantMatcher
+import com.grab.grazel.gradle.variant.VariantType
 import com.grab.grazel.gradle.variant.nameSuffix
 import com.grab.grazel.gradle.variant.resolveSuffix
 import com.grab.grazel.util.GradleProvider
@@ -158,4 +161,31 @@ internal fun isReachableJvmProject(
     return !service.hasMainBucketReachability() ||
         service.isReachableMainBucket(project.path, DEFAULT_VARIANT) ||
         workspaceRenderPlanService.get().isReferencedProjectPath(project.path)
+}
+
+internal fun reachableMatchedVariants(
+    project: Project,
+    variantType: VariantType,
+    variantMatcher: VariantMatcher,
+    variantCompressionService: GradleProvider<DefaultVariantCompressionService>,
+    dependencyResolutionService: GradleProvider<DefaultDependencyResolutionService>,
+    workspaceRenderPlanService: GradleProvider<WorkspaceRenderPlanService>
+): Set<MatchedVariant> {
+    val isReachableBucket = reachableBucketPredicate(project, dependencyResolutionService)
+    val referencedTargetNames = workspaceRenderPlanService.get().referencedTargetNames(project.path)
+    return variantMatcher
+        .matchedVariants(
+            project = project,
+            variantType = variantType,
+        )
+        .filter { matchedVariant ->
+            matchedVariant.isReachableProjectVariant(isReachableBucket) ||
+                isReferencedGeneratedLibraryTarget(
+                    project = project,
+                    matchedVariant = matchedVariant,
+                    variantCompressionService = variantCompressionService.get(),
+                    referencedTargetNames = referencedTargetNames
+                )
+        }
+        .toSet()
 }

@@ -27,7 +27,6 @@ import com.grab.grazel.gradle.dependencies.WorkspaceRenderPlanService
 import com.grab.grazel.gradle.dependencies.merged
 import com.grab.grazel.gradle.dependencies.model.TargetReferenceFacts
 import com.grab.grazel.gradle.variant.DefaultVariantCompressionService
-import com.grab.grazel.gradle.variant.MatchedVariant
 import com.grab.grazel.gradle.variant.VariantCompressionResult
 import com.grab.grazel.gradle.variant.VariantMatcher
 import com.grab.grazel.gradle.variant.VariantType
@@ -175,7 +174,14 @@ constructor(
     }
 
     private fun androidLibraryData(project: Project): List<AndroidLibraryData> {
-        val androidBuildVariants = reachableMatchedVariants(project, VariantType.AndroidBuild)
+        val androidBuildVariants = reachableMatchedVariants(
+            project = project,
+            variantType = VariantType.AndroidBuild,
+            variantMatcher = variantMatcher,
+            variantCompressionService = variantCompressionService,
+            dependencyResolutionService = dependencyResolutionService,
+            workspaceRenderPlanService = workspaceRenderPlanService
+        )
         val compressionResult = variantCompressionService.get().get(project.path)
         return compressionResult?.reachableAndroidLibraryData(
             reachableVariantNames = androidBuildVariants.mapTo(mutableSetOf()) { variant ->
@@ -196,7 +202,14 @@ constructor(
      */
     private fun androidUnitTestData(project: Project): List<AndroidUnitTestData> {
         val compressionResult = variantCompressionService.get().get(project.path)
-        val testVariants = reachableMatchedVariants(project, VariantType.Test)
+        val testVariants = reachableMatchedVariants(
+            project = project,
+            variantType = VariantType.Test,
+            variantMatcher = variantMatcher,
+            variantCompressionService = variantCompressionService,
+            dependencyResolutionService = dependencyResolutionService,
+            workspaceRenderPlanService = workspaceRenderPlanService
+        )
         return if (compressionResult != null) {
             testVariants
                 .groupBy { matchedVariant ->
@@ -217,29 +230,6 @@ constructor(
                 androidUnitTestDataExtractor.extract(project, matchedVariant)
             }
         }
-    }
-
-    private fun reachableMatchedVariants(
-        project: Project,
-        variantType: VariantType
-    ): Set<MatchedVariant> {
-        val isReachableBucket = reachableBucketPredicate(project, dependencyResolutionService)
-        val referencedTargetNames = workspaceRenderPlanService.get().referencedTargetNames(project.path)
-        return variantMatcher
-            .matchedVariants(
-                project = project,
-                variantType = variantType,
-            )
-            .filter { matchedVariant ->
-                matchedVariant.isReachableProjectVariant(isReachableBucket) ||
-                    isReferencedGeneratedLibraryTarget(
-                        project = project,
-                        matchedVariant = matchedVariant,
-                        variantCompressionService = variantCompressionService.get(),
-                        referencedTargetNames = referencedTargetNames
-                    )
-            }
-            .toSet()
     }
 
     /**
