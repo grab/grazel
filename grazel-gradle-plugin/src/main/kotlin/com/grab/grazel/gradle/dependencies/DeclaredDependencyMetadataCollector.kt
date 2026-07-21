@@ -337,6 +337,11 @@ internal data class ProjectDeclaredDependencyMetadata(
 ) {
 }
 
+/** Declared variants for [projectPath], or empty if the project has no captured metadata. */
+internal fun Map<String, ProjectDeclaredDependencyMetadata>.variantsFor(
+    projectPath: String
+): List<DeclaredVariantDependencyMetadata> = this[projectPath]?.variants.orEmpty()
+
 @Serializable
 internal enum class DeclaredProjectType {
     ANDROID_APPLICATION,

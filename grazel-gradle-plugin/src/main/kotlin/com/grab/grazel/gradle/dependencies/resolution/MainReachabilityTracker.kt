@@ -22,6 +22,7 @@ import com.grab.grazel.gradle.dependencies.DeclaredDependencyMetadata
 import com.grab.grazel.gradle.dependencies.DeclaredProjectDependency
 import com.grab.grazel.gradle.dependencies.DeclaredVariantDependencyMetadata
 import com.grab.grazel.gradle.dependencies.ProjectDependencyBucket
+import com.grab.grazel.gradle.dependencies.variantsFor
 import com.grab.grazel.gradle.dependencies.model.ResolvedDependency
 import com.grab.grazel.gradle.dependencies.selectedVariantHierarchyNames
 import com.grab.grazel.gradle.variant.DEFAULT_VARIANT
@@ -46,7 +47,7 @@ internal class MainReachabilityTracker(
     private val declaredProjectDependencyEdgesCache =
         mutableMapOf<Triple<String, Set<String>, Boolean>, List<DeclaredProjectDependency>>()
     private val mainBuildTypeNamesByProject = migratableProjectPaths.associateWith { projectPath ->
-        variantsFor(projectPath)
+        projectMetadataByPath.variantsFor(projectPath)
             .asSequence()
             .filter { variant -> variant.variantType == AndroidBuild }
             .filter(DeclaredVariantDependencyMetadata::androidLeafVariant)
@@ -58,9 +59,6 @@ internal class MainReachabilityTracker(
     val reachableMainBucketNamesByProject = sortedMapOf<String, MutableSet<String>>()
     private val mainProjectEdgeScopes = mutableListOf<MainProjectEdgeScope>()
 
-    private fun variantsFor(projectPath: String): List<DeclaredVariantDependencyMetadata> =
-        projectMetadataByPath[projectPath]?.variants.orEmpty()
-
     private fun declaredProjectDependencyEdges(
         projectPath: String,
         variantNames: Set<String>,
@@ -69,7 +67,7 @@ internal class MainReachabilityTracker(
         val cacheKey = Triple(projectPath, variantNames.toSortedSet(), selectedOnly)
         declaredProjectDependencyEdgesCache[cacheKey]?.let { edges -> return edges }
 
-        return variantsFor(projectPath)
+        return projectMetadataByPath.variantsFor(projectPath)
             .asSequence()
             .filter { variant ->
                 variant.variantType == AndroidBuild || variant.variantType == JvmBuild
@@ -93,7 +91,7 @@ internal class MainReachabilityTracker(
         projectPath: String,
         selectedVariantDisplayName: String?
     ): Set<String> {
-        val variantHierarchyNamesByName = variantsFor(projectPath)
+        val variantHierarchyNamesByName = projectMetadataByPath.variantsFor(projectPath)
             .asSequence()
             .filter { variant ->
                 variant.variantType == AndroidBuild || variant.variantType == JvmBuild
@@ -118,7 +116,7 @@ internal class MainReachabilityTracker(
         ifEmpty { setOf(DEFAULT_VARIANT).filter { name -> name in knownNames }.toSet() }
 
     private fun knownMainBucketNames(projectPath: String, bucketNames: Set<String>): Set<String> {
-        val knownBucketNames = variantsFor(projectPath)
+        val knownBucketNames = projectMetadataByPath.variantsFor(projectPath)
             .asSequence()
             .filter { variant ->
                 variant.variantType == AndroidBuild || variant.variantType == JvmBuild
@@ -271,7 +269,9 @@ internal class MainReachabilityTracker(
     fun recordReachable(projectPaths: Set<String>, bucketNamesByProject: Map<String, Set<String>>) {
         reachableMainProjectPaths.addAll(projectPaths)
         bucketNamesByProject.forEach { (projectPath, bucketNames) ->
-            addReachableMainBuckets(projectPath, bucketNames)
+            // Raw addAll (not addReachableMainBuckets) so this fold matches the exact semantics of
+            // the reachability out-param it replaced, which did not blank-filter discovered buckets.
+            reachableMainBucketNamesByProject.getOrPut(projectPath) { sortedSetOf() }.addAll(bucketNames)
         }
     }
 }

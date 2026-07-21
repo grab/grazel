@@ -21,6 +21,7 @@ import com.grab.grazel.gradle.dependencies.AggregatedDependencyRootKind
 import com.grab.grazel.gradle.dependencies.AggregatedDependencyRootMetadata
 import com.grab.grazel.gradle.dependencies.DeclaredDependencyMetadata
 import com.grab.grazel.gradle.dependencies.DeclaredVariantDependencyMetadata
+import com.grab.grazel.gradle.dependencies.variantsFor
 import com.grab.grazel.gradle.dependencies.ProjectExcludeRules
 import com.grab.grazel.gradle.dependencies.model.ResolvedDependency
 import com.grab.grazel.gradle.variant.ANDROID_TEST_VARIANT
@@ -100,9 +101,6 @@ internal class RootContributionComputer(
     private val resolveRoot: ResolveRoot,
 ) {
     private val projectMetadataByPath = declaredDependencyMetadata.projects
-
-    private fun variantsFor(projectPath: String): List<DeclaredVariantDependencyMetadata> =
-        projectMetadataByPath[projectPath]?.variants.orEmpty()
 
     private fun variantHierarchyNames(metadata: AggregatedDependencyRootMetadata): Set<String> {
         return metadata.variantNames.ifEmpty {
@@ -242,7 +240,7 @@ internal class RootContributionComputer(
             declaredDependencyMetadata.collectExcludeRulesByProjectPath(
                 variantTypes = setOf(testType),
                 variantNames = variantNamesForLeafTest(
-                    variants = variantsFor(metadata.projectPath),
+                    variants = projectMetadataByPath.variantsFor(metadata.projectPath),
                     leafHierarchyNames = leafHierarchyNames,
                     testType = testType
                 )
