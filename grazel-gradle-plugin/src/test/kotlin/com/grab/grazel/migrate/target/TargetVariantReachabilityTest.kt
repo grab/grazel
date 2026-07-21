@@ -16,9 +16,14 @@
 
 package com.grab.grazel.migrate.target
 
+import com.grab.grazel.fake.FakeProject
 import com.grab.grazel.fake.FakeVariant
+import com.grab.grazel.fake.FakeVariantCompressionService
 import com.grab.grazel.gradle.variant.MatchedVariant
+import com.grab.grazel.gradle.variant.VariantCompressionResult
 import com.grab.grazel.gradle.variant.nameSuffix
+import com.grab.grazel.migrate.android.AndroidLibraryData
+import com.grab.grazel.migrate.android.LintConfigData
 import kotlin.test.Test
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
@@ -209,6 +214,95 @@ internal class TargetVariantReachabilityTest {
         assertFalse {
             isReferencedGeneratedTarget(
                 targetName = "feature-release",
+                referencedTargetNames = referencedTargetNames
+            )
+        }
+    }
+
+    private fun compressionResult(suffix: String) = VariantCompressionResult(
+        targetsBySuffix = mapOf(
+            suffix to AndroidLibraryData(
+                name = "mylib$suffix",
+                customPackage = "com.example",
+                packageName = "com.example",
+                lintConfigData = LintConfigData()
+            )
+        ),
+        variantToSuffix = mapOf("gpsPaxDebug" to suffix),
+        expandedBuildTypes = emptySet()
+    )
+
+    @Test
+    fun `assert library target unreachable by raw suffix is reachable through compressed suffix`() {
+        val project = FakeProject("mylib")
+        val matchedVariant = MatchedVariant(
+            variantName = "gpsPaxDebug",
+            flavors = setOf("gps", "pax"),
+            buildType = "debug",
+            variant = FakeVariant("gpsPaxDebug"),
+        )
+        val variantCompressionService = FakeVariantCompressionService().apply {
+            register(project.path, compressionResult("-debug"))
+        }
+        // Raw per-variant target name is deliberately absent; only the compressed spelling is
+        // referenced, reproducing the Bug-1 scenario where compression folds several flavor
+        // variants into a single physical target.
+        val referencedTargetNames = setOf("mylib-debug")
+
+        assertTrue("raw target name is not directly referenced") {
+            "mylib${matchedVariant.nameSuffix}" !in referencedTargetNames
+        }
+        assertTrue("compressed target name is reachable") {
+            isReferencedGeneratedLibraryTarget(
+                project = project,
+                matchedVariant = matchedVariant,
+                variantCompressionService = variantCompressionService,
+                referencedTargetNames = referencedTargetNames
+            )
+        }
+    }
+
+    @Test
+    fun `assert library target reachable through its raw per-variant target name`() {
+        val project = FakeProject("mylib")
+        val matchedVariant = MatchedVariant(
+            variantName = "gpsPaxDebug",
+            flavors = setOf("gps", "pax"),
+            buildType = "debug",
+            variant = FakeVariant("gpsPaxDebug"),
+        )
+        val variantCompressionService = FakeVariantCompressionService()
+        val referencedTargetNames = setOf("mylib${matchedVariant.nameSuffix}")
+
+        assertTrue("PAX still relies on the uncompressed per-variant target name resolving") {
+            isReferencedGeneratedLibraryTarget(
+                project = project,
+                matchedVariant = matchedVariant,
+                variantCompressionService = variantCompressionService,
+                referencedTargetNames = referencedTargetNames
+            )
+        }
+    }
+
+    @Test
+    fun `assert library target is unreachable when neither raw nor compressed suffix is referenced`() {
+        val project = FakeProject("mylib")
+        val matchedVariant = MatchedVariant(
+            variantName = "gpsPaxDebug",
+            flavors = setOf("gps", "pax"),
+            buildType = "debug",
+            variant = FakeVariant("gpsPaxDebug"),
+        )
+        val variantCompressionService = FakeVariantCompressionService().apply {
+            register(project.path, compressionResult("-debug"))
+        }
+        val referencedTargetNames = setOf("other-lib-debug")
+
+        assertFalse {
+            isReferencedGeneratedLibraryTarget(
+                project = project,
+                matchedVariant = matchedVariant,
+                variantCompressionService = variantCompressionService,
                 referencedTargetNames = referencedTargetNames
             )
         }
