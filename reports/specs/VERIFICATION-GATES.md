@@ -37,6 +37,30 @@ Run from the grazel repo root.
    `verify-sample-bucket-labels.sh` + a `git diff --exit-code` byte-identity
    check. Byte-identity is separate from the content assertions in those
    scripts.
+3. **Bazel graph analysis (samples)** — the golden diff proves the *text* of the
+   generated files matches; it does **not** prove the generated Bazel graph is
+   *analyzable*. A dangling `project(...)`/label reference (a target referenced
+   but never generated) passes the golden diff yet fails Bazel analysis. Analyze
+   the samples:
+   ```bash
+   bazelisk build --nobuild //...
+   ```
+   Expect `Build completed successfully` with no `no such package` / `no such
+   target`. Run this whenever a change can affect *which* targets get generated
+   (reachability, migration criteria, target builders).
+
+### Coverage limits (why a green local run can still miss a bug)
+
+The golden baseline only exercises the shapes present in the sample modules
+(`sample-android`, `sample-android-library`, `sample-kotlin-library`, `flavors/`,
+`sample-android-test-util*`). A generation bug in a shape **no sample has** is
+invisible locally. When you fix or discover a new generation shape (e.g. a
+test-only-consumed library, a new plugin combo, a new variant topology), **add a
+sample fixture that reproduces it** and commit its generated output into the
+golden baseline — that is what turns "caught once in PAX" into "caught forever
+locally". A behavioural fix that changes generated output is expected to move the
+golden; commit the new output deliberately and confirm the diff contains **only**
+the intended change.
 
 ### Known local waiver
 
@@ -74,6 +98,12 @@ Run in order:
    no untracked generated files. Any modified/untracked generated file is a
    **regression**. (Superseded baseline, from when output was uncommitted in the
    working tree: `1854 files changed, 68 insertions(+), 775167 deletions(-)`.)
+
+   **Caveat for intended behavioural changes:** a fix that deliberately changes
+   generated output (e.g. newly generating a previously-dropped module) will show
+   exactly those intended files as new/modified — that is the *only* allowed diff.
+   Verify every entry is expected and commit it as the new PAX baseline; any file
+   outside the intended set is still a regression.
 3. **Size guard** (run from the grazel repo root):
    ```bash
    reports/scripts/verify-pax-size-guard.sh --mode preserving
@@ -97,6 +127,46 @@ Run in order:
      //application-initializer:application-initializer-gps-pax-debug-test
    ```
    Expect `Executed 0 out of 3 tests: 3 tests pass`.
+6. **Bazel graph analysis over the CI target set** (the gate that catches
+   dangling labels — APK + 3 focused tests do **not** analyze the test graph, so
+   this class slips past them). Use the pipeline's own target selection, not
+   `//...`:
+   ```bash
+   # the exact set the bazel:impacted-targets job runs (kt_jvm_test, minus excluded flavors)
+   QUERY_BAZEL_BIN=bazelisk BAZEL_ARGS="--config=ci" \
+     scripts/bazel/diff/list_unit_test_targets > /tmp/ut_targets.txt
+   # analyse (not execute) the whole set + transitive deps
+   bazelisk build --nobuild --keep_going --config=ci --target_pattern_file=/tmp/ut_targets.txt
+   ```
+   Pass condition: `Analyzed N targets`, exit 0, **zero** `no such package` /
+   `no such target`, no `Analysis of target ... failed`. This is the true
+   "will the `bazel:impacted targets` job go green" signal — it reproduces the
+   job's analysis phase without executing tests.
+
+   **Do NOT use `bazelisk build //...` as the PAX pass/fail signal.** `//...`
+   analyses the entire workspace, including pre-existing dangling clusters that
+   the CI job never selects (it filters to `kt_jvm_test` targets). Judging PAX by
+   `//...` produces false alarms on modules outside the CI universe. `//...` is a
+   useful *exploration* tool (it surfaces every latent dangler); the CI target set
+   is the *gate*.
 
 Long builds (migrate, APK) should be launched in the background and chained as
 each completes — do not block the session on them.
+
+## Gotchas (lessons paid for; do not relearn)
+
+- **Golden diff proves text, not analyzability.** A dangling label passes
+  `git diff --exit-code` but fails Bazel analysis. Always run a graph-analysis
+  gate (local samples §Local-3, PAX §PAX-6) for any change touching what gets
+  generated.
+- **`query` passing ≠ `analysis` passing.** `bazel query "kind(kt_jvm_test, ...)"`
+  enumerates test targets without resolving their data/dep labels, so it happily
+  lists a target whose dep is a missing package; the failure only appears at
+  analysis. The graph gate must be `build --nobuild` (analysis), not a query.
+- **`git status` clean ≠ no dangling.** A dangling reference lives in an
+  *unchanged* consumer file pointing at a never-generated module; status shows
+  only *changed* files, so it hides the dangler. Only analysis finds it.
+- **Scope the check to the CI universe, not `//...`.** See §PAX-6.
+- **Add a sample fixture for every new generation shape.** The golden only sees
+  sample shapes; a bug in an unrepresented shape is invisible until PAX/CI. See
+  §Coverage-limits.
