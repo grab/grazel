@@ -33,6 +33,8 @@ class TestUtilUsageTest {
 
     @Test
     fun usesTestUtilFixture() {
-        assertEquals("test-util-test-util-dep", TestUtil.fixtureId())
+        // fixtureId() routes through Moshi (the test-util's maven dependency), so the value is
+        // JSON-encoded - i.e. wrapped in quotes.
+        assertEquals("\"test-util-test-util-dep\"", TestUtil.fixtureId())
     }
 }

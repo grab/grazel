@@ -31,9 +31,13 @@ import com.squareup.moshi.Moshi
  * (see Bug 2 in `CollectTargetMavenRepoReferencesTask`).
  */
 object TestUtil {
-    fun fixtureId(): String = "test-util-${TestUtilDep.fixtureId()}"
+    /**
+     * Returns the fixture id, routing it through [serialize] so the module's maven dependency
+     * (Moshi) is exercised on a live call path - proving maven deps resolve for a
+     * referenced-but-unreached module.
+     */
+    fun fixtureId(): String = serialize("test-util-${TestUtilDep.fixtureId()}")
 
-    /** Exercises the module's maven dependency so it resolves for a referenced-but-unreached module. */
-    fun serialize(value: String): String =
+    private fun serialize(value: String): String =
         Moshi.Builder().build().adapter(String::class.java).toJson(value)
 }
