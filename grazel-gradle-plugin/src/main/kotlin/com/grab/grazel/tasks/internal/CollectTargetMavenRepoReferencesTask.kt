@@ -85,6 +85,20 @@ constructor(
      * just efficiency: fact collection incrementally populates the render plan as it goes (see
      * [collectProjectReferences]), so a consumer must be visited after the projects it depends on
      * have already contributed their facts to the render plan.
+     *
+     * That ordering is necessary but not sufficient: [ProjectReachabilityOrder.consumersFirstGroups]
+     * dedups its typed (project, source-set) nodes down to one slot per project by keeping
+     * whichever typed node happens to occur first in the consumers-first walk - which is not
+     * necessarily that project's *Main* node. A project whose own `Test`/`AndroidTest` node has
+     * edges of its own (e.g. the source-set-inheritance edge back to its own `Main` node, or a
+     * further project dependency declared on that test source set) can get a node that sorts
+     * earlier than the actual external consumer's node, landing the project before its referrer in
+     * the flattened order despite the sort being correct. [dependedUponProjects] - "does *any* typed
+     * edge, of *any* variant type, point at this project" - identifies exactly the projects whose
+     * settling must therefore wait for an actual render-plan reference rather than being assumed
+     * unconditionally safe; projects nothing points at (true roots: binaries, standalone modules)
+     * are passed through as intrinsically reachable. See
+     * [collectTargetMavenRepoReferencesByGroup]'s KDoc for the fixed-point iteration this feeds.
      */
     @TaskAction
     fun action() {
@@ -103,6 +117,11 @@ constructor(
                 .sortedBy(Project::getPath)
                 .map { subproject -> ProjectReachabilityGroup(listOf(subproject)) }
         val totalProjects = orderedGroups.sumOf { group -> group.projects.size }
+        val dependedUponProjects = dependencyGraphsService.get().get()
+            .mergeToProjectGraph(variantTypeFilter = { true })
+            .values
+            .flatten()
+            .toSet()
 
         val startedAt = System.nanoTime()
         val targetReferences = GradleServices.from(project).progressLoggerFactory.withProgress(
@@ -113,7 +132,8 @@ constructor(
                 canMigrate = { subproject -> migrationChecker.get().canMigrate(subproject) },
                 factsForProject = { subproject -> targetReferenceFactsExtractor.get().collect(subproject) },
                 workspaceRenderPlanService = workspaceRenderPlanService.get(),
-                reporter = reporter
+                reporter = reporter,
+                isIntrinsicallyReachable = { subproject -> subproject !in dependedUponProjects }
             )
         }
 
@@ -154,26 +174,45 @@ constructor(
 }
 
 /**
- * Runs the single accumulation pass and only *after* it completes normalizes the accumulated
- * facts and republishes them into [workspaceRenderPlanService]. The render plan is also populated
- * incrementally mid-pass (see [collectProjectReferences]) with pre-normalization state; this final
- * normalize-then-republish step is what downstream readers actually rely on as the settled,
- * de-duplicated view - the ordering between raw accumulation and normalization is load-bearing,
- * not incidental.
+ * Runs the accumulation pass to a fixed point and only *after* it converges normalizes the
+ * accumulated facts and republishes them into [workspaceRenderPlanService]. The render plan is
+ * also populated incrementally mid-pass (see [collectProjectReferences]) with pre-normalization
+ * state; this final normalize-then-republish step is what downstream readers actually rely on as
+ * the settled, de-duplicated view - the ordering between raw accumulation and normalization is
+ * load-bearing, not incidental.
+ *
+ * A single consumers-first pass over [projectGroups] is not always enough: a project that is only
+ * reachable via a reference recorded mid-pass (e.g. a `testImplementation`-only dependency, see
+ * [isIntrinsicallyReachable]) can be visited before the project that references it, so its own
+ * transitive references would be silently dropped. [mergeTargetReferenceFacts] /
+ * `mergeProjectTargets` is a pure, monotonic set-union - it only ever grows the accumulated facts
+ * - so repeating the ordered pass until a round adds nothing new converges to the true transitive
+ * closure, and is byte-identical to a single pass wherever a single pass already sufficed (the
+ * extra round is then a no-op).
+ *
+ * @param isIntrinsicallyReachable Marks projects whose inclusion doesn't depend on being
+ * referenced first - typically true roots that nothing else in the dependency graph points at
+ * (e.g. binaries). Such projects settle - and are skipped in later rounds - as soon as they are
+ * visited once. A project for which this returns `false` only settles once it has actually been
+ * referenced (per [WorkspaceRenderPlanService.isReferencedProjectPath]) at the time it is
+ * visited; until then it is re-visited every round so a late-arriving reference can still
+ * activate it. Defaults to `{ true }`, i.e. today's single-pass-settles-everything behaviour.
  */
 internal fun collectTargetMavenRepoReferencesByGroup(
     projectGroups: List<ProjectReachabilityGroup>,
     canMigrate: (Project) -> Boolean,
     factsForProject: (Project) -> TargetReferenceFacts,
     workspaceRenderPlanService: WorkspaceRenderPlanService,
-    reporter: ProgressReporter
+    reporter: ProgressReporter,
+    isIntrinsicallyReachable: (Project) -> Boolean = { true }
 ): TargetReferenceFacts {
-    val referenceFacts = collectTargetMavenRepoReferencesSinglePass(
+    val referenceFacts = collectTargetMavenRepoReferencesToFixedPoint(
         projectGroups = projectGroups,
         canMigrate = canMigrate,
         factsForProject = factsForProject,
         workspaceRenderPlanService = workspaceRenderPlanService,
-        reporter = reporter
+        reporter = reporter,
+        isIntrinsicallyReachable = isIntrinsicallyReachable
     )
     val references = referenceFacts.normalized()
 
@@ -181,31 +220,88 @@ internal fun collectTargetMavenRepoReferencesByGroup(
     return references
 }
 
+/**
+ * Repeats [collectTargetMavenRepoReferencesSinglePass] until a round adds no new project targets
+ * or repo names to the accumulated facts. `settledProjects` carries forward across rounds so that
+ * a project which already produced its final facts (see [collectProjectReferences]) is neither
+ * re-visited (no [factsForProject] call) nor reported again - in the common case where every
+ * project activates in round one, this keeps the cost at exactly one call per project, matching
+ * the pre-fixpoint behaviour. A hard round cap guarantees termination even if convergence logic
+ * were ever broken: at worst one additional project settles per round, plus one final round to
+ * observe that nothing changed and stop, so `totalProjects + 1` rounds are always sufficient for
+ * a genuinely convergent accumulation.
+ */
+private fun collectTargetMavenRepoReferencesToFixedPoint(
+    projectGroups: List<ProjectReachabilityGroup>,
+    canMigrate: (Project) -> Boolean,
+    factsForProject: (Project) -> TargetReferenceFacts,
+    workspaceRenderPlanService: WorkspaceRenderPlanService,
+    reporter: ProgressReporter,
+    isIntrinsicallyReachable: (Project) -> Boolean
+): TargetReferenceFacts {
+    val totalProjects = projectGroups.sumOf { group -> group.projects.size }
+    val maxRounds = totalProjects + 1
+    val settledProjects = mutableSetOf<String>()
+    var accumulated = TargetReferenceFacts()
+    var round = 0
+    while (true) {
+        round += 1
+        check(round <= maxRounds) {
+            "Target reference collection did not converge after $maxRounds round(s) across " +
+                "$totalProjects project(s); this should be impossible since the accumulated " +
+                "facts only ever grow - check mergeTargetReferenceFacts for a regression."
+        }
+        val beforeRound = accumulated
+        accumulated = collectTargetMavenRepoReferencesSinglePass(
+            projectGroups = projectGroups,
+            canMigrate = canMigrate,
+            factsForProject = factsForProject,
+            workspaceRenderPlanService = workspaceRenderPlanService,
+            reporter = reporter,
+            accumulated = accumulated,
+            settledProjects = settledProjects,
+            isIntrinsicallyReachable = isIntrinsicallyReachable
+        )
+        if (accumulated == beforeRound) break
+    }
+
+    return accumulated
+}
+
 private fun collectTargetMavenRepoReferencesSinglePass(
     projectGroups: List<ProjectReachabilityGroup>,
     canMigrate: (Project) -> Boolean,
     factsForProject: (Project) -> TargetReferenceFacts,
     workspaceRenderPlanService: WorkspaceRenderPlanService,
-    reporter: ProgressReporter
+    reporter: ProgressReporter,
+    accumulated: TargetReferenceFacts,
+    settledProjects: MutableSet<String>,
+    isIntrinsicallyReachable: (Project) -> Boolean
 ): TargetReferenceFacts {
     val totalProjects = projectGroups.sumOf { group -> group.projects.size }
     var visitedProjects = 0
-    var accumulated = TargetReferenceFacts()
+    var current = accumulated
     projectGroups.forEach { group ->
-        accumulated = group.projects.fold(accumulated) { current, project ->
-            visitedProjects += 1
-            reporter.report("collecting ($visitedProjects/$totalProjects): ${project.path}")
-            collectProjectReferences(
-                accumulated = current,
-                project = project,
-                canMigrate = canMigrate,
-                factsForProject = factsForProject,
-                workspaceRenderPlanService = workspaceRenderPlanService
-            )
+        current = group.projects.fold(current) { acc, project ->
+            if (project.path in settledProjects) {
+                acc
+            } else {
+                visitedProjects += 1
+                reporter.report("collecting ($visitedProjects/$totalProjects): ${project.path}")
+                collectProjectReferences(
+                    accumulated = acc,
+                    project = project,
+                    canMigrate = canMigrate,
+                    factsForProject = factsForProject,
+                    workspaceRenderPlanService = workspaceRenderPlanService,
+                    isIntrinsicallyReachable = isIntrinsicallyReachable,
+                    settledProjects = settledProjects
+                )
+            }
         }
     }
 
-    return accumulated
+    return current
 }
 
 /**
@@ -214,20 +310,37 @@ private fun collectTargetMavenRepoReferencesSinglePass(
  * skipped. Downstream lookups against the render plan can therefore observe this project's
  * accumulated-so-far facts despite it contributing nothing further itself - an intentional but
  * easy-to-miss ordering dependency between publishing and filtering.
+ *
+ * Marks [project] settled - via [settledProjects] - once it has produced facts that cannot
+ * change on a later round: either it doesn't need a reference to be included in the first place
+ * ([isIntrinsicallyReachable]), or it was already referenced (per
+ * [WorkspaceRenderPlanService.isReferencedProjectPath]) at the moment it was visited. A
+ * non-migratable project is also settled immediately since migratability can't change between
+ * rounds. Otherwise the project is left unsettled so a reference contributed later in this round
+ * (or a subsequent one) still gets a chance to activate it.
  */
 private fun collectProjectReferences(
     accumulated: TargetReferenceFacts,
     project: Project,
     canMigrate: (Project) -> Boolean,
     factsForProject: (Project) -> TargetReferenceFacts,
-    workspaceRenderPlanService: WorkspaceRenderPlanService
+    workspaceRenderPlanService: WorkspaceRenderPlanService,
+    isIntrinsicallyReachable: (Project) -> Boolean,
+    settledProjects: MutableSet<String>
 ): TargetReferenceFacts {
     workspaceRenderPlanService.populateRenderPlan(accumulated.asRenderPlan())
     if (!canMigrate(project)) {
+        settledProjects += project.path
         return accumulated
     }
-    return mergeTargetReferenceFacts(
+    val isActive = isIntrinsicallyReachable(project) ||
+        workspaceRenderPlanService.isReferencedProjectPath(project.path)
+    val merged = mergeTargetReferenceFacts(
         accumulated,
         factsForProject(project)
     )
+    if (isActive) {
+        settledProjects += project.path
+    }
+    return merged
 }

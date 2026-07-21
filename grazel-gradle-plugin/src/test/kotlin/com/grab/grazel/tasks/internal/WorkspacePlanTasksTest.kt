@@ -268,4 +268,65 @@ class WorkspacePlanTasksTest {
         )
     }
 
+    @Test
+    fun `collect target references reaches transitively referenced targets across rounds`() {
+        // Reproduces Bug 2: a project reachable only via a reference recorded mid-pass (e.g. a
+        // testImplementation-only dependency) can be ordered before its referrer, so a single
+        // consumers-first pass drops its own transitive references. `util1` is only referenced by
+        // `c`, and `util2` is only referenced by `util1` - both are ordered before `c` here to
+        // simulate the mis-ordering, so a single pass would leave `util2` (and even `util1`)
+        // unresolved. Only `c` is intrinsically reachable; `util1`/`util2` must be activated by a
+        // recorded reference.
+        val rootProject = buildProject("root")
+        val cProject = buildProject("c", rootProject)
+        val util1Project = buildProject("util1", rootProject)
+        val util2Project = buildProject("util2", rootProject)
+        val workspaceRenderPlanService = WorkspaceRenderPlanService.register(rootProject).get()
+
+        val references: TargetReferenceFacts = collectTargetMavenRepoReferencesByGroup(
+            projectGroups = listOf(util2Project, util1Project, cProject).map { project ->
+                ProjectReachabilityGroup(listOf(project))
+            },
+            canMigrate = { true },
+            factsForProject = { project ->
+                when (project.path) {
+                    ":c" ->
+                        TargetReferenceFactsCollector.from(
+                            deps = listOf(ProjectDependency(util1Project, suffix = "-gps-pax-debug"))
+                        )
+                    ":util1" -> if (workspaceRenderPlanService.isReferencedProjectPath(":util1")) {
+                        TargetReferenceFactsCollector.from(
+                            deps = listOf(ProjectDependency(util2Project, suffix = "-gps-pax-debug"))
+                        )
+                    } else {
+                        TargetReferenceFactsCollector.from()
+                    }
+                    ":util2" -> if (workspaceRenderPlanService.isReferencedProjectPath(":util2")) {
+                        TargetReferenceFactsCollector.from(
+                            deps = listOf(
+                                MavenDependency(
+                                    repo = "debug_maven",
+                                    group = "com.example",
+                                    name = "util2-debug"
+                                )
+                            )
+                        )
+                    } else {
+                        TargetReferenceFactsCollector.from()
+                    }
+                    else -> TargetReferenceFactsCollector.from()
+                }
+            },
+            workspaceRenderPlanService = workspaceRenderPlanService,
+            reporter = ProgressReporter.NoOp,
+            isIntrinsicallyReachable = { project -> project.path == ":c" }
+        )
+
+        assertTrue(":util2" in references.projectTargets)
+        assertEquals(
+            setOf(":util1", ":util2"),
+            references.projectPaths
+        )
+    }
+
 }
