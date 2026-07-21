@@ -37,7 +37,7 @@ android_unit_test(
     name = "sample-android-library-debug-test",
     size = "medium",
     srcs = glob([
-        "src/test/java/com/grab/grazel/android/sample/SampleViewModelTest.kt",
+        "src/test/java/com/grab/grazel/android/sample/**/*.kt",
     ]),
     associates = [
         "//sample-android-library:sample-android-library-debug_kt",
@@ -52,6 +52,7 @@ android_unit_test(
     deps = [
         "//:parcelize",
         "//sample-android-library:sample-android-library-debug",
+        "//sample-android-test-util:sample-android-test-util-debug",
         "@maven//:com_squareup_moshi_moshi",
         "@test_maven//:junit_junit",
     ],

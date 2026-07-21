@@ -14,24 +14,21 @@
  * limitations under the License.
  */
 
-plugins {
-    alias(libs.plugins.android.library)
-    alias(libs.plugins.kotlin.android)
-    alias(libs.plugins.kotlin.parcelize)
-    alias(libs.plugins.ksp)
-}
+package com.grab.grazel.android.sample
 
-android {
-    buildToolsVersion "33.0.1"
-    buildFeatures {
-        viewBinding true
+import com.grab.grazel.android.sample.testutil.TestUtil
+import org.junit.Assert.assertEquals
+import org.junit.Test
+
+/**
+ * Exercises the `testImplementation project(":sample-android-test-util")` edge so the
+ * `android_unit_test` target emits a `project(...)` dependency on the test-util library,
+ * guarding regeneration of a `BUILD.bazel` for a module reachable only via test scope.
+ */
+class TestUtilUsageTest {
+
+    @Test
+    fun usesTestUtilFixture() {
+        assertEquals("test-util", TestUtil.fixtureId())
     }
-    namespace "com.grab.grazel.android.sample.lib"
-}
-
-dependencies {
-    implementation libs.moshi
-    ksp libs.moshi.codegen
-    testImplementation libs.junit
-    testImplementation project(":sample-android-test-util")
 }

@@ -46,6 +46,7 @@ android {
 include(":sample-android")
 include(":sample-android-tests")
 include(":sample-android-library")
+include(":sample-android-test-util")
 include(":flavors:sample-android-flavor")
 include(":flavors:sample-library-demo")
 include(":flavors:sample-library-full")

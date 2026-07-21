@@ -21,6 +21,9 @@ import com.grab.grazel.gradle.dependencies.DefaultDependencyResolutionService
 import com.grab.grazel.gradle.dependencies.WorkspaceRenderPlanService
 import com.grab.grazel.gradle.variant.MatchedVariant
 import com.grab.grazel.gradle.variant.DEFAULT_VARIANT
+import com.grab.grazel.gradle.variant.VariantCompressionService
+import com.grab.grazel.gradle.variant.nameSuffix
+import com.grab.grazel.gradle.variant.resolveSuffix
 import com.grab.grazel.util.GradleProvider
 import org.gradle.api.Project
 
@@ -91,6 +94,38 @@ internal fun isReferencedGeneratedTarget(
         "lib_$targetName"
     )
     return macroTargetNames.any { candidate -> candidate in referencedTargetNames }
+}
+
+/**
+ * Same check as [isReferencedGeneratedTarget], additionally retried against the variant's
+ * *compressed* target suffix ([VariantCompressionService.resolveSuffix]). This matters whenever
+ * variant compression is active for [matchedVariant]'s project: the render plan records a
+ * consumer's `project(...)` reference using the already-compressed label (e.g. a single `-debug`
+ * target folded from several flavor variants), so checking only the raw per-variant suffix would
+ * never match and a referenced-but-otherwise-unreachable library would be silently dropped.
+ */
+internal fun isReferencedGeneratedLibraryTarget(
+    project: Project,
+    matchedVariant: MatchedVariant,
+    variantCompressionService: VariantCompressionService,
+    referencedTargetNames: Set<String>
+): Boolean {
+    if (isReferencedGeneratedTarget(
+            targetName = "${project.name}${matchedVariant.nameSuffix}",
+            referencedTargetNames = referencedTargetNames
+        )
+    ) {
+        return true
+    }
+    val compressedSuffix = variantCompressionService.resolveSuffix(
+        projectPath = project.path,
+        variantName = matchedVariant.variantName,
+        fallbackSuffix = matchedVariant.nameSuffix
+    )
+    return isReferencedGeneratedTarget(
+        targetName = "${project.name}$compressedSuffix",
+        referencedTargetNames = referencedTargetNames
+    )
 }
 
 internal fun reachableBucketPredicate(

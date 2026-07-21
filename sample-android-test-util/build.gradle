@@ -17,21 +17,12 @@
 plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.kotlin.android)
-    alias(libs.plugins.kotlin.parcelize)
-    alias(libs.plugins.ksp)
 }
 
 android {
-    buildToolsVersion "33.0.1"
-    buildFeatures {
-        viewBinding true
-    }
-    namespace "com.grab.grazel.android.sample.lib"
+    namespace "com.grab.grazel.android.sample.testutil"
 }
 
 dependencies {
     implementation libs.moshi
-    ksp libs.moshi.codegen
-    testImplementation libs.junit
-    testImplementation project(":sample-android-test-util")
 }

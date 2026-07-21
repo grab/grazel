@@ -153,8 +153,10 @@ constructor(
             )
             .filter { matchedVariant ->
                 matchedVariant.isReachableProjectVariant(isReachableBucket) ||
-                    isReferencedGeneratedTarget(
-                        targetName = "${project.name}${matchedVariant.nameSuffix}",
+                    isReferencedGeneratedLibraryTarget(
+                        project = project,
+                        matchedVariant = matchedVariant,
+                        variantCompressionService = variantCompressionService.get(),
                         referencedTargetNames = referencedTargetNames
                     )
             }
