@@ -259,6 +259,7 @@ private fun collectTargetMavenRepoReferencesToFixedPoint(
         val beforeRound = accumulated
         accumulated = collectTargetMavenRepoReferencesSinglePass(
             projectGroups = projectGroups,
+            totalProjects = totalProjects,
             canMigrate = canMigrate,
             factsForProject = factsForProject,
             workspaceRenderPlanService = workspaceRenderPlanService,
@@ -293,6 +294,7 @@ private fun collectTargetMavenRepoReferencesToFixedPoint(
  */
 private fun collectTargetMavenRepoReferencesSinglePass(
     projectGroups: List<ProjectReachabilityGroup>,
+    totalProjects: Int,
     canMigrate: (Project) -> Boolean,
     factsForProject: (Project) -> TargetReferenceFacts,
     workspaceRenderPlanService: WorkspaceRenderPlanService,
@@ -302,7 +304,6 @@ private fun collectTargetMavenRepoReferencesSinglePass(
     everVisited: MutableSet<String>,
     isIntrinsicallyReachable: (Project) -> Boolean
 ): TargetReferenceFacts {
-    val totalProjects = projectGroups.sumOf { group -> group.projects.size }
     var visitedProjects = 0
     var current = accumulated
     projectGroups.forEach { group ->
@@ -312,7 +313,6 @@ private fun collectTargetMavenRepoReferencesSinglePass(
             }
             workspaceRenderPlanService.populateRenderPlan(acc.asRenderPlan())
             val shouldVisit = project.path !in everVisited ||
-                isIntrinsicallyReachable(project) ||
                 workspaceRenderPlanService.isReferencedProjectPath(project.path)
             if (!shouldVisit) {
                 acc
@@ -337,11 +337,12 @@ private fun collectTargetMavenRepoReferencesSinglePass(
 }
 
 /**
- * Publishes the accumulated facts *before* the migratability check, so the render plan reflects
- * partial/pre-merge state even for a project that turns out to be non-migratable and gets
- * skipped. Downstream lookups against the render plan can therefore observe this project's
- * accumulated-so-far facts despite it contributing nothing further itself - an intentional but
- * easy-to-miss ordering dependency between publishing and filtering.
+ * Assumes the caller ([collectTargetMavenRepoReferencesSinglePass]'s fold) has already published
+ * [accumulated] into [workspaceRenderPlanService] before invoking this function, so the render
+ * plan reflects partial/pre-merge state even for a project that turns out to be non-migratable
+ * and gets skipped. Downstream lookups against the render plan can therefore observe this
+ * project's accumulated-so-far facts despite it contributing nothing further itself - an
+ * intentional but easy-to-miss ordering dependency between publishing and filtering.
  *
  * Marks [project] settled - via [settledProjects] - once it has produced facts that cannot
  * change on a later round: either it doesn't need a reference to be included in the first place
@@ -360,7 +361,6 @@ private fun collectProjectReferences(
     isIntrinsicallyReachable: (Project) -> Boolean,
     settledProjects: MutableSet<String>
 ): TargetReferenceFacts {
-    workspaceRenderPlanService.populateRenderPlan(accumulated.asRenderPlan())
     if (!canMigrate(project)) {
         settledProjects += project.path
         return accumulated
