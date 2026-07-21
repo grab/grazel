@@ -224,12 +224,19 @@ constructor(
         variantType: VariantType
     ): Set<MatchedVariant> {
         val isReachableBucket = reachableBucketPredicate(project, dependencyResolutionService)
+        val referencedTargetNames = workspaceRenderPlanService.get().referencedTargetNames(project.path)
         return variantMatcher
             .matchedVariants(
                 project = project,
                 variantType = variantType,
             )
-            .filter { matchedVariant -> matchedVariant.isReachableProjectVariant(isReachableBucket) }
+            .filter { matchedVariant ->
+                matchedVariant.isReachableProjectVariant(isReachableBucket) ||
+                    isReferencedGeneratedTarget(
+                        targetName = "${project.name}${matchedVariant.nameSuffix}",
+                        referencedTargetNames = referencedTargetNames
+                    )
+            }
             .toSet()
     }
 

@@ -20,6 +20,7 @@ import com.grab.grazel.gradle.isAndroid
 import com.grab.grazel.gradle.isAndroidApplication
 import com.grab.grazel.gradle.isAndroidTest
 import com.grab.grazel.gradle.dependencies.DefaultDependencyResolutionService
+import com.grab.grazel.gradle.dependencies.WorkspaceRenderPlanService
 import com.grab.grazel.gradle.variant.DefaultVariantCompressionService
 import com.grab.grazel.gradle.variant.MatchedVariant
 import com.grab.grazel.gradle.variant.VariantMatcher
@@ -70,7 +71,8 @@ constructor(
     private val unitTestDataExtractor: AndroidUnitTestDataExtractor,
     private val variantMatcher: VariantMatcher,
     private val variantCompressionService: GradleProvider<DefaultVariantCompressionService>,
-    private val dependencyResolutionService: GradleProvider<DefaultDependencyResolutionService>
+    private val dependencyResolutionService: GradleProvider<DefaultDependencyResolutionService>,
+    private val workspaceRenderPlanService: GradleProvider<WorkspaceRenderPlanService>
 ) : TargetBuilder {
 
     override fun build(project: Project): List<BazelTarget> {
@@ -143,12 +145,19 @@ constructor(
         variantType: VariantType
     ): Set<MatchedVariant> {
         val isReachableBucket = reachableBucketPredicate(project, dependencyResolutionService)
+        val referencedTargetNames = workspaceRenderPlanService.get().referencedTargetNames(project.path)
         return variantMatcher
             .matchedVariants(
                 project = project,
                 variantType = variantType,
             )
-            .filter { matchedVariant -> matchedVariant.isReachableProjectVariant(isReachableBucket) }
+            .filter { matchedVariant ->
+                matchedVariant.isReachableProjectVariant(isReachableBucket) ||
+                    isReferencedGeneratedTarget(
+                        targetName = "${project.name}${matchedVariant.nameSuffix}",
+                        referencedTargetNames = referencedTargetNames
+                    )
+            }
             .toSet()
     }
 

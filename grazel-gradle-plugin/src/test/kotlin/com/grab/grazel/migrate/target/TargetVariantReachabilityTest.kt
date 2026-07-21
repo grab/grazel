@@ -18,6 +18,7 @@ package com.grab.grazel.migrate.target
 
 import com.grab.grazel.fake.FakeVariant
 import com.grab.grazel.gradle.variant.MatchedVariant
+import com.grab.grazel.gradle.variant.nameSuffix
 import kotlin.test.Test
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
@@ -142,6 +143,52 @@ internal class TargetVariantReachabilityTest {
                 targetName = "ui-tests-gps-ovo-debug",
                 referencedTargetNames = referencedTargetNames
             )
+        }
+    }
+
+    @Test
+    fun `assert variant unreachable by bucket but referenced by target name is selected`() {
+        val reachableBuckets = setOf("debug")
+        val matchedVariant = MatchedVariant(
+            variantName = "release",
+            flavors = emptySet(),
+            buildType = "release",
+            variant = FakeVariant("release"),
+        )
+        val referencedTargetNames = setOf("group-order-test-util${matchedVariant.nameSuffix}")
+
+        assertFalse("release is not a reachable bucket") {
+            matchedVariant.isReachableProjectVariant(reachableBuckets::contains)
+        }
+        assertTrue("but its target name is referenced by a consumer") {
+            matchedVariant.isReachableProjectVariant(reachableBuckets::contains) ||
+                isReferencedGeneratedTarget(
+                    targetName = "group-order-test-util${matchedVariant.nameSuffix}",
+                    referencedTargetNames = referencedTargetNames
+                )
+        }
+    }
+
+    @Test
+    fun `assert variant unreachable by bucket and unreferenced is dropped`() {
+        val reachableBuckets = setOf("debug")
+        val matchedVariant = MatchedVariant(
+            variantName = "release",
+            flavors = emptySet(),
+            buildType = "release",
+            variant = FakeVariant("release"),
+        )
+        val referencedTargetNames = setOf("other-lib${matchedVariant.nameSuffix}")
+
+        assertFalse("release is not a reachable bucket") {
+            matchedVariant.isReachableProjectVariant(reachableBuckets::contains)
+        }
+        assertFalse("and nothing references this target name either") {
+            matchedVariant.isReachableProjectVariant(reachableBuckets::contains) ||
+                isReferencedGeneratedTarget(
+                    targetName = "group-order-test-util${matchedVariant.nameSuffix}",
+                    referencedTargetNames = referencedTargetNames
+                )
         }
     }
 
