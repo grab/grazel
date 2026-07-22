@@ -150,7 +150,7 @@ class WorkspacePlanTasksTest {
         val workspaceRenderPlanService = WorkspaceRenderPlanService.register(rootProject).get()
         val progressMessages = mutableListOf<String>()
 
-        val references: TargetReferenceFacts = collectTargetMavenRepoReferencesByGroup(
+        val references: TargetReferenceFacts = collectTargetMavenRepoReferences(
             projects = listOf(uiTestsProject, appProject),
             canMigrate = { true },
             factsForProject = { project ->
@@ -200,7 +200,7 @@ class WorkspacePlanTasksTest {
         val workspaceRenderPlanService = WorkspaceRenderPlanService.register(rootProject).get()
         val callsByProject = mutableMapOf<String, Int>()
 
-        val references: TargetReferenceFacts = collectTargetMavenRepoReferencesByGroup(
+        val references: TargetReferenceFacts = collectTargetMavenRepoReferences(
             projects = listOf(uiTestsProject, appProject, libProject),
             canMigrate = { true },
             factsForProject = { project ->
@@ -278,7 +278,7 @@ class WorkspacePlanTasksTest {
         val util2Project = buildProject("util2", rootProject)
         val workspaceRenderPlanService = WorkspaceRenderPlanService.register(rootProject).get()
 
-        val references: TargetReferenceFacts = collectTargetMavenRepoReferencesByGroup(
+        val references: TargetReferenceFacts = collectTargetMavenRepoReferences(
             projects = listOf(util2Project, util1Project, cProject),
             canMigrate = { true },
             factsForProject = { project ->
@@ -319,6 +319,76 @@ class WorkspacePlanTasksTest {
         assertEquals(
             setOf(":util1", ":util2"),
             references.projectPaths
+        )
+    }
+
+    @Test
+    fun `collect target references visits a never-activated project exactly once`() {
+        // A non-intrinsically-reachable project that nothing ever references must be extracted
+        // exactly once (the pass-1 inactive visit) and never reprocessed by the drain.
+        val rootProject = buildProject("root")
+        val appProject = buildProject("app", rootProject)
+        val orphanProject = buildProject("orphan", rootProject)
+        val workspaceRenderPlanService = WorkspaceRenderPlanService.register(rootProject).get()
+        val callsByProject = mutableMapOf<String, Int>()
+
+        val references: TargetReferenceFacts = collectTargetMavenRepoReferences(
+            projects = listOf(orphanProject, appProject),
+            canMigrate = { true },
+            factsForProject = { project ->
+                callsByProject[project.path] = callsByProject.getOrDefault(project.path, 0) + 1
+                when (project.path) {
+                    ":app" -> TargetReferenceFactsCollector.from(
+                        deps = listOf(
+                            MavenDependency(repo = "debug_maven", group = "com.example", name = "app-dep")
+                        )
+                    )
+                    else -> TargetReferenceFactsCollector.from()
+                }
+            },
+            workspaceRenderPlanService = workspaceRenderPlanService,
+            reporter = ProgressReporter.NoOp,
+            isIntrinsicallyReachable = { project -> project.path == ":app" }
+        )
+
+        assertEquals(mapOf(":orphan" to 1, ":app" to 1), callsByProject)
+        assertEquals(setOf("debug_maven"), references.repoNames)
+    }
+
+    @Test
+    fun `collect target references drain reports activated projects distinctly`() {
+        // Drain-path progress: pass 1 reports "collecting (i/n)"; a deferred project activated
+        // by the drain reports "collecting (activated): :path" — pinned so the reporter contract
+        // is deliberate, not incidental.
+        val rootProject = buildProject("root")
+        val cProject = buildProject("c", rootProject)
+        val utilProject = buildProject("util", rootProject)
+        val workspaceRenderPlanService = WorkspaceRenderPlanService.register(rootProject).get()
+        val progressMessages = mutableListOf<String>()
+
+        collectTargetMavenRepoReferences(
+            projects = listOf(utilProject, cProject),
+            canMigrate = { true },
+            factsForProject = { project ->
+                when (project.path) {
+                    ":c" -> TargetReferenceFactsCollector.from(
+                        deps = listOf(ProjectDependency(utilProject, suffix = "-gps-pax-debug"))
+                    )
+                    else -> TargetReferenceFactsCollector.from()
+                }
+            },
+            workspaceRenderPlanService = workspaceRenderPlanService,
+            reporter = ProgressReporter(progressMessages::add),
+            isIntrinsicallyReachable = { project -> project.path == ":c" }
+        )
+
+        assertEquals(
+            listOf(
+                "collecting (1/2): :util",
+                "collecting (2/2): :c",
+                "collecting (activated): :util"
+            ),
+            progressMessages
         )
     }
 
