@@ -33,7 +33,7 @@ import com.grab.grazel.migrate.kotlin.UnitTestData
  * and the reference-facts pass — facts are derived from the same objects the builders render,
  * making facts/render divergence structurally impossible.
  */
-internal interface TargetData {
+internal sealed interface TargetData {
     fun referenceFacts(): TargetReferenceFacts
 }
 

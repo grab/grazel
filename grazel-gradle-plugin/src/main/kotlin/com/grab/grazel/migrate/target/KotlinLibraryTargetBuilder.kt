@@ -63,29 +63,38 @@ constructor(
 ) : TargetBuilder {
 
     override fun build(project: Project): List<BazelTarget> =
-        selectKotlinData(project).map { selected ->
-            when (selected) {
-                is KotlinLibraryTargetData -> selected.data.toKotlinLibraryTarget()
-                is KotlinUnitTestTargetData -> selected.data.toUnitTestTarget()
-                else -> error("Unexpected TargetData for Kotlin project: $selected")
-            }
-        }
+        selectKotlin(project)?.let { selection ->
+            listOf(
+                selection.library.data.toKotlinLibraryTarget(),
+                selection.unitTest.data.toUnitTestTarget()
+            )
+        } ?: emptyList()
 
-    override fun selectData(project: Project): List<TargetData> = selectKotlinData(project)
+    override fun selectData(project: Project): List<TargetData> =
+        selectKotlin(project)?.let { selection ->
+            listOf(selection.library, selection.unitTest)
+        } ?: emptyList()
 
     /**
      * A Kotlin project contributes its library + unit-test data only when reachable (or
      * already referenced) — the same three-signal gate documented on [isReachableJvmProject].
+     * Returns null when the gate fails; [build] and [selectData] both consume this single
+     * typed selection, so there is no interface-level dispatch (and no runtime `else`) here.
      */
-    internal fun selectKotlinData(project: Project): List<TargetData> {
+    private fun selectKotlin(project: Project): KotlinSelection? {
         if (!isReachableJvmProject(project, dependencyResolutionService, workspaceRenderPlanService)) {
-            return emptyList()
+            return null
         }
-        return listOf(
-            KotlinLibraryTargetData(projectDataExtractor.extract(project)),
-            KotlinUnitTestTargetData(kotlinUnitTestDataExtractor.extract(project))
+        return KotlinSelection(
+            library = KotlinLibraryTargetData(projectDataExtractor.extract(project)),
+            unitTest = KotlinUnitTestTargetData(kotlinUnitTestDataExtractor.extract(project))
         )
     }
+
+    private data class KotlinSelection(
+        val library: KotlinLibraryTargetData,
+        val unitTest: KotlinUnitTestTargetData
+    )
 
     override fun canHandle(project: Project): Boolean = with(project) {
         !isAndroid && !isAndroidTest && isKotlin
