@@ -23,6 +23,7 @@ import com.grab.grazel.gradle.variant.VariantType
 import com.grab.grazel.gradle.isAndroidTest
 import com.grab.grazel.gradle.variant.VariantMatcher
 import com.grab.grazel.gradle.variant.nameSuffix
+import com.grab.grazel.migrate.BazelTarget
 import com.grab.grazel.migrate.TargetBuilder
 import com.grab.grazel.migrate.android.AndroidBinaryDataExtractor
 import com.grab.grazel.migrate.android.AndroidLibraryDataExtractor
@@ -67,11 +68,17 @@ internal class AndroidTestTargetBuilder
     private val workspaceRenderPlanService: GradleProvider<WorkspaceRenderPlanService>,
 ) : TargetBuilder {
 
-    override fun build(project: Project) = buildList {
+    override fun build(project: Project): List<BazelTarget> =
+        selectAndroidTestData(project).map { androidTestData -> androidTestData.toTarget() }
+
+    /**
+     * Selects the build variants of a `com.android.test` module that are reachable or
+     * referenced by an already-rendered target, with their fully-extracted test data.
+     */
+    internal fun selectAndroidTestData(project: Project): List<AndroidTestData> {
         val isReachableBucket = reachableBucketPredicate(project, dependencyResolutionService)
         val referencedTargetNames = workspaceRenderPlanService.get().referencedTargetNames(project.path)
-
-        variantMatcher.matchedVariants(
+        return variantMatcher.matchedVariants(
             project,
             VariantType.AndroidBuild,
         ).filter { matchedVariant ->
@@ -80,25 +87,21 @@ internal class AndroidTestTargetBuilder
                     targetName = "${project.name}${matchedVariant.nameSuffix}",
                     referencedTargetNames = referencedTargetNames
                 )
-        }.forEach { matchedVariant ->
+        }.map { matchedVariant ->
             val androidLibraryData = androidLibraryDataExtractor.extract(
                 project = project,
                 matchedVariant = matchedVariant
             )
-
             val androidBinaryData = androidBinaryDataExtractor.extract(
                 project = project,
                 matchedVariant = matchedVariant
             )
-
-            val androidTestData = androidTestDataExtractor.extract(
+            androidTestDataExtractor.extract(
                 project = project,
                 matchedVariant = matchedVariant,
                 androidLibraryData = androidLibraryData,
                 androidBinaryData = androidBinaryData
             )
-
-            add(androidTestData.toTarget())
         }
     }
 

@@ -62,14 +62,27 @@ constructor(
     private val workspaceRenderPlanService: GradleProvider<WorkspaceRenderPlanService>,
 ) : TargetBuilder {
 
-    override fun build(project: Project): List<BazelTarget> {
-        if (!isReachableJvmProject(project, dependencyResolutionService, workspaceRenderPlanService)) return emptyList()
-        val projectData = projectDataExtractor.extract(project)
-        val ktLibTargets = projectData.toKotlinLibraryTarget()
-        val unitTestsTargets = kotlinUnitTestDataExtractor
-            .extract(project)
-            .toUnitTestTarget()
-        return listOf(ktLibTargets, unitTestsTargets)
+    override fun build(project: Project): List<BazelTarget> =
+        selectKotlinData(project).map { selected ->
+            when (selected) {
+                is KotlinLibraryTargetData -> selected.data.toKotlinLibraryTarget()
+                is KotlinUnitTestTargetData -> selected.data.toUnitTestTarget()
+                else -> error("Unexpected TargetData for Kotlin project: $selected")
+            }
+        }
+
+    /**
+     * A Kotlin project contributes its library + unit-test data only when reachable (or
+     * already referenced) — the same three-signal gate documented on [isReachableJvmProject].
+     */
+    internal fun selectKotlinData(project: Project): List<TargetData> {
+        if (!isReachableJvmProject(project, dependencyResolutionService, workspaceRenderPlanService)) {
+            return emptyList()
+        }
+        return listOf(
+            KotlinLibraryTargetData(projectDataExtractor.extract(project)),
+            KotlinUnitTestTargetData(kotlinUnitTestDataExtractor.extract(project))
+        )
     }
 
     override fun canHandle(project: Project): Boolean = with(project) {
