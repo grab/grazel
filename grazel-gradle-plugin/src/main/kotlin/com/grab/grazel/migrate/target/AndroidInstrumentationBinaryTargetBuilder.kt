@@ -21,6 +21,7 @@ import com.grab.grazel.gradle.variant.VariantType
 import com.grab.grazel.gradle.hasTestInstrumentationRunner
 import com.grab.grazel.gradle.isAndroidApplication
 import com.grab.grazel.gradle.variant.VariantMatcher
+import com.grab.grazel.migrate.BazelTarget
 import com.grab.grazel.migrate.TargetBuilder
 import com.grab.grazel.migrate.android.AndroidInstrumentationBinaryData
 import com.grab.grazel.migrate.android.AndroidInstrumentationBinaryDataExtractor
@@ -54,22 +55,29 @@ internal class AndroidInstrumentationBinaryTargetBuilder
     private val dependencyResolutionService: GradleProvider<DefaultDependencyResolutionService>,
 ) : TargetBuilder {
 
-    override fun build(project: Project) = buildList {
+    override fun build(project: Project): List<BazelTarget> =
+        selectInstrumentationData(project).map { data -> data.toTarget() }
+
+    /**
+     * Selects instrumentation binaries for reachable app variants, keeping only those with
+     * sources — an instrumentation binary without srcs is not generated and must not
+     * contribute reference facts either.
+     */
+    internal fun selectInstrumentationData(project: Project): List<AndroidInstrumentationBinaryData> {
         val isReachableBucket = reachableBucketPredicate(project, dependencyResolutionService)
-        variantMatcher.matchedVariants(
+        return variantMatcher.matchedVariants(
             project = project,
             variantType = VariantType.AndroidTest,
-            appVariantFilter = { appVariant -> appVariant.isReachableTargetVariant(isReachableBucket) }
-        ).forEach { matchedVariant ->
-            val androidInstrumentationBinData = androidInstrumentationBinDataExtractor.extract(
+            appVariantFilter = { appVariant ->
+                appVariant.isReachableTargetVariant(isReachableBucket)
+            }
+        ).map { matchedVariant ->
+            androidInstrumentationBinDataExtractor.extract(
                 project = project,
                 matchedVariant = matchedVariant,
                 sourceSetType = SourceSetType.JAVA_KOTLIN,
             )
-            if (androidInstrumentationBinData.srcs.isNotEmpty()) {
-                add(androidInstrumentationBinData.toTarget())
-            }
-        }
+        }.filter { data -> data.srcs.isNotEmpty() }
     }
 
     override fun canHandle(project: Project): Boolean = project.isAndroidApplication

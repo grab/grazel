@@ -84,16 +84,50 @@ constructor(
     private val workspaceRenderPlanService: GradleProvider<WorkspaceRenderPlanService>,
 ) : TargetBuilder {
 
-    override fun build(project: Project): List<BazelTarget> {
-        return buildAndroidBinaryTargets(project = project)
-    }
+    override fun build(project: Project): List<BazelTarget> =
+        selectBinaryData(project).flatMap { selected ->
+            val intermediateTargets = mutableListOf<BazelTarget>()
+            val crashlyticsDeps = crashlyticsDeps(
+                project,
+                selected.matchedVariant,
+                intermediateTargets
+            )
+            listOf(
+                AndroidBinaryTarget(
+                    name = "${selected.binaryData.name}${selected.matchedVariant.nameSuffix}",
+                    srcs = selected.libraryData.srcs,
+                    deps = selected.libraryData.deps + selected.binaryData.deps + crashlyticsDeps,
+                    multidex = selected.binaryData.multidex,
+                    debugKey = selected.binaryData.debugKey,
+                    dexShards = selected.binaryData.dexShards,
+                    incrementalDexing = selected.binaryData.incrementalDexing,
+                    enableCompose = selected.binaryData.compose,
+                    enableDataBinding = selected.binaryData.databinding,
+                    customPackage = selected.binaryData.customPackage,
+                    packageName = selected.binaryData.packageName,
+                    manifest = selected.libraryData.manifestFile,
+                    manifestValues = selected.binaryData.manifestValues,
+                    resConfigFilters = selected.binaryData.resConfigs,
+                    resourceSets = selected.libraryData.resourceSets,
+                    resValuesData = selected.libraryData.resValuesData,
+                    buildConfigData = selected.libraryData.buildConfigData,
+                    lintConfigData = selected.libraryData.lintConfigData,
+                    minSdkVersion = selected.binaryData.minSdkVersion,
+                    plugins = selected.libraryData.plugins,
+                )
+            ) + intermediateTargets
+        }
 
-    private fun buildAndroidBinaryTargets(
-        project: Project
-    ): List<BazelTarget> {
+    /**
+     * Selects the app variants to generate (reachable, or referenced by an already-rendered
+     * target) with their extracted library+binary data. Crashlytics decoration is deliberately
+     * NOT selection: it is render-only (intra-package target) and never contributed to
+     * reference facts — see AndroidBinaryVariantTargetData's KDoc.
+     */
+    internal fun selectBinaryData(project: Project): List<AndroidBinaryVariantTargetData> {
         val isReachableBucket = reachableBucketPredicate(project, dependencyResolutionService)
         val referencedTargetNames = workspaceRenderPlanService.get().referencedTargetNames(project.path)
-        val targets = variantMatcher.matchedVariants(
+        return variantMatcher.matchedVariants(
             project = project,
             variantType = VariantType.AndroidBuild,
             appVariantFilter = { appVariant ->
@@ -103,50 +137,13 @@ constructor(
                         referencedTargetNames = referencedTargetNames
                     )
             }
-        ).flatMap { matchedVariant ->
-            val androidLibraryData = androidLibraryDataExtractor.extract(
-                project = project,
-                matchedVariant = matchedVariant
-            )
-
-            val androidBinaryData = androidBinaryDataExtractor.extract(
-                project = project,
+        ).map { matchedVariant ->
+            AndroidBinaryVariantTargetData(
                 matchedVariant = matchedVariant,
+                libraryData = androidLibraryDataExtractor.extract(project, matchedVariant),
+                binaryData = androidBinaryDataExtractor.extract(project, matchedVariant)
             )
-
-            val intermediateTargets = mutableListOf<BazelTarget>()
-            val crashlyticsDeps = crashlyticsDeps(
-                project,
-                matchedVariant,
-                intermediateTargets
-            )
-
-            listOf(
-                AndroidBinaryTarget(
-                    name = "${androidBinaryData.name}${matchedVariant.nameSuffix}",
-                    srcs = androidLibraryData.srcs,
-                    deps = androidLibraryData.deps + androidBinaryData.deps + crashlyticsDeps,
-                    multidex = androidBinaryData.multidex,
-                    debugKey = androidBinaryData.debugKey,
-                    dexShards = androidBinaryData.dexShards,
-                    incrementalDexing = androidBinaryData.incrementalDexing,
-                    enableCompose = androidBinaryData.compose,
-                    enableDataBinding = androidBinaryData.databinding,
-                    customPackage = androidBinaryData.customPackage,
-                    packageName = androidBinaryData.packageName,
-                    manifest = androidLibraryData.manifestFile,
-                    manifestValues = androidBinaryData.manifestValues,
-                    resConfigFilters = androidBinaryData.resConfigs,
-                    resourceSets = androidLibraryData.resourceSets,
-                    resValuesData = androidLibraryData.resValuesData,
-                    buildConfigData = androidLibraryData.buildConfigData,
-                    lintConfigData = androidLibraryData.lintConfigData,
-                    minSdkVersion = androidBinaryData.minSdkVersion,
-                    plugins = androidLibraryData.plugins,
-                )
-            ) + intermediateTargets
         }
-        return targets
     }
 
     private fun crashlyticsDeps(
