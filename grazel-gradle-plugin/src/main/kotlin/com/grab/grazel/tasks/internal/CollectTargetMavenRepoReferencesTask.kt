@@ -244,11 +244,14 @@ private fun collectToQuiescence(
         }
     }
 
-    while (true) {
+    // Each pull publishes the latest accumulated facts, then scans for the first deferred
+    // project that has become referenced; the sequence ends when a scan finds none.
+    generateSequence {
         workspaceRenderPlanService.populateRenderPlan(accumulated.asRenderPlan())
-        val activated = deferred.firstOrNull { project ->
+        deferred.firstOrNull { project ->
             workspaceRenderPlanService.isReferencedProjectPath(project.path)
-        } ?: break
+        }
+    }.forEach { activated ->
         deferred.remove(activated)
         reporter.report("collecting (activated): ${activated.path}")
         accumulated = mergeTargetReferenceFacts(accumulated, factsForProject(activated))

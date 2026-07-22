@@ -104,6 +104,11 @@ internal fun TargetReferenceFacts.asRenderPlan(): WorkspaceRenderPlan =
         referencedProjectTargets = projectTargets
     )
 
+/**
+ * Must remain a pure, monotonic set-union (only ever grows the facts): `collectToQuiescence`
+ * relies on this invariant for both correctness (activation-order confluence) and termination
+ * of its deferred-activation drain.
+ */
 internal fun mergeTargetReferenceFacts(
     left: TargetReferenceFacts,
     right: TargetReferenceFacts
