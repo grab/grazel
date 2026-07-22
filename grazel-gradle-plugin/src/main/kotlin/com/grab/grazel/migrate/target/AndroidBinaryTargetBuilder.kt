@@ -118,6 +118,8 @@ constructor(
             ) + intermediateTargets
         }
 
+    override fun selectData(project: Project): List<TargetData> = selectBinaryData(project)
+
     /**
      * Selects the app variants to generate (reachable, or referenced by an already-rendered
      * target) with their extracted library+binary data. Crashlytics decoration is deliberately

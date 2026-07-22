@@ -24,13 +24,13 @@ import org.gradle.api.Project
 import javax.inject.Inject
 import javax.inject.Singleton
 
-class ProjectBazelFileBuilder(
+internal class ProjectBazelFileBuilder(
     private val project: Project,
     private val targetBuilders: Set<TargetBuilder>
 ) : BazelFileBuilder {
 
     @Singleton
-    class Factory
+    internal class Factory
     @Inject
     constructor(
         private val targetBuilders: Set<@JvmSuppressWildcards TargetBuilder>

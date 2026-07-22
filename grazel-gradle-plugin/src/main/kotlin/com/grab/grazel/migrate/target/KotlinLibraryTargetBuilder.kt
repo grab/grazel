@@ -71,6 +71,8 @@ constructor(
             }
         }
 
+    override fun selectData(project: Project): List<TargetData> = selectKotlinData(project)
+
     /**
      * A Kotlin project contributes its library + unit-test data only when reachable (or
      * already referenced) — the same three-signal gate documented on [isReachableJvmProject].

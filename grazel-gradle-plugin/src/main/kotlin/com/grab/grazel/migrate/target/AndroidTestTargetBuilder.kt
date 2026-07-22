@@ -71,6 +71,9 @@ internal class AndroidTestTargetBuilder
     override fun build(project: Project): List<BazelTarget> =
         selectAndroidTestData(project).map { androidTestData -> androidTestData.toTarget() }
 
+    override fun selectData(project: Project): List<TargetData> =
+        selectAndroidTestData(project).map(::AndroidTestTargetData)
+
     /**
      * Selects the build variants of a `com.android.test` module that are reachable or
      * referenced by an already-rendered target, with their fully-extracted test data.

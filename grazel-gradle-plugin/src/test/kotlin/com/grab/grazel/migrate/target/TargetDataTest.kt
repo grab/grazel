@@ -16,13 +16,19 @@
 
 package com.grab.grazel.migrate.target
 
+import com.grab.grazel.bazel.TestSize
 import com.grab.grazel.bazel.starlark.BazelDependency.ProjectDependency
+import com.grab.grazel.bazel.starlark.BazelDependency.StringDependency
 import com.grab.grazel.buildProject
 import com.grab.grazel.fake.FakeVariant
+import com.grab.grazel.gradle.dependencies.model.TargetReferenceFacts
 import com.grab.grazel.gradle.variant.MatchedVariant
 import com.grab.grazel.migrate.android.AndroidBinaryData
+import com.grab.grazel.migrate.android.AndroidInstrumentationBinaryData
 import com.grab.grazel.migrate.android.AndroidLibraryData
+import com.grab.grazel.migrate.android.AndroidUnitTestData
 import com.grab.grazel.migrate.android.LintConfigData
+import com.grab.grazel.migrate.kotlin.UnitTestData
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
@@ -82,5 +88,98 @@ class TargetDataTest {
             ),
             facts.projectTargets
         )
+    }
+
+    @Test
+    fun `Android unit test facts include associate project references`() {
+        val rootProject = buildProject("root")
+        val associateProject = buildProject("support", rootProject)
+
+        val facts = AndroidUnitTestTargetData(
+            data = AndroidUnitTestData(
+                name = "app_debug_test",
+                srcs = emptyList(),
+                additionalSrcSets = emptyList(),
+                deps = emptyList(),
+                tags = emptyList(),
+                customPackage = "com.grab.app",
+                associates = listOf(
+                    ProjectDependency(associateProject, suffix = "_debug"),
+                    StringDependency("//shared/testkit:shared_testkit_debug")
+                ),
+                resources = emptyList(),
+                compose = false,
+                testSize = TestSize.MEDIUM
+            )
+        ).referenceFacts()
+
+        assertEquals(
+            mapOf(
+                ":shared:testkit" to setOf("shared_testkit_debug"),
+                ":support" to setOf("support_debug")
+            ),
+            facts.projectTargets
+        )
+    }
+
+    @Test
+    fun `Android instrumentation facts include associates and instrumented target`() {
+        val rootProject = buildProject("root")
+        val appProject = buildProject("app", rootProject)
+        val associateProject = buildProject("android-test-support", rootProject)
+
+        val facts = AndroidInstrumentationTargetData(
+            data = AndroidInstrumentationBinaryData(
+                associates = listOf(ProjectDependency(associateProject, suffix = "_debug")),
+                customPackage = "com.grab.app.test",
+                targetPackage = "com.grab.app",
+                deps = emptyList(),
+                instruments = ProjectDependency(appProject, suffix = "_debug"),
+                name = "app_debug_android_test",
+                resourceFiles = emptyList(),
+                resources = emptyList(),
+                srcs = emptyList(),
+                tags = emptyList()
+            )
+        ).referenceFacts()
+
+        assertEquals(
+            mapOf(
+                ":android-test-support" to setOf("android-test-support_debug"),
+                ":app" to setOf("app_debug")
+            ),
+            facts.projectTargets
+        )
+    }
+
+    @Test
+    fun `Kotlin unit test facts include associate project references`() {
+        val rootProject = buildProject("root")
+        val associateProject = buildProject("jvm-support", rootProject)
+
+        val facts = KotlinUnitTestTargetData(
+            data = UnitTestData(
+                name = "jvm_test",
+                srcs = emptyList(),
+                additionalSrcSets = emptyList(),
+                deps = emptyList(),
+                tags = emptyList(),
+                associates = listOf(ProjectDependency(associateProject, suffix = "_test")),
+                testSize = TestSize.MEDIUM,
+                hasAndroidJarDep = false
+            )
+        ).referenceFacts()
+
+        assertEquals(
+            mapOf(":jvm-support" to setOf("jvm-support_test")),
+            facts.projectTargets
+        )
+    }
+
+    @Test
+    fun `collect returns empty facts for a project no builder handles`() {
+        val project = buildProject("plain-java")
+        val extractor = TargetReferenceFactsExtractor(targetBuilders = emptySet())
+        assertEquals(TargetReferenceFacts(), extractor.collect(project))
     }
 }

@@ -58,6 +58,9 @@ internal class AndroidInstrumentationBinaryTargetBuilder
     override fun build(project: Project): List<BazelTarget> =
         selectInstrumentationData(project).map { data -> data.toTarget() }
 
+    override fun selectData(project: Project): List<TargetData> =
+        selectInstrumentationData(project).map(::AndroidInstrumentationTargetData)
+
     /**
      * Selects instrumentation binaries for reachable app variants, keeping only those with
      * sources — an instrumentation binary without srcs is not generated and must not

@@ -19,6 +19,7 @@ package com.grab.grazel.migrate
 import com.grab.grazel.bazel.rules.Visibility
 import com.grab.grazel.bazel.starlark.BazelDependency
 import com.grab.grazel.bazel.starlark.StatementsBuilder
+import com.grab.grazel.migrate.target.TargetData
 import org.gradle.api.Project
 
 
@@ -43,7 +44,15 @@ interface BazelPluginTarget {
     val plugins: List<BazelDependency>
 }
 
-interface TargetBuilder {
+internal interface TargetBuilder {
     fun build(project: Project): List<BazelTarget>
     fun canHandle(project: Project): Boolean
+
+    /**
+     * The data this builder would render for [project] — the single source of selection
+     * truth. [build] renders exactly this data; the reference-facts pass derives facts from
+     * exactly this data. One implementation per target type, so facts and render cannot
+     * diverge.
+     */
+    fun selectData(project: Project): List<TargetData>
 }

@@ -82,6 +82,10 @@ constructor(
                 unitTestData.toUnitTestTarget()
             }
 
+    override fun selectData(project: Project): List<TargetData> =
+        selectLibraryData(project).map(::AndroidLibraryTargetData) +
+            selectUnitTestData(project).map(::AndroidUnitTestTargetData)
+
     /**
      * The single selection of android_library data for this project: reachable (or referenced)
      * variants, folded through variant compression. Consumed by [build] for rendering and by
