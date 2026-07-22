@@ -105,7 +105,14 @@ type and construction only, no algorithm change.)
 2. `./gradlew verifyGrazelGoldenBaseline --console=plain` — byte-clean (documented
    appcompat/constraintlayout bucket-labels waiver only).
 3. `bazelisk build --nobuild //...` — clean analysis.
-4. No PAX sweep unless the golden moves (it must not).
+4. **Full PAX sweep, mandatory** (`reports/specs/VERIFICATION-GATES.md` §PAX 1–6): migrate
+   `--rerun-tasks` → clean-tree check → size guard (`--mode preserving`, expect 11/11/1945,
+   no per-repo deltas) → APK build → focused tests (3 pass) → graph analysis over the CI
+   unit-test set (`list_unit_test_targets` → `build --nobuild --keep_going`, expect
+   `Analyzed 1442 targets`, zero errors). Rationale: samples may never exercise the drain
+   path at runtime (item-2 lesson), so PAX is the only end-to-end arbiter of drain-timing
+   equivalence.
+5. `/simplify` pass over the effort's diff after all code tasks land, byte-identity gated.
 
 ## Out of scope
 
