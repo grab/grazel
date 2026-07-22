@@ -265,12 +265,26 @@ internal class MainReachabilityTracker(
      * using the same union semantics [recordMainRoot] uses for [MainProjectEdgeScope]: project
      * paths are unioned into [reachableMainProjectPaths], and bucket names are unioned per
      * project via [addReachableMainBuckets].
+     *
+     * This is not archaeology from a prior in-place-mutation implementation — it is load-bearing.
+     * `projectPaths`/`bucketNamesByProject` come from walking each root's *resolved* dependency
+     * graph, which can contain a `project(...)` edge that [computeScope]'s declared-edge DFS seed
+     * never saw (e.g. a transitive dependency pulled in only through another project's classpath).
+     * Instrumented evidence from a full PAX migrate
+     * (`reports/review/item2-channel-evidence.md`) found this is real, not hypothetical: 3 of 116
+     * MAIN roots had a non-empty walk-only delta, all `*-ui-tests` support modules whose `default`
+     * bucket walk surfaced a sibling test-support project module the DFS seed missed, e.g.
+     * `root=:apex-cfm:cfm-ui-tests bucket=default walkOnlyPaths=1:[:grab-test-recorder]` and
+     * `root=:comms-ui-tests:hedwig-ui-tests ... walkOnlyBuckets=1:[:comms-ui-tests:common-ui-tests=[debug]]`.
+     * Dropping this fold on the theory that the declared-edge DFS already covers everything would
+     * silently regress reachability for exactly these roots.
      */
     fun recordReachable(projectPaths: Set<String>, bucketNamesByProject: Map<String, Set<String>>) {
         reachableMainProjectPaths.addAll(projectPaths)
         bucketNamesByProject.forEach { (projectPath, bucketNames) ->
-            // Raw addAll (not addReachableMainBuckets) so this fold matches the exact semantics of
-            // the reachability out-param it replaced, which did not blank-filter discovered buckets.
+            // Raw addAll (not addReachableMainBuckets): the walk-discovered buckets above are not
+            // blank-filtered, so an empty/blank bucket name discovered via the walk is still folded
+            // in as-is; see item2-channel-evidence.md for why this fold cannot be dropped.
             reachableMainBucketNamesByProject.getOrPut(projectPath) { sortedSetOf() }.addAll(bucketNames)
         }
     }

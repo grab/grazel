@@ -113,7 +113,13 @@ internal class AggregatedDependencyResolver(
          * [MainReachabilityTracker.recordReachable] (LINT never did, so [RootContribution.lintClosure]
          * being non-null gates this fold out), so any `project(...)` edge discovered while walking a
          * TEST_HIERARCHY/UNIT_TEST/ANDROID_TEST root's classpath also feeds later roots' reachability
-         * facts, mirroring the in-place mutation this replaced.
+         * facts. This walk-discovered fold is load-bearing, not redundant with the declared-edge DFS
+         * seed ([MainReachabilityTracker.computeScope]): instrumented evidence from a full PAX migrate
+         * (`reports/review/item2-channel-evidence.md`) found 3 of 116 MAIN roots — all `*-ui-tests`
+         * support modules such as `:apex-cfm:cfm-ui-tests` — surfaced a transitively-reachable
+         * test-support project module (e.g. `:grab-test-recorder`) via the resolved-graph walk that
+         * the declared-edge seed alone would have missed, so skipping this fold would silently drop
+         * reachable projects/buckets for those roots.
          */
         fun resolve(): List<ResolveDependenciesResult> {
             if (migratableProjectPaths.isEmpty()) return emptyList()
