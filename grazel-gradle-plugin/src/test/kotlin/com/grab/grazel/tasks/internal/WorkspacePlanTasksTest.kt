@@ -19,7 +19,6 @@ package com.grab.grazel.tasks.internal
 import com.grab.grazel.buildProject
 import com.grab.grazel.bazel.starlark.BazelDependency.MavenDependency
 import com.grab.grazel.bazel.starlark.BazelDependency.ProjectDependency
-import com.grab.grazel.gradle.dependencies.ProjectReachabilityGroup
 import com.grab.grazel.gradle.dependencies.TargetReferenceFactsCollector
 import com.grab.grazel.gradle.dependencies.WorkspacePlanBuilder
 import com.grab.grazel.gradle.dependencies.WorkspacePlanService
@@ -152,9 +151,7 @@ class WorkspacePlanTasksTest {
         val progressMessages = mutableListOf<String>()
 
         val references: TargetReferenceFacts = collectTargetMavenRepoReferencesByGroup(
-            projectGroups = listOf(uiTestsProject, appProject).map { project ->
-                ProjectReachabilityGroup(listOf(project))
-            },
+            projects = listOf(uiTestsProject, appProject),
             canMigrate = { true },
             factsForProject = { project ->
                 when (project.path) {
@@ -204,9 +201,7 @@ class WorkspacePlanTasksTest {
         val callsByProject = mutableMapOf<String, Int>()
 
         val references: TargetReferenceFacts = collectTargetMavenRepoReferencesByGroup(
-            projectGroups = listOf(uiTestsProject, appProject, libProject).map { project ->
-                ProjectReachabilityGroup(listOf(project))
-            },
+            projects = listOf(uiTestsProject, appProject, libProject),
             canMigrate = { true },
             factsForProject = { project ->
                 callsByProject[project.path] = callsByProject.getOrDefault(project.path, 0) + 1
@@ -284,9 +279,7 @@ class WorkspacePlanTasksTest {
         val workspaceRenderPlanService = WorkspaceRenderPlanService.register(rootProject).get()
 
         val references: TargetReferenceFacts = collectTargetMavenRepoReferencesByGroup(
-            projectGroups = listOf(util2Project, util1Project, cProject).map { project ->
-                ProjectReachabilityGroup(listOf(project))
-            },
+            projects = listOf(util2Project, util1Project, cProject),
             canMigrate = { true },
             factsForProject = { project ->
                 when (project.path) {

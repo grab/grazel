@@ -165,15 +165,22 @@ private fun <T> dependencyFirstOrder(
     return ordered
 }
 
-internal data class ProjectReachabilityGroup(
-    val projects: List<Project>
-)
-
 internal object ProjectReachabilityOrder {
-    fun consumersFirstGroups(
+    /**
+     * Returns projects in consumers-first order (projects that are depended on appear before
+     * projects that depend on them). Deduplicates typed (project, source-set) nodes down to
+     * one slot per project by keeping whichever typed node occurs first in the consumers-first
+     * walk.
+     *
+     * @param graphs The dependency graphs to order
+     * @param variantTypeFilter Filter to select which variant types to include
+     * @return List of projects ordered consumers-first, deduplicated to one per project
+     * @throws IllegalStateException if a cycle is detected in the typed dependency graph
+     */
+    fun consumersFirstProjects(
         graphs: DependencyGraphs,
         variantTypeFilter: (VariantType) -> Boolean = { true }
-    ): List<ProjectReachabilityGroup> {
+    ): List<Project> {
         val graph = graphs.reachabilityGraph(variantTypeFilter)
         if (graph.isEmpty()) return emptyList()
 
@@ -190,7 +197,7 @@ internal object ProjectReachabilityOrder {
             .asReversed()
             .mapNotNull { node ->
                 if (seenProjects.add(node.project)) {
-                    ProjectReachabilityGroup(listOf(node.project))
+                    node.project
                 } else {
                     null
                 }

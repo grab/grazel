@@ -383,7 +383,7 @@ class TopologicalSorterTest {
         )
 
         val exception = assertFailsWith<IllegalStateException> {
-            ProjectReachabilityOrder.consumersFirstGroups(graphs)
+            ProjectReachabilityOrder.consumersFirstProjects(graphs)
         }
 
         val message = exception.message.orEmpty()
@@ -401,11 +401,11 @@ class TopologicalSorterTest {
             }.toMap()
         )
 
-        val groups = ProjectReachabilityOrder.consumersFirstGroups(graphs)
+        val result = ProjectReachabilityOrder.consumersFirstProjects(graphs)
 
-        assertEquals(projects.size, groups.size)
-        assertEquals(projects.first(), groups.first().projects.single())
-        assertEquals(projects.last(), groups.last().projects.single())
+        assertEquals(projects.size, result.size)
+        assertEquals(projects.first(), result.first())
+        assertEquals(projects.last(), result.last())
     }
 
     @Test
@@ -424,9 +424,9 @@ class TopologicalSorterTest {
             )
         )
 
-        val groups = ProjectReachabilityOrder.consumersFirstGroups(graphs)
+        val result = ProjectReachabilityOrder.consumersFirstProjects(graphs)
 
-        assertEquals(listOf(projectA, projectB), groups.flatMap(ProjectReachabilityGroup::projects))
+        assertEquals(listOf(projectA, projectB), result)
     }
 
     @Test
@@ -442,9 +442,9 @@ class TopologicalSorterTest {
             )
         )
 
-        val groups = ProjectReachabilityOrder.consumersFirstGroups(graphs)
+        val result = ProjectReachabilityOrder.consumersFirstProjects(graphs)
 
-        assertEquals(listOf(projectUiTest, projectApp), groups.flatMap(ProjectReachabilityGroup::projects))
+        assertEquals(listOf(projectUiTest, projectApp), result)
     }
 
     @Test
@@ -458,9 +458,9 @@ class TopologicalSorterTest {
             )
         )
 
-        val groups = ProjectReachabilityOrder.consumersFirstGroups(graphs)
+        val result = ProjectReachabilityOrder.consumersFirstProjects(graphs)
 
-        assertEquals(listOf(projectB, projectA), groups.flatMap(ProjectReachabilityGroup::projects))
+        assertEquals(listOf(projectB, projectA), result)
     }
 
     @Test
@@ -477,9 +477,9 @@ class TopologicalSorterTest {
             )
         )
 
-        val groups = ProjectReachabilityOrder.consumersFirstGroups(graphs)
+        val result = ProjectReachabilityOrder.consumersFirstProjects(graphs)
 
-        assertEquals(listOf(projectA, projectB), groups.flatMap(ProjectReachabilityGroup::projects))
+        assertEquals(listOf(projectA, projectB), result)
     }
 
     @Test
@@ -501,7 +501,7 @@ class TopologicalSorterTest {
         )
 
         val exception = assertFailsWith<IllegalStateException> {
-            ProjectReachabilityOrder.consumersFirstGroups(graphs)
+            ProjectReachabilityOrder.consumersFirstProjects(graphs)
         }
 
         val message = exception.message.orEmpty()
@@ -529,7 +529,7 @@ class TopologicalSorterTest {
         )
 
         val exception = assertFailsWith<IllegalStateException> {
-            ProjectReachabilityOrder.consumersFirstGroups(graphs)
+            ProjectReachabilityOrder.consumersFirstProjects(graphs)
         }
 
         val message = exception.message.orEmpty()

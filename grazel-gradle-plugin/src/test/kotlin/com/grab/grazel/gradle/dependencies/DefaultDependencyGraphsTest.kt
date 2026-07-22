@@ -221,10 +221,10 @@ class DefaultDependencyGraphsTest {
                 DependencyGraphNode(deliveriesModelFood, DependencyGraphSourceSet.Test)
             )
         )
-        val groups = ProjectReachabilityOrder.consumersFirstGroups(graphs)
+        val result = ProjectReachabilityOrder.consumersFirstProjects(graphs)
         assertEquals(
             listOf(deliveriesModelFood, foodTestkit),
-            groups.flatMap(ProjectReachabilityGroup::projects)
+            result
         )
     }
 
