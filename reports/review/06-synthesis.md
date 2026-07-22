@@ -160,7 +160,15 @@ that granularity). But three things are removable slop, not essential residue:
 Ordered by value (bug-prevention and maintenance leverage first, pure hygiene last), each rated
 for byte-identity risk against C1.
 
-1. **Collapse the twin selection sites (critic-05 S1).** Extract shared selector functions
+> **Status tags** (updated 2026-07-22 as items execute):
+> `[DONE]` shipped and verified · `[RESOLVED-KEEP]` investigated, mechanism vindicated and
+> documented instead of removed · `[PARTIAL]` some sub-items shipped · `[PENDING]` not started.
+
+1. `[DONE]` — shipped as the shadow-extraction collapse (commits `29a2122..2a9913a`; spec
+   `reports/specs/2026-07-22-collapse-shadow-extraction-design.md`): `TargetBuilder.selectData`
+   seam, extractor reduced to a canHandle-dispatched adapter, divergent branch proven
+   unconstructible. Opus final review READY; golden byte-clean.
+   **Collapse the twin selection sites (critic-05 S1).** Extract shared selector functions
    (variant/target existence + representative-picking) that both the target builders and
    `TargetReferenceFactsExtractor` consume, so facts are derived from the same objects that
    render. *Effort: 1-2 days. Risk: low-medium — one already-diverged branch must be reconciled
@@ -169,7 +177,12 @@ for byte-identity risk against C1.
    correctness bug (facts/render divergence under compression) already exists, not just latent
    risk.
 
-2. **Investigate and likely delete one of the two reachability channels (critic-03, "bigger
+2. `[RESOLVED-KEEP]` — investigated (commits `6577f28..cf8fc19`; evidence
+   `reports/review/item2-channel-evidence.md`): instrumented PAX showed 3/116 MAIN roots with
+   walk-only deltas (dominantly bucket-name divergence on already-seeded paths) — the fold is
+   LOAD-BEARING, not deletable. Documented as a domain invariant + pinning test; the
+   recordReachable blank-filter asymmetry was unified (critic-04 #7, folded in).
+   **Investigate and likely delete one of the two reachability channels (critic-03, "bigger
    question").** Diff whether `computeScope`'s declared-edge DFS is a strict subset of
    walk-discovered reachability for MAIN roots (and vice versa for TEST/UNIT_TEST/ANDROID_TEST,
    which only fold the walk channel today). *Effort: M-L, needs golden-baseline diffing per C1.
@@ -177,57 +190,67 @@ for byte-identity risk against C1.
    treat as "attempt behind the gate, revert if it moves anything."* If it lands, the
    seed-before-resolve ordering invariant and its 17-line doc comment evaporate for free.
 
-3. **Worklist instead of rounds in the reference collector (critic-05 S3).** Replace
+3. `[DONE]` — shipped (commits `159fde6..00b5080`; spec
+   `reports/specs/2026-07-22-worklist-reference-collection-design.md`): pass + deferred-
+   activation drain, five round-protocol guards deleted, `ProjectReachabilityGroup` (critic-05
+   S6) deleted alongside. Full 6-gate PAX sweep passed byte-clean; Opus final review READY.
+   The ordering-producer improvement stays a follow-up (see spec §Out-of-scope).
+   **Worklist instead of rounds in the reference collector (critic-05 S3).** Replace
    `maxRounds`/`everVisited`/per-round snapshot with one ordered pass + a deferred-activation
    queue; optionally topo-sort the merged project graph directly so the queue is empty whenever
    the quotient is acyclic (deleting `dependedUponProjects`' extra graph merge too).
    *Effort: small-medium. Risk: low-medium; identical in the common all-settle-in-round-1 case,
    edge-case fallback-variant timing must be golden-gate-verified in the cyclic case.*
 
-4. **Hoist `shouldResolveMainHierarchyRoot` to plan time (critic-03 item 2).** Stop resolving
+4. `[PENDING]` **Hoist `shouldResolveMainHierarchyRoot` to plan time (critic-03 item 2).** Stop resolving
    roots the walk will refuse to visit; the filter's inputs (leaf build-type names) are available
    at plan time. *Effort: S-M. Risk: medium-low — this actually changes real Gradle work (fewer
    resolutions, good), verify `pinMavenArtifactsTask`'s root set intentionally includes/excludes
    these roots before narrowing.* This is the rare simplification that also improves the perf
    numbers the branch was built for.
 
-5. **Unify the ~12 coverage predicates behind one identity-strength table (critic-04 #4).**
+5. `[PENDING]` **Unify the ~12 coverage predicates behind one identity-strength table (critic-04 #4).**
    Named levels (shortId < ownerIdentity < artifactIdentity) plus orthogonal flags, expressed as
    rows in `Coverage.kt`, shared by the Reducer/CarrierPlanner pair instead of a parallel
    mini-Coverage. *Effort: ~1 week. Risk: medium, mechanical but wide — behavior-preserving by
    construction if each row reproduces its predicate exactly; golden gate is the safety net.*
 
-6. **Collapse triple-pass test subtraction to one pass (critic-04 #2).** `withoutTestDependenciesCoveredBy`'s
+6. `[PENDING]` **Collapse triple-pass test subtraction to one pass (critic-04 #2).** `withoutTestDependenciesCoveredBy`'s
    keep/drop decision is fully determined by its final `canCoverTest` filter; the earlier two
    passes only contribute an annotation. *Effort: 1-2 days. Risk: low-medium — preserving exactly
    when the `overrideTarget` annotation attaches is the one subtlety.*
 
-7. **Stop double-extracting for facts and render (critic-05 S2).** Memoize
+7. `[PENDING]` **Stop double-extracting for facts and render (critic-05 S2).** (Item 1's
+   `selectData` seam now makes the memoization straightforward — cache `select*Data` outputs
+   in a build service shared by the facts task and `GenerateBazelScriptsTask`.) Memoize
    `extract(project, variant)` in a build service shared by the facts task and
    `GenerateBazelScriptsTask` — currently runs the full data extractors twice per project/variant,
    which the critic notes is 2x the dominant per-project cost of a branch built for performance.
    *Effort: small. Risk: low, byte-identical (same extraction, cached).*
 
-8. **Stop stamping reachability into every per-bucket result (critic-04 #1).** Pass
+8. `[PENDING]` **Stop stamping reachability into every per-bucket result (critic-04 #1).** Pass
    `reachableMainBucketsByProject` alongside the results list instead of copying it into every
    `ResolveDependenciesResult` and re-unioning. *Effort: hours. Risk: low — verify the intermediate
    JSON shape isn't itself part of the golden gate (it's an internal artifact, not generated
    Bazel output, so it shouldn't be, but confirm).*
 
-9. **Housekeeping batch, no semantic risk:** delete `ProjectReachabilityGroup` (always a
-   singleton — critic-05 S6); cache `selectedMainVariantHierarchyNames`'s per-project map instead
-   of rebuilding it per edge (critic-03 item 3); accumulate reference facts mutably and sort once
-   instead of rebuilding a sorted map on every project visit (critic-05 S5); one canonical
+9. `[PARTIAL]` **Housekeeping batch, no semantic risk:** ~~delete `ProjectReachabilityGroup`
+   (always a singleton — critic-05 S6)~~ `[DONE in item 3, 159fde6]`; cache
+   `selectedMainVariantHierarchyNames`'s per-project map instead of rebuilding it per edge
+   (critic-03 item 3) `[PENDING]`; accumulate reference facts mutably and sort once instead of
+   rebuilding a sorted map on every project visit (critic-05 S5) `[PENDING]`; one canonical
    target-name-spelling helper instead of three private copies of `{name, _lib, _kt, lib_}`
-   (critic-04 #6, critic-03 item 6 analog). *Effort: hours each. Risk: none — pure mechanical, no
-   consumer-visible change.*
+   (critic-04 #6, critic-03 item 6 analog) `[PENDING]`. Also from the cohesion report's dropped
+   items: critic-03 items 1/5/6 `[PENDING]`; critic-04 #7 (recordReachable union unify)
+   `[DONE in item 2, 85ba1aa]`; critic-05 S4 (explicit reference channel) `[PENDING]`.
+   *Effort: hours each. Risk: none — pure mechanical, no consumer-visible change.*
 
-10. **Kill the zip-by-index contract across the three resolver tasks (critic-03 item 4).** Key
+10. `[PENDING]` **Kill the zip-by-index contract across the three resolver tasks (critic-03 item 4).** Key
     `AggregatedDependencyRootMetadata` by `(projectPath, configurationName, kind)` instead of
     positional pairing protected only by a size check. *Effort: M. Risk: low — no output change,
     removes a silent-misattribution failure mode rather than a performance or size issue.*
 
-**Explicitly not recommended even though byte-identity-safe:** the single-metadata-resolution-
+**`[DEFERRED-BY-DESIGN]` Explicitly not recommended even though byte-identity-safe:** the single-metadata-resolution-
 boundary consolidation (critic-04 #5, collapsing five merge layers to one) is real and valuable but
 should run *last*, in isolation, specifically because critic-04 flags that placement's coverage
 checks read metadata that a restructuring could change mid-decision — highest chance of any item
