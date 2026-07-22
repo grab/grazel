@@ -262,20 +262,30 @@ internal class MainReachabilityTracker(
 
     /**
      * Folds a [RootVisitOutcome]'s reachability delta into this tracker's accumulated state,
-     * using the same union semantics [recordMainRoot] uses for [MainProjectEdgeScope].
-     * Blank bucket names are filtered by [addReachableMainBuckets]; instrumented runs (see
-     * reports/review/item2-channel-evidence.md) confirmed walk outcomes never produce blanks,
-     * so this filter is inert here and unifies the two fold paths.
+     * using the same union semantics [recordMainRoot] uses for [MainProjectEdgeScope]. Blank
+     * bucket names are filtered by [addReachableMainBuckets] for the same reason the seed path
+     * already does: [recordMainRoot] -> [addReachableMainBuckets] blank-filters unconditionally,
+     * so this unifies the walk path with the seed path, and a blank bucket name would be garbage
+     * downstream regardless of which path produced it. Empirically this filter is also inert here
+     * — instrumented runs (see reports/review/item2-channel-evidence.md) found zero blanks across
+     * 244 instrumented roots — but that corpus result is corroboration, not the reason for the filter.
      *
      * This is load-bearing: `projectPaths`/`bucketNamesByProject` come from walking each root's
-     * *resolved* dependency graph, which can contain a `project(...)` edge that [computeScope]'s
-     * declared-edge DFS seed never saw (e.g. a transitive dependency pulled in only through another
-     * project's classpath). Instrumented evidence from a full PAX migrate (reports/review/item2-channel-evidence.md)
-     * found this is real, not hypothetical: 3 of 116 MAIN roots had a non-empty walk-only delta, all
-     * `*-ui-tests` support modules whose `default` bucket walk surfaced a sibling test-support project
-     * module the DFS seed missed, e.g. `root=:apex-cfm:cfm-ui-tests bucket=default walkOnlyPaths=1:[:grab-test-recorder]`
-     * and `root=:comms-ui-tests:hedwig-ui-tests ... walkOnlyBuckets=1:[:comms-ui-tests:common-ui-tests=[debug]]`.
-     * Dropping this fold would silently regress reachability for exactly these roots.
+     * *resolved* dependency graph, which can disagree with [computeScope]'s declared-edge DFS seed
+     * even for a path the seed already reached. The seed records a project's reachable bucket
+     * *names* via `knownMainBucketNames`/`orDefaultVariantIn` against the root's own declared
+     * variant names, while the walk observes each transitively-reached project's actual resolved
+     * `debug` variant — so the same path can pick up a bucket name the seed never assigned it, with
+     * no new path involved at all. Instrumented evidence from a full PAX migrate
+     * (reports/review/item2-channel-evidence.md) found this bucket-name divergence is the dominant
+     * signal: on `root=:apex-cfm:cfm-ui-tests bucket=default`, 74 of its 75 walk-only bucket entries
+     * are ordinary app modules (e.g. `:auth=[debug]`, `:grab-api=[debug]`) whose *path* was already
+     * in the seed for that bucket. Only 1 of those 75 is a genuinely new path the seed missed
+     * (`:grab-test-recorder`). Two smaller roots show only the new-path shape:
+     * `root=:comms-ui-tests:hedwig-ui-tests ... walkOnlyBuckets=1:[:comms-ui-tests:common-ui-tests=[debug]]`
+     * and `root=:cx-ui-tests:subscription-ui-tests ... walkOnlyBuckets=1:[:subscriptions:subscription-test-common=[debug]]`.
+     * Dropping this fold would drop reachability facts for these roots — no fold-deleted PAX run
+     * was ever executed, so this is inferred from the delta above, not an observed regression.
      */
     fun recordReachable(projectPaths: Set<String>, bucketNamesByProject: Map<String, Set<String>>) {
         reachableMainProjectPaths.addAll(projectPaths)

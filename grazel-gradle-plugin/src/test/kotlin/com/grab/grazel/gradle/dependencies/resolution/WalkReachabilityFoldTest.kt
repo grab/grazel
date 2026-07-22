@@ -21,38 +21,43 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 /**
- * Pins the item-2 finding (`reports/review/item2-channel-evidence.md`): the walk-discovered
- * reachability fold is LOAD-BEARING for MAIN roots. In a full PAX migrate, 3 of 116
- * `GRAZEL-ITEM2 MAIN` roots had non-empty `walkOnlyPaths`/`walkOnlyBuckets` — all
- * `*-ui-tests` support modules whose resolved-graph walk surfaced a transitively-reachable
- * test-support project module that the declared-edge DFS seed did not:
+ * Pins [MainReachabilityTracker.recordReachable]'s union contract: walk-discovered project
+ * paths and bucket names are accepted into the tracker's reachability state even when the
+ * declared-edge DFS seed ([MainReachabilityTracker.computeScope]) never recorded them — i.e.
+ * the fold is a set-union, not an intersection or a seed-gated accept.
  *
- * ```
- * GRAZEL-ITEM2 MAIN root=:apex-cfm:cfm-ui-tests bucket=default walkOnlyPaths=1:[:grab-test-recorder] ...
- * GRAZEL-ITEM2 MAIN root=:comms-ui-tests:hedwig-ui-tests bucket=default walkOnlyPaths=0 walkOnlyBuckets=1:[:comms-ui-tests:common-ui-tests=[debug]] ...
- * GRAZEL-ITEM2 MAIN root=:cx-ui-tests:subscription-ui-tests bucket=default walkOnlyPaths=0 walkOnlyBuckets=1:[:subscriptions:subscription-test-common=[debug]] ...
- * ```
+ * Background (`reports/review/item2-channel-evidence.md`): a full PAX migrate found the walk
+ * fold's dominant real-world delta is a bucket-*name* divergence on paths the seed already
+ * reached (74 of 75 walk-only bucket entries on `:apex-cfm:cfm-ui-tests`), plus 1 genuinely
+ * new path the seed missed (`:grab-test-recorder`); two other roots
+ * (`:comms-ui-tests:hedwig-ui-tests`, `:cx-ui-tests:subscription-ui-tests`) each surface one
+ * new sibling test-support path. This test exercises `recordReachable` directly with a
+ * synthetic new path, pinning the union contract those deltas depend on.
  *
- * So [MainReachabilityTracker.recordReachable] must accept paths/buckets the declared-edge
- * DFS never seeded. Deleting the fold on the grounds "the DFS already covers it" is a
- * regression: it is a no-op for most roots but load-bearing for these `*-ui-tests` roots.
+ * Coverage limit: this test drives `recordReachable` directly — it would NOT fail if someone
+ * gated the MAIN-root fold out of `AggregatedDependencyResolver.ResolutionSession.resolve()`
+ * (a private inner class, impractical to seam-test directly). The samples golden baseline
+ * would not catch that regression either: both sample projects show zero MAIN walk deltas
+ * (see the evidence doc). The resolve()-site MAIN-root fold itself has no unit-level guard;
+ * it is protected by the PAX verification gates only (samples exhibit zero MAIN walk deltas,
+ * so the local golden cannot catch its removal — see reports/review/item2-channel-evidence.md).
  */
 class WalkReachabilityFoldTest {
 
     @Test
-    fun `recordReachable folds walk-discovered facts the declared DFS did not seed`() {
+    fun `recordReachable unions walk-discovered facts the declared DFS seed never recorded`() {
         val tracker = MainReachabilityTracker(
             declaredDependencyMetadata = DeclaredDependencyMetadata(projects = emptyMap()),
-            migratableProjectPaths = listOf(":app", ":substituted-lib")
+            migratableProjectPaths = listOf(":app", ":ui-test-support")
         )
         tracker.recordReachable(
-            projectPaths = setOf(":substituted-lib"),
-            bucketNamesByProject = mapOf(":substituted-lib" to setOf("debug"))
+            projectPaths = setOf(":ui-test-support"),
+            bucketNamesByProject = mapOf(":ui-test-support" to setOf("debug"))
         )
-        assertEquals(setOf(":substituted-lib"), tracker.reachableMainProjectPaths.toSet())
+        assertEquals(setOf(":ui-test-support"), tracker.reachableMainProjectPaths.toSet())
         assertEquals(
             setOf("debug"),
-            tracker.reachableMainBucketNamesByProject[":substituted-lib"].orEmpty().toSet()
+            tracker.reachableMainBucketNamesByProject[":ui-test-support"].orEmpty().toSet()
         )
     }
 }

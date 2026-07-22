@@ -115,11 +115,17 @@ internal class AggregatedDependencyResolver(
          * TEST_HIERARCHY/UNIT_TEST/ANDROID_TEST root's classpath also feeds later roots' reachability
          * facts. This walk-discovered fold is load-bearing, not redundant with the declared-edge DFS
          * seed ([MainReachabilityTracker.computeScope]): instrumented evidence from a full PAX migrate
-         * (`reports/review/item2-channel-evidence.md`) found 3 of 116 MAIN roots — all `*-ui-tests`
-         * support modules such as `:apex-cfm:cfm-ui-tests` — surfaced a transitively-reachable
-         * test-support project module (e.g. `:grab-test-recorder`) via the resolved-graph walk that
-         * the declared-edge seed alone would have missed, so skipping this fold would silently drop
-         * reachable projects/buckets for those roots.
+         * (`reports/review/item2-channel-evidence.md`) found the walk's dominant delta is a bucket-
+         * *name* divergence on paths the seed already reached — the seed records bucket names against
+         * the root's own declared variant set, while the walk observes each transitively-reached
+         * project's actual resolved `debug` variant, so 74 of the 75 walk-only bucket entries on
+         * `:apex-cfm:cfm-ui-tests` are ordinary app modules picking up a `debug` bucket name on a
+         * path already seeded. Only 1 of those 75 is a genuinely new path the seed missed
+         * (`:grab-test-recorder`). Skipping this fold would drop reachable projects/buckets for
+         * those roots (inferred from the delta, not from an observed fold-deleted run — see the
+         * evidence doc). The resolve()-site MAIN-root fold itself has no unit-level guard; it is
+         * protected by the PAX verification gates only (samples exhibit zero MAIN walk deltas, so
+         * the local golden cannot catch its removal — see reports/review/item2-channel-evidence.md).
          */
         fun resolve(): List<ResolveDependenciesResult> {
             if (migratableProjectPaths.isEmpty()) return emptyList()

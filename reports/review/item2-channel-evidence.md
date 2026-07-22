@@ -53,12 +53,30 @@ GRAZEL-ITEM2 MAIN root=:comms-ui-tests:hedwig-ui-tests bucket=default walkOnlyPa
 GRAZEL-ITEM2 MAIN root=:cx-ui-tests:subscription-ui-tests bucket=default walkOnlyPaths=0 walkOnlyBuckets=1:[:subscriptions:subscription-test-common=[debug]] seedOnlyPaths=1898
 ```
 
-All three non-zero MAIN roots are `*-ui-tests` support modules (`:apex-cfm:cfm-ui-tests`,
-`:comms-ui-tests:hedwig-ui-tests`, `:cx-ui-tests:subscription-ui-tests`) whose
-`default` bucket walk-fold surfaces sibling test-support project modules
-(`:grab-test-recorder`, `:comms-ui-tests:common-ui-tests`,
-`:subscriptions:subscription-test-common`) that are reachable transitively but
-were not present in the seed set for that bucket.
+All three non-zero MAIN roots are `*-ui-tests` support modules
+(`:apex-cfm:cfm-ui-tests`, `:comms-ui-tests:hedwig-ui-tests`,
+`:cx-ui-tests:subscription-ui-tests`), but the dominant signal and the
+secondary signal are two different mechanisms.
+
+**Dominant signal — bucket-name divergence on already-seeded paths.** Of
+`:apex-cfm:cfm-ui-tests`'s 75 `walkOnlyBuckets` entries, 74 are ordinary app
+modules (`:auth=[debug]`, `:grab-api=[debug]`, `:app-test=[debug]`, etc.)
+whose *path* was already present in the seed for that bucket — the walk adds
+no new path there, only a bucket **name** the seed hadn't recorded for it.
+This is a bucket-name divergence: the declared-edge seed
+(`MainReachabilityTracker.computeScope`/`knownMainBucketNames`) records a
+project's reachable bucket names against the *root's own* declared variant
+names (via `orDefaultVariantIn`), while the walk records the actual resolved
+`debug` variant of each transitively-reached project — the two sides can
+disagree over the bucket name for a path both already agree is reachable.
+
+**Secondary signal — genuine new-path discovery.** Only 1 of those 75 entries
+(`:grab-test-recorder`) is also present in `walkOnlyPaths`, i.e. a path the
+seed never reached at all. The other two non-zero MAIN roots show only this
+new-path shape: each surfaces one sibling test-support project module
+(`:comms-ui-tests:common-ui-tests`, `:subscriptions:subscription-test-common`)
+that is reachable transitively but was not present in the seed set for that
+bucket.
 
 **TEST-root novelty (converse check, recorded only): 1 of 128**
 
