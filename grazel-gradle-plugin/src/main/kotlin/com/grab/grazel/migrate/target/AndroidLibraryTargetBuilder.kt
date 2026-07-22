@@ -33,6 +33,7 @@ import com.grab.grazel.migrate.android.AndroidLibraryData
 import com.grab.grazel.migrate.android.AndroidLibraryDataExtractor
 import com.grab.grazel.migrate.android.AndroidLibraryTarget
 import com.grab.grazel.migrate.android.AndroidManifestParser
+import com.grab.grazel.migrate.android.AndroidUnitTestData
 import com.grab.grazel.migrate.android.AndroidUnitTestDataExtractor
 import com.grab.grazel.migrate.android.AndroidUnitTestTarget
 import com.grab.grazel.migrate.android.DefaultAndroidLibraryDataExtractor
@@ -75,7 +76,23 @@ constructor(
     private val workspaceRenderPlanService: GradleProvider<WorkspaceRenderPlanService>
 ) : TargetBuilder {
 
-    override fun build(project: Project): List<BazelTarget> {
+    override fun build(project: Project): List<BazelTarget> =
+        selectLibraryData(project).map { it.toAndroidLibTarget() } +
+            selectUnitTestData(project).map { unitTestData ->
+                unitTestData.toUnitTestTarget()
+            }
+
+    /**
+     * The single selection of android_library data for this project: reachable (or referenced)
+     * variants, folded through variant compression. Consumed by [build] for rendering and by
+     * the reference-facts pass via [selectData] — one implementation, no facts/render drift.
+     *
+     * When compression yields a non-empty reachable-suffix set, the filtered map is used
+     * as-is: `VariantCompressionResult`'s construction invariant guarantees every reachable
+     * suffix is a `targetsBySuffix` key, so the filter cannot be empty (see
+     * `VariantCompressionResultInvariantTest`).
+     */
+    internal fun selectLibraryData(project: Project): List<AndroidLibraryData> {
         val androidBuildVariants = reachableMatchedVariants(
             project = project,
             variantType = VariantType.AndroidBuild,
@@ -84,43 +101,40 @@ constructor(
             dependencyResolutionService = dependencyResolutionService,
             workspaceRenderPlanService = workspaceRenderPlanService
         )
-
         val compressionResult = variantCompressionService.get().get(project.path)
-        val libraryTargets = compressionResult?.let {
-                val reachableSuffixes = reachableCompressedTargetSuffixes(
-                    variantToSuffix = it.variantToSuffix,
-                    reachableVariantNames = androidBuildVariants.mapTo(mutableSetOf()) { variant ->
-                        variant.variantName
-                    }
-                )
-                if (reachableSuffixes.isEmpty()) {
-                    extractLibraryTargets(project, androidBuildVariants)
-                } else {
-                    it.targetsBySuffix
-                        .filterKeys { suffix -> suffix in reachableSuffixes }
-                        .values
-                        .map { target -> target.toAndroidLibTarget() }
-                }
+            ?: run {
+                project.logger.error("Compressed result does not exist for this project")
+                return extractLibraryData(project, androidBuildVariants)
             }
-                ?: run {
-                    project.logger.error("Compressed result does not exist for this project")
-                    extractLibraryTargets(project, androidBuildVariants)
-                }
-        return libraryTargets + unitTestsTargets(project)
+        val reachableSuffixes = reachableCompressedTargetSuffixes(
+            variantToSuffix = compressionResult.variantToSuffix,
+            reachableVariantNames = androidBuildVariants.mapTo(mutableSetOf()) { variant ->
+                variant.variantName
+            }
+        )
+        if (reachableSuffixes.isEmpty()) {
+            return extractLibraryData(project, androidBuildVariants)
+        }
+        return compressionResult.targetsBySuffix
+            .filterKeys { suffix -> suffix in reachableSuffixes }
+            .values
+            .toList()
     }
 
-    private fun extractLibraryTargets(
+    private fun extractLibraryData(
         project: Project,
         androidBuildVariants: Set<MatchedVariant>
-    ): List<AndroidLibraryTarget> {
-        return androidBuildVariants.map { matchedVariant ->
-            androidLibraryDataExtractor
-                .extract(project, matchedVariant)
-                .toAndroidLibTarget()
-        }
+    ): List<AndroidLibraryData> = androidBuildVariants.map { matchedVariant ->
+        androidLibraryDataExtractor.extract(project, matchedVariant)
     }
 
-    private fun unitTestsTargets(project: Project): List<AndroidUnitTestTarget> {
+    /**
+     * When variant compression is active, multiple reachable test variants can resolve to the
+     * same compressed suffix; extracting one [AndroidUnitTestData] per variant would produce
+     * duplicate targets. Variants are grouped by resolved suffix and the alphabetically-first
+     * variant per group is extracted as the stable representative.
+     */
+    internal fun selectUnitTestData(project: Project): List<AndroidUnitTestData> {
         val compressionResult = variantCompressionService.get().get(project.path)
         val testVariants = reachableMatchedVariants(
             project = project,
@@ -131,25 +145,26 @@ constructor(
             workspaceRenderPlanService = workspaceRenderPlanService
         )
         return if (compressionResult != null) {
-            val variantsBySuffix = testVariants.groupBy { matchedVariant ->
-                variantCompressionService.get().resolveSuffix(
-                    projectPath = project.path,
-                    variantName = matchedVariant.variantName,
-                    fallbackSuffix = matchedVariant.nameSuffix,
-                    logger = project.logger
-                )
-            }
-
-            variantsBySuffix.values.map { variantsForSuffix ->
-                val representative = variantsForSuffix.minBy { it.variantName }
-                unitTestDataExtractor.extract(project, representative).toUnitTestTarget()
-            }
+            testVariants
+                .groupBy { matchedVariant ->
+                    variantCompressionService.get().resolveSuffix(
+                        projectPath = project.path,
+                        variantName = matchedVariant.variantName,
+                        fallbackSuffix = matchedVariant.nameSuffix,
+                        logger = project.logger
+                    )
+                }
+                .values
+                .map { variantsForSuffix ->
+                    val representative = variantsForSuffix.minBy { it.variantName }
+                    unitTestDataExtractor.extract(project, representative)
+                }
         } else {
             project.logger.warn(
                 "No compression result for ${project.path}, generating uncompressed unit test targets"
             )
             testVariants.map { matchedVariant ->
-                unitTestDataExtractor.extract(project, matchedVariant).toUnitTestTarget()
+                unitTestDataExtractor.extract(project, matchedVariant)
             }
         }
     }
