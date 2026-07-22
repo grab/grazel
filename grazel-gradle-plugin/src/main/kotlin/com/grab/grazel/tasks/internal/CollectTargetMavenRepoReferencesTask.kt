@@ -230,7 +230,7 @@ private fun collectToQuiescence(
 ): TargetReferenceFacts {
     val totalProjects = projects.size
     var accumulated = TargetReferenceFacts()
-    val deferred = LinkedHashMap<String, Project>()
+    val deferred = LinkedHashSet<Project>()
 
     projects.forEachIndexed { index, project ->
         workspaceRenderPlanService.populateRenderPlan(accumulated.asRenderPlan())
@@ -240,16 +240,16 @@ private fun collectToQuiescence(
             workspaceRenderPlanService.isReferencedProjectPath(project.path)
         accumulated = mergeTargetReferenceFacts(accumulated, factsForProject(project))
         if (!isActive) {
-            deferred[project.path] = project
+            deferred += project
         }
     }
 
     while (true) {
         workspaceRenderPlanService.populateRenderPlan(accumulated.asRenderPlan())
-        val activated = deferred.values.firstOrNull { project ->
+        val activated = deferred.firstOrNull { project ->
             workspaceRenderPlanService.isReferencedProjectPath(project.path)
         } ?: break
-        deferred.remove(activated.path)
+        deferred.remove(activated)
         reporter.report("collecting (activated): ${activated.path}")
         accumulated = mergeTargetReferenceFacts(accumulated, factsForProject(activated))
     }
