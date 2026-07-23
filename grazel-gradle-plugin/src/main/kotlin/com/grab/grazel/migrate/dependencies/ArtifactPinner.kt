@@ -74,6 +74,18 @@ internal interface ArtifactPinner {
         gradleServices: GradleServices,
         bazelBlock: () -> Pair<BazelLogParsingOutputStream, ExecResult>
     )
+
+    /**
+     * Unpins [workspaceFile] in place when any lockfile it actively references
+     * (`maven_install_json = "//:<name>"`) is missing from the workspace root, so that a bazel
+     * invocation preceding pinning (e.g. buildifier bootstrap) never hits rules_jvm_external's
+     * pinned-fetch path against a nonexistent lockfile. No-op, returning false with the file
+     * untouched, when the workspace has no active `maven_install_json` line or every referenced
+     * lockfile is present.
+     *
+     * @return true if the workspace was unpinned
+     */
+    fun unpinWorkspaceIfLockfilesMissing(workspaceFile: File): Boolean
 }
 
 // These patterns toggle the exact commented-out block that rules_jvm_external's own WORKSPACE
@@ -90,6 +102,7 @@ private val COMMENTED_PINNED_LOAD_REGEX = Regex(
 )
 private val COMMENTED_PINNED_CALL_REGEX = Regex("""(?m)^#([A-Za-z0-9_]+_pinned_maven_install\(\))""")
 private val ACTIVE_MAVEN_INSTALL_JSON_REGEX = Regex("""(?m)^(\s*)maven_install_json """)
+private val ACTIVE_MAVEN_INSTALL_JSON_FILE_REGEX = Regex("""(?m)^\s*maven_install_json = "//:([^"]+)",""")
 private val ACTIVE_PINNED_LOAD_REGEX = Regex(
     """(?m)^(?!#)(load\("@[^"]+//:defs\.bzl", [A-Za-z0-9_]+_pinned_maven_install = "pinned_maven_install"\))"""
 )
@@ -121,6 +134,22 @@ constructor(
                 .replace(ACTIVE_PINNED_LOAD_REGEX, "#$1")
                 .replace(ACTIVE_PINNED_CALL_REGEX, "#$1")
         )
+    }
+
+    override fun unpinWorkspaceIfLockfilesMissing(workspaceFile: File): Boolean {
+        val referencedLockfiles = ACTIVE_MAVEN_INSTALL_JSON_FILE_REGEX
+            .findAll(workspaceFile.readText())
+            .map { match -> match.groupValues[1] }
+            .toList()
+        val missingLockfiles = referencedLockfiles
+            .filterNot { name -> workspaceFile.parentFile.resolve(name).exists() }
+        if (missingLockfiles.isEmpty()) return false
+        Logging.getLogger(DefaultArtifactPinner::class.java).quiet(
+            "Unpinning WORKSPACE: lockfile(s) ${missingLockfiles.joinToString()} missing — " +
+                "pinning regenerates them"
+        )
+        unpin(workspaceFile)
+        return true
     }
 
     private fun failWhenOutOfDate(workspaceFile: File, enable: Boolean) {

@@ -24,6 +24,7 @@ import com.grab.grazel.di.qualifiers.RootProject
 import com.grab.grazel.migrate.dependencies.ArtifactPinner
 import com.grab.grazel.migrate.dependencies.BazelLogParsingOutputStream
 import com.grab.grazel.util.BUILDIFIER
+import com.grab.grazel.util.WORKSPACE
 import com.grab.grazel.util.startOperation
 import dagger.Lazy
 import org.gradle.api.DefaultTask
@@ -50,6 +51,9 @@ constructor(
 
     @TaskAction
     fun action() {
+        artifactPinner.get().unpinWorkspaceIfLockfilesMissing(
+            gradleServices.layout.projectDirectory.file(WORKSPACE).asFile
+        )
         artifactPinner.get().ensureSafeToRun(logger, gradleServices) {
             val progress = gradleServices
                 .progressLoggerFactory

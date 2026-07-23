@@ -277,6 +277,66 @@ class DefaultArtifactPinnerTest {
     }
 
     @Test
+    fun `unpinWorkspaceIfLockfilesMissing unpins when a referenced lockfile is absent`() {
+        rootProject.file("maven_install.json").delete()
+        rootProject.file("debug_maven_install.json").writeText("{}")
+        val workspace = rootProject.file(WORKSPACE).apply {
+            writeText(TWO_REPO_WORKSPACE)
+        }
+
+        val unpinned = artifactPinner.unpinWorkspaceIfLockfilesMissing(workspace)
+
+        assertTrue("Workspace is reported as unpinned") { unpinned }
+        val text = workspace.readText()
+        assertTrue("maven's maven_install_json is commented") {
+            "#maven_install_json = \"//:maven_install.json\"," in text
+        }
+        assertTrue("debug_maven's maven_install_json is commented") {
+            "#maven_install_json = \"//:debug_maven_install.json\"," in text
+        }
+        assertTrue("maven's pinned macro load is commented") {
+            """#load("@maven//:defs.bzl", maven_pinned_maven_install = "pinned_maven_install")""" in text
+        }
+        assertTrue("debug_maven's pinned macro load is commented") {
+            """#load("@debug_maven//:defs.bzl", debug_maven_pinned_maven_install = "pinned_maven_install")""" in text
+        }
+        assertTrue("maven's pinned macro call is commented") {
+            "#maven_pinned_maven_install()" in text
+        }
+        assertTrue("debug_maven's pinned macro call is commented") {
+            "#debug_maven_pinned_maven_install()" in text
+        }
+    }
+
+    @Test
+    fun `unpinWorkspaceIfLockfilesMissing is a no-op when every referenced lockfile exists`() {
+        rootProject.file("maven_install.json").writeText("{}")
+        rootProject.file("debug_maven_install.json").writeText("{}")
+        val workspace = rootProject.file(WORKSPACE).apply {
+            writeText(TWO_REPO_WORKSPACE)
+        }
+
+        val unpinned = artifactPinner.unpinWorkspaceIfLockfilesMissing(workspace)
+
+        assertTrue("Workspace is reported as unchanged") { !unpinned }
+        assertEquals(TWO_REPO_WORKSPACE, workspace.readText())
+    }
+
+    @Test
+    fun `unpinWorkspaceIfLockfilesMissing is a no-op when workspace has no active maven_install_json`() {
+        val alreadyUnpinned = TWO_REPO_WORKSPACE
+            .replace("maven_install_json", "#maven_install_json")
+        val workspace = rootProject.file(WORKSPACE).apply {
+            writeText(alreadyUnpinned)
+        }
+
+        val unpinned = artifactPinner.unpinWorkspaceIfLockfilesMissing(workspace)
+
+        assertTrue("Workspace is reported as unchanged") { !unpinned }
+        assertEquals(alreadyUnpinned, workspace.readText())
+    }
+
+    @Test
     fun `assert ensure pinning is able to recover from json corruption`() {
         rootProject.file(WORKSPACE).apply {
             writeText(
@@ -394,5 +454,36 @@ class DefaultArtifactPinnerTest {
         """.trimIndent()
 
         private val CORRUPTED_MAVEN_INSTALL_JSON = "{{{{}"
+
+        private val TWO_REPO_WORKSPACE = """
+            maven_install(
+                artifacts = [
+                    "androidx.annotation:annotation:1.2.1",
+                ],
+                fail_if_repin_required = False,
+                fail_on_missing_checksum = False,
+                maven_install_json = "//:maven_install.json",
+                repositories = [
+                    "https://dl.google.com/dl/android/maven2/",
+                ],
+            )
+            load("@maven//:defs.bzl", maven_pinned_maven_install = "pinned_maven_install")
+            maven_pinned_maven_install()
+
+            maven_install(
+                name = "debug_maven",
+                artifacts = [
+                    "androidx.annotation:annotation:1.2.1",
+                ],
+                fail_if_repin_required = False,
+                fail_on_missing_checksum = False,
+                maven_install_json = "//:debug_maven_install.json",
+                repositories = [
+                    "https://dl.google.com/dl/android/maven2/",
+                ],
+            )
+            load("@debug_maven//:defs.bzl", debug_maven_pinned_maven_install = "pinned_maven_install")
+            debug_maven_pinned_maven_install()
+        """.trimIndent()
     }
 }
