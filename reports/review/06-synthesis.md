@@ -223,7 +223,13 @@ for byte-identity risk against C1.
    mini-Coverage. *Effort: ~1 week. Risk: medium, mechanical but wide — behavior-preserving by
    construction if each row reproduces its predicate exactly; golden gate is the safety net.*
 
-6. `[PENDING]` **Collapse triple-pass test subtraction to one pass (critic-04 #2).** `withoutTestDependenciesCoveredBy`'s
+6. `[RESOLVED-KEEP]` — proof REFUTED the collapse (2026-07-23, commits `8420206`+`2852483`):
+   `canCoverTest` is structurally false for every non-direct candidate (all dispatch branches
+   require directness), while pass 1 drops non-direct deps via owner-identity — a single-pass
+   form would wrongly keep every generically-covered transitive test dep. Three passes are
+   semantics, not waste: pinned by predicate truth-table tests + an end-to-end test that
+   FAILS under a simulated collapse (mutation-verified). KDoc states the counterexample.
+   ~~**Collapse triple-pass test subtraction to one pass (critic-04 #2).**~~ `withoutTestDependenciesCoveredBy`'s
    keep/drop decision is fully determined by its final `canCoverTest` filter; the earlier two
    passes only contribute an annotation. *Effort: 1-2 days. Risk: low-medium — preserving exactly
    when the `overrideTarget` annotation attaches is the one subtlety.*
@@ -253,7 +259,14 @@ for byte-identity risk against C1.
    `[DONE in item 2, 85ba1aa]`; critic-05 S4 (explicit reference channel) `[PENDING]`.
    *Effort: hours each. Risk: none — pure mechanical, no consumer-visible change.*
 
-10. `[PENDING]` **Kill the zip-by-index contract across the three resolver tasks (critic-03 item 4).** Key
+10. `[DONE]` — shipped (commits `e40ed55`+`c007a18`+`f3bb57d`; spec
+    `reports/specs/2026-07-23-correctness-hardening-design.md`): RootKey(projectPath,
+    configurationName, kind) uniqueness-asserted at plan time, parallel @Input list wired in
+    one registrar loop, keyed metadata join with loud failures replaces the cross-task zip.
+    (Carrier-wrapper design empirically refuted: Gradle's @Input handling of
+    ResolvedComponentResult is dedicated to that declared type.) Full PAX sweep byte-clean;
+    Opus final review READY.
+    **Kill the zip-by-index contract across the three resolver tasks (critic-03 item 4).** Key
     `AggregatedDependencyRootMetadata` by `(projectPath, configurationName, kind)` instead of
     positional pairing protected only by a size check. *Effort: M. Risk: low — no output change,
     removes a silent-misattribution failure mode rather than a performance or size issue.*
