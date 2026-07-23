@@ -303,6 +303,49 @@ Expected: nothing to commit. If the working tree is dirty here, that contradicts
 
 ---
 
+### Task 2a: Cold-start pre-flight — unpin WORKSPACE when referenced lockfiles are missing
+
+Added after Task 2's cold-start gate BLOCKED: with a lockfile deleted, the
+committed WORKSPACE's `maven_install_json = "//:<repo>_install.json"` attribute
+makes the FIRST bazel invocation of the migrate (`generateBuildifierScript`,
+which `rootGenerateBazelScripts` depends on for formatting) fail inside
+`@maven`'s `pinned_coursier_fetch` before any Grazel logic runs.
+
+**Files:**
+- Modify: `grazel-gradle-plugin/src/main/kotlin/com/grab/grazel/migrate/dependencies/ArtifactPinner.kt`
+- Modify: `grazel-gradle-plugin/src/main/kotlin/com/grab/grazel/tasks/internal/GenerateBuildifierScriptTask.kt`
+- Test: `grazel-gradle-plugin/src/test/kotlin/com/grab/grazel/migrate/dependencies/` (new or existing pinner test class)
+
+**Interfaces:**
+- Consumes: the existing `private fun unpin(workspaceFile: File)` and
+  `ACTIVE_MAVEN_INSTALL_JSON_REGEX` in `ArtifactPinner.kt:117-124`.
+- Produces: `internal fun unpinWorkspaceIfLockfilesMissing(workspaceFile: File): Boolean`
+  in ArtifactPinner (companion or top-level, matching file idiom) — returns true
+  when it unpinned. Called at the start of `GenerateBuildifierScriptTask`'s
+  action, before the bazel exec.
+
+- [ ] **Step 1: Failing tests** — workspace text referencing two lockfiles, one
+  missing on disk → function unpins (all `maven_install_json` lines commented,
+  pinned load/call lines commented) and returns true; all lockfiles present →
+  text byte-identical, returns false; workspace with no active
+  `maven_install_json` lines → untouched, returns false.
+- [ ] **Step 2: Implement** — extract referenced lockfile names via the active
+  maven_install_json regex, resolve them against the workspace file's parent
+  directory, call the existing `unpin` when any is missing, log one quiet line
+  naming the missing files ("unpinning WORKSPACE: lockfile(s) X missing —
+  pinning regenerates them").
+- [ ] **Step 3: Wire** into `GenerateBuildifierScriptTask.action()` before the
+  bazel invocation (the task already knows the workspace root). No-op when all
+  lockfiles exist — golden byte-identity must hold.
+- [ ] **Step 4: Full unit suite green** (known 3 DefaultArtifactPinnerTest
+  Bazel-8.5.1 failures tracked separately — must not grow).
+- [ ] **Step 5: Commit** `fix(pin): unpin WORKSPACE pre-flight when referenced lockfiles are missing` (explicit paths).
+- [ ] **Step 6: Re-run Task 2's three gates** — golden clean; cold start
+  (`rm maven_install.json` → single migrate → `git diff --exit-code
+  maven_install.json`) green; `bazelisk build --nobuild //...` green.
+
+---
+
 ### Task 3: Replace the bootstrap gotcha in the gates doc
 
 **Files:**
