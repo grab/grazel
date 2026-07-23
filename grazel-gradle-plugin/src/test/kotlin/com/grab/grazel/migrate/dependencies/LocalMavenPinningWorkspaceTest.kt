@@ -113,7 +113,7 @@ class LocalMavenPinningWorkspaceTest {
     @Test
     fun `active lockfiles are reconstructed while stale lockfiles are untouched`() {
         val workspaceFile = temporaryFolder.newFile("WORKSPACE").apply {
-            writeText(WORKSPACE_WITH_CANONICAL_REPOSITORIES)
+            writeText(WORKSPACE_WITH_MULTIPLE_MAVEN_INSTALLS)
         }
         val mavenInstall = temporaryFolder.newFile(mavenInstallJsonName("maven")).apply {
             writeText(LOCALHOST_LOCKFILE)
@@ -128,12 +128,6 @@ class LocalMavenPinningWorkspaceTest {
             workspaceFile = workspaceFile,
             rootDirectory = temporaryFolder.root,
             repositoryRewrite = REPOSITORY_REWRITE,
-            repositoryInputs = MavenInstallRepositoryInputs(
-                repositoriesByName = mapOf(
-                    "maven" to listOf(repositoryInput("https://repo.example/maven2/")),
-                    "debug_maven" to listOf(repositoryInput("https://repo.example/maven2/")),
-                )
-            )
         )
 
         pinningWorkspace.reconstructActiveLockfiles(activeMavenRepos = setOf("maven", "debug_maven"))
@@ -141,6 +135,35 @@ class LocalMavenPinningWorkspaceTest {
         assertThat(mavenInstall.readText()).contains(""""https://repo.example/maven2/"""")
         assertThat(debugInstall.readText()).contains(""""https://repo.example/maven2/"""")
         assertThat(staleInstall.readText()).isEqualTo(LOCALHOST_LOCKFILE)
+    }
+
+    @Test
+    fun `reconstruction hashes the repositories actually declared in the WORKSPACE, not a caller-supplied model`() {
+        // A downstream consumer's build wrapper can patch the WORKSPACE after grazel generates it
+        // (e.g. stripping an externally-injected repository) before pinning runs. The repository
+        // list used for hashing must therefore be read from the WORKSPACE text at reconstruction
+        // time so it matches what rules_jvm_external itself will validate against - never from a
+        // caller-supplied model of what grazel originally generated.
+        val workspaceFile = temporaryFolder.newFile("WORKSPACE").apply {
+            writeText(WORKSPACE_WITH_SINGLE_PATCHED_REPOSITORY)
+        }
+        val mavenInstall = temporaryFolder.newFile(mavenInstallJsonName("maven")).apply {
+            writeText(LOCALHOST_LOCKFILE)
+        }
+        val pinningWorkspace = LocalMavenPinningWorkspace(
+            workspaceFile = workspaceFile,
+            rootDirectory = temporaryFolder.root,
+            repositoryRewrite = REPOSITORY_REWRITE,
+        )
+
+        pinningWorkspace.reconstructActiveLockfiles(activeMavenRepos = setOf("maven"))
+
+        val reconstructed = RulesJvmExternalLockfileParser.parse(mavenInstall.readText())
+        val expectedHash = RulesJvmExternalLockfileHasher.inputArtifactsHashWithRepositories(
+            inputArtifactsHash = RulesJvmExternalLockfileParser.parse(LOCALHOST_LOCKFILE).inputArtifactsHash,
+            canonicalRepositoryInputs = listOf(repositoryInputSpec("https://repo.example/maven2/")),
+        )
+        assertThat(reconstructed.inputArtifactsHash).isEqualTo(expectedHash)
     }
 }
 
@@ -160,12 +183,6 @@ private val CREDENTIAL_REPOSITORY_REWRITE = MavenInstallRepositoryRewrite(
         "https://user:pass@repo.example/maven2/" to "http://127.0.0.1:12345/r/0/"
     )
 )
-
-private fun repositoryInput(url: String): MavenInstallRepositoryInput =
-    MavenInstallRepositoryInput(
-        repositoryInputSpec = repositoryInputSpec(url),
-        canonicalUrl = url
-    )
 
 private val WORKSPACE_WITH_CANONICAL_REPOSITORIES = """
     maven_install(
@@ -217,6 +234,35 @@ private val WORKSPACE_WITH_COMMENTED_OVERRIDE_TARGETS = """
         override_targets = {
             "org.jetbrains.kotlinx:kotlinx-coroutines-core": "@maven//:org_jetbrains_kotlinx_kotlinx_coroutines_core",
         },
+        repositories = [
+            "https://repo.example/maven2/",
+        ],
+    )
+""".trimIndent()
+
+private val WORKSPACE_WITH_MULTIPLE_MAVEN_INSTALLS = """
+    maven_install(
+        name = "maven",
+        repositories = [
+            "https://repo.example/maven2/",
+        ],
+    )
+
+    maven_install(
+        name = "debug_maven",
+        repositories = [
+            "https://repo.example/maven2/",
+        ],
+    )
+""".trimIndent()
+
+// Simulates a downstream consumer's build wrapper patching the WORKSPACE after grazel generates it,
+// e.g. stripping an externally-injected repository grazel's own generation model still assumes is
+// present - the repository list here (one entry) intentionally diverges from what a caller-supplied
+// MavenInstallRepositoryInputs would report for "maven" (which would otherwise include it).
+private val WORKSPACE_WITH_SINGLE_PATCHED_REPOSITORY = """
+    maven_install(
+        name = "maven",
         repositories = [
             "https://repo.example/maven2/",
         ],

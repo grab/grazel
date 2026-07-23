@@ -326,7 +326,6 @@ constructor(
                     workspaceFile = workspaceFile,
                     rootDirectory = layout.projectDirectory.asFile,
                     repositoryRewrite = context.repositoryRewrite,
-                    repositoryInputs = mavenInstallRepositoryInputs,
                     metadataOnlyShortIds = context.metadataOnlyShortIds
                 )
             }

@@ -16,6 +16,7 @@
 
 package com.grab.grazel.migrate.dependencies
 
+import com.grab.grazel.bazel.rules.repositoryInputSpec
 import com.grab.grazel.gradle.dependencies.BASE_MAVEN_REPO
 import java.io.File
 
@@ -23,7 +24,6 @@ internal class LocalMavenPinningWorkspace(
     private val workspaceFile: File,
     private val rootDirectory: File,
     private val repositoryRewrite: MavenInstallRepositoryRewrite,
-    private val repositoryInputs: MavenInstallRepositoryInputs = MavenInstallRepositoryInputs(emptyMap()),
     private val metadataOnlyShortIds: Set<String> = emptySet(),
 ) {
     /**
@@ -61,25 +61,30 @@ internal class LocalMavenPinningWorkspace(
 
     /**
      * Must run after the WORKSPACE has been restored to canonical URLs (i.e. after
-     * [withProxyRepositories] returns) - the reconstructor rewrites proxy URLs recorded in the
-     * just-generated lockfile back to canonical using [repositoryInputs], so it needs the canonical
-     * repository inputs, not the proxy ones. Failing with [error] when a repo has no
-     * [MavenInstallRepositoryInputs] entry is intentional: silently skipping reconstruction for that
-     * repo would leave proxy URLs or an unreconciled baseline in its lockfile.
+     * [withProxyRepositories] returns) for two reasons: the reconstructor rewrites proxy URLs
+     * recorded in the just-generated lockfile back to canonical, and the repository list read here
+     * via [WorkspaceMavenInstallRepositories] must be the canonical one rules_jvm_external's own
+     * repository rule will read from the WORKSPACE at build time - including any repositories a
+     * downstream build wrapper adds or removes after grazel generates the file - not grazel's own
+     * internal model of what it generated, which such a patch can silently invalidate. Failing with
+     * [error] when a repo has no `maven_install(name = "...")` block in the WORKSPACE is intentional:
+     * silently skipping reconstruction for that repo would leave proxy URLs or an unreconciled
+     * baseline in its lockfile.
      */
     fun reconstructActiveLockfiles(
         activeMavenRepos: Set<String>,
         baselineLockfilesByRepoName: Map<String, String> = emptyMap(),
     ) {
         val reconstructor = MavenInstallLockfileReconstructor(repositoryRewrite)
+        val declaredRepositoryUrlsByName = WorkspaceMavenInstallRepositories.parse(workspaceFile.readText())
         activeLockfiles(activeMavenRepos)
             .forEach { (repoName, lockfile) ->
                 lockfile.writeText(
                     reconstructor.reconstruct(
                         lockfileContents = lockfile.readText(),
-                        canonicalRepositoryInputs = repositoryInputs.repositoriesByName[repoName]
-                            ?.map { input -> input.repositoryInputSpec }
-                            ?: error("Missing maven_install repository inputs for $repoName"),
+                        canonicalRepositoryInputs = declaredRepositoryUrlsByName[repoName]
+                            ?.map(::repositoryInputSpec)
+                            ?: error("Missing maven_install(name = \"$repoName\") repositories in WORKSPACE"),
                         baselineLockfileContents = baselineLockfilesByRepoName[repoName]
                     )
                 )

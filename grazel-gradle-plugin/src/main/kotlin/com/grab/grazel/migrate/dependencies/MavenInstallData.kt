@@ -84,13 +84,23 @@ internal fun repositoryInputs(mavenInstallData: MavenInstallData): List<MavenIns
         )
 
 private fun externalRepositoryInputs(variableName: String): List<MavenInstallRepositoryInput> =
+    externalRepositoryUrls(variableName).map { url ->
+        MavenInstallRepositoryInput(
+            repositoryInputSpec = repositoryInputSpec(url),
+            canonicalUrl = url
+        )
+    }
+
+/**
+ * Expands a bare Starlark identifier (e.g. `DAGGER_REPOSITORIES`) that a WORKSPACE `repositories =
+ * [...] + <VARIABLE>` list can reference into the canonical URLs it resolves to at Bazel load time.
+ * Shared between [externalRepositoryInputs] (grazel's own generation-time model) and
+ * [WorkspaceMavenInstallRepositories] (reading the same variable back out of the WORKSPACE text at
+ * pin/reconstruction time) so both sides expand a given variable identically.
+ */
+internal fun externalRepositoryUrls(variableName: String): List<String> =
     when (variableName) {
-        DAGGER_REPOSITORIES -> DAGGER_REPOSITORY_URLS.map { url ->
-            MavenInstallRepositoryInput(
-                repositoryInputSpec = repositoryInputSpec(url),
-                canonicalUrl = url
-            )
-        }
+        DAGGER_REPOSITORIES -> DAGGER_REPOSITORY_URLS
         else -> error(
             "Unsupported external Maven repository variable for local pinning: $variableName. " +
                 "Add explicit expansion support for this variable or opt it out with " +
