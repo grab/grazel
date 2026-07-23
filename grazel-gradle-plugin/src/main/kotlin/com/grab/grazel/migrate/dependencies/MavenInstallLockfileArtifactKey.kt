@@ -21,9 +21,6 @@ internal data class MavenInstallLockfileArtifactKey(
     val artifact: String,
     val extension: String,
 ) {
-    val isPomPackagingRoot: Boolean
-        get() = extension == "pom"
-
     /**
      * Reproduces rules_jvm_external's own key suffix convention for per-shasum-type hash entries in
      * [RulesJvmExternalLockfileHasher]. A `jar` shasum contributes no suffix (it's the artifact's

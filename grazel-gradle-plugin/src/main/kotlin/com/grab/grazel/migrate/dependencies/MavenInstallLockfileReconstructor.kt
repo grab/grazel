@@ -29,22 +29,20 @@ internal class MavenInstallLockfileReconstructor(
      *  1. Rewrite proxy URLs in the freshly-pinned lockfile back to canonical
      *     ([MavenLockfileRepositoryUrlRewriter]) - hashing and facts merging below must only ever
      *     see canonical URLs.
-     *  2. Merge in baseline facts ([BaselineLockfileFactsMerger]) so unchanged artifacts keep their
-     *     baseline-verified shasums instead of possibly-divergent freshly-resolved ones.
-     *  3. When there is no baseline at all, POM-packaging root artifacts cannot yet be safely
-     *     classified as resolved vs. skipped, so [requireBaselineForPomPackagingArtifacts] enforces
-     *     that invariant before normalization runs.
-     *  4. [PomPackagingSkipNormalizer.normalize] folds in the resulting POM-packaging skip rule.
-     *  5. Hashes are recomputed last, in the same order RJE computes them (input-artifacts hash
+     *  2. When a baseline lockfile is available, merge in its facts ([BaselineLockfileFactsMerger])
+     *     so unchanged artifacts keep their baseline-verified shasums instead of possibly-divergent
+     *     freshly-resolved ones. RJE's own resolved/skipped classification (including POM-packaging
+     *     roots such as BOM parents) is authoritative and carried through unchanged either way - it
+     *     is never re-derived here.
+     *  3. Hashes are recomputed last, in the same order RJE computes them (input-artifacts hash
      *     first, then resolved-artifacts hash over the now-finalized artifact/dependency data) -
-     *     computing them earlier would hash pre-merge, pre-normalization data and produce a lockfile
-     *     RJE itself would reject as tampered.
+     *     computing them earlier would hash pre-merge data and produce a lockfile RJE itself would
+     *     reject as tampered.
      */
     fun reconstruct(
         lockfileContents: String,
         canonicalRepositoryInputs: List<String>,
         baselineLockfileContents: String? = null,
-        requireBaselineForPomPackagingArtifacts: Boolean = false,
     ): String {
         val baselineLockfile = baselineLockfileContents?.let(RulesJvmExternalLockfileParser::parse)
         val rewrittenLockfile = repositoryUrlRewriter.rewrite(
@@ -53,20 +51,15 @@ internal class MavenInstallLockfileReconstructor(
         val lockfileWithBaselineFacts = baselineLockfile
             ?.let { baseline -> BaselineLockfileFactsMerger.merge(rewrittenLockfile, baseline) }
             ?: rewrittenLockfile
-        if (requireBaselineForPomPackagingArtifacts && baselineLockfile == null) {
-            PomPackagingSkipNormalizer.requireNoPomPackagingArtifactsWithoutBaseline(lockfileWithBaselineFacts)
-        }
-        val normalizedLockfile = PomPackagingSkipNormalizer.normalize(
-            lockfile = lockfileWithBaselineFacts,
-            baselineArtifactNames = baselineLockfile?.artifactNames.orEmpty()
-        )
         return RulesJvmExternalLockfileRenderer.render(
-            normalizedLockfile.copy(
+            lockfileWithBaselineFacts.copy(
                 inputArtifactsHash = RulesJvmExternalLockfileHasher.inputArtifactsHashWithRepositories(
-                    inputArtifactsHash = normalizedLockfile.inputArtifactsHash,
+                    inputArtifactsHash = lockfileWithBaselineFacts.inputArtifactsHash,
                     canonicalRepositoryInputs = canonicalRepositoryInputs
                 ),
-                resolvedArtifactsHash = RulesJvmExternalLockfileHasher.resolvedArtifactsHash(normalizedLockfile)
+                resolvedArtifactsHash = RulesJvmExternalLockfileHasher.resolvedArtifactsHash(
+                    lockfileWithBaselineFacts
+                )
             )
         )
     }

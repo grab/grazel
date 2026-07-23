@@ -84,24 +84,6 @@ class RulesJvmExternalLockfileTransformsTest {
     }
 
     @Test
-    fun `pom normalizer skips new pom packaging roots only`() {
-        val lockfile = RulesJvmExternalLockfileParser.parse(lockfile(artifact = "com.example:platform:pom"))
-
-        val normalized = PomPackagingSkipNormalizer.normalize(
-            lockfile = lockfile,
-            baselineArtifactNames = emptySet()
-        )
-        val baselineOwned = PomPackagingSkipNormalizer.normalize(
-            lockfile = lockfile,
-            baselineArtifactNames = setOf("com.example:platform:pom")
-        )
-
-        assertThat(normalized.skipped!!.map { skipped -> skipped.jsonPrimitive.content })
-            .containsExactly("com.example:platform:pom")
-        assertThat(baselineOwned.skipped).isNull()
-    }
-
-    @Test
     fun `hasher recomputes rje input and resolved hashes from parsed lockfile sections`() {
         val lockfile = RulesJvmExternalLockfileParser.parse(lockfile())
 

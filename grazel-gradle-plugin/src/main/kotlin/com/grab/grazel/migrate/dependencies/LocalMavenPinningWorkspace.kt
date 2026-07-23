@@ -80,8 +80,7 @@ internal class LocalMavenPinningWorkspace(
                         canonicalRepositoryInputs = repositoryInputs.repositoriesByName[repoName]
                             ?.map { input -> input.repositoryInputSpec }
                             ?: error("Missing maven_install repository inputs for $repoName"),
-                        baselineLockfileContents = baselineLockfilesByRepoName[repoName],
-                        requireBaselineForPomPackagingArtifacts = true
+                        baselineLockfileContents = baselineLockfilesByRepoName[repoName]
                     )
                 )
             }
