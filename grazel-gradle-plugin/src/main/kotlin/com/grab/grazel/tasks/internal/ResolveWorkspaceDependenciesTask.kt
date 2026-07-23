@@ -62,10 +62,8 @@ internal abstract class ResolveWorkspaceDependenciesTask : DefaultTask() {
      * in [com.grab.grazel.tasks.internal.WorkspaceDependencyInputsRegistrar.register] that adds to
      * both properties per `rootInput` in the same iteration. Do not wire this property from any
      * other configure block — that alignment invariant is the whole point of keeping the two
-     * lists this narrowly scoped. A `KeyedRootComponent(key, component)` wrapper carrying both in
-     * one `@Input` list was tried first and rejected: Gradle failed to fingerprint it with "cannot
-     * be serialized" even after making the wrapper and [RootKey] both `java.io.Serializable` — see
-     * [RootKey]'s KDoc for the full account.
+     * lists this narrowly scoped. The two lists cannot be folded into one wrapper-element `@Input`
+     * list — see [RootKey]'s KDoc for the fingerprinting constraint that forces the split.
      */
     @get:Input
     abstract val workspaceDependencyRootKeys: ListProperty<RootKey>
@@ -139,16 +137,16 @@ internal abstract class ResolveWorkspaceDependenciesTask : DefaultTask() {
 
 /**
  * Joins each resolved [ResolvedComponentResult] to the [AggregatedDependencyRootMetadata] planned
- * for the same [RootKey], replacing a positional `zip` that silently misattributed roots if the
- * component and metadata lists ever drifted out of lockstep.
+ * for the same [RootKey], so metadata attribution never depends on [rootComponents] and
+ * [rootMetadata] (populated by separate tasks, serialized through JSON) agreeing on list
+ * position — positional pairing across that task boundary misattributes every root downstream
+ * if the lists ever drift out of lockstep.
  *
- * [rootKeys] and [rootComponents] are expected to already be index-aligned — that alignment is
- * established by construction in the single registrar loop that wires both properties (see
+ * [rootKeys] and [rootComponents] must already be index-aligned — that alignment is established
+ * by construction in the single registrar loop that wires both properties (see
  * [com.grab.grazel.tasks.internal.WorkspaceDependencyInputsRegistrar.register]), not re-derived
- * here; this function only asserts the sizes agree before trusting the zip. The cross-task
- * positional contract between [rootComponents] and [rootMetadata] (populated by separate tasks,
- * serialized through JSON) is what this keyed join actually replaces. Order follows [rootKeys] /
- * [rootComponents] — i.e. today's wiring order — which is a resolution-order requirement of
+ * here; this function only asserts the sizes agree before trusting the zip. Output order follows
+ * [rootKeys] / [rootComponents] — a resolution-order requirement of
  * [AggregatedDependencyResolver.resolve].
  */
 internal fun pairRootsByKey(

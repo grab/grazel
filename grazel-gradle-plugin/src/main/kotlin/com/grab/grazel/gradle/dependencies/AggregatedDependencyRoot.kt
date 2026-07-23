@@ -40,14 +40,12 @@ internal data class AggregatedDependencyRoot(
  * with "cannot be serialized" even though every field is itself serializable.
  *
  * Travels as a parallel `@Input` list (`ResolveWorkspaceDependenciesTask.workspaceDependencyRootKeys`)
- * index-aligned with `workspaceDependencyRootComponents`, NOT as a wrapper class around
- * [org.gradle.api.artifacts.result.ResolvedComponentResult]. A `KeyedRootComponent(key, component)`
- * wrapper was tried first and rejected: Gradle failed to fingerprint it with "cannot be
- * serialized" even after making both the wrapper and [RootKey] implement `JavaSerializable` —
- * confirming the bare `List<ResolvedComponentResult>` `@Input` works via Gradle's own dedicated
- * handling for that exact declared property type, not generic Java-serialization fallback, and
- * that handling does not apply once the component is nested inside any wrapper, serializable or
- * not.
+ * index-aligned with `workspaceDependencyRootComponents`. Do NOT fold the key and its
+ * [org.gradle.api.artifacts.result.ResolvedComponentResult] into one wrapper `@Input` element:
+ * Gradle fingerprints a bare `List<ResolvedComponentResult>` through dedicated handling for that
+ * exact declared property type — not a generic Java-serialization fallback — and that handling
+ * does not apply to a component nested inside any wrapper, serializable or not, which fails
+ * fingerprinting with "cannot be serialized".
  */
 internal data class RootKey(
     val projectPath: String,

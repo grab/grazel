@@ -24,13 +24,12 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Truth-table proof for critic-04 #2 / synthesis backlog item 6: does
- * `TestBucketPlanner.withoutTestDependenciesCoveredBy`'s three-pass filter
- * (`Coverage.subtract` on [CoveredDependency.canCover] -> restore direct misses ->
- * final [CoveredDependency.canCoverTest] re-filter) collapse to a single
- * `testDependencies.filterNot { canCoverTest(...) }` pass?
+ * Truth-table proof that `TestBucketPlanner.withoutTestDependenciesCoveredBy`'s three-pass
+ * filter (`Coverage.subtract` on [CoveredDependency.canCover] -> restore direct misses ->
+ * final [CoveredDependency.canCoverTest] re-filter) does NOT collapse to a single
+ * `testDependencies.filterNot { canCoverTest(...) }` pass.
  *
- * VERDICT: REFUTED. See [nonDirect_genericallyCovered_dropsInThreePass_singlePassWouldKeep] -
+ * See [nonDirect_genericallyCovered_dropsInThreePass_singlePassWouldKeep] -
  * a non-direct (transitive) test dependency whose owner identity is already resolved by a
  * covering bucket ([CoveredDependency.canCover] == true) is *unconditionally* dropped by pass 1
  * (`Coverage.subtract`) and never reconsidered (the restore pass only reconsiders `direct`

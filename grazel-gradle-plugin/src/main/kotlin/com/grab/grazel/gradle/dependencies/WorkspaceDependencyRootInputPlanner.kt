@@ -74,8 +74,8 @@ internal fun WorkspaceDependencyRootInput.rootKey(): RootKey = RootKey(
 )
 
 /**
- * Groups [keys] by value and returns only those occurring more than once, keyed to their count.
- * Shared by [WorkspaceDependencyRootInputPlanner.plan]'s uniqueness check and its test.
+ * Extracted so [WorkspaceDependencyRootInputPlanner.plan]'s uniqueness check and its test share
+ * one implementation — keyed pairing downstream is only safe while this reports nothing.
  */
 internal fun duplicateRootKeys(keys: List<RootKey>): Map<RootKey, Int> =
     keys.groupingBy { key -> key }.eachCount().filterValues { count -> count > 1 }
