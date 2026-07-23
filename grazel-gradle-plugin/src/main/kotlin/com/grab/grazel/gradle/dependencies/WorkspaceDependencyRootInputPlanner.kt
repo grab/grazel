@@ -63,6 +63,23 @@ internal data class WorkspaceDependencyRootInput(
     }
 }
 
+/**
+ * Key-only derivation — must stay field-identical to `toMetadata().rootKey()`; see the planner
+ * uniqueness check.
+ */
+internal fun WorkspaceDependencyRootInput.rootKey(): RootKey = RootKey(
+    projectPath = project.path,
+    configurationName = configuration.name,
+    kind = kind
+)
+
+/**
+ * Groups [keys] by value and returns only those occurring more than once, keyed to their count.
+ * Shared by [WorkspaceDependencyRootInputPlanner.plan]'s uniqueness check and its test.
+ */
+internal fun duplicateRootKeys(keys: List<RootKey>): Map<RootKey, Int> =
+    keys.groupingBy { key -> key }.eachCount().filterValues { count -> count > 1 }
+
 internal object WorkspaceDependencyRootInputPlanner {
     /**
      * Produces the complete set of [WorkspaceDependencyRootInput]s that [AggregatedDependencyResolver]
@@ -96,11 +113,7 @@ internal object WorkspaceDependencyRootInputPlanner {
         }
 
         val plannedRootInputs = rootInputs.filter { rootInput -> rootInput.configuration.isCanBeResolved }
-        val duplicateKeys = plannedRootInputs
-            .map { rootInput -> rootInput.toMetadata().rootKey() }
-            .groupingBy { key -> key }
-            .eachCount()
-            .filterValues { count -> count > 1 }
+        val duplicateKeys = duplicateRootKeys(plannedRootInputs.map { rootInput -> rootInput.rootKey() })
         check(duplicateKeys.isEmpty()) {
             "Workspace dependency root keys are not unique: $duplicateKeys — " +
                 "extend RootKey (e.g. with bucketName) before keyed pairing can be trusted"

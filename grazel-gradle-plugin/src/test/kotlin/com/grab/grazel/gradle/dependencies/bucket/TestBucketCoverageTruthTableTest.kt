@@ -53,14 +53,10 @@ class TestBucketCoverageTruthTableTest {
         excludeRules: Set<com.grab.grazel.gradle.dependencies.model.ExcludeRule> = emptySet(),
         repository: String = "maven",
         requiresJetifier: Boolean = false
-    ): ResolvedDependency = ResolvedDependency(
-        id = "$shortId:$version",
-        version = version,
-        shortId = shortId,
+    ): ResolvedDependency = ResolvedDependency.fromId("$shortId:$version", repository).copy(
         direct = direct,
         dependencies = dependencies,
         excludeRules = excludeRules,
-        repository = repository,
         requiresJetifier = requiresJetifier
     )
 

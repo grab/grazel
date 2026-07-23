@@ -118,7 +118,7 @@ internal object WorkspaceDependencyInputsRegistrar {
                 // relied upon across any other configure block; do not wire either property
                 // anywhere else.
                 rootInputs.forEach { rootInput ->
-                    workspaceDependencyRootKeys.add(rootInput.toMetadata().rootKey())
+                    workspaceDependencyRootKeys.add(rootInput.rootKey())
                     workspaceDependencyRootComponents.add(
                         rootInput.configuration.incoming.resolutionResult.rootComponent
                     )
