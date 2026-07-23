@@ -110,8 +110,10 @@ private val COMMENTED_PINNED_LOAD_REGEX = Regex(
     """(?m)^#(load\("@[^"]+//:defs\.bzl", [A-Za-z0-9_]+_pinned_maven_install = "pinned_maven_install"\))"""
 )
 private val COMMENTED_PINNED_CALL_REGEX = Regex("""(?m)^#([A-Za-z0-9_]+_pinned_maven_install\(\))""")
+// These two regexes must match the same set of attribute lines: the file-name capture below is
+// only used to find lockfiles that the mutation regex above would also toggle.
 private val ACTIVE_MAVEN_INSTALL_JSON_REGEX = Regex("""(?m)^(\s*)maven_install_json """)
-private val ACTIVE_MAVEN_INSTALL_JSON_FILE_REGEX = Regex("""(?m)^\s*maven_install_json = "//:([^"]+)",""")
+private val ACTIVE_MAVEN_INSTALL_JSON_FILE_REGEX = Regex("""(?m)^\s*maven_install_json = "//:([^"]+)",?""")
 private val ACTIVE_PINNED_LOAD_REGEX = Regex(
     """(?m)^(?!#)(load\("@[^"]+//:defs\.bzl", [A-Za-z0-9_]+_pinned_maven_install = "pinned_maven_install"\))"""
 )
@@ -439,12 +441,12 @@ constructor(
         logger.quiet(
             ("Local Maven resolution: $servedLocally served locally " +
                 "(artifacts=${stats.artifactHits}, poms=${stats.gradlePomHits}, " +
-                "checksums=${stats.checksumHits}), " +
-                "${stats.originFallbacks} fell through to origin " +
-                "(known-component=${stats.knownComponentFallthroughs}, " +
-                "metadata-only=${stats.metadataOnlyArtifactFallbacks}), " +
-                "${stats.originMisses} origin misses (404 probes), " +
+                "checksums=${stats.checksumHits}), non-local by category: " +
+                "known-component=${stats.knownComponentFallthroughs}, " +
+                "metadata-only=${stats.metadataOnlyArtifactFallbacks}; " +
+                "${stats.originFallbacks} origin fetches, " +
                 "${stats.writeThroughCacheHits} cache hits, " +
+                "${stats.originMisses} origin misses (404 probes), " +
                 "${stats.requestFailures} request failures, " +
                 "${stats.bytesServed} bytes served, in " +
                 "${TimeUnit.NANOSECONDS.toMillis(elapsedNanos)}ms").ansiGreen

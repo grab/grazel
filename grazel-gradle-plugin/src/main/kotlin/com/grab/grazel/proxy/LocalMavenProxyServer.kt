@@ -82,6 +82,11 @@ internal class LocalMavenProxyServer(
      * which [servePom] relies on to gate which GAVs may be POM-served from Gradle at all. Must
      * run under [lock] since requests may be served concurrently against the previous snapshot
      * until this completes.
+     *
+     * Also clears [knownOriginMisses] and [warnedFallthroughGavs]: this server instance is
+     * reused across pin runs within a daemon, and a 404 memoized in one run must not poison the
+     * same path forever, since a proxy 404 is terminal to coursier. Each call to [configure]
+     * marks the start of a fresh pin run.
      */
     fun configure(
         artifactIndex: Map<String, File>,
@@ -98,6 +103,8 @@ internal class LocalMavenProxyServer(
                 .mapNotNull(::concreteGavFromMavenPathOrNull)
                 .toSet()
             this.pomFileResolver = pomFileResolver
+            knownOriginMisses.clear()
+            warnedFallthroughGavs.clear()
         }
     }
 
@@ -241,13 +248,19 @@ internal class LocalMavenProxyServer(
      * [PomFileResolution.Unavailable] or missing/nonexistent [PomFileResolution.Found] file for a
      * fully [knownComponentGavs] member, and any other unresolved case - falls through to
      * [serveFromCacheOrOrigin], counted as a known-component fallthrough where applicable.
+     *
+     * The GAV is derived with [gavFromMavenPathOrNull] rather than the throwing variant: a
+     * malformed `.pom` path (fewer than 4 path segments) must fall through to
+     * [serveFromCacheOrOrigin] like any other unrecognized request instead of ever reaching a
+     * 500, so no branch in this dispatch can fail a build.
      */
     private suspend fun servePom(
         repoIndex: Int,
         path: String,
         countContentHit: Boolean,
     ): ServedResponse {
-        val gav = gavFromMavenPath(path)
+        val gav = gavFromMavenPathOrNull(path)
+            ?: return serveFromCacheOrOrigin(repoIndex, path, countContentHit)
         val canServeGradleBackedPom = gav in indexedArtifactGavs
         val pomResolution = if (canServeGradleBackedPom) {
             pomFileResolver.resolvePom(gav)
@@ -280,18 +293,21 @@ internal class LocalMavenProxyServer(
 
     /**
      * Double-checked-locking around a per-`(repoIndex, path)` [Mutex] so concurrent requests
-     * for the same missing path coalesce into a single origin fetch: the cache is checked
-     * before acquiring the mutex (fast path), again immediately after acquiring it (in case a
-     * racing request already wrote through while we waited), and a third time after the fetch
-     * completes as a final belt-and-braces check before writing. The mutex is created lazily
-     * per key and removed again in `finally` once released, so [originMissMutexes] only ever
-     * holds entries for in-flight fetches rather than growing unbounded.
+     * for the same missing path coalesce into a single origin fetch: [knownOriginMisses] and the
+     * cache are both checked before acquiring the mutex (fast path), then re-checked again
+     * immediately after acquiring it (in case a racing request already resolved the path while
+     * we waited), and the cache is checked a third time after the fetch completes as a final
+     * belt-and-braces check before writing. The mutex is created lazily per key and removed
+     * again in `finally` once released, so [originMissMutexes] only ever holds entries for
+     * in-flight fetches rather than growing unbounded.
      *
-     * A path origin has answered with a bare 404 for is remembered forever in
-     * [knownOriginMisses] (keyed the same way as [originMissMutexes]) so repeat coursier probes
-     * for paths that deterministically don't exist - sources/javadoc/classifier variants - short
-     * circuit before touching the mutex or origin again. Only an exact 404 is memoized this way;
-     * other non-OK statuses (5xx, auth blips) must stay retryable and are never added.
+     * A path origin has answered with a bare 404 for is remembered in [knownOriginMisses]
+     * (keyed the same way as [originMissMutexes]) so repeat coursier probes for paths that
+     * deterministically don't exist - sources/javadoc/classifier variants - short circuit before
+     * touching the mutex or origin again. Only an exact 404 is memoized this way; other non-OK
+     * statuses (5xx, auth blips) must stay retryable and are never added. The memo is scoped to
+     * a single pin run: [configure] clears it, since this server instance is reused across
+     * builds and a transient 404 must not stay terminal forever.
      */
     private suspend fun serveFromCacheOrOrigin(
         repoIndex: Int,
@@ -317,6 +333,10 @@ internal class LocalMavenProxyServer(
         val originMissMutex = originMissMutexes.computeIfAbsent(originMissKey) { Mutex() }
         return try {
             originMissMutex.withLock {
+                if (originMissKey in knownOriginMisses) {
+                    counters.originMisses.incrementAndGet()
+                    return ServedResponse.Bytes(HttpStatusCode.NotFound, ByteArray(0))
+                }
                 if (cachedFile.exists()) {
                     return fileResponse(
                         status = HttpStatusCode.OK,
@@ -475,10 +495,6 @@ private fun isChecksumPath(path: String): Boolean =
 
 private fun checksumBasePath(checksumPath: String): String =
     checksumPath.substringBeforeLast(".")
-
-private fun gavFromMavenPath(path: String): String {
-    return gavFromMavenPathOrNull(path) ?: error("Cannot derive GAV from Maven path $path")
-}
 
 private fun gavFromMavenPathOrNull(path: String): String? {
     return MavenPath.parse(path)?.coordinates?.gav

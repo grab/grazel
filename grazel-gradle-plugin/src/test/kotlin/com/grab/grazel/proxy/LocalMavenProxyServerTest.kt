@@ -620,6 +620,30 @@ class LocalMavenProxyServerTest {
                 assertEquals(404, secondResponse.code)
                 assertEquals(1, origin.requests.get())
                 assertEquals(2, proxy.stats().originMisses)
+
+                proxy.configure(
+                    artifactIndex = emptyMap(),
+                    knownComponentGavs = emptySet(),
+                    metadataOnlyGavs = emptySet(),
+                    pomFileResolver = { PomFileResolution.Unknown }
+                )
+                val responseAfterReconfigure = get("${proxy.baseUrl()}/r/0/$path")
+
+                assertEquals(404, responseAfterReconfigure.code)
+                assertEquals(2, origin.requests.get())
+            }
+        }
+    }
+
+    @Test
+    fun `malformed pom paths fall through to origin instead of 500ing`() {
+        FixtureOriginServer(responses = emptyMap()).use { origin ->
+            newProxy(repositories = listOf(proxyOrigin(url = origin.baseUrl))).use { proxy ->
+                val response = get("${proxy.baseUrl()}/r/0/foo.pom")
+
+                assertEquals(404, response.code)
+                assertEquals(1, origin.requests.get())
+                assertEquals(0, proxy.stats().requestFailures)
             }
         }
     }
