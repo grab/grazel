@@ -80,6 +80,10 @@ constructor(
     @get:PathSensitive(PathSensitivity.RELATIVE)
     val mavenInstallRepositoryInputs: RegularFileProperty = gradleServices.objectFactory.fileProperty()
 
+    @get:InputFile
+    @get:PathSensitive(PathSensitivity.RELATIVE)
+    val buildifierScript: RegularFileProperty = gradleServices.objectFactory.fileProperty()
+
     @get:Input
     val localMavenResolutionEnabled: Property<Boolean> = gradleServices.objectFactory
         .property(Boolean::class.java)
@@ -107,6 +111,7 @@ constructor(
             gradleServices = gradleServices,
             logger = logger,
             localMavenResolutionContextFactory = localMavenResolutionContextFactory(),
+            buildifierScript = buildifierScript.get().asFile,
         )
     }
 

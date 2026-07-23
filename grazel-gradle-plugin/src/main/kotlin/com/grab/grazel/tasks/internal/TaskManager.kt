@@ -175,6 +175,8 @@ constructor(
             mavenInstallRepositoryInputs.set(
                 rootGenerateBazelScriptsTasks.flatMap { it.mavenInstallRepositoryInputs }
             )
+            buildifierScript.set(buildifierScriptProvider)
+            dependsOn(generateBuildifierScriptTask)
         }
 
         val migrateTask = migrateToBazelTask().apply {

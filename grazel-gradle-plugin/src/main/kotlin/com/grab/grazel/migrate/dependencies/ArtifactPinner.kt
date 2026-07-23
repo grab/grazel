@@ -24,6 +24,7 @@ import com.grab.grazel.gradle.dependencies.model.ResolvedDependency
 import com.grab.grazel.gradle.dependencies.model.WorkspacePlan
 import com.grab.grazel.gradle.dependencies.model.WorkspaceRenderPlan
 import com.grab.grazel.maven.LocalMavenResolutionStats
+import com.grab.grazel.tasks.internal.formatWithBuildifier
 import com.grab.grazel.util.NoOpProgressLogger
 import com.grab.grazel.util.WORKSPACE
 import com.grab.grazel.util.ansiCyan
@@ -55,6 +56,7 @@ internal interface ArtifactPinner {
         gradleServices: GradleServices,
         logger: Logger,
         localMavenResolutionContextFactory: LocalMavenResolutionPinContextFactory? = null,
+        buildifierScript: File? = null,
     ): Boolean
 
     /**
@@ -133,6 +135,31 @@ constructor(
                 .replace(ACTIVE_MAVEN_INSTALL_JSON_REGEX, "$1#$MAVEN_INSTALL_JSON_MARKER")
                 .replace(ACTIVE_PINNED_LOAD_REGEX, "#$1")
                 .replace(ACTIVE_PINNED_CALL_REGEX, "#$1")
+        )
+    }
+
+    /**
+     * Runs buildifier over [workspaceFile] after [pin] flips its lines active, since [pin] only
+     * strips leading `#` characters and leaves whatever attribute order/spacing buildifier chose
+     * for the commented-out form untouched. Without this, a WORKSPACE pinned via the textual
+     * toggle can differ from one rendered directly in its active form and reformatted in the same
+     * pass (e.g. a fresh render with the lockfile already present), because buildifier only
+     * canonicalizes live statements, not text hidden behind a comment marker. No-op when
+     * [buildifierScript] is unavailable.
+     */
+    private fun reformatWithBuildifier(
+        workspaceFile: File,
+        buildifierScript: File?,
+        gradleServices: GradleServices,
+    ) {
+        buildifierScript ?: return
+        formatWithBuildifier(
+            buildifierScript = buildifierScript,
+            source = workspaceFile,
+            destination = workspaceFile,
+            execOperations = gradleServices.execOperations,
+            fileSystemOperations = gradleServices.fileSystemOperations,
+            projectLayout = gradleServices.layout,
         )
     }
 
@@ -285,6 +312,7 @@ constructor(
         gradleServices: GradleServices,
         logger: Logger,
         localMavenResolutionContextFactory: LocalMavenResolutionPinContextFactory?,
+        buildifierScript: File?,
     ): Boolean {
         val progressLoggerFactory = gradleServices.progressLoggerFactory
 
@@ -360,6 +388,7 @@ constructor(
                     ?.snapshotActiveLockfiles(allRepos.keys)
                     .orEmpty()
                 pin(workspaceFile)
+                reformatWithBuildifier(workspaceFile, buildifierScript, gradleServices)
                 // RJE pin scripts embed repository URLs captured while WORKSPACE is temporarily proxied.
                 // WORKSPACE is restored before execution so generated source stays canonical.
                 val workQueue = gradleServices.workerExecutor.noIsolation()
