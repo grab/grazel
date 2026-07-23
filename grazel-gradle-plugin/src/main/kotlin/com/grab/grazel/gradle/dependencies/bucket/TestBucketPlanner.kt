@@ -462,7 +462,10 @@ internal class TestBucketPlanner(
  * reconsiders `direct` misses, so a non-direct drop from pass 1 is never revisited. A single-pass
  * collapse would therefore silently keep every such transitive dependency in the test bucket that
  * the three-pass form correctly prunes. See `TestBucketCoverageTruthTableTest` (quadrant:
- * non-direct candidate, generically covered) for the pinned counterexample.
+ * non-direct candidate, generically covered) for the predicate-level pinned counterexample, and
+ * `BucketOwnershipPlannerTest#test bucket subtraction drops covered transitive deps - pins
+ * three-pass semantics against single-pass collapse` for the same counterexample driven end-to-end
+ * through this function's real orchestration entry point.
  */
 private fun withoutTestDependenciesCoveredBy(
     testDependencies: Map<String, ResolvedDependency>,

@@ -17,6 +17,7 @@
 package com.grab.grazel.gradle.dependencies.bucket
 
 import com.grab.grazel.gradle.dependencies.model.ResolvedDependency
+import com.grab.grazel.gradle.dependencies.model.hasSameResolvedArtifactIdentityAs
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -147,7 +148,7 @@ class TestBucketCoverageTruthTableTest {
         )
         assertFalse(
             "not an exact artifact identity match (dependencies closure differs)",
-            coveringWithClosure.hasSameResolvedArtifactIdentityAsForTest(candidateDifferentClosure)
+            coveringWithClosure.hasSameResolvedArtifactIdentityAs(candidateDifferentClosure)
         )
         assertFalse(
             "not a superset-closure match either (covering closure does not contain candidate's child)",
@@ -157,19 +158,11 @@ class TestBucketCoverageTruthTableTest {
         assertFalse(coveredWithClosure.canCoverTest(candidateDifferentClosure, declaredTestDependency = null))
     }
 
-    // Exposed test-only mirrors of the private extension functions in Coverage.kt, reproducing
-    // their exact logic, purely so this test can assert on the same case split `Coverage.subtract`
-    // uses (those two helpers are `private` to Coverage.kt and not otherwise visible here).
-    private fun ResolvedDependency.hasSameResolvedArtifactIdentityAsForTest(other: ResolvedDependency): Boolean {
-        return shortId == other.shortId &&
-            version == other.version &&
-            dependencies == other.dependencies &&
-            excludeRules == other.excludeRules &&
-            repository == other.repository &&
-            requiresJetifier == other.requiresJetifier &&
-            jetifierSource == other.jetifierSource
-    }
-
+    // Exposed test-only mirror of the private `rootsSupersetClosureOf` extension in Coverage.kt,
+    // reproducing its exact logic, purely so this test can assert on the same case split
+    // `Coverage.subtract` uses (that helper is `private` to Coverage.kt and not otherwise visible
+    // here). `hasSameResolvedArtifactIdentityAs` has no local mirror - it is `internal` in
+    // ResolveDependenciesResult.kt and imported directly above.
     private fun CoveredDependency.rootsSupersetClosureOfForTest(dependency: ResolvedDependency): Boolean {
         return this.dependency.direct &&
             dependency.direct &&

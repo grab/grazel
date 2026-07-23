@@ -159,6 +159,65 @@ class BucketOwnershipPlannerTest {
         )
     }
 
+    /**
+     * End-to-end pin for the review finding on `TestBucketPlanner.withoutTestDependenciesCoveredBy`
+     * (see its KDoc): drives the real [BucketOwnershipPlanner.plan] -> [TestBucketPlanner.plan]
+     * entry point (not just the predicate-level truth table in
+     * [TestBucketCoverageTruthTableTest]) with a non-direct (transitive) test dependency whose
+     * owner identity is also resolved directly by the default main bucket. Three-pass semantics
+     * drop it via `Coverage.subtract`'s `canCover` and never restore it (the restore pass only
+     * reconsiders `direct` misses); a single-pass `filterNot { canCoverTest }` collapse would keep
+     * it instead, since `canCoverTest` is structurally false for any non-direct candidate. This
+     * test fails under such a collapse.
+     */
+    @Test
+    fun `test bucket subtraction drops covered transitive deps - pins three-pass semantics against single-pass collapse`() {
+        val sharedMainDependency = dependency("com.example:shared:1.0")
+        val coveredTransitiveTestDependency = sharedMainDependency.copy(
+            direct = false,
+            dependencies = setOf("com.example:extra-child:1.0")
+        )
+        val unitTestOnlyDependency = dependency("com.example:unit-test-only:1.0")
+
+        val results: List<ResolveDependenciesResult> = planner(
+            metadata = metadata(
+                ":app" to listOf(
+                    declaredVariant(DEFAULT_VARIANT, AndroidBuild, leaf = false),
+                    declaredVariant("debug", AndroidBuild, leaf = true, buildType = "debug"),
+                    declaredVariant(TEST_VARIANT, TestVariantType, leaf = false),
+                    declaredVariant(
+                        "debugUnitTest",
+                        TestVariantType,
+                        leaf = true,
+                        extendsFrom = setOf(TEST_VARIANT, "debug")
+                    )
+                )
+            )
+        ).plan(
+            input(
+                hierarchyBucketClosures = mapOf(bucket(":app", DEFAULT_VARIANT) to deps(sharedMainDependency)),
+                leafUnitTestClosures = mapOf(
+                    bucket(":app", "debug") to deps(coveredTransitiveTestDependency, unitTestOnlyDependency)
+                )
+            )
+        )
+
+        assertEquals(
+            compileSummary(results),
+            listOf("com.example:unit-test-only:1.0"),
+            compileIdsFor(results, "debugUnitTest")
+        )
+        assertEquals(
+            "the covered transitive dependency must not survive under any test bucket",
+            emptyList<String>(),
+            results
+                .filter { result -> result.variantName == TEST_VARIANT || result.variantName == "debugUnitTest" }
+                .flatMap { result -> result.dependencies.getValue(COMPILE.name) }
+                .filter { dependency -> dependency.shortId == "com.example:shared" }
+                .map(ResolvedDependency::id)
+        )
+    }
+
     @Test
     fun `unit test base bucket drops dependency inherited from each selected main leaf`() {
         val sharedMainDependency = dependency("com.example:shared-main:1.0")
