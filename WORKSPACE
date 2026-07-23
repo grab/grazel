@@ -4,15 +4,15 @@ load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
 http_archive(
     name = "io_bazel_rules_kotlin",
-    sha256 = "3b772976fec7bdcda1d84b9d39b176589424c047eb2175bed09aac630e50af43",
-    url = "https://github.com/bazelbuild/rules_kotlin/releases/download/v1.9.6/rules_kotlin-v1.9.6.tar.gz",
+    sha256 = "afa951024e022f7ec565295fcf4cb74738ef7b2ff968820f1465488c06ecf0a0",
+    url = "https://github.com/bazelbuild/rules_kotlin/releases/download/v2.1.10/rules_kotlin-v2.1.10.tar.gz",
 )
 
 http_archive(
     name = "rules_java",
-    sha256 = "f8ae9ed3887df02f40de9f4f7ac3873e6dd7a471f9cddf63952538b94b59aeb3",
+    sha256 = "440edfa8098d00b166a5a73d215f3214a6506db01e1ec45afee356b6679c5593",
     urls = [
-        "https://github.com/bazelbuild/rules_java/releases/download/7.6.1/rules_java-7.6.1.tar.gz",
+        "https://github.com/bazelbuild/rules_java/releases/download/9.5.0/rules_java-9.5.0.tar.gz",
     ],
 )
 
@@ -20,7 +20,7 @@ load("@bazel_tools//tools/build_defs/repo:git.bzl", "git_repository")
 
 git_repository(
     name = "grab_bazel_common",
-    commit = "0962a9aaeee64ed17eb65b577060693c3b3dc244",
+    commit = "b702597b3fe4b1acf2f831aa80582f3ff55b41b6",
     remote = "https://github.com/grab/grab-bazel-common.git",
 )
 

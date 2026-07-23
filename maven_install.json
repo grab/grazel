@@ -19,7 +19,6 @@
     "androidx.compose.animation:animation-android": 926617559,
     "androidx.compose.animation:animation-core": 1582345983,
     "androidx.compose.animation:animation-core-android": 170568221,
-    "androidx.compose.compiler:compiler": 1895859257,
     "androidx.compose.foundation:foundation": 1100099729,
     "androidx.compose.foundation:foundation-android": 1184726579,
     "androidx.compose.foundation:foundation-layout": -894067668,
@@ -116,14 +115,14 @@
     "com.squareup.okio:okio": 795722926,
     "javax.inject:javax.inject": -297932879,
     "junit:junit": -744267592,
-    "org.jetbrains.kotlin:kotlin-parcelize-compiler": -1149945716,
-    "org.jetbrains.kotlin:kotlin-parcelize-runtime": -839194913,
-    "org.jetbrains.kotlin:kotlin-reflect": 643321830,
+    "org.jetbrains.kotlin:kotlin-parcelize-compiler": 246684463,
+    "org.jetbrains.kotlin:kotlin-parcelize-runtime": 557435266,
+    "org.jetbrains.kotlin:kotlin-reflect": 2039952009,
     "org.jetbrains.kotlin:kotlin-stdlib": -1472865074,
     "org.jetbrains.kotlin:kotlin-stdlib-common": -1299075776,
     "org.jetbrains.kotlin:kotlin-stdlib-jdk7": -686042634,
     "org.jetbrains.kotlin:kotlin-stdlib-jdk8": 447147959,
-    "org.jetbrains.kotlin:kotlin-test": -695919331,
+    "org.jetbrains.kotlin:kotlin-test": 700710848,
     "org.jetbrains.kotlinx:kotlinx-coroutines-android": -1709166003,
     "org.jetbrains.kotlinx:kotlinx-coroutines-core": -1648913921,
     "org.jetbrains.kotlinx:kotlinx-coroutines-core-jvm": -1487700397,
@@ -156,7 +155,6 @@
     "androidx.compose.animation:animation-core-android:aar": 1432160166,
     "androidx.compose.animation:animation-core:aar": -1946851484,
     "androidx.compose.animation:animation:aar": 900661353,
-    "androidx.compose.compiler:compiler": -1636531678,
     "androidx.compose.foundation:foundation-android:aar": -1233757388,
     "androidx.compose.foundation:foundation-layout-android:aar": -898826862,
     "androidx.compose.foundation:foundation-layout:aar": -2114654732,
@@ -243,21 +241,21 @@
     "com.android.tools.analytics-library:shared": -1257901834,
     "com.android.tools.build:aapt2-proto": 1551601574,
     "com.android.tools.build:builder-model": -53330676,
-    "com.android.tools.build:manifest-merger": 1346930243,
+    "com.android.tools.build:manifest-merger": -530002259,
     "com.android.tools.ddms:ddmlib": 455657443,
     "com.android.tools.external.com-intellij:intellij-core": 906851768,
     "com.android.tools.external.com-intellij:kotlin-compiler": -1989675885,
     "com.android.tools.external.org-jetbrains:uast": 2060500718,
     "com.android.tools.layoutlib:layoutlib-api": 524870135,
-    "com.android.tools.lint:lint-api": -1679359305,
-    "com.android.tools.lint:lint-checks": -428848396,
-    "com.android.tools.lint:lint-model": 837057078,
+    "com.android.tools.lint:lint-api": 685665873,
+    "com.android.tools.lint:lint-checks": -1703219941,
+    "com.android.tools.lint:lint-model": 1714238988,
     "com.android.tools:annotations": 1215316819,
     "com.android.tools:common": 1706403814,
     "com.android.tools:dvlib": -1356378829,
     "com.android.tools:play-sdk-proto": -693613490,
     "com.android.tools:repository": -141001367,
-    "com.android.tools:sdk-common": -143290938,
+    "com.android.tools:sdk-common": 1158886126,
     "com.android.tools:sdklib": -1291702060,
     "com.google.ar.sceneform.ux:sceneform-ux:aar": 1577781119,
     "com.google.ar.sceneform:core:aar": -1286029131,
@@ -268,7 +266,7 @@
     "com.google.code.findbugs:jsr305": 467791732,
     "com.google.code.gson:gson": -2096443181,
     "com.google.dagger:dagger": -1649738759,
-    "com.google.dagger:dagger-compiler": 1056840728,
+    "com.google.dagger:dagger-compiler": -301122438,
     "com.google.dagger:dagger-producers": -498673285,
     "com.google.dagger:dagger-spi": 600624296,
     "com.google.devtools.ksp:symbol-processing-api": 1833193672,
@@ -285,7 +283,7 @@
     "com.squareup.moshi:moshi": 1173705304,
     "com.squareup.okio:okio": -1491975762,
     "com.squareup:javapoet": 1859306913,
-    "com.squareup:kotlinpoet": -807927989,
+    "com.squareup:kotlinpoet": 998898889,
     "com.sun.activation:javax.activation": -1320276497,
     "com.sun.istack:istack-commons-runtime": -1293397361,
     "com.sun.xml.fastinfoset:FastInfoset": -1505887139,
@@ -313,18 +311,18 @@
     "org.glassfish.jaxb:txw2": 1947483661,
     "org.hamcrest:hamcrest-core": -1455441748,
     "org.jetbrains.intellij.deps:trove4j": 390167843,
-    "org.jetbrains.kotlin:kotlin-android-extensions-runtime": 1336628595,
-    "org.jetbrains.kotlin:kotlin-compiler-embeddable": -227049188,
-    "org.jetbrains.kotlin:kotlin-daemon-embeddable": -1212306966,
-    "org.jetbrains.kotlin:kotlin-parcelize-compiler": -1921955735,
-    "org.jetbrains.kotlin:kotlin-parcelize-runtime": 1783042920,
-    "org.jetbrains.kotlin:kotlin-reflect": -2083043974,
-    "org.jetbrains.kotlin:kotlin-script-runtime": 133310452,
+    "org.jetbrains.kotlin:kotlin-android-extensions-runtime": -1632939011,
+    "org.jetbrains.kotlin:kotlin-compiler-embeddable": 986345133,
+    "org.jetbrains.kotlin:kotlin-daemon-embeddable": -1962095711,
+    "org.jetbrains.kotlin:kotlin-parcelize-compiler": 1271098063,
+    "org.jetbrains.kotlin:kotlin-parcelize-runtime": -445976085,
+    "org.jetbrains.kotlin:kotlin-reflect": 1725329732,
+    "org.jetbrains.kotlin:kotlin-script-runtime": 81751707,
     "org.jetbrains.kotlin:kotlin-stdlib": 1115067191,
     "org.jetbrains.kotlin:kotlin-stdlib-common": 1111584854,
     "org.jetbrains.kotlin:kotlin-stdlib-jdk7": 1149972212,
     "org.jetbrains.kotlin:kotlin-stdlib-jdk8": 1860419412,
-    "org.jetbrains.kotlin:kotlin-test": -519067379,
+    "org.jetbrains.kotlin:kotlin-test": 458635150,
     "org.jetbrains.kotlinx:atomicfu": -1264083151,
     "org.jetbrains.kotlinx:atomicfu-jvm": -1503418171,
     "org.jetbrains.kotlinx:kotlinx-coroutines-android": 927888789,
@@ -488,12 +486,6 @@
         "jar": "0d24287c5b7fdc8e2147ffc466acdeb1b2c372fe0726c05f382106611c864f06"
       },
       "version": "1.7.8"
-    },
-    "androidx.compose.compiler:compiler": {
-      "shasums": {
-        "jar": "5d4c7f6875cd0214838101a4375656f0f962258bd81d29f996f233c241b53fba"
-      },
-      "version": "1.5.15"
     },
     "androidx.compose.foundation:foundation-android:aar": {
       "shasums": {
@@ -1433,45 +1425,45 @@
     },
     "org.jetbrains.kotlin:kotlin-android-extensions-runtime": {
       "shasums": {
-        "jar": "5e45bd85b666422a66eca15c4ba74ba574ce82329ee7ea00c693e49d234ba255"
+        "jar": "c9ffc2b6bfcdd8ce7ad1de77128bf0368f2cb06fdf20bd1415aa4439f10e22f5"
       },
-      "version": "1.9.24"
+      "version": "2.1.20"
     },
     "org.jetbrains.kotlin:kotlin-compiler-embeddable": {
       "shasums": {
-        "jar": "e71ff19e6b141ab85a9328fd010941531a302543026bd4244c95adc208d501f6"
+        "jar": "c54a00718c8c0e3ee858bf42771c7f401c5e3c1738861e18e9536371042fa1b3"
       },
-      "version": "1.9.24"
+      "version": "2.1.20"
     },
     "org.jetbrains.kotlin:kotlin-daemon-embeddable": {
       "shasums": {
-        "jar": "177bc8b2a4076dcce7878ad0d8fd07163af3178e3fa90ee63d4f733bb47bfdc9"
+        "jar": "d9e83df1d847a201ba3c016a786ced091be9503997d09f6a9cf1796ee489f374"
       },
-      "version": "1.9.24"
+      "version": "2.1.20"
     },
     "org.jetbrains.kotlin:kotlin-parcelize-compiler": {
       "shasums": {
-        "jar": "8a50dd100f3f7b3fb6f579428e68aa22437b261737fb6d2b85b6f8b7f46d0ab7"
+        "jar": "d00dffad577f5ef3ecb9e1617f5ee682a92f7c7256c9ad27149c1b84baa4e3ee"
       },
-      "version": "1.9.24"
+      "version": "2.1.20"
     },
     "org.jetbrains.kotlin:kotlin-parcelize-runtime": {
       "shasums": {
-        "jar": "5230951fdcdd5e793a30b7aa64692c7e611e7bd9d2e444745899160dbcb139dd"
+        "jar": "8d5fb6f1f2eaab779997d09283c30ff7eb5741ea4b54dd3ef32d3372a55aff46"
       },
-      "version": "1.9.24"
+      "version": "2.1.20"
     },
     "org.jetbrains.kotlin:kotlin-reflect": {
       "shasums": {
-        "jar": "a65166445bb85ef816cde127279fe0017d2b7cc439b3b972390e1b736d64e94c"
+        "jar": "419778f2b7a826bad6ee2ca1e4bdebe639ab306d2904fa3ef2a308ecfaab3811"
       },
-      "version": "1.9.24"
+      "version": "2.1.20"
     },
     "org.jetbrains.kotlin:kotlin-script-runtime": {
       "shasums": {
-        "jar": "314c7d308fe750654365bac6144780613c9169cf3d9e1dafbab91cf80bdc357c"
+        "jar": "ae4397fbb3aa2a1ada09290e753bba99a4114548977c3115526b9958f4cb1a04"
       },
-      "version": "1.9.24"
+      "version": "2.1.20"
     },
     "org.jetbrains.kotlin:kotlin-stdlib": {
       "shasums": {
@@ -1499,9 +1491,9 @@
     },
     "org.jetbrains.kotlin:kotlin-test": {
       "shasums": {
-        "jar": "eb08065a423f478291e9859319bdbb02846134acf2c2558cb5d203c573cdd0cb"
+        "jar": "0028b5c74191184519f60e727c5aa4e5d7e3ac04fc0bed559f49d37165dec961"
       },
-      "version": "1.9.24"
+      "version": "2.1.20"
     },
     "org.jetbrains.kotlinx:atomicfu": {
       "shasums": {
@@ -2474,7 +2466,8 @@
       "org.jetbrains.kotlin:kotlin-daemon-embeddable",
       "org.jetbrains.kotlin:kotlin-reflect",
       "org.jetbrains.kotlin:kotlin-script-runtime",
-      "org.jetbrains.kotlin:kotlin-stdlib"
+      "org.jetbrains.kotlin:kotlin-stdlib",
+      "org.jetbrains.kotlinx:kotlinx-coroutines-core-jvm"
     ],
     "org.jetbrains.kotlin:kotlin-parcelize-compiler": [
       "org.jetbrains.kotlin:kotlin-compiler-embeddable"
@@ -2546,16 +2539,6 @@
     "androidx.collection:collection-jvm": [
       "androidx.collection",
       "androidx.collection.internal"
-    ],
-    "androidx.compose.compiler:compiler": [
-      "androidx.compose.compiler.plugins.kotlin",
-      "androidx.compose.compiler.plugins.kotlin.analysis",
-      "androidx.compose.compiler.plugins.kotlin.inference",
-      "androidx.compose.compiler.plugins.kotlin.k1",
-      "androidx.compose.compiler.plugins.kotlin.k2",
-      "androidx.compose.compiler.plugins.kotlin.lower",
-      "androidx.compose.compiler.plugins.kotlin.lower.decoys",
-      "androidx.compose.compiler.plugins.kotlin.lower.hiddenfromobjc"
     ],
     "androidx.concurrent:concurrent-futures": [
       "androidx.concurrent.futures"
@@ -4951,34 +4934,22 @@
       "kotlinx.android.parcel"
     ],
     "org.jetbrains.kotlin:kotlin-compiler-embeddable": [
-      "",
-      "javaslang",
-      "javaslang.collection",
-      "javaslang.concurrent",
-      "javaslang.control",
-      "javaslang.match",
-      "javaslang.match.annotation",
-      "javaslang.match.generator",
-      "javaslang.match.model",
+      "io.vavr",
+      "io.vavr.collection",
+      "io.vavr.concurrent",
+      "io.vavr.control",
       "org.jetbrains.concurrency",
-      "org.jetbrains.jps.model.java.impl",
       "org.jetbrains.kotlin",
       "org.jetbrains.kotlin.analysis.decompiled.light.classes",
-      "org.jetbrains.kotlin.analysis.decompiled.light.classes.fe10",
       "org.jetbrains.kotlin.analysis.decompiled.light.classes.origin",
+      "org.jetbrains.kotlin.analysis.decompiler.js",
+      "org.jetbrains.kotlin.analysis.decompiler.konan",
       "org.jetbrains.kotlin.analysis.decompiler.psi",
       "org.jetbrains.kotlin.analysis.decompiler.psi.file",
       "org.jetbrains.kotlin.analysis.decompiler.psi.text",
       "org.jetbrains.kotlin.analysis.decompiler.stub",
       "org.jetbrains.kotlin.analysis.decompiler.stub.file",
       "org.jetbrains.kotlin.analysis.decompiler.stub.flags",
-      "org.jetbrains.kotlin.analysis.project.structure",
-      "org.jetbrains.kotlin.analysis.project.structure.impl",
-      "org.jetbrains.kotlin.analysis.providers",
-      "org.jetbrains.kotlin.analysis.providers.impl",
-      "org.jetbrains.kotlin.analysis.providers.impl.declarationProviders",
-      "org.jetbrains.kotlin.analysis.providers.impl.util",
-      "org.jetbrains.kotlin.analysis.providers.topics",
       "org.jetbrains.kotlin.analyzer",
       "org.jetbrains.kotlin.analyzer.common",
       "org.jetbrains.kotlin.asJava",
@@ -4988,8 +4959,15 @@
       "org.jetbrains.kotlin.asJava.finder",
       "org.jetbrains.kotlin.backend.common",
       "org.jetbrains.kotlin.backend.common.actualizer",
+      "org.jetbrains.kotlin.backend.common.actualizer.checker",
       "org.jetbrains.kotlin.backend.common.bridges",
+      "org.jetbrains.kotlin.backend.common.checkers",
+      "org.jetbrains.kotlin.backend.common.checkers.context",
+      "org.jetbrains.kotlin.backend.common.checkers.declaration",
+      "org.jetbrains.kotlin.backend.common.checkers.expression",
+      "org.jetbrains.kotlin.backend.common.checkers.type",
       "org.jetbrains.kotlin.backend.common.descriptors",
+      "org.jetbrains.kotlin.backend.common.diagnostics",
       "org.jetbrains.kotlin.backend.common.extensions",
       "org.jetbrains.kotlin.backend.common.ir",
       "org.jetbrains.kotlin.backend.common.linkage.issues",
@@ -5003,16 +4981,15 @@
       "org.jetbrains.kotlin.backend.common.output",
       "org.jetbrains.kotlin.backend.common.overrides",
       "org.jetbrains.kotlin.backend.common.phaser",
-      "org.jetbrains.kotlin.backend.common.psi",
       "org.jetbrains.kotlin.backend.common.serialization",
       "org.jetbrains.kotlin.backend.common.serialization.encodings",
       "org.jetbrains.kotlin.backend.common.serialization.mangle",
       "org.jetbrains.kotlin.backend.common.serialization.mangle.descriptor",
       "org.jetbrains.kotlin.backend.common.serialization.mangle.ir",
       "org.jetbrains.kotlin.backend.common.serialization.metadata",
-      "org.jetbrains.kotlin.backend.common.serialization.metadata.impl",
       "org.jetbrains.kotlin.backend.common.serialization.proto",
       "org.jetbrains.kotlin.backend.common.serialization.signature",
+      "org.jetbrains.kotlin.backend.js",
       "org.jetbrains.kotlin.backend.jvm",
       "org.jetbrains.kotlin.backend.jvm.caches",
       "org.jetbrains.kotlin.backend.jvm.codegen",
@@ -5023,12 +5000,25 @@
       "org.jetbrains.kotlin.backend.jvm.lower.indy",
       "org.jetbrains.kotlin.backend.jvm.mapping",
       "org.jetbrains.kotlin.backend.jvm.metadata",
+      "org.jetbrains.kotlin.backend.jvm.overrides",
       "org.jetbrains.kotlin.backend.jvm.serialization",
       "org.jetbrains.kotlin.backend.jvm.serialization.proto",
+      "org.jetbrains.kotlin.backend.konan",
+      "org.jetbrains.kotlin.backend.konan.descriptors",
+      "org.jetbrains.kotlin.backend.konan.ir",
+      "org.jetbrains.kotlin.backend.konan.lower",
+      "org.jetbrains.kotlin.backend.konan.serialization",
       "org.jetbrains.kotlin.backend.wasm",
       "org.jetbrains.kotlin.backend.wasm.dce",
+      "org.jetbrains.kotlin.backend.wasm.dwarf",
+      "org.jetbrains.kotlin.backend.wasm.dwarf.entries",
+      "org.jetbrains.kotlin.backend.wasm.dwarf.lines",
+      "org.jetbrains.kotlin.backend.wasm.dwarf.utils",
+      "org.jetbrains.kotlin.backend.wasm.export",
+      "org.jetbrains.kotlin.backend.wasm.ic",
       "org.jetbrains.kotlin.backend.wasm.ir2wasm",
       "org.jetbrains.kotlin.backend.wasm.lower",
+      "org.jetbrains.kotlin.backend.wasm.serialization",
       "org.jetbrains.kotlin.backend.wasm.utils",
       "org.jetbrains.kotlin.build",
       "org.jetbrains.kotlin.build.report",
@@ -5037,6 +5027,7 @@
       "org.jetbrains.kotlin.build.report.statistics.file",
       "org.jetbrains.kotlin.buildtools.api",
       "org.jetbrains.kotlin.buildtools.api.jvm",
+      "org.jetbrains.kotlin.buildtools.internal",
       "org.jetbrains.kotlin.builtins",
       "org.jetbrains.kotlin.builtins.functions",
       "org.jetbrains.kotlin.builtins.jvm",
@@ -5059,30 +5050,31 @@
       "org.jetbrains.kotlin.cli.common.environment",
       "org.jetbrains.kotlin.cli.common.extensions",
       "org.jetbrains.kotlin.cli.common.fir",
+      "org.jetbrains.kotlin.cli.common.localfs",
       "org.jetbrains.kotlin.cli.common.messages",
       "org.jetbrains.kotlin.cli.common.modules",
       "org.jetbrains.kotlin.cli.common.output",
       "org.jetbrains.kotlin.cli.common.profiling",
       "org.jetbrains.kotlin.cli.common.repl",
       "org.jetbrains.kotlin.cli.js",
-      "org.jetbrains.kotlin.cli.js.dce",
-      "org.jetbrains.kotlin.cli.js.internal",
       "org.jetbrains.kotlin.cli.js.klib",
       "org.jetbrains.kotlin.cli.jvm",
       "org.jetbrains.kotlin.cli.jvm.compiler",
-      "org.jetbrains.kotlin.cli.jvm.compiler.builder",
       "org.jetbrains.kotlin.cli.jvm.compiler.jarfs",
-      "org.jetbrains.kotlin.cli.jvm.compiler.pipeline",
+      "org.jetbrains.kotlin.cli.jvm.compiler.legacy.pipeline",
       "org.jetbrains.kotlin.cli.jvm.config",
       "org.jetbrains.kotlin.cli.jvm.index",
       "org.jetbrains.kotlin.cli.jvm.javac",
       "org.jetbrains.kotlin.cli.jvm.modules",
       "org.jetbrains.kotlin.cli.jvm.plugins",
       "org.jetbrains.kotlin.cli.metadata",
+      "org.jetbrains.kotlin.cli.pipeline",
+      "org.jetbrains.kotlin.cli.pipeline.jvm",
+      "org.jetbrains.kotlin.cli.pipeline.web",
+      "org.jetbrains.kotlin.cli.pipeline.web.js",
+      "org.jetbrains.kotlin.cli.pipeline.web.wasm",
       "org.jetbrains.kotlin.cli.plugins",
       "org.jetbrains.kotlin.codegen",
-      "org.jetbrains.kotlin.codegen.binding",
-      "org.jetbrains.kotlin.codegen.context",
       "org.jetbrains.kotlin.codegen.coroutines",
       "org.jetbrains.kotlin.codegen.extensions",
       "org.jetbrains.kotlin.codegen.inline",
@@ -5096,10 +5088,6 @@
       "org.jetbrains.kotlin.codegen.optimization.temporaryVals",
       "org.jetbrains.kotlin.codegen.optimization.transformer",
       "org.jetbrains.kotlin.codegen.pseudoInsns",
-      "org.jetbrains.kotlin.codegen.range",
-      "org.jetbrains.kotlin.codegen.range.comparison",
-      "org.jetbrains.kotlin.codegen.range.forLoop",
-      "org.jetbrains.kotlin.codegen.range.inExpression",
       "org.jetbrains.kotlin.codegen.serialization",
       "org.jetbrains.kotlin.codegen.signature",
       "org.jetbrains.kotlin.codegen.state",
@@ -5126,6 +5114,7 @@
       "org.jetbrains.kotlin.com.intellij.codeInsight.daemon.impl.analysis",
       "org.jetbrains.kotlin.com.intellij.codeInsight.folding",
       "org.jetbrains.kotlin.com.intellij.codeInsight.folding.impl",
+      "org.jetbrains.kotlin.com.intellij.codeInsight.highlighting",
       "org.jetbrains.kotlin.com.intellij.codeInsight.javadoc",
       "org.jetbrains.kotlin.com.intellij.codeInsight.runner",
       "org.jetbrains.kotlin.com.intellij.codeWithMe",
@@ -5134,14 +5123,13 @@
       "org.jetbrains.kotlin.com.intellij.diagnostic",
       "org.jetbrains.kotlin.com.intellij.extapi.psi",
       "org.jetbrains.kotlin.com.intellij.formatting",
-      "org.jetbrains.kotlin.com.intellij.icons",
       "org.jetbrains.kotlin.com.intellij.ide",
       "org.jetbrains.kotlin.com.intellij.ide.highlighter",
       "org.jetbrains.kotlin.com.intellij.ide.plugins",
       "org.jetbrains.kotlin.com.intellij.ide.plugins.cl",
       "org.jetbrains.kotlin.com.intellij.ide.util",
+      "org.jetbrains.kotlin.com.intellij.idea",
       "org.jetbrains.kotlin.com.intellij.injected.editor",
-      "org.jetbrains.kotlin.com.intellij.jna",
       "org.jetbrains.kotlin.com.intellij.lang",
       "org.jetbrains.kotlin.com.intellij.lang.folding",
       "org.jetbrains.kotlin.com.intellij.lang.impl",
@@ -5164,6 +5152,7 @@
       "org.jetbrains.kotlin.com.intellij.openapi.application",
       "org.jetbrains.kotlin.com.intellij.openapi.application.ex",
       "org.jetbrains.kotlin.com.intellij.openapi.application.impl",
+      "org.jetbrains.kotlin.com.intellij.openapi.client",
       "org.jetbrains.kotlin.com.intellij.openapi.command",
       "org.jetbrains.kotlin.com.intellij.openapi.command.impl",
       "org.jetbrains.kotlin.com.intellij.openapi.command.undo",
@@ -5193,13 +5182,11 @@
       "org.jetbrains.kotlin.com.intellij.openapi.ui",
       "org.jetbrains.kotlin.com.intellij.openapi.util",
       "org.jetbrains.kotlin.com.intellij.openapi.util.io",
-      "org.jetbrains.kotlin.com.intellij.openapi.util.io.win32",
       "org.jetbrains.kotlin.com.intellij.openapi.util.objectTree",
       "org.jetbrains.kotlin.com.intellij.openapi.util.registry",
       "org.jetbrains.kotlin.com.intellij.openapi.util.text",
       "org.jetbrains.kotlin.com.intellij.openapi.vfs",
       "org.jetbrains.kotlin.com.intellij.openapi.vfs.encoding",
-      "org.jetbrains.kotlin.com.intellij.openapi.vfs.ex",
       "org.jetbrains.kotlin.com.intellij.openapi.vfs.impl",
       "org.jetbrains.kotlin.com.intellij.openapi.vfs.impl.jar",
       "org.jetbrains.kotlin.com.intellij.openapi.vfs.local",
@@ -5209,7 +5196,7 @@
       "org.jetbrains.kotlin.com.intellij.openapi.wm.ex",
       "org.jetbrains.kotlin.com.intellij.patterns",
       "org.jetbrains.kotlin.com.intellij.patterns.compiler",
-      "org.jetbrains.kotlin.com.intellij.platform.util.plugins",
+      "org.jetbrains.kotlin.com.intellij.platform.backend.navigation",
       "org.jetbrains.kotlin.com.intellij.pom",
       "org.jetbrains.kotlin.com.intellij.pom.core.impl",
       "org.jetbrains.kotlin.com.intellij.pom.event",
@@ -5290,12 +5277,15 @@
       "org.jetbrains.kotlin.com.intellij.util.graph",
       "org.jetbrains.kotlin.com.intellij.util.graph.impl",
       "org.jetbrains.kotlin.com.intellij.util.indexing",
+      "org.jetbrains.kotlin.com.intellij.util.indexing.impl",
       "org.jetbrains.kotlin.com.intellij.util.io",
       "org.jetbrains.kotlin.com.intellij.util.io.keyStorage",
+      "org.jetbrains.kotlin.com.intellij.util.io.pagecache",
+      "org.jetbrains.kotlin.com.intellij.util.io.pagecache.impl",
+      "org.jetbrains.kotlin.com.intellij.util.io.stats",
+      "org.jetbrains.kotlin.com.intellij.util.io.storage",
       "org.jetbrains.kotlin.com.intellij.util.keyFMap",
       "org.jetbrains.kotlin.com.intellij.util.lang",
-      "org.jetbrains.kotlin.com.intellij.util.lang.fastutil",
-      "org.jetbrains.kotlin.com.intellij.util.loader",
       "org.jetbrains.kotlin.com.intellij.util.messages",
       "org.jetbrains.kotlin.com.intellij.util.messages.impl",
       "org.jetbrains.kotlin.com.intellij.util.pico",
@@ -5303,11 +5293,13 @@
       "org.jetbrains.kotlin.com.intellij.util.system",
       "org.jetbrains.kotlin.com.intellij.util.text",
       "org.jetbrains.kotlin.com.intellij.util.ui",
+      "org.jetbrains.kotlin.com.intellij.util.xml.dom",
       "org.jetbrains.kotlin.com.intellij.util.xmlb",
       "org.jetbrains.kotlin.com.intellij.util.xmlb.annotations",
       "org.jetbrains.kotlin.compiler.plugin",
       "org.jetbrains.kotlin.compilerRunner",
       "org.jetbrains.kotlin.config",
+      "org.jetbrains.kotlin.config.phaser",
       "org.jetbrains.kotlin.constant",
       "org.jetbrains.kotlin.container",
       "org.jetbrains.kotlin.context",
@@ -5346,8 +5338,9 @@
       "org.jetbrains.kotlin.fir.analysis.checkers.config",
       "org.jetbrains.kotlin.fir.analysis.checkers.context",
       "org.jetbrains.kotlin.fir.analysis.checkers.declaration",
+      "org.jetbrains.kotlin.fir.analysis.checkers.experimental",
       "org.jetbrains.kotlin.fir.analysis.checkers.expression",
-      "org.jetbrains.kotlin.fir.analysis.checkers.extended",
+      "org.jetbrains.kotlin.fir.analysis.checkers.extra",
       "org.jetbrains.kotlin.fir.analysis.checkers.syntax",
       "org.jetbrains.kotlin.fir.analysis.checkers.type",
       "org.jetbrains.kotlin.fir.analysis.collectors",
@@ -5356,6 +5349,8 @@
       "org.jetbrains.kotlin.fir.analysis.diagnostics.js",
       "org.jetbrains.kotlin.fir.analysis.diagnostics.jvm",
       "org.jetbrains.kotlin.fir.analysis.diagnostics.native",
+      "org.jetbrains.kotlin.fir.analysis.diagnostics.wasm",
+      "org.jetbrains.kotlin.fir.analysis.diagnostics.web.common",
       "org.jetbrains.kotlin.fir.analysis.extensions",
       "org.jetbrains.kotlin.fir.analysis.js.checkers",
       "org.jetbrains.kotlin.fir.analysis.js.checkers.declaration",
@@ -5366,10 +5361,18 @@
       "org.jetbrains.kotlin.fir.analysis.jvm.checkers.expression",
       "org.jetbrains.kotlin.fir.analysis.jvm.checkers.type",
       "org.jetbrains.kotlin.fir.analysis.native.checkers",
+      "org.jetbrains.kotlin.fir.analysis.wasm.checkers",
+      "org.jetbrains.kotlin.fir.analysis.wasm.checkers.declaration",
+      "org.jetbrains.kotlin.fir.analysis.wasm.checkers.expression",
+      "org.jetbrains.kotlin.fir.analysis.web.common.checkers",
+      "org.jetbrains.kotlin.fir.analysis.web.common.checkers.declaration",
+      "org.jetbrains.kotlin.fir.analysis.web.common.checkers.expression",
       "org.jetbrains.kotlin.fir.backend",
       "org.jetbrains.kotlin.fir.backend.generators",
-      "org.jetbrains.kotlin.fir.backend.js",
       "org.jetbrains.kotlin.fir.backend.jvm",
+      "org.jetbrains.kotlin.fir.backend.native",
+      "org.jetbrains.kotlin.fir.backend.native.interop",
+      "org.jetbrains.kotlin.fir.backend.utils",
       "org.jetbrains.kotlin.fir.builder",
       "org.jetbrains.kotlin.fir.caches",
       "org.jetbrains.kotlin.fir.checkers",
@@ -5404,6 +5407,7 @@
       "org.jetbrains.kotlin.fir.lightTree.converter",
       "org.jetbrains.kotlin.fir.lightTree.fir",
       "org.jetbrains.kotlin.fir.lightTree.fir.modifier",
+      "org.jetbrains.kotlin.fir.modules",
       "org.jetbrains.kotlin.fir.pipeline",
       "org.jetbrains.kotlin.fir.plugin",
       "org.jetbrains.kotlin.fir.references",
@@ -5412,7 +5416,10 @@
       "org.jetbrains.kotlin.fir.renderer",
       "org.jetbrains.kotlin.fir.resolve",
       "org.jetbrains.kotlin.fir.resolve.calls",
+      "org.jetbrains.kotlin.fir.resolve.calls.candidate",
       "org.jetbrains.kotlin.fir.resolve.calls.jvm",
+      "org.jetbrains.kotlin.fir.resolve.calls.overloads",
+      "org.jetbrains.kotlin.fir.resolve.calls.stages",
       "org.jetbrains.kotlin.fir.resolve.calls.tower",
       "org.jetbrains.kotlin.fir.resolve.dfa",
       "org.jetbrains.kotlin.fir.resolve.dfa.cfg",
@@ -5435,7 +5442,6 @@
       "org.jetbrains.kotlin.fir.serialization.constant",
       "org.jetbrains.kotlin.fir.session",
       "org.jetbrains.kotlin.fir.session.environment",
-      "org.jetbrains.kotlin.fir.signaturer",
       "org.jetbrains.kotlin.fir.symbols",
       "org.jetbrains.kotlin.fir.symbols.impl",
       "org.jetbrains.kotlin.fir.types",
@@ -5453,6 +5459,7 @@
       "org.jetbrains.kotlin.incremental",
       "org.jetbrains.kotlin.incremental.classpathDiff",
       "org.jetbrains.kotlin.incremental.components",
+      "org.jetbrains.kotlin.incremental.dirtyFiles",
       "org.jetbrains.kotlin.incremental.js",
       "org.jetbrains.kotlin.incremental.multiproject",
       "org.jetbrains.kotlin.incremental.parsing",
@@ -5462,6 +5469,9 @@
       "org.jetbrains.kotlin.inline",
       "org.jetbrains.kotlin.ir",
       "org.jetbrains.kotlin.ir.backend.js",
+      "org.jetbrains.kotlin.ir.backend.js.checkers",
+      "org.jetbrains.kotlin.ir.backend.js.checkers.declarations",
+      "org.jetbrains.kotlin.ir.backend.js.checkers.expressions",
       "org.jetbrains.kotlin.ir.backend.js.dce",
       "org.jetbrains.kotlin.ir.backend.js.export",
       "org.jetbrains.kotlin.ir.backend.js.ic",
@@ -5477,7 +5487,6 @@
       "org.jetbrains.kotlin.ir.backend.js.utils.serialization",
       "org.jetbrains.kotlin.ir.backend.jvm",
       "org.jetbrains.kotlin.ir.backend.jvm.serialization",
-      "org.jetbrains.kotlin.ir.backend.wasm.lower",
       "org.jetbrains.kotlin.ir.builders",
       "org.jetbrains.kotlin.ir.builders.declarations",
       "org.jetbrains.kotlin.ir.declarations",
@@ -5486,6 +5495,7 @@
       "org.jetbrains.kotlin.ir.descriptors",
       "org.jetbrains.kotlin.ir.expressions",
       "org.jetbrains.kotlin.ir.expressions.impl",
+      "org.jetbrains.kotlin.ir.inline",
       "org.jetbrains.kotlin.ir.interpreter",
       "org.jetbrains.kotlin.ir.interpreter.builtins",
       "org.jetbrains.kotlin.ir.interpreter.checker",
@@ -5500,6 +5510,7 @@
       "org.jetbrains.kotlin.ir.interpreter.transformer",
       "org.jetbrains.kotlin.ir.linkage",
       "org.jetbrains.kotlin.ir.linkage.partial",
+      "org.jetbrains.kotlin.ir.objcinterop",
       "org.jetbrains.kotlin.ir.overrides",
       "org.jetbrains.kotlin.ir.symbols",
       "org.jetbrains.kotlin.ir.symbols.impl",
@@ -5531,45 +5542,19 @@
       "org.jetbrains.kotlin.js.backend.ast.metadata",
       "org.jetbrains.kotlin.js.common",
       "org.jetbrains.kotlin.js.config",
-      "org.jetbrains.kotlin.js.coroutine",
-      "org.jetbrains.kotlin.js.dce",
       "org.jetbrains.kotlin.js.descriptorUtils",
-      "org.jetbrains.kotlin.js.facade",
-      "org.jetbrains.kotlin.js.facade.exceptions",
-      "org.jetbrains.kotlin.js.inline",
       "org.jetbrains.kotlin.js.inline.clean",
-      "org.jetbrains.kotlin.js.inline.context",
       "org.jetbrains.kotlin.js.inline.util",
       "org.jetbrains.kotlin.js.inline.util.collectors",
-      "org.jetbrains.kotlin.js.inline.util.rewriters",
       "org.jetbrains.kotlin.js.naming",
       "org.jetbrains.kotlin.js.parser",
       "org.jetbrains.kotlin.js.parser.sourcemaps",
       "org.jetbrains.kotlin.js.patterns",
-      "org.jetbrains.kotlin.js.patterns.typePredicates",
       "org.jetbrains.kotlin.js.resolve",
       "org.jetbrains.kotlin.js.resolve.diagnostics",
       "org.jetbrains.kotlin.js.sourceMap",
-      "org.jetbrains.kotlin.js.translate.callTranslator",
       "org.jetbrains.kotlin.js.translate.context",
-      "org.jetbrains.kotlin.js.translate.context.generator",
-      "org.jetbrains.kotlin.js.translate.declaration",
-      "org.jetbrains.kotlin.js.translate.expression",
-      "org.jetbrains.kotlin.js.translate.extensions",
-      "org.jetbrains.kotlin.js.translate.general",
-      "org.jetbrains.kotlin.js.translate.initializer",
-      "org.jetbrains.kotlin.js.translate.intrinsic",
-      "org.jetbrains.kotlin.js.translate.intrinsic.functions",
-      "org.jetbrains.kotlin.js.translate.intrinsic.functions.basic",
-      "org.jetbrains.kotlin.js.translate.intrinsic.functions.factories",
-      "org.jetbrains.kotlin.js.translate.intrinsic.objects",
-      "org.jetbrains.kotlin.js.translate.intrinsic.operation",
-      "org.jetbrains.kotlin.js.translate.operation",
-      "org.jetbrains.kotlin.js.translate.reference",
-      "org.jetbrains.kotlin.js.translate.test",
       "org.jetbrains.kotlin.js.translate.utils",
-      "org.jetbrains.kotlin.js.translate.utils.jsAstUtils",
-      "org.jetbrains.kotlin.js.translate.utils.mutator",
       "org.jetbrains.kotlin.js.util",
       "org.jetbrains.kotlin.kapt3.diagnostic",
       "org.jetbrains.kotlin.kdoc.lexer",
@@ -5601,8 +5586,6 @@
       "org.jetbrains.kotlin.library.metadata.impl",
       "org.jetbrains.kotlin.library.metadata.resolver",
       "org.jetbrains.kotlin.library.metadata.resolver.impl",
-      "org.jetbrains.kotlin.library.resolver",
-      "org.jetbrains.kotlin.library.resolver.impl",
       "org.jetbrains.kotlin.load.java",
       "org.jetbrains.kotlin.load.java.components",
       "org.jetbrains.kotlin.load.java.descriptors",
@@ -5632,6 +5615,7 @@
       "org.jetbrains.kotlin.modules",
       "org.jetbrains.kotlin.mpp",
       "org.jetbrains.kotlin.name",
+      "org.jetbrains.kotlin.native.interop",
       "org.jetbrains.kotlin.net.jpountz.lz4",
       "org.jetbrains.kotlin.net.jpountz.util",
       "org.jetbrains.kotlin.net.jpountz.xxhash",
@@ -5641,34 +5625,22 @@
       "org.jetbrains.kotlin.org.codehaus.stax2.ri",
       "org.jetbrains.kotlin.org.codehaus.stax2.ri.typed",
       "org.jetbrains.kotlin.org.codehaus.stax2.typed",
-      "org.jetbrains.kotlin.org.fusesource.hawtjni.runtime",
       "org.jetbrains.kotlin.org.fusesource.jansi",
       "org.jetbrains.kotlin.org.fusesource.jansi.internal",
+      "org.jetbrains.kotlin.org.fusesource.jansi.io",
       "org.jetbrains.kotlin.org.jdom",
-      "org.jetbrains.kotlin.org.jdom.internal",
       "org.jetbrains.kotlin.org.jdom.output",
-      "org.jetbrains.kotlin.org.jdom.output.support",
+      "org.jetbrains.kotlin.org.jline.builtins",
+      "org.jetbrains.kotlin.org.jline.console",
       "org.jetbrains.kotlin.org.jline.keymap",
       "org.jetbrains.kotlin.org.jline.reader",
       "org.jetbrains.kotlin.org.jline.reader.impl",
       "org.jetbrains.kotlin.org.jline.reader.impl.history",
       "org.jetbrains.kotlin.org.jline.terminal",
       "org.jetbrains.kotlin.org.jline.terminal.impl",
-      "org.jetbrains.kotlin.org.jline.terminal.impl.jansi",
-      "org.jetbrains.kotlin.org.jline.terminal.impl.jansi.freebsd",
-      "org.jetbrains.kotlin.org.jline.terminal.impl.jansi.linux",
-      "org.jetbrains.kotlin.org.jline.terminal.impl.jansi.osx",
-      "org.jetbrains.kotlin.org.jline.terminal.impl.jansi.win",
-      "org.jetbrains.kotlin.org.jline.terminal.impl.jna",
-      "org.jetbrains.kotlin.org.jline.terminal.impl.jna.freebsd",
-      "org.jetbrains.kotlin.org.jline.terminal.impl.jna.linux",
-      "org.jetbrains.kotlin.org.jline.terminal.impl.jna.osx",
-      "org.jetbrains.kotlin.org.jline.terminal.impl.jna.solaris",
-      "org.jetbrains.kotlin.org.jline.terminal.impl.jna.win",
       "org.jetbrains.kotlin.org.jline.terminal.spi",
       "org.jetbrains.kotlin.org.jline.utils",
       "org.jetbrains.kotlin.org.picocontainer",
-      "org.jetbrains.kotlin.org.picocontainer.defaults",
       "org.jetbrains.kotlin.parsing",
       "org.jetbrains.kotlin.platform",
       "org.jetbrains.kotlin.platform.js",
@@ -5759,8 +5731,6 @@
       "org.jetbrains.kotlin.serialization.deserialization.descriptors",
       "org.jetbrains.kotlin.serialization.js",
       "org.jetbrains.kotlin.serialization.js.ast",
-      "org.jetbrains.kotlin.serialization.konan",
-      "org.jetbrains.kotlin.serialization.konan.impl",
       "org.jetbrains.kotlin.storage",
       "org.jetbrains.kotlin.synthetic",
       "org.jetbrains.kotlin.type",
@@ -5777,8 +5747,8 @@
       "org.jetbrains.kotlin.util",
       "org.jetbrains.kotlin.util.capitalizeDecapitalize",
       "org.jetbrains.kotlin.util.collectionUtils",
-      "org.jetbrains.kotlin.util.javaslang",
       "org.jetbrains.kotlin.util.slicedMap",
+      "org.jetbrains.kotlin.util.vavr",
       "org.jetbrains.kotlin.utils",
       "org.jetbrains.kotlin.utils.addToStdlib",
       "org.jetbrains.kotlin.utils.concurrent.block",
@@ -5789,8 +5759,10 @@
       "org.jetbrains.kotlin.utils.repl",
       "org.jetbrains.kotlin.utils.strings",
       "org.jetbrains.kotlin.wasm.analyze",
+      "org.jetbrains.kotlin.wasm.config",
       "org.jetbrains.kotlin.wasm.ir",
       "org.jetbrains.kotlin.wasm.ir.convertors",
+      "org.jetbrains.kotlin.wasm.ir.debug",
       "org.jetbrains.kotlin.wasm.ir.source.location",
       "org.jetbrains.kotlin.wasm.resolve",
       "org.jetbrains.kotlin.wasm.resolve.diagnostics",
@@ -6011,7 +5983,6 @@
       "androidx.compose.animation:animation-core-android:aar",
       "androidx.compose.animation:animation-core:aar",
       "androidx.compose.animation:animation:aar",
-      "androidx.compose.compiler:compiler",
       "androidx.compose.foundation:foundation-android:aar",
       "androidx.compose.foundation:foundation-layout-android:aar",
       "androidx.compose.foundation:foundation-layout:aar",
@@ -6217,7 +6188,6 @@
       "androidx.compose.animation:animation-core-android:aar",
       "androidx.compose.animation:animation-core:aar",
       "androidx.compose.animation:animation:aar",
-      "androidx.compose.compiler:compiler",
       "androidx.compose.foundation:foundation-android:aar",
       "androidx.compose.foundation:foundation-layout-android:aar",
       "androidx.compose.foundation:foundation-layout:aar",
@@ -6423,7 +6393,6 @@
       "androidx.compose.animation:animation-core-android:aar",
       "androidx.compose.animation:animation-core:aar",
       "androidx.compose.animation:animation:aar",
-      "androidx.compose.compiler:compiler",
       "androidx.compose.foundation:foundation-android:aar",
       "androidx.compose.foundation:foundation-layout-android:aar",
       "androidx.compose.foundation:foundation-layout:aar",
@@ -6629,7 +6598,6 @@
       "androidx.compose.animation:animation-core-android:aar",
       "androidx.compose.animation:animation-core:aar",
       "androidx.compose.animation:animation:aar",
-      "androidx.compose.compiler:compiler",
       "androidx.compose.foundation:foundation-android:aar",
       "androidx.compose.foundation:foundation-layout-android:aar",
       "androidx.compose.foundation:foundation-layout:aar",
@@ -6835,7 +6803,6 @@
       "androidx.compose.animation:animation-core-android:aar",
       "androidx.compose.animation:animation-core:aar",
       "androidx.compose.animation:animation:aar",
-      "androidx.compose.compiler:compiler",
       "androidx.compose.foundation:foundation-android:aar",
       "androidx.compose.foundation:foundation-layout-android:aar",
       "androidx.compose.foundation:foundation-layout:aar",
@@ -7018,20 +6985,6 @@
     ]
   },
   "services": {
-    "androidx.compose.compiler:compiler": {
-      "org.jetbrains.kotlin.compiler.plugin.CommandLineProcessor": [
-        "androidx.compose.compiler.plugins.kotlin.ComposeCommandLineProcessor"
-      ],
-      "org.jetbrains.kotlin.compiler.plugin.ComponentRegistrar": [
-        "androidx.compose.compiler.plugins.kotlin.ComposePluginRegistrar"
-      ],
-      "org.jetbrains.kotlin.diagnostics.rendering.DefaultErrorMessages$Extension": [
-        "androidx.compose.compiler.plugins.kotlin.k1.ComposeErrorMessages"
-      ],
-      "org.jetbrains.kotlin.fir.extensions.FirExtensionRegistrar": [
-        "androidx.compose.compiler.plugins.kotlin.k2.ComposeFirExtensionRegistrar"
-      ]
-    },
     "com.android.tools.external.com-intellij:intellij-core": {
       "com.intellij.platform.jps.model.resolver.JpsDependencyResolverConfigurationService": [
         "com.intellij.platform.jps.model.impl.resolver.JpsDependencyResolverConfigurationServiceImpl"
@@ -7173,17 +7126,8 @@
       ]
     },
     "org.jetbrains.kotlin:kotlin-compiler-embeddable": {
-      "javax.annotation.processing.Processor": [
-        "javaslang.match.PatternsProcessor"
-      ],
       "org.jetbrains.kotlin.builtins.BuiltInsLoader": [
         "org.jetbrains.kotlin.serialization.deserialization.builtins.BuiltInsLoaderImpl"
-      ],
-      "org.jetbrains.kotlin.org.jline.terminal.spi.JansiSupport": [
-        "org.jetbrains.kotlin.org.jline.terminal.impl.jansi.JansiSupportImpl"
-      ],
-      "org.jetbrains.kotlin.org.jline.terminal.spi.JnaSupport": [
-        "org.jetbrains.kotlin.org.jline.terminal.impl.jna.JnaSupportImpl"
       ],
       "org.jetbrains.kotlin.resolve.ExternalOverridabilityCondition": [
         "org.jetbrains.kotlin.load.java.ErasedOverridabilityCondition",
@@ -7195,9 +7139,24 @@
       ],
       "org.jetbrains.kotlin.util.ModuleVisibilityHelper": [
         "org.jetbrains.kotlin.cli.common.ModuleVisibilityHelperImpl"
+      ],
+      "org/jline/terminal/provider/exec": [
+        "class=org.jline.terminal.impl.exec.ExecTerminalProvider"
+      ],
+      "org/jline/terminal/provider/jansi": [
+        "class=org.jline.terminal.impl.jansi.JansiTerminalProvider"
+      ],
+      "org/jline/terminal/provider/jna": [
+        "class=org.jline.terminal.impl.jna.JnaTerminalProvider"
+      ],
+      "org/jline/terminal/provider/jni": [
+        "class=org.jline.terminal.impl.jni.JniTerminalProvider"
       ]
     },
     "org.jetbrains.kotlin:kotlin-parcelize-compiler": {
+      "org.jetbrains.kotlin.compiler.plugin.CommandLineProcessor": [
+        "org.jetbrains.kotlin.parcelize.ParcelizeCommandLineProcessor"
+      ],
       "org.jetbrains.kotlin.compiler.plugin.CompilerPluginRegistrar": [
         "org.jetbrains.kotlin.parcelize.ParcelizeComponentRegistrar"
       ]

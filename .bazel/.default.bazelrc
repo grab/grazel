@@ -1,5 +1,6 @@
 # BzlMod
 common --enable_bzlmod=false
+common --enable_workspace=true
 
 # Cache setup
 common --disk_cache=bazel-cache
