@@ -71,19 +71,16 @@ internal class LocalMavenProxyServer(
     private var knownComponentGavs: Set<String> = emptySet()
     private var metadataOnlyGavs: Set<String> = emptySet()
     private var indexedArtifactGavs: Set<String> = emptySet()
-    private var knownMainArtifactExtensionsByGav: Map<String, Set<String>> = emptyMap()
     private var pomFileResolver: PomFileResolver = PomFileResolver { PomFileResolution.Unknown }
     private var engine: ApplicationEngine? = null
     private var boundBaseUrl: String? = null
     private val warnedFallthroughGavs = ConcurrentHashMap.newKeySet<String>()
 
     /**
-     * Swaps in a fresh snapshot of Gradle-resolved facts and derives the two secondary
-     * indices ([indexedArtifactGavs], [knownMainArtifactExtensionsByGav]) that [serve] and
-     * [servePom] rely on for correctness: the former gates which GAVs may be POM-served from
-     * Gradle at all, the latter drives the alternate-artifact-probe short-circuit in
-     * [isKnownAlternateArtifactProbe]. Must run under [lock] since requests may be served
-     * concurrently against the previous snapshot until this completes.
+     * Swaps in a fresh snapshot of Gradle-resolved facts and derives [indexedArtifactGavs],
+     * which [servePom] relies on to gate which GAVs may be POM-served from Gradle at all. Must
+     * run under [lock] since requests may be served concurrently against the previous snapshot
+     * until this completes.
      */
     fun configure(
         artifactIndex: Map<String, File>,
@@ -99,14 +96,6 @@ internal class LocalMavenProxyServer(
                 .asSequence()
                 .mapNotNull(::concreteGavFromMavenPathOrNull)
                 .toSet()
-            this.knownMainArtifactExtensionsByGav = artifactIndex.keys
-                .asSequence()
-                .mapNotNull(::mainArtifactExtensionByGav)
-                .groupBy(
-                    keySelector = { (gav, _) -> gav },
-                    valueTransform = { (_, extension) -> extension }
-                )
-                .mapValues { (_, extensions) -> extensions.toSet() }
             this.pomFileResolver = pomFileResolver
         }
     }
@@ -156,12 +145,10 @@ internal class LocalMavenProxyServer(
      * Central dispatch for a proxied Maven request: local-first, origin-fallthrough for
      * everything else. Checksums and POMs are handled first since coursier probes them
      * independently of the artifact index; a Gradle-resolved artifact (exact index hit) always
-     * wins over anything else; known-absent classifier/extension probes are rejected with a 404
-     * before touching the network, since coursier issues those routinely and an origin
-     * round-trip for each would be wasted work. Everything else - a concrete GAV Gradle marked
-     * metadata-only, a concrete GAV belonging to a component Gradle resolved but didn't index
-     * this exact artifact for, or a concrete GAV Gradle has no knowledge of at all - falls
-     * through to [serveFromCacheOrOrigin]. No branch in this dispatch can fail a build.
+     * wins over anything else. Everything else - a concrete GAV Gradle marked metadata-only, a
+     * concrete GAV belonging to a component Gradle resolved but didn't index this exact artifact
+     * for, or a concrete GAV Gradle has no knowledge of at all - falls through to
+     * [serveFromCacheOrOrigin]. No branch in this dispatch can fail a build.
      */
     private suspend fun serve(
         repoIndex: Int?,
@@ -189,10 +176,6 @@ internal class LocalMavenProxyServer(
             return serveFromCacheOrOrigin(repoIndex, path, countContentHit)
         }
         val concreteGav = concreteGavFromMavenPathOrNull(path)
-        if (isKnownAlternateArtifactProbe(path, concreteGav)) {
-            counters.alternateArtifactMisses.incrementAndGet()
-            return ServedResponse.Bytes(HttpStatusCode.NotFound, ByteArray(0))
-        }
         if (concreteGav in metadataOnlyGavs) {
             return serveArtifactWithFallbackCounter(
                 repoIndex, path, countContentHit, counters.metadataOnlyArtifactFallbacks
@@ -214,20 +197,6 @@ internal class LocalMavenProxyServer(
                     "falling through to origin", gav, path
             )
         }
-    }
-
-    /**
-     * Short-circuits coursier's routine "does this classifier/extension exist" probes without
-     * an origin round-trip, based on the extensions actually seen for this GAV in
-     * [knownMainArtifactExtensionsByGav]. Correctness depends entirely on that map having been
-     * fully populated for this GAV in [configure] beforehand; an empty entry is treated as "no
-     * information" (falls through rather than rejecting) rather than "known to have none".
-     */
-    private fun isKnownAlternateArtifactProbe(path: String, gav: String?): Boolean {
-        if (gav == null) return false
-        val knownExtensions = knownMainArtifactExtensionsByGav[gav].orEmpty()
-        return knownExtensions.isNotEmpty() &&
-            artifactExtension(path) !in knownExtensions
     }
 
     private suspend fun serveArtifactWithFallbackCounter(
@@ -440,7 +409,6 @@ internal class LocalMavenProxyServer(
 
     private class LocalMavenProxyCounters {
         val artifactHits = AtomicLong()
-        val alternateArtifactMisses = AtomicLong()
         val knownComponentFallthroughs = AtomicLong()
         val metadataOnlyArtifactFallbacks = AtomicLong()
         val gradlePomHits = AtomicLong()
@@ -453,7 +421,6 @@ internal class LocalMavenProxyServer(
 
         fun snapshot(): LocalMavenResolutionStats = LocalMavenResolutionStats(
             artifactHits = artifactHits.get(),
-            alternateArtifactMisses = alternateArtifactMisses.get(),
             knownComponentFallthroughs = knownComponentFallthroughs.get(),
             metadataOnlyArtifactFallbacks = metadataOnlyArtifactFallbacks.get(),
             gradlePomHits = gradlePomHits.get(),
@@ -506,27 +473,6 @@ private fun gavFromMavenPathOrNull(path: String): String? {
 private fun concreteGavFromMavenPathOrNull(path: String): String? {
     if (!isConcreteMavenArtifactPath(path)) return null
     return gavFromMavenPathOrNull(path)
-}
-
-private fun artifactExtension(path: String): String =
-    path.substringAfterLast('.', missingDelimiterValue = "")
-
-/**
- * Recognizes only the canonical "main" artifact filename for a GAV (`<module>-<version>.<ext>`,
- * no classifier) and returns its extension; classified artifacts return null. Feeding these
- * pairs into [knownMainArtifactExtensionsByGav] tells [isKnownAlternateArtifactProbe] which
- * extensions are known to exist for a GAV so probes for anything else can be rejected without
- * an origin round-trip.
- */
-private fun mainArtifactExtensionByGav(path: String): Pair<String, String>? {
-    val mavenPath = MavenPath.parse(path) ?: return null
-    val extension = artifactExtension(path).takeIf(String::isNotBlank) ?: return null
-    val expectedFileName = "${mavenPath.coordinates.module}-${mavenPath.coordinates.version}.$extension"
-    return if (mavenPath.fileName == expectedFileName) {
-        mavenPath.coordinates.gav to extension
-    } else {
-        null
-    }
 }
 
 private fun digestResponse(algorithmSuffix: String, response: ServedResponse): String {

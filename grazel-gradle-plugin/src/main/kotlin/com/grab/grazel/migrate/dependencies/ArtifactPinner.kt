@@ -435,7 +435,6 @@ constructor(
                 "(known-component=${stats.knownComponentFallthroughs}, " +
                 "metadata-only=${stats.metadataOnlyArtifactFallbacks}, " +
                 "origin-failures=${stats.originFailures}), " +
-                "${stats.alternateArtifactMisses} alternate probes skipped, " +
                 "${stats.writeThroughCacheHits} cache hits, " +
                 "${stats.requestFailures} request failures, " +
                 "${stats.bytesServed} bytes served, in " +

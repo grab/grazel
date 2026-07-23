@@ -222,11 +222,32 @@ class LocalMavenProxyServerTest {
     }
 
     @Test
-    fun `does not fall back to origin for alternate artifact probes when Gradle has a concrete artifact`() {
+    fun `a legitimate request for an extension other than the one Gradle indexed falls through to origin`() {
+        val resolvedArtifact = temporaryFolder.newFile("library-1.0.jar")
+        resolvedArtifact.writeText("gradle-jar")
+        FixtureOriginServer(
+            responses = mapOf("com/example/library/1.0/library-1.0.aar" to "origin-aar")
+        ).use { origin ->
+            newProxy(
+                artifactIndex = mapOf("com/example/library/1.0/library-1.0.jar" to resolvedArtifact),
+                repositories = listOf(proxyOrigin(url = origin.baseUrl))
+            ).use { proxy ->
+                val response = get("${proxy.baseUrl()}/r/0/com/example/library/1.0/library-1.0.aar")
+
+                assertEquals(200, response.code)
+                assertEquals("origin-aar", response.body)
+                assertEquals(1, origin.requests.get())
+                assertEquals(1, proxy.stats().originFallbacks)
+            }
+        }
+    }
+
+    @Test
+    fun `a request for an extension Gradle never indexed and origin does not have falls through to origin's own 404`() {
         val resolvedArtifact = temporaryFolder.newFile("library-1.0.aar")
         resolvedArtifact.writeText("gradle-aar")
         FixtureOriginServer(
-            responses = mapOf("com/example/library/1.0/library-1.0.jar" to "origin-jar")
+            responses = emptyMap()
         ).use { origin ->
             newProxy(
                 artifactIndex = mapOf("com/example/library/1.0/library-1.0.aar" to resolvedArtifact),
@@ -236,14 +257,14 @@ class LocalMavenProxyServerTest {
                 val response = get("${proxy.baseUrl()}/r/0/com/example/library/1.0/library-1.0.jar")
 
                 assertEquals(404, response.code)
-                assertEquals(0, origin.requests.get())
-                assertEquals(1, proxy.stats().alternateArtifactMisses)
+                assertEquals(1, origin.requests.get())
+                assertEquals(0, proxy.stats().knownComponentFallthroughs)
             }
         }
     }
 
     @Test
-    fun `does not hard fail alternate artifact probes for extra indexed artifacts`() {
+    fun `extra indexed artifacts do not short-circuit a legitimate request for a different extension`() {
         val resolvedArtifact = temporaryFolder.newFile("library-1.0.aar")
         resolvedArtifact.writeText("gradle-aar")
         FixtureOriginServer(
@@ -255,9 +276,10 @@ class LocalMavenProxyServerTest {
             ).use { proxy ->
                 val response = get("${proxy.baseUrl()}/r/0/com/example/library/1.0/library-1.0.jar")
 
-                assertEquals(404, response.code)
-                assertEquals(0, origin.requests.get())
-                assertEquals(1, proxy.stats().alternateArtifactMisses)
+                assertEquals(200, response.code)
+                assertEquals("origin-jar", response.body)
+                assertEquals(1, origin.requests.get())
+                assertEquals(1, proxy.stats().originFallbacks)
             }
         }
     }
@@ -274,9 +296,6 @@ class LocalMavenProxyServerTest {
                 knownComponentGavs = setOf("com.example:android-lib:2.0"),
                 repositories = listOf(proxyOrigin(url = origin.baseUrl))
             ).use { proxy ->
-                // A classified variant being indexed must not be treated as establishing a
-                // known main-artifact extension: the request falls through as a known-component
-                // fallthrough rather than being rejected as an alternate-artifact probe.
                 val response = get("${proxy.baseUrl()}/r/0/com/example/android-lib/2.0/android-lib-2.0.jar")
 
                 assertEquals(200, response.code)
