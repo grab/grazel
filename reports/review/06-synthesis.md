@@ -263,6 +263,9 @@ for byte-identity risk against C1.
    (critic-04 #6, critic-03 item 6 analog) `[PENDING]`. Also from the cohesion report's dropped
    items: critic-03 items 1/5/6 `[PENDING]`; critic-04 #7 (recordReachable union unify)
    `[DONE in item 2, 85ba1aa]`; critic-05 S4 (explicit reference channel) `[PENDING]`.
+   From the 2026-07-23 Opus branch-wide simplify sweep: `DependencyBucketAccumulator.foldLint`
+   rebuilds the growing global lint map per LINT root (O(L·N), bounded at hundreds of roots;
+   merge-semantics-sensitive, same shape as S5) `[PENDING]`.
    *Effort: hours each. Risk: none — pure mechanical, no consumer-visible change.*
 
 10. `[DONE]` — shipped (commits `e40ed55`+`c007a18`+`f3bb57d`; spec
@@ -276,6 +279,13 @@ for byte-identity risk against C1.
     `AggregatedDependencyRootMetadata` by `(projectPath, configurationName, kind)` instead of
     positional pairing protected only by a size check. *Effort: M. Risk: low — no output change,
     removes a silent-misattribution failure mode rather than a performance or size issue.*
+
+**`[DEFERRED-BY-DESIGN]` Dual declared-metadata collection pipelines** (Opus altitude sweep,
+2026-07-23): `SINGLE_TASK` vs `PROJECT_TASK_FANOUT` are two complete implementations of one
+output, retained deliberately as an A/B migration net with a functional equivalence test
+(`BuildVariantTest` "must feed the same aggregate declared metadata"). Collapse to fanout-only
+once trusted — deletes the bespoke Semaphore/Channel concurrency — but removing `SINGLE_TASK`
+changes the public experiments enum, so it is an API decision, not an internal refactor.
 
 **`[DEFERRED-BY-DESIGN]` Explicitly not recommended even though byte-identity-safe:** the single-metadata-resolution-
 boundary consolidation (critic-04 #5, collapsing five merge layers to one) is real and valuable but
