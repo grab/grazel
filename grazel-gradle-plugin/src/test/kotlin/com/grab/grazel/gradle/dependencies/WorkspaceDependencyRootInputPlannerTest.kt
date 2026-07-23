@@ -90,6 +90,47 @@ class WorkspaceDependencyRootInputPlannerTest {
             )
     }
 
+    @Test
+    fun `plan produces root keys that are unique across all planned root inputs`() {
+        val rootProject = buildProject("root").also { project ->
+            project.addGrazelExtension()
+        }
+        val appProject = buildProject("app", rootProject).also { project ->
+            setupAndroidVariantProject(project)
+        }
+        val variants = rootProject
+            .createGrazelComponent()
+            .variantBuilder()
+            .get()
+            .build(appProject)
+
+        val rootInputs = WorkspaceDependencyRootInputPlanner.plan(
+            migratableProjects = listOf(appProject),
+            variantsByProject = mapOf(appProject to variants)
+        )
+
+        val keys = rootInputs.map { rootInput -> rootInput.toMetadata().rootKey() }
+        assertThat(keys.toSet()).hasSize(keys.size)
+    }
+
+    @Test
+    fun `rootKey collisions are detected by the same grouping logic plan uses`() {
+        val duplicateMetadata = AggregatedDependencyRootMetadata(
+            projectPath = ":app",
+            kind = AggregatedDependencyRootKind.MAIN_HIERARCHY,
+            configurationName = "debugRuntimeClasspath"
+        )
+        val otherMetadata = duplicateMetadata.copy(bucketName = "distinct-but-same-key")
+
+        val duplicateKeys = listOf(duplicateMetadata, otherMetadata)
+            .map { metadata -> metadata.rootKey() }
+            .groupingBy { key -> key }
+            .eachCount()
+            .filterValues { count -> count > 1 }
+
+        assertThat(duplicateKeys).isNotEmpty()
+    }
+
     private fun rootInputKey(input: WorkspaceDependencyRootInput): RootInputKey {
         return RootInputKey(
             kind = input.kind,

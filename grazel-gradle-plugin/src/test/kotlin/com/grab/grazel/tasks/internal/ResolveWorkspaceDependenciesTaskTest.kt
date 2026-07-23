@@ -16,13 +16,19 @@
 
 package com.grab.grazel.tasks.internal
 
+import com.grab.grazel.fake.fakeComponentResult
+import com.grab.grazel.gradle.dependencies.AggregatedDependencyRootKind
+import com.grab.grazel.gradle.dependencies.AggregatedDependencyRootMetadata
+import com.grab.grazel.gradle.dependencies.RootKey
 import org.gradle.api.tasks.CacheableTask
 import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.InputFile
 import org.gradle.api.tasks.Internal
 import org.gradle.api.tasks.OutputFile
 import org.gradle.api.tasks.PathSensitive
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertThrows
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -39,6 +45,8 @@ class ResolveWorkspaceDependenciesTaskTest {
             .mapTo(mutableSetOf()) { method -> method.name }
         val rootComponentsGetter = ResolveWorkspaceDependenciesTask::class.java
             .getMethod("getWorkspaceDependencyRootComponents")
+        val rootKeysGetter = ResolveWorkspaceDependenciesTask::class.java
+            .getMethod("getWorkspaceDependencyRootKeys")
         val metadataGetter = ResolveWorkspaceDependenciesTask::class.java
             .getMethod("getWorkspaceDependencyRootMetadata")
         val resultsGetter = ResolveWorkspaceDependenciesTask::class.java
@@ -47,11 +55,15 @@ class ResolveWorkspaceDependenciesTaskTest {
         assertTrue("getDeclaredDependencyMetadata" in taskGetterNames)
         assertTrue("getKspDependencies" in taskGetterNames)
         assertTrue("getWorkspaceDependencyRootComponents" in taskGetterNames)
+        assertTrue("getWorkspaceDependencyRootKeys" in taskGetterNames)
         assertTrue("getWorkspaceDependencyRootMetadata" in taskGetterNames)
         assertTrue("getWorkspaceDependencyResults" in taskGetterNames)
 
         assertTrue(rootComponentsGetter.isAnnotationPresent(Input::class.java))
         assertFalse(rootComponentsGetter.isAnnotationPresent(Internal::class.java))
+
+        assertTrue(rootKeysGetter.isAnnotationPresent(Input::class.java))
+        assertFalse(rootKeysGetter.isAnnotationPresent(Internal::class.java))
 
         assertTrue(metadataGetter.isAnnotationPresent(InputFile::class.java))
         assertTrue(metadataGetter.isAnnotationPresent(PathSensitive::class.java))
@@ -82,5 +94,83 @@ class ResolveWorkspaceDependenciesTaskTest {
             )
         )
         assertTrue(metadataGetter.isAnnotationPresent(OutputFile::class.java))
+    }
+
+    @Test
+    fun `pairRootsByKey joins index-aligned keys and components to metadata sharing the same key`() {
+        val key = RootKey(
+            projectPath = ":app",
+            configurationName = "debugRuntimeClasspath",
+            kind = AggregatedDependencyRootKind.MAIN_HIERARCHY
+        )
+        val component = fakeComponentResult(projectPath = ":app")
+        val metadata = AggregatedDependencyRootMetadata(
+            projectPath = key.projectPath,
+            kind = key.kind,
+            configurationName = key.configurationName
+        )
+
+        val roots = pairRootsByKey(
+            rootKeys = listOf(key),
+            rootComponents = listOf(component),
+            rootMetadata = listOf(metadata)
+        )
+
+        assertEquals(1, roots.size)
+        assertEquals(component, roots.single().root)
+        assertEquals(metadata, roots.single().metadata)
+    }
+
+    @Test
+    fun `pairRootsByKey fails loudly with the missing key when no metadata matches`() {
+        val presentKey = RootKey(
+            projectPath = ":app",
+            configurationName = "debugRuntimeClasspath",
+            kind = AggregatedDependencyRootKind.MAIN_HIERARCHY
+        )
+        val missingKey = RootKey(
+            projectPath = ":app",
+            configurationName = "releaseRuntimeClasspath",
+            kind = AggregatedDependencyRootKind.MAIN_HIERARCHY
+        )
+        val metadata = AggregatedDependencyRootMetadata(
+            projectPath = presentKey.projectPath,
+            kind = presentKey.kind,
+            configurationName = presentKey.configurationName
+        )
+
+        val exception = assertThrows(IllegalStateException::class.java) {
+            pairRootsByKey(
+                rootKeys = listOf(missingKey),
+                rootComponents = listOf(fakeComponentResult(projectPath = ":app")),
+                rootMetadata = listOf(metadata)
+            )
+        }
+
+        assertTrue(exception.message.orEmpty().contains(missingKey.toString()))
+    }
+
+    @Test
+    fun `pairRootsByKey fails loudly when keys and components drift out of index alignment`() {
+        val key = RootKey(
+            projectPath = ":app",
+            configurationName = "debugRuntimeClasspath",
+            kind = AggregatedDependencyRootKind.MAIN_HIERARCHY
+        )
+        val metadata = AggregatedDependencyRootMetadata(
+            projectPath = key.projectPath,
+            kind = key.kind,
+            configurationName = key.configurationName
+        )
+
+        val exception = assertThrows(IllegalStateException::class.java) {
+            pairRootsByKey(
+                rootKeys = listOf(key),
+                rootComponents = emptyList(),
+                rootMetadata = listOf(metadata)
+            )
+        }
+
+        assertTrue(exception.message.orEmpty().contains("does not match"))
     }
 }

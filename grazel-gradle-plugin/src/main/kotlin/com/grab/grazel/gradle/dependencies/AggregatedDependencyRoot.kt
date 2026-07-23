@@ -27,6 +27,40 @@ internal data class AggregatedDependencyRoot(
     val metadata: AggregatedDependencyRootMetadata
 )
 
+/**
+ * Identity for a [WorkspaceDependencyRootInput] that is stable across the separate
+ * `TaskProvider.configure` blocks (root-metadata, resolved-component and, when enabled,
+ * pin-maven-artifacts) that each independently iterate the planned root inputs in
+ * [com.grab.grazel.tasks.internal.WorkspaceDependencyInputsRegistrar]. Used to join a resolved
+ * [org.gradle.api.artifacts.result.ResolvedComponentResult] back to its
+ * [AggregatedDependencyRootMetadata] by key rather than by list position.
+ *
+ * Declared `JavaSerializable` — same as [AggregatedDependencyRootMetadata] below — for Gradle's
+ * `@Input` value-snapshotter, which otherwise fails fingerprinting a plain Kotlin `data class`
+ * with "cannot be serialized" even though every field is itself serializable.
+ *
+ * Travels as a parallel `@Input` list (`ResolveWorkspaceDependenciesTask.workspaceDependencyRootKeys`)
+ * index-aligned with `workspaceDependencyRootComponents`, NOT as a wrapper class around
+ * [org.gradle.api.artifacts.result.ResolvedComponentResult]. A `KeyedRootComponent(key, component)`
+ * wrapper was tried first and rejected: Gradle failed to fingerprint it with "cannot be
+ * serialized" even after making both the wrapper and [RootKey] implement `JavaSerializable` —
+ * confirming the bare `List<ResolvedComponentResult>` `@Input` works via Gradle's own dedicated
+ * handling for that exact declared property type, not generic Java-serialization fallback, and
+ * that handling does not apply once the component is nested inside any wrapper, serializable or
+ * not.
+ */
+internal data class RootKey(
+    val projectPath: String,
+    val configurationName: String,
+    val kind: AggregatedDependencyRootKind
+) : JavaSerializable
+
+internal fun AggregatedDependencyRootMetadata.rootKey(): RootKey = RootKey(
+    projectPath = projectPath,
+    configurationName = configurationName,
+    kind = kind
+)
+
 @Serializable
 internal data class AggregatedDependencyRootMetadata(
     val projectPath: String,

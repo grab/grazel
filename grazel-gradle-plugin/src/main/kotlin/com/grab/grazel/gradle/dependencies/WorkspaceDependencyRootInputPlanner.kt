@@ -95,7 +95,17 @@ internal object WorkspaceDependencyRootInputPlanner {
             )
         }
 
-        return rootInputs.filter { rootInput -> rootInput.configuration.isCanBeResolved }
+        val plannedRootInputs = rootInputs.filter { rootInput -> rootInput.configuration.isCanBeResolved }
+        val duplicateKeys = plannedRootInputs
+            .map { rootInput -> rootInput.toMetadata().rootKey() }
+            .groupingBy { key -> key }
+            .eachCount()
+            .filterValues { count -> count > 1 }
+        check(duplicateKeys.isEmpty()) {
+            "Workspace dependency root keys are not unique: $duplicateKeys — " +
+                "extend RootKey (e.g. with bucketName) before keyed pairing can be trusted"
+        }
+        return plannedRootInputs
     }
 
     /**

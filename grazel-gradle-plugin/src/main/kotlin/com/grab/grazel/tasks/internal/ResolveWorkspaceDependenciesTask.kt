@@ -20,8 +20,10 @@ import com.grab.grazel.gradle.dependencies.AggregatedDependencyResolver
 import com.grab.grazel.gradle.dependencies.AggregatedDependencyRoot
 import com.grab.grazel.gradle.dependencies.AggregatedDependencyRootMetadata
 import com.grab.grazel.gradle.dependencies.DeclaredDependencyMetadata
+import com.grab.grazel.gradle.dependencies.RootKey
 import com.grab.grazel.gradle.dependencies.model.ResolveDependenciesResult
 import com.grab.grazel.gradle.dependencies.model.ResolveDependenciesResult.Companion.Scope.KSP
+import com.grab.grazel.gradle.dependencies.rootKey
 import com.grab.grazel.di.GradleServices
 import com.grab.grazel.util.fromJson
 import com.grab.grazel.util.logHeap
@@ -55,6 +57,19 @@ internal abstract class ResolveWorkspaceDependenciesTask : DefaultTask() {
     @get:Input
     abstract val workspaceDependencyRootComponents: ListProperty<ResolvedComponentResult>
 
+    /**
+     * Index-aligned with [workspaceDependencyRootComponents] BY CONSTRUCTION of the single loop
+     * in [com.grab.grazel.tasks.internal.WorkspaceDependencyInputsRegistrar.register] that adds to
+     * both properties per `rootInput` in the same iteration. Do not wire this property from any
+     * other configure block — that alignment invariant is the whole point of keeping the two
+     * lists this narrowly scoped. A `KeyedRootComponent(key, component)` wrapper carrying both in
+     * one `@Input` list was tried first and rejected: Gradle failed to fingerprint it with "cannot
+     * be serialized" even after making the wrapper and [RootKey] both `java.io.Serializable` — see
+     * [RootKey]'s KDoc for the full account.
+     */
+    @get:Input
+    abstract val workspaceDependencyRootKeys: ListProperty<RootKey>
+
     @get:InputFile
     @get:PathSensitive(PathSensitivity.RELATIVE)
     abstract val workspaceDependencyRootMetadata: RegularFileProperty
@@ -70,14 +85,12 @@ internal abstract class ResolveWorkspaceDependenciesTask : DefaultTask() {
     @TaskAction
     fun action() {
         logger.logHeap("ResolveWorkspaceDeps:start")
+        val rootKeys = workspaceDependencyRootKeys.get()
         val rootComponents = workspaceDependencyRootComponents.get()
         val rootMetadata = fromJson<List<AggregatedDependencyRootMetadata>>(
             workspaceDependencyRootMetadata.get()
         )
-        check(rootComponents.size == rootMetadata.size) {
-            "Workspace dependency root component count (${rootComponents.size}) does not match " +
-                "metadata count (${rootMetadata.size})"
-        }
+        val workspaceDependencyRoots = pairRootsByKey(rootKeys, rootComponents, rootMetadata)
 
         val startedAt = System.nanoTime()
         val results = GradleServices.from(project).progressLoggerFactory.withProgress(
@@ -92,8 +105,7 @@ internal abstract class ResolveWorkspaceDependenciesTask : DefaultTask() {
                 precomputedKspDependencies = fromJson<ResolveDependenciesResult>(
                     kspDependencies.get()
                 ).dependencies.getOrDefault(KSP.name, emptySet()),
-                workspaceDependencyRoots = rootComponents.zip(rootMetadata)
-                    .map { (root, metadata) -> AggregatedDependencyRoot(root, metadata) }
+                workspaceDependencyRoots = workspaceDependencyRoots
             ).resolve()
         }
         val elapsedMs = (System.nanoTime() - startedAt) / 1_000_000
@@ -119,7 +131,49 @@ internal abstract class ResolveWorkspaceDependenciesTask : DefaultTask() {
                     rootProject.layout.buildDirectory.file("grazel/workspace-dependency-results.json")
                 )
                 workspaceDependencyRootComponents.convention(emptyList())
+                workspaceDependencyRootKeys.convention(emptyList())
             }
         }
+    }
+}
+
+/**
+ * Joins each resolved [ResolvedComponentResult] to the [AggregatedDependencyRootMetadata] planned
+ * for the same [RootKey], replacing a positional `zip` that silently misattributed roots if the
+ * component and metadata lists ever drifted out of lockstep.
+ *
+ * [rootKeys] and [rootComponents] are expected to already be index-aligned — that alignment is
+ * established by construction in the single registrar loop that wires both properties (see
+ * [com.grab.grazel.tasks.internal.WorkspaceDependencyInputsRegistrar.register]), not re-derived
+ * here; this function only asserts the sizes agree before trusting the zip. The cross-task
+ * positional contract between [rootComponents] and [rootMetadata] (populated by separate tasks,
+ * serialized through JSON) is what this keyed join actually replaces. Order follows [rootKeys] /
+ * [rootComponents] — i.e. today's wiring order — which is a resolution-order requirement of
+ * [AggregatedDependencyResolver.resolve].
+ */
+internal fun pairRootsByKey(
+    rootKeys: List<RootKey>,
+    rootComponents: List<ResolvedComponentResult>,
+    rootMetadata: List<AggregatedDependencyRootMetadata>
+): List<AggregatedDependencyRoot> {
+    check(rootKeys.size == rootComponents.size) {
+        "Workspace dependency root key count (${rootKeys.size}) does not match resolved " +
+            "component count (${rootComponents.size}) — the registrar's single-loop index " +
+            "alignment invariant was violated"
+    }
+    val metadataByKey = rootMetadata.associateBy { metadata -> metadata.rootKey() }
+    check(metadataByKey.size == rootMetadata.size) {
+        "Duplicate root keys in workspace dependency root metadata — keyed pairing unsafe"
+    }
+    check(rootComponents.size == rootMetadata.size) {
+        "Workspace dependency root component count (${rootComponents.size}) does not match " +
+            "metadata count (${rootMetadata.size})"
+    }
+    return rootKeys.zip(rootComponents).map { (key, component) ->
+        val metadata = checkNotNull(metadataByKey[key]) {
+            "No root metadata for resolved component key $key; " +
+                "metadata keys: ${metadataByKey.keys.take(5)}..."
+        }
+        AggregatedDependencyRoot(component, metadata)
     }
 }

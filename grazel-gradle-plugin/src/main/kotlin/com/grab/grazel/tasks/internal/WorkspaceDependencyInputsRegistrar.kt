@@ -20,6 +20,7 @@ import com.grab.grazel.extension.DeclaredDependencyMetadataAggregationMode
 import com.grab.grazel.gradle.MigrationChecker
 import com.grab.grazel.gradle.dependencies.DeclaredProjectMetadataPlanner
 import com.grab.grazel.gradle.dependencies.WorkspaceDependencyRootInputPlanner
+import com.grab.grazel.gradle.dependencies.rootKey
 import com.grab.grazel.gradle.variant.Variant
 import com.grab.grazel.gradle.variant.VariantBuilder
 import com.grab.grazel.gradle.variant.WorkspaceKspProcessorClasspathPlanner
@@ -111,7 +112,13 @@ internal object WorkspaceDependencyInputsRegistrar {
                 }
             }
             resolveWorkspaceDependenciesTask.configure {
+                // workspaceDependencyRootKeys and workspaceDependencyRootComponents are
+                // index-aligned BY CONSTRUCTION of this single loop — every add() pair below comes
+                // from the same rootInput in the same iteration. This alignment must never be
+                // relied upon across any other configure block; do not wire either property
+                // anywhere else.
                 rootInputs.forEach { rootInput ->
+                    workspaceDependencyRootKeys.add(rootInput.toMetadata().rootKey())
                     workspaceDependencyRootComponents.add(
                         rootInput.configuration.incoming.resolutionResult.rootComponent
                     )
