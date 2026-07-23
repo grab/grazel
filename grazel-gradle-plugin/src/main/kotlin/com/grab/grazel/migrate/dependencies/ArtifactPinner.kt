@@ -397,19 +397,18 @@ constructor(
         stats: LocalMavenResolutionStats,
         elapsedNanos: Long,
     ) {
+        val servedLocally = stats.artifactHits + stats.gradlePomHits
         logger.quiet(
-            ("Local Maven resolution served ${stats.artifactHits} artifacts from Gradle index, " +
-                "${stats.gradlePomHits} POMs from Gradle index, " +
-                "${stats.originFallbacks} origin fallbacks, " +
-                "${stats.originFailures} origin failures, " +
-                "${stats.lockfileArtifactFallbacks} lockfile artifact fallbacks, " +
-                "${stats.metadataOnlyArtifactFallbacks} metadata-only artifact fallbacks, " +
-                "${stats.alternateArtifactMisses} known alternate artifact probes, " +
-                "${stats.artifactMisses} artifact misses, " +
-                "${stats.knownPomFailures} known POM failures, " +
+            ("Local Maven resolution: $servedLocally served locally " +
+                "(artifacts=${stats.artifactHits}, poms=${stats.gradlePomHits}, " +
+                "checksums=${stats.checksumHits}), " +
+                "${stats.originFallbacks} fell through to origin " +
+                "(known-component=${stats.knownComponentFallthroughs}, " +
+                "metadata-only=${stats.metadataOnlyArtifactFallbacks}, " +
+                "origin-failures=${stats.originFailures}), " +
+                "${stats.alternateArtifactMisses} alternate probes skipped, " +
+                "${stats.writeThroughCacheHits} cache hits, " +
                 "${stats.requestFailures} request failures, " +
-                "${stats.checksumHits} checksum hits, " +
-                "${stats.writeThroughCacheHits} write-through cache hits, " +
                 "${stats.bytesServed} bytes served, in " +
                 "${TimeUnit.NANOSECONDS.toMillis(elapsedNanos)}ms").ansiGreen
         )

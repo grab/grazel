@@ -36,7 +36,6 @@ internal abstract class LocalMavenProxyService :
 
     fun configure(
         facts: LocalMavenResolvedFacts,
-        allowedOriginArtifactPaths: Set<String> = emptySet(),
         canonicalRepositoryUrls: Set<String> = emptySet(),
     ): LocalMavenProxyRepositoryMappings {
         return synchronized(lock) {
@@ -49,7 +48,6 @@ internal abstract class LocalMavenProxyService :
                 artifactIndex = facts.artifactIndex,
                 knownComponentGavs = facts.knownComponentGavs,
                 metadataOnlyGavs = facts.metadataOnlyGavs,
-                allowedOriginArtifactPaths = allowedOriginArtifactPaths,
                 pomFileResolver = facts.pomFileResolver
             )
             localMavenRepositoryProxyMappingsFrom(

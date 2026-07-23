@@ -23,12 +23,10 @@ package com.grab.grazel.maven
  */
 internal data class LocalMavenResolutionStats(
     val artifactHits: Long = 0,
-    val artifactMisses: Long = 0,
     val alternateArtifactMisses: Long = 0,
-    val lockfileArtifactFallbacks: Long = 0,
+    val knownComponentFallthroughs: Long = 0,
     val metadataOnlyArtifactFallbacks: Long = 0,
     val gradlePomHits: Long = 0,
-    val knownPomFailures: Long = 0,
     val originFallbacks: Long = 0,
     val originFailures: Long = 0,
     val requestFailures: Long = 0,

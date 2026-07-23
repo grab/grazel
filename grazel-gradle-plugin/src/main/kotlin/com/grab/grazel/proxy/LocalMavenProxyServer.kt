@@ -70,12 +70,12 @@ internal class LocalMavenProxyServer(
     private var artifactIndex: Map<String, File> = emptyMap()
     private var knownComponentGavs: Set<String> = emptySet()
     private var metadataOnlyGavs: Set<String> = emptySet()
-    private var allowedOriginArtifactPaths: Set<String> = emptySet()
     private var indexedArtifactGavs: Set<String> = emptySet()
     private var knownMainArtifactExtensionsByGav: Map<String, Set<String>> = emptyMap()
     private var pomFileResolver: PomFileResolver = PomFileResolver { PomFileResolution.Unknown }
     private var engine: ApplicationEngine? = null
     private var boundBaseUrl: String? = null
+    private val warnedFallthroughGavs = ConcurrentHashMap.newKeySet<String>()
 
     /**
      * Swaps in a fresh snapshot of Gradle-resolved facts and derives the two secondary
@@ -89,19 +89,17 @@ internal class LocalMavenProxyServer(
         artifactIndex: Map<String, File>,
         knownComponentGavs: Set<String>,
         metadataOnlyGavs: Set<String>,
-        allowedOriginArtifactPaths: Set<String>,
         pomFileResolver: PomFileResolver,
     ) {
         synchronized(lock) {
             this.artifactIndex = artifactIndex
             this.knownComponentGavs = knownComponentGavs
             this.metadataOnlyGavs = metadataOnlyGavs
-            this.allowedOriginArtifactPaths = allowedOriginArtifactPaths
             this.indexedArtifactGavs = artifactIndex.keys
                 .asSequence()
                 .mapNotNull(::concreteGavFromMavenPathOrNull)
                 .toSet()
-            this.knownMainArtifactExtensionsByGav = (artifactIndex.keys + allowedOriginArtifactPaths)
+            this.knownMainArtifactExtensionsByGav = artifactIndex.keys
                 .asSequence()
                 .mapNotNull(::mainArtifactExtensionByGav)
                 .groupBy(
@@ -155,19 +153,15 @@ internal class LocalMavenProxyServer(
     }
 
     /**
-     * Central dispatch for a proxied Maven request. The branch order is load-bearing and
-     * encodes the trust hierarchy this proxy exists to enforce: checksums and POMs are handled
-     * first since coursier probes them independently of the artifact index; a Gradle-resolved
-     * artifact (exact index hit) always wins over anything else; known-absent classifier/
-     * extension probes are rejected before touching the network; artifacts belonging to a
-     * fully known component that are nonetheless missing from the index are a hard failure
-     * (never silently fall back to origin, since that would let an origin-only artifact
-     * silently diverge from what Gradle actually resolved); a concrete GAV that Gradle has no
-     * knowledge of at all is likewise hard-failed, not sent to origin. Only requests that aren't
-     * concrete artifact paths at all - maven-metadata.xml paths and paths that don't parse as a
-     * GAV - plus the explicit metadata-only and lockfile-allowed-origin allowances, are permitted
-     * to fall through to [serveFromCacheOrOrigin]. Reordering these branches would change which
-     * failures are silent and which are hard, so do not reshuffle them.
+     * Central dispatch for a proxied Maven request: local-first, origin-fallthrough for
+     * everything else. Checksums and POMs are handled first since coursier probes them
+     * independently of the artifact index; a Gradle-resolved artifact (exact index hit) always
+     * wins over anything else; known-absent classifier/extension probes are rejected with a 404
+     * before touching the network, since coursier issues those routinely and an origin
+     * round-trip for each would be wasted work. Everything else - a concrete GAV Gradle marked
+     * metadata-only, a concrete GAV belonging to a component Gradle resolved but didn't index
+     * this exact artifact for, or a concrete GAV Gradle has no knowledge of at all - falls
+     * through to [serveFromCacheOrOrigin]. No branch in this dispatch can fail a build.
      */
     private suspend fun serve(
         repoIndex: Int?,
@@ -204,20 +198,22 @@ internal class LocalMavenProxyServer(
                 repoIndex, path, countContentHit, counters.metadataOnlyArtifactFallbacks
             )
         }
-        if (concreteGav in knownComponentGavs) {
-            counters.artifactMisses.incrementAndGet()
-            return hardFailure("Missing Gradle-resolved artifact for Maven path $path")
-        }
-        if (concreteGav != null && path in allowedOriginArtifactPaths) {
+        if (concreteGav != null && concreteGav in knownComponentGavs) {
+            warnKnownComponentFallthrough(concreteGav, path)
             return serveArtifactWithFallbackCounter(
-                repoIndex, path, countContentHit, counters.lockfileArtifactFallbacks
+                repoIndex, path, countContentHit, counters.knownComponentFallthroughs
             )
         }
-        if (concreteGav != null) {
-            counters.artifactMisses.incrementAndGet()
-            return hardFailure("Missing Gradle-resolved artifact for Maven path $path")
-        }
         return serveFromCacheOrOrigin(repoIndex, path, countContentHit)
+    }
+
+    private fun warnKnownComponentFallthrough(gav: String, path: String) {
+        if (warnedFallthroughGavs.add(gav)) {
+            logger.warn(
+                "Local Maven proxy: Gradle knows component {} but has no local artifact for {} — " +
+                    "falling through to origin", gav, path
+            )
+        }
     }
 
     /**
@@ -269,15 +265,12 @@ internal class LocalMavenProxyServer(
     }
 
     /**
-     * Layers three sources of truth for a POM, short-circuiting as soon as one resolves:
+     * Layers two sources of truth for a POM, short-circuiting as soon as one resolves:
      * Gradle-resolved POM (only attempted if the GAV is in [indexedArtifactGavs], i.e. Gradle
-     * actually resolved an artifact for it) via [pomFileResolver]; then, only for a GAV that is
-     * additionally a fully [knownComponentGavs] member, a hard failure on
-     * [PomFileResolution.Unavailable] or a missing/nonexistent [PomFileResolution.Found] file —
-     * a known component's POM must never silently come from origin. Everything else (unknown
-     * GAVs, or known components that were never Gradle-indexed as artifacts at all) falls
-     * through to [serveFromCacheOrOrigin]. The [PomFileResolution.Unknown] case intentionally
-     * has no failure branch so unindexed GAVs can still reach the origin fallback.
+     * actually resolved an artifact for it) via [pomFileResolver]. Everything else - a
+     * [PomFileResolution.Unavailable] or missing/nonexistent [PomFileResolution.Found] file for a
+     * fully [knownComponentGavs] member, and any other unresolved case - falls through to
+     * [serveFromCacheOrOrigin], counted as a known-component fallthrough where applicable.
      */
     private suspend fun servePom(
         repoIndex: Int,
@@ -303,24 +296,17 @@ internal class LocalMavenProxyServer(
                     )
                 }
 
-            PomFileResolution.Unknown -> Unit
-            is PomFileResolution.Unavailable -> if (canServeGradleBackedPom && gav in knownComponentGavs) {
-                counters.knownPomFailures.incrementAndGet()
-                return hardFailure(pomResolution.message)
-            }
+            PomFileResolution.Unknown,
+            is PomFileResolution.Unavailable -> Unit
         }
         if (canServeGradleBackedPom && gav in knownComponentGavs) {
-            counters.knownPomFailures.incrementAndGet()
-            return hardFailure("Missing Gradle-resolved POM for known component $gav at $path")
+            warnKnownComponentFallthrough(gav, path)
+            return serveArtifactWithFallbackCounter(
+                repoIndex, path, countContentHit, counters.knownComponentFallthroughs
+            )
         }
         return serveFromCacheOrOrigin(repoIndex, path, countContentHit)
     }
-
-    private fun hardFailure(message: String): ServedResponse =
-        ServedResponse.Bytes(
-            HttpStatusCode.InternalServerError,
-            message.toByteArray()
-        )
 
     /**
      * Double-checked-locking around a per-`(repoIndex, path)` [Mutex] so concurrent requests
@@ -454,12 +440,10 @@ internal class LocalMavenProxyServer(
 
     private class LocalMavenProxyCounters {
         val artifactHits = AtomicLong()
-        val artifactMisses = AtomicLong()
         val alternateArtifactMisses = AtomicLong()
-        val lockfileArtifactFallbacks = AtomicLong()
+        val knownComponentFallthroughs = AtomicLong()
         val metadataOnlyArtifactFallbacks = AtomicLong()
         val gradlePomHits = AtomicLong()
-        val knownPomFailures = AtomicLong()
         val originFallbacks = AtomicLong()
         val originFailures = AtomicLong()
         val requestFailures = AtomicLong()
@@ -469,12 +453,10 @@ internal class LocalMavenProxyServer(
 
         fun snapshot(): LocalMavenResolutionStats = LocalMavenResolutionStats(
             artifactHits = artifactHits.get(),
-            artifactMisses = artifactMisses.get(),
             alternateArtifactMisses = alternateArtifactMisses.get(),
-            lockfileArtifactFallbacks = lockfileArtifactFallbacks.get(),
+            knownComponentFallthroughs = knownComponentFallthroughs.get(),
             metadataOnlyArtifactFallbacks = metadataOnlyArtifactFallbacks.get(),
             gradlePomHits = gradlePomHits.get(),
-            knownPomFailures = knownPomFailures.get(),
             originFallbacks = originFallbacks.get(),
             originFailures = originFailures.get(),
             requestFailures = requestFailures.get(),
@@ -482,6 +464,10 @@ internal class LocalMavenProxyServer(
             writeThroughCacheHits = writeThroughCacheHits.get(),
             bytesServed = bytesServed.get(),
         )
+    }
+
+    companion object {
+        private val logger = org.gradle.api.logging.Logging.getLogger(LocalMavenProxyServer::class.java)
     }
 }
 

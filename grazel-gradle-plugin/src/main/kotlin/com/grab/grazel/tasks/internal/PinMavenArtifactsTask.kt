@@ -31,7 +31,6 @@ import com.grab.grazel.migrate.dependencies.MavenInstallRepositoryInputs
 import com.grab.grazel.migrate.dependencies.MavenInstallRepositoryRewrite
 import com.grab.grazel.migrate.dependencies.repositoryUrls
 import com.grab.grazel.proxy.LocalMavenProxyService
-import com.grab.grazel.proxy.activeMavenInstallLockfileFallbackIndex
 import com.grab.grazel.util.fromJson
 import com.grab.grazel.util.GradleProvider
 import dagger.Lazy
@@ -115,22 +114,16 @@ constructor(
         if (!localMavenResolutionEnabled.get()) return null
         val service = localMavenProxyService.get()
         val configuredAdditionalGavs = localMavenResolutionAdditionalGavs.get()
-        val rootDirectory = project.layout.projectDirectory.asFile
         return LocalMavenResolutionPinContextFactory { pinnableRepos, repositoryInputs ->
-            val activeLockfileFallbackIndex = activeMavenInstallLockfileFallbackIndex(
-                rootDirectory = rootDirectory,
-                activeMavenRepos = pinnableRepos.keys
-            )
             val facts = LocalMavenResolvedFactsBuilder(project).build(
                 configurations = localMavenResolutionRootConfigurations.get(),
                 additionalGavs = pinnableRepoResolutionGavs(
                     pinnableRepos = pinnableRepos,
-                    additionalGavs = configuredAdditionalGavs + activeLockfileFallbackIndex.additionalComponentGavs
+                    additionalGavs = configuredAdditionalGavs
                 )
             )
             val repositoryMappings = service.configure(
                 facts = facts,
-                allowedOriginArtifactPaths = activeLockfileFallbackIndex.allowedOriginArtifactPaths,
                 canonicalRepositoryUrls = repositoryUrls(repositoryInputs)
             )
             LocalMavenResolutionPinContext(
