@@ -24,7 +24,6 @@ import com.grab.grazel.gradle.dependencies.model.ResolvedDependency
 import com.grab.grazel.gradle.dependencies.model.WorkspacePlan
 import com.grab.grazel.gradle.dependencies.model.WorkspaceRenderPlan
 import com.grab.grazel.maven.LocalMavenResolutionStats
-import com.grab.grazel.tasks.internal.formatWithBuildifier
 import com.grab.grazel.util.NoOpProgressLogger
 import com.grab.grazel.util.WORKSPACE
 import com.grab.grazel.util.ansiCyan
@@ -48,6 +47,11 @@ import javax.inject.Singleton
 
 internal interface ArtifactPinner {
 
+    /**
+     * @return true if artifacts were repinned this call (the WORKSPACE's pinned lockfile section
+     *   was regenerated and callers must reformat it), false if pinning was skipped because
+     *   everything was already up to date.
+     */
     fun pinArtifacts(
         workspaceFile: File,
         workspacePlan: WorkspacePlan,
@@ -56,13 +60,16 @@ internal interface ArtifactPinner {
         gradleServices: GradleServices,
         logger: Logger,
         localMavenResolutionContextFactory: LocalMavenResolutionPinContextFactory? = null,
-        buildifierScript: File? = null,
     ): Boolean
 
     /**
      * Ensure that the following [bazelBlock] is safe to run any bazel command that might be dependent
      * on pinning, for example if maven_install.json gets corrupted or deleted, this ensures the
      * command is retried after fixing (usually just updating WORKSPACE file to remove pinning).
+     *
+     * Before [bazelBlock] runs, proactively unpins the WORKSPACE via
+     * [unpinWorkspaceIfLockfilesMissing] so no caller can invoke a bazel command against a WORKSPACE
+     * that is pinned to a lockfile no longer present on disk.
      *
      * Instead of failing command directly, pass the [ExecResult] obtain from [ExecOperations] instead
      * in the [bazelBlock]
@@ -135,31 +142,6 @@ constructor(
                 .replace(ACTIVE_MAVEN_INSTALL_JSON_REGEX, "$1#$MAVEN_INSTALL_JSON_MARKER")
                 .replace(ACTIVE_PINNED_LOAD_REGEX, "#$1")
                 .replace(ACTIVE_PINNED_CALL_REGEX, "#$1")
-        )
-    }
-
-    /**
-     * Runs buildifier over [workspaceFile] after [pin] flips its lines active, since [pin] only
-     * strips leading `#` characters and leaves whatever attribute order/spacing buildifier chose
-     * for the commented-out form untouched. Without this, a WORKSPACE pinned via the textual
-     * toggle can differ from one rendered directly in its active form and reformatted in the same
-     * pass (e.g. a fresh render with the lockfile already present), because buildifier only
-     * canonicalizes live statements, not text hidden behind a comment marker. No-op when
-     * [buildifierScript] is unavailable.
-     */
-    private fun reformatWithBuildifier(
-        workspaceFile: File,
-        buildifierScript: File?,
-        gradleServices: GradleServices,
-    ) {
-        buildifierScript ?: return
-        formatWithBuildifier(
-            buildifierScript = buildifierScript,
-            source = workspaceFile,
-            destination = workspaceFile,
-            execOperations = gradleServices.execOperations,
-            fileSystemOperations = gradleServices.fileSystemOperations,
-            projectLayout = gradleServices.layout,
         )
     }
 
@@ -312,7 +294,6 @@ constructor(
         gradleServices: GradleServices,
         logger: Logger,
         localMavenResolutionContextFactory: LocalMavenResolutionPinContextFactory?,
-        buildifierScript: File?,
     ): Boolean {
         val progressLoggerFactory = gradleServices.progressLoggerFactory
 
@@ -388,7 +369,6 @@ constructor(
                     ?.snapshotActiveLockfiles(allRepos.keys)
                     .orEmpty()
                 pin(workspaceFile)
-                reformatWithBuildifier(workspaceFile, buildifierScript, gradleServices)
                 // RJE pin scripts embed repository URLs captured while WORKSPACE is temporarily proxied.
                 // WORKSPACE is restored before execution so generated source stays canonical.
                 val workQueue = gradleServices.workerExecutor.noIsolation()
@@ -422,7 +402,7 @@ constructor(
             }
         } else {
             logger.quiet("Skipping pinning artifacts as they are up-to-date".ansiGreen)
-            return true
+            return false
         }
     }
 
@@ -462,8 +442,8 @@ constructor(
                 "checksums=${stats.checksumHits}), " +
                 "${stats.originFallbacks} fell through to origin " +
                 "(known-component=${stats.knownComponentFallthroughs}, " +
-                "metadata-only=${stats.metadataOnlyArtifactFallbacks}, " +
-                "origin-failures=${stats.originFailures}), " +
+                "metadata-only=${stats.metadataOnlyArtifactFallbacks}), " +
+                "${stats.originMisses} origin misses (404 probes), " +
                 "${stats.writeThroughCacheHits} cache hits, " +
                 "${stats.requestFailures} request failures, " +
                 "${stats.bytesServed} bytes served, in " +
@@ -489,6 +469,7 @@ constructor(
         bazelBlock: () -> Pair<BazelLogParsingOutputStream, ExecResult>
     ) {
         val projectDirectory = gradleServices.layout.projectDirectory
+        unpinWorkspaceIfLockfilesMissing(projectDirectory.file(WORKSPACE).asFile)
         val (outputStream, execResult) = bazelBlock()
         when {
             !artifactPinningEnabled -> execResult.assertNormalExitValue()

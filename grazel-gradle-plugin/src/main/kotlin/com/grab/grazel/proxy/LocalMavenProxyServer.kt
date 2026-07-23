@@ -59,6 +59,7 @@ internal class LocalMavenProxyServer(
 ) : AutoCloseable {
     private val lock = Any()
     private val originMissMutexes = ConcurrentHashMap<String, Mutex>()
+    private val knownOriginMisses = ConcurrentHashMap.newKeySet<String>()
     private val counters = LocalMavenProxyCounters()
     private val client = HttpClient(ClientCIO) {
         install(HttpTimeout) {
@@ -177,13 +178,13 @@ internal class LocalMavenProxyServer(
         }
         val concreteGav = concreteGavFromMavenPathOrNull(path)
         if (concreteGav in metadataOnlyGavs) {
-            return serveArtifactWithFallbackCounter(
+            return serveWithFallbackCounter(
                 repoIndex, path, countContentHit, counters.metadataOnlyArtifactFallbacks
             )
         }
         if (concreteGav != null && concreteGav in knownComponentGavs) {
             warnKnownComponentFallthrough(concreteGav, path)
-            return serveArtifactWithFallbackCounter(
+            return serveWithFallbackCounter(
                 repoIndex, path, countContentHit, counters.knownComponentFallthroughs
             )
         }
@@ -199,7 +200,7 @@ internal class LocalMavenProxyServer(
         }
     }
 
-    private suspend fun serveArtifactWithFallbackCounter(
+    private suspend fun serveWithFallbackCounter(
         repoIndex: Int,
         path: String,
         countContentHit: Boolean,
@@ -270,7 +271,7 @@ internal class LocalMavenProxyServer(
         }
         if (canServeGradleBackedPom && gav in knownComponentGavs) {
             warnKnownComponentFallthrough(gav, path)
-            return serveArtifactWithFallbackCounter(
+            return serveWithFallbackCounter(
                 repoIndex, path, countContentHit, counters.knownComponentFallthroughs
             )
         }
@@ -285,6 +286,12 @@ internal class LocalMavenProxyServer(
      * completes as a final belt-and-braces check before writing. The mutex is created lazily
      * per key and removed again in `finally` once released, so [originMissMutexes] only ever
      * holds entries for in-flight fetches rather than growing unbounded.
+     *
+     * A path origin has answered with a bare 404 for is remembered forever in
+     * [knownOriginMisses] (keyed the same way as [originMissMutexes]) so repeat coursier probes
+     * for paths that deterministically don't exist - sources/javadoc/classifier variants - short
+     * circuit before touching the mutex or origin again. Only an exact 404 is memoized this way;
+     * other non-OK statuses (5xx, auth blips) must stay retryable and are never added.
      */
     private suspend fun serveFromCacheOrOrigin(
         repoIndex: Int,
@@ -303,6 +310,10 @@ internal class LocalMavenProxyServer(
         val origin = origins.getOrNull(repoIndex)
             ?: return ServedResponse.Bytes(HttpStatusCode.NotFound, ByteArray(0))
         val originMissKey = "$repoIndex:$path"
+        if (originMissKey in knownOriginMisses) {
+            counters.originMisses.incrementAndGet()
+            return ServedResponse.Bytes(HttpStatusCode.NotFound, ByteArray(0))
+        }
         val originMissMutex = originMissMutexes.computeIfAbsent(originMissKey) { Mutex() }
         return try {
             originMissMutex.withLock {
@@ -324,7 +335,10 @@ internal class LocalMavenProxyServer(
                     )
                 }
                 if (originResponse.status != HttpStatusCode.OK) {
-                    counters.originFailures.incrementAndGet()
+                    if (originResponse.status == HttpStatusCode.NotFound) {
+                        knownOriginMisses.add(originMissKey)
+                    }
+                    counters.originMisses.incrementAndGet()
                     return ServedResponse.Bytes(originResponse.status, ByteArray(0))
                 }
                 val bytes = originResponse.bytes
@@ -413,7 +427,7 @@ internal class LocalMavenProxyServer(
         val metadataOnlyArtifactFallbacks = AtomicLong()
         val gradlePomHits = AtomicLong()
         val originFallbacks = AtomicLong()
-        val originFailures = AtomicLong()
+        val originMisses = AtomicLong()
         val requestFailures = AtomicLong()
         val checksumHits = AtomicLong()
         val writeThroughCacheHits = AtomicLong()
@@ -425,7 +439,7 @@ internal class LocalMavenProxyServer(
             metadataOnlyArtifactFallbacks = metadataOnlyArtifactFallbacks.get(),
             gradlePomHits = gradlePomHits.get(),
             originFallbacks = originFallbacks.get(),
-            originFailures = originFailures.get(),
+            originMisses = originMisses.get(),
             requestFailures = requestFailures.get(),
             checksumHits = checksumHits.get(),
             writeThroughCacheHits = writeThroughCacheHits.get(),

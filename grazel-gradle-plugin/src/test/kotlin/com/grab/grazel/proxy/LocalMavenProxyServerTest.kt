@@ -522,7 +522,7 @@ class LocalMavenProxyServerTest {
                     assertEquals(1, firstOrigin.requests.get())
                     assertEquals(1, secondOrigin.requests.get())
                     assertEquals(1, proxy.stats().originFallbacks)
-                    assertEquals(1, proxy.stats().originFailures)
+                    assertEquals(1, proxy.stats().originMisses)
                 }
             }
         }
@@ -547,7 +547,7 @@ class LocalMavenProxyServerTest {
                     assertEquals("parcelize-jar", secondRepositoryResponse.body)
                     assertEquals(1, firstOrigin.requests.get())
                     assertEquals(1, secondOrigin.requests.get())
-                    assertEquals(1, proxy.stats().originFailures)
+                    assertEquals(1, proxy.stats().originMisses)
                     assertEquals(1, proxy.stats().originFallbacks)
                 }
             }
@@ -579,7 +579,7 @@ class LocalMavenProxyServerTest {
                     assertEquals(1, secondOrigin.requests.get())
                     assertEquals(0, proxy.stats().gradlePomHits)
                     assertEquals(1, proxy.stats().originFallbacks)
-                    assertEquals(1, proxy.stats().originFailures)
+                    assertEquals(1, proxy.stats().originMisses)
                 }
             }
         }
@@ -601,7 +601,7 @@ class LocalMavenProxyServerTest {
                     assertEquals(404, response.code)
                     assertEquals(1, firstOrigin.requests.get())
                     assertEquals(0, secondOrigin.requests.get())
-                    assertEquals(1, proxy.stats().originFailures)
+                    assertEquals(1, proxy.stats().originMisses)
                     assertEquals(0, proxy.stats().originFallbacks)
                 }
             }
@@ -609,20 +609,17 @@ class LocalMavenProxyServerTest {
     }
 
     @Test
-    fun `unindexed Gradle cache artifacts fall through to origin instead of resolving arbitrary cache paths`() {
-        FixtureOriginServer(
-            responses = mapOf("com/example/library/1.0/library-1.0.jar" to "origin-jar")
-        ).use { origin ->
-            newProxy(
-                artifactIndex = emptyMap(),
-                repositories = listOf(proxyOrigin(url = origin.baseUrl))
-            ).use { proxy ->
-                val response = get("${proxy.baseUrl()}/r/0/com/example/library/1.0/library-1.0.jar")
+    fun `repeated origin 404s for the same path are memoized and don't re-hit origin`() {
+        val path = "com/example/library/1.0/library-1.0-sources.jar"
+        FixtureOriginServer(responses = emptyMap()).use { origin ->
+            newProxy(repositories = listOf(proxyOrigin(url = origin.baseUrl))).use { proxy ->
+                val firstResponse = get("${proxy.baseUrl()}/r/0/$path")
+                val secondResponse = get("${proxy.baseUrl()}/r/0/$path")
 
-                assertEquals(200, response.code)
-                assertEquals("origin-jar", response.body)
-                assertEquals(0, proxy.stats().artifactHits)
-                assertEquals(1, proxy.stats().originFallbacks)
+                assertEquals(404, firstResponse.code)
+                assertEquals(404, secondResponse.code)
+                assertEquals(1, origin.requests.get())
+                assertEquals(2, proxy.stats().originMisses)
             }
         }
     }

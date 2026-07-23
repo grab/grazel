@@ -27,7 +27,7 @@ internal data class LocalMavenResolutionStats(
     val metadataOnlyArtifactFallbacks: Long = 0,
     val gradlePomHits: Long = 0,
     val originFallbacks: Long = 0,
-    val originFailures: Long = 0,
+    val originMisses: Long = 0,
     val requestFailures: Long = 0,
     val checksumHits: Long = 0,
     val writeThroughCacheHits: Long = 0,

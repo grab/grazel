@@ -103,7 +103,7 @@ constructor(
 
     @TaskAction
     fun action() {
-        artifactPinner.get().pinArtifacts(
+        val pinned = artifactPinner.get().pinArtifacts(
             workspaceFile = workspaceFile.get().asFile,
             workspacePlan = fromJson<WorkspacePlan>(workspacePlan.get()),
             workspaceRenderPlan = fromJson<WorkspaceRenderPlan>(workspaceRenderPlan.get()),
@@ -111,8 +111,17 @@ constructor(
             gradleServices = gradleServices,
             logger = logger,
             localMavenResolutionContextFactory = localMavenResolutionContextFactory(),
-            buildifierScript = buildifierScript.get().asFile,
         )
+        if (pinned) {
+            formatWithBuildifier(
+                buildifierScript = buildifierScript.get().asFile,
+                source = workspaceFile.get().asFile,
+                destination = workspaceFile.get().asFile,
+                execOperations = gradleServices.execOperations,
+                fileSystemOperations = gradleServices.fileSystemOperations,
+                projectLayout = gradleServices.layout,
+            )
+        }
     }
 
     private fun localMavenResolutionContextFactory(): LocalMavenResolutionPinContextFactory? {

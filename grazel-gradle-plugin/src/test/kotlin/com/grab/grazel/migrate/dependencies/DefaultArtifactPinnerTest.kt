@@ -34,6 +34,7 @@ import org.junit.rules.TemporaryFolder
 import java.io.File
 import kotlin.io.path.copyTo
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class DefaultArtifactPinnerTest {
@@ -269,7 +270,7 @@ class DefaultArtifactPinnerTest {
             workerExecutor = FakeWorkerExecutor()
         )
 
-        assertTrue("Pinning skips repos that were not generated") {
+        assertFalse("Pinning skips repos that were not generated, so nothing was pinned") {
             artifactPinner.pinArtifacts(
                 workspace,
                 workspacePlan = workspacePlan("full_paid_debug_maven" to listOf(overrideCarrier)),
