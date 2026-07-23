@@ -53,7 +53,12 @@ internal data class RootKey(
     val projectPath: String,
     val configurationName: String,
     val kind: AggregatedDependencyRootKind
-) : JavaSerializable
+) : JavaSerializable {
+    companion object {
+        // Pinned so @Input fingerprints stay stable across compiler versions.
+        private const val serialVersionUID = 1L
+    }
+}
 
 internal fun AggregatedDependencyRootMetadata.rootKey(): RootKey = RootKey(
     projectPath = projectPath,

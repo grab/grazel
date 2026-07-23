@@ -173,4 +173,36 @@ class ResolveWorkspaceDependenciesTaskTest {
 
         assertTrue(exception.message.orEmpty().contains("does not match"))
     }
+
+    @Test
+    fun `pairRootsByKey fails loudly when root metadata contains duplicate keys`() {
+        val sharedKey = RootKey(
+            projectPath = ":app",
+            configurationName = "debugRuntimeClasspath",
+            kind = AggregatedDependencyRootKind.MAIN_HIERARCHY
+        )
+        val metadata1 = AggregatedDependencyRootMetadata(
+            projectPath = sharedKey.projectPath,
+            kind = sharedKey.kind,
+            configurationName = sharedKey.configurationName
+        )
+        val metadata2 = AggregatedDependencyRootMetadata(
+            projectPath = sharedKey.projectPath,
+            kind = sharedKey.kind,
+            configurationName = sharedKey.configurationName
+        )
+
+        val exception = assertThrows(IllegalStateException::class.java) {
+            pairRootsByKey(
+                rootKeys = listOf(sharedKey, sharedKey),
+                rootComponents = listOf(
+                    fakeComponentResult(projectPath = ":app"),
+                    fakeComponentResult(projectPath = ":app")
+                ),
+                rootMetadata = listOf(metadata1, metadata2)
+            )
+        }
+
+        assertTrue(exception.message.orEmpty().contains("Duplicate root keys"))
+    }
 }
