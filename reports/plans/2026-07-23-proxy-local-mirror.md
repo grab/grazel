@@ -338,8 +338,41 @@ git commit -m "docs(gates): proxy cold start replaces the two-phase bootstrap go
 
 ---
 
+### Task 4: `/simplify` pass over the proxy changes
+
+**Files:**
+- Scope: the diff of Tasks 1-3 (`git diff <pre-task-1-base>...HEAD`), centered on
+  `proxy/LocalMavenProxyServer.kt`, `proxy/LocalMavenProxyService.kt`,
+  `tasks/internal/PinMavenArtifactsTask.kt`, `maven/LocalMavenResolutionStats.kt`,
+  `migrate/dependencies/ArtifactPinner.kt` and the proxy tests.
+
+- [ ] **Step 1: Run the `/simplify` skill** (4 cleanup angles — reuse,
+  simplification, efficiency, altitude) against that diff. Prime candidates the
+  deletion may have exposed: `serveArtifactWithFallbackCounter` may now be the
+  universal tail (fold?), `metadataOnlyGavs` vs `knownComponentGavs` branch
+  near-duplication, dead KDoc references to removed branches, counters that no
+  longer earn their keep, and whether `LocalMavenProxyService.configure`'s
+  signature can shed further weight.
+- [ ] **Step 2: Apply fixes strictly byte-identity gated** — after each fix:
+  `./gradlew :grazel-gradle-plugin:test --console=plain` and
+  `./gradlew verifyGrazelGoldenBaseline --console=plain` must stay clean; revert
+  anything that moves generated output. Record skips with reasons.
+- [ ] **Step 3: Commit** — `git commit -m "refactor(proxy): simplify pass over local-mirror changes"` (explicit paths).
+
+---
+
 ## Whole-effort verification (controller-run, after all tasks)
 
-1. Whole-branch review (superpowers final review, most capable model).
+1. **Adversarial whole-branch review** — dispatch on the most capable
+   authorized model (Opus, per standing user authorization for adversarial
+   reviews) with the review package for the full effort diff
+   (`<pre-task-1-base>..HEAD`). The reviewer's brief: hunt correctness bugs in
+   the new serve semantics (races on `warnedFallthroughGavs`, counter
+   double-counting via `serveChecksum`'s countContentHit=false recursion,
+   fallthrough behavior under concurrent identical requests, POM-vs-artifact
+   asymmetries), verify the never-500 contract exhaustively against every
+   `serve()` branch, and attack the "cold start = warm start" determinism claim.
+   Fix Critical/Important findings via a fix subagent + re-review before the PAX
+   sweep.
 2. PAX sweep per VERIFICATION-GATES.md — with the cold-start variant: in PAX, `rm *_install.json`, single `./gradlew migrateToBazel --no-daemon --console=plain` (background, stall watchdog), expect green + clean tree (`git status --porcelain` empty — regenerated lockfiles byte-identical to committed). Then gates 3-6 (size guard, APK, focused tests, CI-set analysis).
 3. Confirm the new summary line in the PAX migrate log and record the fallthrough counts in the task report.
