@@ -45,9 +45,17 @@ Run from the grazel repo root.
    ```bash
    bazelisk build --nobuild //...
    ```
-   Expect `Build completed successfully` with no `no such package` / `no such
-   target`. Run this whenever a change can affect *which* targets get generated
-   (reachability, migration criteria, target builders).
+   Expect `Build completed successfully` (~259 targets analyzed) with no
+   `no such package` / `no such target`. Run this whenever a change can affect
+   *which* targets get generated (reachability, migration criteria, target
+   builders).
+
+   Since the Bazel-8 port, this gate runs on **Bazel 8.5.1** (`.bazelversion`)
+   with `common --enable_workspace=true` (`.bazel/.default.bazelrc`) and the
+   Bazel-8 sample pins in root `build.gradle`: grab-bazel-common `b702597b`,
+   rules_java 9.5.0, rules_kotlin 2.1.10. Bazel 8.4.x cannot be used (upstream
+   `cc_compatibility_proxy` bug, fixed in 8.5.0), and 8.8.0 exists only as
+   PAX's custom binary — there is no public 8.8.0 release.
 
 ### Coverage limits (why a green local run can still miss a bug)
 
@@ -71,8 +79,12 @@ documented waiver, not a regression. Any other failure is real.
 ## PAX gates
 
 PAX checkout: `/Users/arun.sampathkumar/work/pax-android`, branch
-`arun/grazel-refactor`. The working tree carries the branch's generated output
-as uncommitted modifications (the accepted baseline diff below).
+`arun/grazel-refactor` — rebuilt on latest master (`51084b58`, Bazel 8.8.0-custom
+via the `tools/bazel` wrapper, Gradle 8.14.4, AGP 8.13.2, Kotlin 2.1.20). The
+branch is two commits on top of master: the re-applied build-logic hand changes
+(`4300438d`) and the regenerated Bazel baseline (`27569d9f`). The pre-rebase
+branch tip (`9c30df9`, on a June-25 master) is preserved at
+`arun/grazel-refactor-pre-rebase-20260723`.
 
 > **Non-destructive rule (hard constraint).** Never run `git stash`
 > (pop/apply/drop/push), `git checkout`, `git reset`, `git commit`, `git add`,
@@ -108,9 +120,10 @@ Run in order:
    ```bash
    reports/scripts/verify-pax-size-guard.sh --mode preserving
    ```
-   Expect: `bucketCount=11`, `pinfileCount=11`, `totalArtifactRoots=1945`, and
+   Expect: `bucketCount=11`, `pinfileCount=11`, `totalArtifactRoots=2094`, and
    **no per-repo deltas**. Baseline lives at
-   `reports/specs/pax-size-baseline.json`.
+   `reports/specs/pax-size-baseline.json` (rebased 2026-07-23 against master
+   `51084b58`; the previous baseline on the June-25 master was 11/11/1945).
 4. **APK build** (~3 min):
    ```bash
    cd /Users/arun.sampathkumar/work/pax-android
@@ -126,7 +139,8 @@ Run in order:
      //app-test:app-test-gps-pax-debug-test \
      //application-initializer:application-initializer-gps-pax-debug-test
    ```
-   Expect `Executed 0 out of 3 tests: 3 tests pass`.
+   Expect `3 tests pass` (executed count varies with cache state: `Executed 0
+   out of 3` on cache hits, `Executed 3 out of 3` on a fresh build).
 6. **Bazel graph analysis over the CI target set** (the gate that catches
    dangling labels — APK + 3 focused tests do **not** analyze the test graph, so
    this class slips past them). Use the pipeline's own target selection, not
@@ -138,7 +152,8 @@ Run in order:
    # analyse (not execute) the whole set + transitive deps
    bazelisk build --nobuild --keep_going --config=ci --target_pattern_file=/tmp/ut_targets.txt
    ```
-   Pass condition: `Analyzed N targets`, exit 0, **zero** `no such package` /
+   Pass condition: `Analyzed N targets` (1453 as of the 2026-07-23 rebase; was
+   1442 on the June-25 master), exit 0, **zero** `no such package` /
    `no such target`, no `Analysis of target ... failed`. This is the true
    "will the `bazel:impacted targets` job go green" signal — it reproduces the
    job's analysis phase without executing tests.
@@ -177,3 +192,25 @@ each completes — do not block the session on them.
   Fix: `./gradlew --stop`, then rerun from an unsandboxed shell so a healthy daemon starts.
   The symptom often stays hidden while the bazel bootstrap task is UP-TO-DATE and PAX
   actions are disk-cache hits — the first uncached bazel action exposes it.
+- **`pinMavenArtifacts` HTTP 500s from `127.0.0.1:<port>` after any lockfile
+  discontinuity — fix with a two-phase bootstrap, not code changes.** With
+  `experiments.localMavenResolution=true`, the plugin's local proxy hard-fails
+  (500, by design) any artifact that neither Gradle resolved nor an existing
+  committed `*_install.json` lockfile vouches for. The allowance is a ratchet
+  seeded from the previous pin's lockfiles, so it breaks at discontinuities: a
+  rebase that resets lockfiles to another plugin's bucket names/universe, a
+  bucket rename, or a pin bump that changes the artifact list (e.g.
+  grab-bazel-common bumping its kotlin artifacts). Bootstrap: set
+  `localMavenResolution.set(false)`, run `migrateToBazel` to completion (pins
+  direct from origin, mints fresh lockfiles), set it back to `true`, run
+  `migrateToBazel` again (validates the proxy path against the fresh
+  allowance), commit with the flag **true**. Hit twice on 2026-07-23 (PAX
+  rebase; sample Bazel-8 pin bump).
+- **A silent, hour-long `pinMavenArtifacts` stall is a hung coursier socket, not
+  slow work.** Coursier's `connect()` has no timeout; a transient VPN/network
+  drop to artifactory leaves it blocked forever (jstack shows
+  `sun.nio.ch.Net.connect0`). Coursier "Connection reset" download errors in the
+  same window are the same flake. Check liveness (log file growth + process
+  CPU), kill the hung coursier JVM (bazel retries the fetch cleanly), and rerun
+  the migrate — reruns are cheap since everything else is cached. Run long
+  migrates with a stall watchdog rather than waiting on them blind.
