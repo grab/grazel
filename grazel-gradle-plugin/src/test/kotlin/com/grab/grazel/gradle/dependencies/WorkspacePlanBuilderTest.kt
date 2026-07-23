@@ -21,6 +21,7 @@ import com.grab.grazel.gradle.dependencies.model.CandidateMavenRepo
 import com.grab.grazel.gradle.dependencies.model.CandidateMavenRepoKind.VARIANT
 import com.grab.grazel.gradle.dependencies.model.OverrideTarget
 import com.grab.grazel.gradle.dependencies.model.ResolvedDependency
+import com.grab.grazel.gradle.dependencies.model.TargetReferenceFacts
 import com.grab.grazel.gradle.dependencies.model.WorkspaceDependencies
 import com.grab.grazel.gradle.dependencies.model.WorkspacePlan
 import com.grab.grazel.gradle.variant.DEFAULT_VARIANT
@@ -198,7 +199,7 @@ class WorkspacePlanBuilderTest {
         val plan = WorkspacePlanBuilder().build(workspaceDependencies)
         val renderPlan = WorkspaceRenderPlanBuilder().build(
             workspacePlan = plan,
-            referencedRepoNames = setOf("free_maven")
+            targetReferences = TargetReferenceFacts(repoNames = setOf("free_maven"))
         )
 
         assertEquals(
@@ -219,7 +220,7 @@ class WorkspacePlanBuilderTest {
 
         val renderPlan = WorkspaceRenderPlanBuilder().build(
             workspacePlan = WorkspacePlanBuilder().build(workspaceDependencies),
-            referencedRepoNames = emptySet()
+            targetReferences = TargetReferenceFacts(repoNames = emptySet())
         )
 
         assertEquals(
@@ -250,7 +251,7 @@ class WorkspacePlanBuilderTest {
                     )
                 )
             ),
-            referencedRepoNames = setOf("debug_maven")
+            targetReferences = TargetReferenceFacts(repoNames = setOf("debug_maven"))
         )
 
         assertEquals(emptySet<String>(), renderPlan.materializedRepoNames)
@@ -266,7 +267,7 @@ class WorkspacePlanBuilderTest {
         val plan = WorkspacePlanBuilder().build(workspaceDependencies)
         val renderPlan = WorkspaceRenderPlanBuilder().build(
             workspacePlan = plan,
-            referencedRepoNames = emptySet()
+            targetReferences = TargetReferenceFacts(repoNames = emptySet())
         )
 
         assertEquals(

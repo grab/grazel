@@ -60,23 +60,17 @@ internal class DeclaredMetadataMerger(
         compileOnlyDependenciesByBucket
             .filter { (bucket, _) -> shouldAddDeclaredHierarchyDependency(bucket) }
             .forEach { (bucket, dependencies) ->
-                when (bucket.bucketName) {
-                    TEST_VARIANT, ANDROID_TEST_VARIANT ->
-                        accumulator.fold(
-                            target = BucketTarget.TEST_HIERARCHY,
-                            projectPath = bucket.projectPath,
-                            bucketName = bucket.bucketName,
-                            closure = dependencies,
-                            keepEmpty = false
-                        )
-                    else -> accumulator.fold(
-                        target = BucketTarget.HIERARCHY,
-                        projectPath = bucket.projectPath,
-                        bucketName = bucket.bucketName,
-                        closure = dependencies,
-                        keepEmpty = false
-                    )
+                val target = when (bucket.bucketName) {
+                    TEST_VARIANT, ANDROID_TEST_VARIANT -> BucketTarget.TEST_HIERARCHY
+                    else -> BucketTarget.HIERARCHY
                 }
+                accumulator.fold(
+                    target = target,
+                    projectPath = bucket.projectPath,
+                    bucketName = bucket.bucketName,
+                    closure = dependencies,
+                    keepEmpty = false
+                )
             }
 
         declaredMainDependenciesByBucket

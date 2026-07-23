@@ -22,6 +22,7 @@ import com.grab.grazel.gradle.dependencies.model.CandidateMavenRepoKind.AGGREGAT
 import com.grab.grazel.gradle.dependencies.model.CandidateMavenRepoKind.VARIANT
 import com.grab.grazel.gradle.dependencies.model.OverrideTarget
 import com.grab.grazel.gradle.dependencies.model.ResolvedDependency
+import com.grab.grazel.gradle.dependencies.model.TargetReferenceFacts
 import com.grab.grazel.gradle.dependencies.model.WorkspacePlan
 import org.junit.Assert.assertEquals
 import org.junit.Test
@@ -41,7 +42,7 @@ class WorkspaceRenderPlanBuilderTest {
 
         val renderPlan = WorkspaceRenderPlanBuilder().build(
             workspacePlan = plan,
-            referencedRepoNames = setOf("debug_maven", "missing_maven")
+            targetReferences = TargetReferenceFacts(repoNames = setOf("debug_maven", "missing_maven"))
         )
 
         assertEquals(
@@ -69,7 +70,7 @@ class WorkspaceRenderPlanBuilderTest {
 
         val renderPlan = WorkspaceRenderPlanBuilder(alwaysMaterializedVariants = emptySet()).build(
             workspacePlan = plan,
-            referencedRepoNames = setOf("a_maven")
+            targetReferences = TargetReferenceFacts(repoNames = setOf("a_maven"))
         )
 
         assertEquals(
@@ -106,7 +107,7 @@ class WorkspaceRenderPlanBuilderTest {
 
         val renderPlan = WorkspaceRenderPlanBuilder(alwaysMaterializedVariants = emptySet()).build(
             workspacePlan = plan,
-            referencedRepoNames = plan.repoPlan.keys
+            targetReferences = TargetReferenceFacts(repoNames = plan.repoPlan.keys)
         )
 
         assertEquals(
@@ -127,7 +128,7 @@ class WorkspaceRenderPlanBuilderTest {
 
         val renderPlan = WorkspaceRenderPlanBuilder(alwaysMaterializedVariants = emptySet()).build(
             workspacePlan = plan,
-            referencedRepoNames = setOf("self_maven")
+            targetReferences = TargetReferenceFacts(repoNames = setOf("self_maven"))
         )
 
         assertEquals(
@@ -156,7 +157,7 @@ class WorkspaceRenderPlanBuilderTest {
 
         val renderPlan = WorkspaceRenderPlanBuilder(alwaysMaterializedVariants = emptySet()).build(
             workspacePlan = plan,
-            referencedRepoNames = setOf("debug_maven")
+            targetReferences = TargetReferenceFacts(repoNames = setOf("debug_maven"))
         )
 
         assertEquals(

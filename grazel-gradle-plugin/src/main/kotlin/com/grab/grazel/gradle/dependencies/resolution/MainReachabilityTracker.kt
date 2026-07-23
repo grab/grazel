@@ -59,6 +59,9 @@ internal class MainReachabilityTracker(
     val reachableMainBucketNamesByProject = sortedMapOf<String, MutableSet<String>>()
     private val mainProjectEdgeScopes = mutableListOf<MainProjectEdgeScope>()
 
+    private fun DeclaredVariantDependencyMetadata.isMainBuildVariant(): Boolean =
+        variantType == AndroidBuild || variantType == JvmBuild
+
     private fun declaredProjectDependencyEdges(
         projectPath: String,
         variantNames: Set<String>,
@@ -69,9 +72,7 @@ internal class MainReachabilityTracker(
 
         return projectMetadataByPath.variantsFor(projectPath)
             .asSequence()
-            .filter { variant ->
-                variant.variantType == AndroidBuild || variant.variantType == JvmBuild
-            }
+            .filter { variant -> variant.isMainBuildVariant() }
             .filter { variant ->
                 !selectedOnly || variant.name in variantNames
             }
@@ -93,9 +94,7 @@ internal class MainReachabilityTracker(
     ): Set<String> {
         val variantHierarchyNamesByName = projectMetadataByPath.variantsFor(projectPath)
             .asSequence()
-            .filter { variant ->
-                variant.variantType == AndroidBuild || variant.variantType == JvmBuild
-            }
+            .filter { variant -> variant.isMainBuildVariant() }
             .associate { variant -> variant.name to (setOf(variant.name) + variant.extendsFrom) } +
             mapOf(
                 "apiElements" to setOf(DEFAULT_VARIANT),
@@ -118,9 +117,7 @@ internal class MainReachabilityTracker(
     private fun knownMainBucketNames(projectPath: String, bucketNames: Set<String>): Set<String> {
         val knownBucketNames = projectMetadataByPath.variantsFor(projectPath)
             .asSequence()
-            .filter { variant ->
-                variant.variantType == AndroidBuild || variant.variantType == JvmBuild
-            }
+            .filter { variant -> variant.isMainBuildVariant() }
             .map(DeclaredVariantDependencyMetadata::name)
             .toSet()
         return bucketNames

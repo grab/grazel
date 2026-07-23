@@ -18,6 +18,7 @@ package com.grab.grazel.gradle.dependencies
 
 import com.grab.grazel.gradle.dependencies.model.CandidateMavenRepo
 import com.grab.grazel.gradle.dependencies.model.CandidateMavenRepoKind.AGGREGATED
+import com.grab.grazel.gradle.dependencies.model.TargetReferenceFacts
 import com.grab.grazel.gradle.dependencies.model.WorkspacePlan
 import com.grab.grazel.gradle.dependencies.model.WorkspaceRenderPlan
 import com.grab.grazel.gradle.variant.ANDROID_TEST_VARIANT
@@ -37,9 +38,11 @@ internal class WorkspaceRenderPlanBuilder(
         .mapTo(sortedSetOf(), String::toMavenRepoName)
 
     /**
-     * Decides the final set of maven_install repos to actually render, since [WorkspacePlan] may
-     * contain repo candidates that no target ever references. Starting set is
-     * [referencedRepoNames] (from [TargetReferenceFactsCollector]) plus repos that are always
+     * Builds the complete [WorkspaceRenderPlan] for [workspacePlan]: the set of maven_install
+     * repos to actually render, plus the project targets [targetReferences] found referenced,
+     * carried straight through as [WorkspaceRenderPlan.referencedProjectTargets].
+     *
+     * Repo materialization starts from [TargetReferenceFacts.repoNames] plus repos that are always
      * materialized regardless of reference — either a fixed set of variant names
      * (`alwaysMaterializedVariants`, e.g. default/test/androidTest/lint) or any [AGGREGATED]-kind
      * repo, since aggregated repos back cross-cutting concerns rather than a single referenceable
@@ -57,8 +60,9 @@ internal class WorkspaceRenderPlanBuilder(
      */
     fun build(
         workspacePlan: WorkspacePlan,
-        referencedRepoNames: Set<String> = emptySet()
+        targetReferences: TargetReferenceFacts = TargetReferenceFacts()
     ): WorkspaceRenderPlan {
+        val referencedRepoNames = targetReferences.repoNames
         val baseMaterializableRepos = workspacePlan.repoPlan
             .filterValues { candidate -> candidate.hasMaterializedRoot() }
             .keys
@@ -91,7 +95,8 @@ internal class WorkspaceRenderPlanBuilder(
         }
 
         return WorkspaceRenderPlan(
-            materializedRepoNames = materializedRepoNames.toSortedSet()
+            materializedRepoNames = materializedRepoNames.toSortedSet(),
+            referencedProjectTargets = targetReferences.projectTargets
         )
     }
 

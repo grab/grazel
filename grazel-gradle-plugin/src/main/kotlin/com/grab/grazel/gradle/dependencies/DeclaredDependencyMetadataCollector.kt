@@ -179,6 +179,23 @@ internal data class DeclaredDependencyMetadata(
     }
 
     /**
+     * Superset of project paths that can ever survive [collectExcludeRulesByProjectPath]'s
+     * [ProjectExcludeRules.hasRules] filter, for any [VariantType]/variant-name combination: a
+     * project only contributes rules to `bucketRulesByShortId` or `variantRulesByName` if at
+     * least one of its variants declares a non-empty `excludeRulesByShortId`, independent of
+     * which variant types or names a given call scopes to. Computed once per [projects] map so
+     * repeated calls (once per workspace root) skip building a [ProjectExcludeRules] for every
+     * project that trivially has none.
+     */
+    private val projectPathsWithExcludeRules: Set<String> by lazy {
+        projects
+            .filterValues { projectMetadata ->
+                projectMetadata.variants.any { variant -> variant.excludeRulesByShortId.isNotEmpty() }
+            }
+            .keys
+    }
+
+    /**
      * Builds a [ProjectExcludeRules] per project scoped to [variantTypes] (expanded with each
      * type's JVM counterpart via [toJvmVariantType], since a JVM library project has no
      * Android-typed variants but must still match Android-typed lookups from the resolver side).
@@ -187,8 +204,9 @@ internal data class DeclaredDependencyMetadata(
      * `variantRulesByName` retains every variant's own rules unscoped for later per-variant lookup
      * in [ProjectExcludeRules.rulesFor]. `apiElements`/`runtimeElements` synthetic hierarchy entries
      * are added so that AGP's default-config API/runtime elements — which have no corresponding
-     * declared variant — still fall back to the [DEFAULT_VARIANT] hierarchy. Projects with no rules
-     * at all are dropped ([ProjectExcludeRules.hasRules]) to keep the resulting map minimal.
+     * declared variant — still fall back to the [DEFAULT_VARIANT] hierarchy. Only projects in
+     * [projectPathsWithExcludeRules] are considered, and projects with no rules at all are still
+     * dropped ([ProjectExcludeRules.hasRules]) to keep the resulting map minimal.
      */
     fun collectExcludeRulesByProjectPath(
         variantTypes: Set<VariantType>,
@@ -196,6 +214,7 @@ internal data class DeclaredDependencyMetadata(
     ): Map<String, ProjectExcludeRules> {
         val ownerVariantTypes = variantTypes + variantTypes.map { it.toJvmVariantType }
         return projects
+            .filterKeys { projectPath -> projectPath in projectPathsWithExcludeRules }
             .mapValues { (_, projectMetadata) ->
                 val variants = projectMetadata.variants
                     .filter { variant -> variant.variantType in ownerVariantTypes }

@@ -229,8 +229,4 @@ internal object ProjectReachabilityOrder {
     }
 
     private fun DependencyGraphNode.displayName(): String = "${project.path}[$sourceSet]"
-
-    private val dependencyGraphNodeComparator: Comparator<DependencyGraphNode> =
-        compareBy<DependencyGraphNode> { it.project.path }
-            .thenBy { it.sourceSet.ordinal }
 }

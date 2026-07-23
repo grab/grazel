@@ -45,6 +45,11 @@ internal data class DependencyGraphNode(
     val sourceSet: DependencyGraphSourceSet
 )
 
+/** Orders [DependencyGraphNode]s by project path, then by source-set ordinal. */
+internal val dependencyGraphNodeComparator: Comparator<DependencyGraphNode> =
+    compareBy<DependencyGraphNode> { it.project.path }
+        .thenBy { it.sourceSet.ordinal }
+
 internal data class DependencyGraphDiagnosticEdge(
     val source: DependencyGraphNode,
     val target: DependencyGraphNode,
@@ -182,8 +187,7 @@ internal class DefaultDependencyGraphs(
         variantTypeFilter: (VariantType) -> Boolean
     ): ReachabilityProjection {
         val typedGraph = sortedMapOf<DependencyGraphNode, MutableSet<DependencyGraphNode>>(
-            compareBy<DependencyGraphNode> { it.project.path }
-                .thenBy { it.sourceSet.ordinal }
+            dependencyGraphNodeComparator
         )
         val diagnosticEdges = mutableListOf<DependencyGraphDiagnosticEdge>()
         variantGraphs
@@ -269,10 +273,4 @@ internal class DefaultDependencyGraphs(
         val graph: Map<DependencyGraphNode, Set<DependencyGraphNode>>,
         val diagnosticEdges: List<DependencyGraphDiagnosticEdge>
     )
-
-    private companion object {
-        val dependencyGraphNodeComparator: Comparator<DependencyGraphNode> =
-            compareBy<DependencyGraphNode> { it.project.path }
-                .thenBy { it.sourceSet.ordinal }
-    }
 }
