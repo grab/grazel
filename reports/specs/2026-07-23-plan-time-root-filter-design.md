@@ -69,6 +69,10 @@ Temporary working-tree patch (PAX composite build picks it up; grep-able prefix
    Offline diff by root key. Divergence found here blocks phase 1 until explained.
 3. **Pin-coupling probe** — log the configurations `pinMavenArtifactsTask` receives vs the
    dropped set; record whether the intersection is empty.
+4. **Configuration-phase baseline** — `System.nanoTime` around
+   `WorkspaceDependencyRootInputPlanner.plan(...)` (and around the whole `projectsEvaluated`
+   callback), logged as `GRAZEL-ITEM4 PLAN-TIME <ms>`. This is the before-number for the
+   config-phase budget: the phase-2 predicate must not measurably grow it.
 
 Evidence committed to `reports/review/item4-plan-time-filter-evidence.md`; patch reverted.
 
@@ -102,6 +106,12 @@ ends at phase 1 — still net-positive, the equivalence is now continuously guar
   walked") — kept as a tripwire; its deletion is a follow-up after a stable release.
 - Gates: full local + full PAX sweep + **before/after migrate timing** — the effort ships
   with a measured number (closing the cohesion report's "no empirical measurement" gap).
+- **Configuration-phase budget check**: re-measure `plan(...)` duration (same probe as
+  phase 0 item 4) with the predicate live. Pass condition: delta within noise of the phase-0
+  baseline (the predicate is O(variants-per-project) in-memory metadata reads and computes
+  `mainLeafBuildTypeNames` once per project, reusing the already-sorted variant list — no
+  resolution, no I/O). A measurable regression here is a stop-and-investigate, not a
+  shrug — configuration time is paid by every Gradle invocation, not just migrate.
 - Byte-identity expectation: generated output unchanged (the dropped roots contributed
   nothing — that is the premise phase 1 proved). Any golden/PAX output drift = stop, revert,
   report; do not patch baselines.
