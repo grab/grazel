@@ -58,7 +58,12 @@ class DefaultArtifactPinnerTest {
         rootProject.file(WORKSPACE).writeText("")
         rootProject.file(BUILD_BAZEL).writeText("")
         rootProject.file("maven_install.json").writeText("")
-        rootProject.file(".bazelrc").writeText("common --enable_bzlmod=false")
+        rootProject.file(".bazelrc").writeText(
+            """
+            common --enable_bzlmod=false
+            common --enable_workspace=true
+            """.trimIndent()
+        )
         ROOT_PATH.resolve(".bazelversion").copyTo(rootProject.file(".bazelversion").toPath())
 
         artifactPinner = DefaultArtifactPinner(rootProject.the<GrazelExtension>())
