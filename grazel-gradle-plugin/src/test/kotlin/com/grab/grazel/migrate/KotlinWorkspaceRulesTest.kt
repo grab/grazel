@@ -32,6 +32,7 @@ import org.gradle.api.Project
 import org.gradle.kotlin.dsl.configure
 import org.gradle.kotlin.dsl.repositories
 import org.junit.Before
+import org.junit.Ignore
 import org.junit.Test
 
 class KotlinWorkspaceRulesTest {
@@ -62,6 +63,7 @@ class KotlinWorkspaceRulesTest {
     }
 
     @Test
+    @Ignore("Bazel 8: kotlinCompiler()/registerKotlinToolchain() emission is temporarily disabled in WorkspaceBuilder.kotlinRules() until pax-android forks rules_android with patches; re-enable alongside that code.")
     fun `assert default rule_kotlin repository and compiler in WORKSPACE`() {
         val kotlinTag = "1.6.21"
         val kotlinSha = "somesha256"
@@ -122,6 +124,7 @@ class KotlinWorkspaceRulesTest {
     }
 
     @Test
+    @Ignore("Bazel 8: kotlinCompiler()/registerKotlinToolchain() emission is temporarily disabled in WorkspaceBuilder.kotlinRules() until pax-android forks rules_android with patches; re-enable alongside that code.")
     fun `assert custom toolchain registration in WORKSPACE`() {
         rootProject.configure<GrazelExtension> {
             rules {
@@ -139,6 +142,7 @@ class KotlinWorkspaceRulesTest {
     }
 
     @Test
+    @Ignore("Bazel 8: kotlinCompiler()/registerKotlinToolchain() emission is temporarily disabled in WorkspaceBuilder.kotlinRules() until pax-android forks rules_android with patches; re-enable alongside that code.")
     fun `assert KSP compiler not generated when not configured`() {
         val kotlinTag = "1.6.21"
         val kotlinSha = "somesha256"
@@ -160,6 +164,7 @@ class KotlinWorkspaceRulesTest {
     }
 
     @Test
+    @Ignore("Bazel 8: kotlinCompiler()/registerKotlinToolchain() emission is temporarily disabled in WorkspaceBuilder.kotlinRules() until pax-android forks rules_android with patches; re-enable alongside that code.")
     fun `assert KSP compiler generated when configured`() {
         val kotlinTag = "1.8.10"
         val kotlinSha = "kotlinsha256"

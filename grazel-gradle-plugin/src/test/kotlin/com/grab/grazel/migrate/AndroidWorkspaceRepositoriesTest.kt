@@ -78,9 +78,13 @@ class AndroidWorkspaceRepositoriesTest : GrazelPluginTest() {
         val generatedCode = statements {
             workspaceBuilder.addAndroidSdkRepositories(this)
         }.asString()
+        // Bazel 8: NDK is set up via grab_bazel_common's android_ndk_setup() plus
+        // explicit toolchain registration, replacing the native android_ndk_repository rule.
         Truth.assertThat(generatedCode).apply {
-            contains("android_ndk_repository")
-            contains("name = \"androidndk\"")
+            contains("android_ndk_setup()")
+            contains("register_toolchains(")
+            contains("@androidndk//:toolchain_aarch64-linux-android")
+            contains("@androidndk//:toolchain_x86_64-linux-android")
             doesNotContain("path =")
         }
     }
@@ -105,10 +109,12 @@ class AndroidWorkspaceRepositoriesTest : GrazelPluginTest() {
         val generatedCode = statements {
             workspaceBuilder.addAndroidSdkRepositories(this)
         }.asString()
+        // Bazel 8: android_ndk_setup() no longer accepts an NDK api level, so configuring
+        // ndkApiLevel must not leak into the generated setup.
         Truth.assertThat(generatedCode).apply {
-            contains("android_ndk_repository")
-            contains("name = \"androidndk\"")
-            contains("api_level = $ndkApiLevel")
+            contains("android_ndk_setup()")
+            contains("register_toolchains(")
+            doesNotContain("api_level = $ndkApiLevel")
         }
     }
 

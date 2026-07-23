@@ -8,33 +8,6 @@ http_archive(
     url = "https://github.com/bazelbuild/rules_kotlin/releases/download/v1.9.6/rules_kotlin-v1.9.6.tar.gz",
 )
 
-KOTLIN_VERSION = "1.9.25"
-
-KOTLINC_RELEASE_SHA = "6ab72d6144e71cbbc380b770c2ad380972548c63ab6ed4c79f11c88f2967332e"
-
-KSP_VERSION = "1.9.25-1.0.20"
-
-KSP_COMPILER_RELEASE_SHA = "3a2d24623409ac5904c87a7e130f5b39ce9fd67ca8b44e4fe5b784a6ec102b81"
-
-load("@io_bazel_rules_kotlin//kotlin:repositories.bzl", "kotlin_repositories", "kotlinc_version", "ksp_version")
-
-KOTLINC_RELEASE = kotlinc_version(
-    release = KOTLIN_VERSION,
-    sha256 = KOTLINC_RELEASE_SHA,
-)
-
-KSP_COMPILER_RELEASE = ksp_version(
-    release = KSP_VERSION,
-    sha256 = KSP_COMPILER_RELEASE_SHA,
-)
-
-kotlin_repositories(
-    compiler_release = KOTLINC_RELEASE,
-    ksp_compiler_release = KSP_COMPILER_RELEASE,
-)
-
-register_toolchains("//:kotlin_toolchain")
-
 http_archive(
     name = "rules_java",
     sha256 = "f8ae9ed3887df02f40de9f4f7ac3873e6dd7a471f9cddf63952538b94b59aeb3",
@@ -59,11 +32,26 @@ load("@grab_bazel_common//rules:deps_init.bzl", "bazel_common_deps_init")
 
 bazel_common_deps_init()
 
+load("@rules_cc//cc:extensions.bzl", "compatibility_proxy_repo")
+
+compatibility_proxy_repo()
+
+load("@rules_java//java:rules_java_deps.bzl", "rules_java_dependencies")
+
+rules_java_dependencies()
+
+load("@com_google_protobuf//bazel/private:proto_bazel_features.bzl", "proto_bazel_features")
+
+proto_bazel_features(name = "proto_bazel_features")
+
+load("@rules_java//java:repositories.bzl", "rules_java_toolchains")
+
+rules_java_toolchains()
+
 load("@grab_bazel_common//rules:setup.bzl", "bazel_common_setup")
 
 bazel_common_setup(
     buildifier_version = "6.3.3",
-    patched_android_tools = True,
     pinned_maven_install = True,
 )
 
@@ -84,22 +72,6 @@ http_archive(
 
 load("@dagger//:workspace_defs.bzl", "DAGGER_ARTIFACTS", "DAGGER_REPOSITORIES")
 load("@grab_bazel_common//:workspace_defs.bzl", "GRAB_BAZEL_COMMON_ARTIFACTS")
-
-http_archive(
-    name = "rules_jvm_external",
-    sha256 = "e5f83b8f2678d2b26441e5eafefb1b061826608417b8d24e5e8e15e585eab1ba",
-    strip_prefix = "rules_jvm_external-6.10",
-    url = "https://github.com/bazelbuild/rules_jvm_external/releases/download/6.10/rules_jvm_external-6.10.tar.gz",
-)
-
-load("@rules_jvm_external//:repositories.bzl", "rules_jvm_external_deps")
-
-rules_jvm_external_deps()
-
-load("@rules_jvm_external//:setup.bzl", "rules_jvm_external_setup")
-
-rules_jvm_external_setup()
-
 load("@rules_jvm_external//:defs.bzl", "maven_install")
 load("@rules_jvm_external//:specs.bzl", "maven")
 
@@ -653,15 +625,21 @@ load("@test_maven//:defs.bzl", test_maven_pinned_maven_install = "pinned_maven_i
 
 test_maven_pinned_maven_install()
 
+load("@rules_android//rules:rules.bzl", "android_sdk_repository")
+
 android_sdk_repository(
     name = "androidsdk",
     api_level = 34,
     build_tools_version = "33.0.1",
 )
 
-android_ndk_repository(
-    name = "androidndk",
-    api_level = 30,
+load("@grab_bazel_common//rules:ndk_setup.bzl", "android_ndk_setup")
+
+android_ndk_setup()
+
+register_toolchains(
+    "@androidndk//:toolchain_aarch64-linux-android",
+    "@androidndk//:toolchain_x86_64-linux-android",
 )
 
 git_repository(

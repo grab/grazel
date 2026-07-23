@@ -29,7 +29,7 @@ android_binary(
     debug_key = "//keystore:debug-keystore",
     enable_compose = True,
     enable_data_binding = True,
-    incremental_dexing = True,
+    incremental_dexing = 1,
     lint_options = {
         "enabled": True,
         "config": "//:lint.xml",
@@ -147,7 +147,7 @@ android_binary(
     debug_key = "//keystore:debug-keystore",
     enable_compose = True,
     enable_data_binding = True,
-    incremental_dexing = True,
+    incremental_dexing = 1,
     lint_options = {
         "enabled": True,
         "config": "//:lint.xml",
@@ -265,7 +265,7 @@ android_binary(
     debug_key = "//keystore:debug-keystore",
     enable_compose = True,
     enable_data_binding = True,
-    incremental_dexing = True,
+    incremental_dexing = 1,
     lint_options = {
         "enabled": True,
         "config": "//:lint.xml",
@@ -383,7 +383,7 @@ android_binary(
     debug_key = "//keystore:debug-keystore",
     enable_compose = True,
     enable_data_binding = True,
-    incremental_dexing = True,
+    incremental_dexing = 1,
     lint_options = {
         "enabled": True,
         "config": "//:lint.xml",
