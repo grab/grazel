@@ -192,20 +192,16 @@ each completes — do not block the session on them.
   Fix: `./gradlew --stop`, then rerun from an unsandboxed shell so a healthy daemon starts.
   The symptom often stays hidden while the bazel bootstrap task is UP-TO-DATE and PAX
   actions are disk-cache hits — the first uncached bazel action exposes it.
-- **`pinMavenArtifacts` HTTP 500s from `127.0.0.1:<port>` after any lockfile
-  discontinuity — fix with a two-phase bootstrap, not code changes.** With
-  `experiments.localMavenResolution=true`, the plugin's local proxy hard-fails
-  (500, by design) any artifact that neither Gradle resolved nor an existing
-  committed `*_install.json` lockfile vouches for. The allowance is a ratchet
-  seeded from the previous pin's lockfiles, so it breaks at discontinuities: a
-  rebase that resets lockfiles to another plugin's bucket names/universe, a
-  bucket rename, or a pin bump that changes the artifact list (e.g.
-  grab-bazel-common bumping its kotlin artifacts). Bootstrap: set
-  `localMavenResolution.set(false)`, run `migrateToBazel` to completion (pins
-  direct from origin, mints fresh lockfiles), set it back to `true`, run
-  `migrateToBazel` again (validates the proxy path against the fresh
-  allowance), commit with the flag **true**. Hit twice on 2026-07-23 (PAX
-  rebase; sample Bazel-8 pin bump).
+- **The local-maven proxy (`experiments.localMavenResolution`) needs no bootstrap.**
+  It serves Gradle-resolved bytes locally and falls through to origin (with
+  repository auth, timeouts, and a write-through cache) for anything else —
+  committed lockfiles are never read to configure it, and deleting every
+  `*_install.json` before a migrate is a supported cold start (the pin
+  regenerates them in one run). Deleting the WORKSPACE itself is NOT supported:
+  bazel-invoking tasks (buildifier bootstrap) need a valid WORKSPACE before
+  regeneration completes. The pin summary line reports served-locally vs
+  fell-through-to-origin counts; a rising `known-component` fallthrough count
+  means the local index is eroding and deserves a look.
 - **A silent, hour-long `pinMavenArtifacts` stall is a hung coursier socket, not
   slow work.** Coursier's `connect()` has no timeout; a transient VPN/network
   drop to artifactory leaves it blocked forever (jstack shows
