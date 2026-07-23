@@ -170,3 +170,10 @@ each completes — do not block the session on them.
 - **Add a sample fixture for every new generation shape.** The golden only sees
   sample shapes; a bug in an unrepresented shape is invisible until PAX/CI. See
   §Coverage-limits.
+- **"Failed to initialize sandbox: getconf failed" from any bazel-invoking Gradle task
+  (e.g. `:generateBuildifierScript`) is a poisoned-daemon symptom, not a code failure.**
+  A Gradle daemon started from a sandboxed (agent) shell cannot spawn bazel's own sandbox
+  helpers; every later build reusing that daemon fails the same way, regardless of caller.
+  Fix: `./gradlew --stop`, then rerun from an unsandboxed shell so a healthy daemon starts.
+  The symptom often stays hidden while the bazel bootstrap task is UP-TO-DATE and PAX
+  actions are disk-cache hits — the first uncached bazel action exposes it.
