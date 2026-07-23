@@ -1,5 +1,12 @@
 # Design — Plan-time root filtering (adversarial-review item 4, evidence-first)
 
+> **STATUS: CLOSED-NOT-WORTH-IT at GATE 0 (2026-07-23).** Phase 0 measured zero dropped
+> roots on both corpora (`reports/review/item4-plan-time-filter-evidence.md`); the premise
+> (wasted resolutions) is empirically false and near-structurally impossible. Phases 1-2
+> were never built. The resolver-side filter stays as-is — it guards a constructible shape
+> (see the evidence doc's advisory section). This spec is retained as the record of the
+> methodology and the go/no-go reasoning.
+
 Source finding: `reports/review/03-critic-inversion.md` item 3 ("wasted resolution work in
 `shouldResolveMainHierarchyRoot`"); ratified in `reports/review/06-synthesis.md` (backlog
 item 4). Branch: `arun/dependencies-refactor`.

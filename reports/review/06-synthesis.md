@@ -202,7 +202,15 @@ for byte-identity risk against C1.
    *Effort: small-medium. Risk: low-medium; identical in the common all-settle-in-round-1 case,
    edge-case fallback-variant timing must be golden-gate-verified in the cyclic case.*
 
-4. `[PENDING]` **Hoist `shouldResolveMainHierarchyRoot` to plan time (critic-03 item 2).** Stop resolving
+4. `[CLOSED-NOT-WORTH-IT]` — measured at gate 0 (2026-07-23, evidence
+   `reports/review/item4-plan-time-filter-evidence.md`): ZERO roots dropped on samples (56/56
+   kept) AND PAX (2451/2451 kept, 27/27 plan-verdicts keep); savings exactly 0. Fable advisory:
+   the zero is near-structural (planner emission and filter allow-set derive from the same
+   filtered variant model), and the pin task resolves dropped roots' configurations anyway, so
+   the hoist's ceiling was capped from the start. The filter itself is NOT dead code — a
+   flavored project + test-variant-surviving `variantFilter` can make it fire (documented in
+   the evidence doc); it stays as-is.
+   ~~**Hoist `shouldResolveMainHierarchyRoot` to plan time (critic-03 item 2).**~~ Stop resolving
    roots the walk will refuse to visit; the filter's inputs (leaf build-type names) are available
    at plan time. *Effort: S-M. Risk: medium-low — this actually changes real Gradle work (fewer
    resolutions, good), verify `pinMavenArtifactsTask`'s root set intentionally includes/excludes

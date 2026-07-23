@@ -199,3 +199,29 @@ All three instrumented files (`AggregatedDependencyResolver.kt`,
 `WorkspaceDependencyInputsRegistrar.kt`) were reverted via `git checkout --`
 after this evidence was extracted; `git grep -n "GRAZEL-ITEM4" --
 grazel-gradle-plugin/src` returns empty.
+
+## GATE 0 advisory (Fable) and ruling
+
+**Why zero drops was near-structural, not a corpus accident:** the planner's MAIN_HIERARCHY
+emission and the filter's allow-set derive from the *same* filtered variant model in the same
+run (`VariantBuilder.onVariants` constructs `AndroidBuildType` variants only from surviving
+migratable variants; the metadata JSON is produced from the same `variantsByProject` map).
+In the common case every BuildType-backed hierarchy root's name is, by construction, some
+surviving leaf's buildType — the filter cannot fire.
+
+**The filter is NOT dead code.** A firing shape is constructible: a *flavored* project plus a
+grazel-DSL `variantFilter` that ignores a build type's application variants but not its test
+variants (e.g. exact-name matches like `freeRelease` that miss `freeReleaseUnitTest`). The
+surviving unit-test variant manufactures an AndroidBuild-typed `AndroidBuildType` for that
+build type (`VariantBuilder.kt:184-198` emits across variant types), the planner emits a
+MAIN_HIERARCHY root for it, and the JSON leaf set contains no such leaf — the filter fires,
+correctly. Our corpora simply lack this shape. Secondary hazard noted: any live-variant vs
+JSON divergence would make the filter drop silently (under-resolution) — a drop is always a
+signal a human should see.
+
+**Ceiling note:** even where the filter fires, `pinMavenArtifactsTask` receives the dropped
+root's configuration regardless, so the hoist could never have eliminated those resolutions
+for the pin path.
+
+**Ruling (user, GATE 0):** CLOSED-NOT-WORTH-IT. Phases 1-2 not built. Filter retained as-is;
+no code annotations (implementation-temporal); this document is the durable record.
