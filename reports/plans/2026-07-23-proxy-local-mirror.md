@@ -346,6 +346,49 @@ which `rootGenerateBazelScripts` depends on for formatting) fail inside
 
 ---
 
+### Task 2b: Baseline-free lockfile reconstruction (pom-packaging classification from the authored universe)
+
+Added after the PAX cold-start sweep failed in `pinMavenArtifacts`:
+"Local Maven reconstruction requires a baseline lockfile before it can safely
+classify POM-packaging artifacts: androidx.compose:compose-bom:pom,
+org.jetbrains.kotlin:kotlin-stdlib-common:pom". Third outputs-as-inputs
+instance: `PomPackagingSkipNormalizer` uses the previous lockfile to decide
+whether a pom-packaging artifact is resolved (explicitly requested) or skipped
+(transitive parent/BOM pom), and hard-errors without one.
+
+**Decision (user-approved):** classify from the authored `maven_install`
+artifact universe — a pom-packaging artifact key explicitly present in the
+repo's authored artifacts is resolved; one absent is skipped. Baseline checks
+in `BaselineLockfileFactsMerger` (shasum cross-check, skipped-regression check)
+remain as warm-run assertions, gated on baseline presence; with no baseline,
+RJE's own signature validation is the correctness oracle and the cold-start
+byte-identity gate proves equivalence.
+
+**Files:**
+- Modify: `grazel-gradle-plugin/src/main/kotlin/com/grab/grazel/migrate/dependencies/PomPackagingSkipNormalizer.kt`
+- Modify: its call sites in the reconstruction flow (ArtifactPinner / reconstruction pipeline)
+- Test: `grazel-gradle-plugin/src/test/kotlin/com/grab/grazel/migrate/dependencies/`
+
+- [ ] **Step 0 (validation before code): empirically confirm the classification
+  rule** against PAX's committed direct-pin lockfiles (read-only): for every
+  `:pom`-keyed entry in each committed `*_install.json`'s `artifacts` map,
+  confirm the coordinate appears in the authored artifact list for that repo
+  (the workspacePlan pinInputs / generated maven_install artifacts); for every
+  pom entry in `skipped`, confirm it does NOT. Any counterexample → STOP and
+  report; the rule is wrong.
+- [ ] **Step 1: Failing tests** — normalizer given (lockfile with pom-packaging
+  entries, authoredArtifactKeys set): requested pom key stays resolved; unrequested
+  pom key folds into skipped; no baseline required anywhere.
+- [ ] **Step 2: Implement** — replace the baseline parameter of the
+  normalization path with the authored artifact-key set; delete
+  `requireNoPomPackagingArtifactsWithoutBaseline`; make BaselineLockfileFactsMerger
+  invoked only when a baseline lockfile exists.
+- [ ] **Step 3: Gates** — unit suite 0 failures; golden clean; sample cold
+  start (`rm maven_install.json` → migrate → `git status --porcelain` empty).
+- [ ] **Step 4: Commit** `fix(pin): classify pom-packaging artifacts from the authored universe, not baseline lockfiles`
+
+---
+
 ### Task 3: Replace the bootstrap gotcha in the gates doc
 
 **Files:**
