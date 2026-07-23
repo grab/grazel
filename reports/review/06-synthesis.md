@@ -160,9 +160,15 @@ that granularity). But three things are removable slop, not essential residue:
 Ordered by value (bug-prevention and maintenance leverage first, pure hygiene last), each rated
 for byte-identity risk against C1.
 
-> **Status tags** (updated 2026-07-22 as items execute):
+> **Status tags** (updated 2026-07-23 as items execute):
 > `[DONE]` shipped and verified · `[RESOLVED-KEEP]` investigated, mechanism vindicated and
-> documented instead of removed · `[PARTIAL]` some sub-items shipped · `[PENDING]` not started.
+> documented instead of removed · `[PARTIAL]` some sub-items shipped · `[PENDING]` not started
+> · `[CLOSED-NOT-WORTH-IT]` killed by measurement at its gate.
+>
+> **PAX verification status:** full 6-gate sweeps passed byte-clean for item 3 (at `2bd4283`,
+> re-verified gates 1-2 at `00b5080`) and items 10+6 (at `2852483`). Post-sweep polish commits
+> (`c007a18`, `f3bb57d`) are behavior-preserving and locally golden-verified; PAX gates 1-2
+> re-verified at HEAD per the ledger before each push.
 
 1. `[DONE]` — shipped as the shadow-extraction collapse (commits `29a2122..2a9913a`; spec
    `reports/specs/2026-07-22-collapse-shadow-extraction-design.md`): `TargetBuilder.selectData`
