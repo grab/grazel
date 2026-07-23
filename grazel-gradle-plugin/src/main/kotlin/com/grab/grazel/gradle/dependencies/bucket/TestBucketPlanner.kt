@@ -446,6 +446,23 @@ internal class TestBucketPlanner(
  *
  * The final result re-applies [CoveredDependency.canCoverTest] to the union of both passes, so a dependency
  * is dropped only when it is truly coverable by this rule, not merely by shortId collision.
+ *
+ * This three-pass shape is load-bearing, not incidental - a single `testDependencies.filterNot {
+ * canCoverTest(...) }` pass is NOT equivalent, and the divergence is reachable in ordinary
+ * projects, not just a contrived corner case: [CoveredDependency.canCoverTest] is *structurally*
+ * false for every non-direct (transitive) candidate, because all three of its dispatch branches
+ * either require the candidate to be `direct` (`canCoverInheritedTestRoot` /
+ * `canCoverDeclaredTestRoot` in Coverage.kt) or only apply to declared-metadata placeholders,
+ * which are themselves always constructed `direct = true` (see
+ * `DeclaredDependencyMetadataCollector`). So a single-pass form would never drop a non-direct test
+ * dependency on `canCoverTest` grounds alone. But pass 1 ([Coverage.subtract], keyed on the
+ * weaker [CoveredDependency.canCover]) routinely *does* drop non-direct dependencies whose owner
+ * identity is already resolved by a covering bucket - the everyday "same transitive artifact
+ * resolved by both a main bucket and this test bucket" case - and pass 2's restore only
+ * reconsiders `direct` misses, so a non-direct drop from pass 1 is never revisited. A single-pass
+ * collapse would therefore silently keep every such transitive dependency in the test bucket that
+ * the three-pass form correctly prunes. See `TestBucketCoverageTruthTableTest` (quadrant:
+ * non-direct candidate, generically covered) for the pinned counterexample.
  */
 private fun withoutTestDependenciesCoveredBy(
     testDependencies: Map<String, ResolvedDependency>,
