@@ -54,6 +54,7 @@ internal object WorkspaceDependencyInputsRegistrar {
         declaredDependencyMetadataAggregationMode: Provider<DeclaredDependencyMetadataAggregationMode>,
         computeTask: TaskProvider<ComputeWorkspaceDependenciesTask>,
         pinMavenArtifactsTask: TaskProvider<PinMavenArtifactsTask>? = null,
+        dataBindingMetaDataTask: TaskProvider<AndroidDatabindingMetaDataTask>? = null,
     ) {
         val variantsByProject = collectVariantsByProject(
             rootProject = rootProject,
@@ -138,6 +139,14 @@ internal object WorkspaceDependencyInputsRegistrar {
             pinMavenArtifactsTask?.configure {
                 rootInputs.forEach { rootInput ->
                     localMavenResolutionRootConfigurations.add(rootInput.configuration)
+                }
+            }
+            dataBindingMetaDataTask?.configure {
+                rootInputs.forEach { rootInput ->
+                    AndroidDatabindingMetaDataTask.addDatabindingAarArtifacts(
+                        task = this,
+                        rootInput = rootInput
+                    )
                 }
             }
             val mode = declaredDependencyMetadataAggregationMode.get()

@@ -87,15 +87,7 @@ internal object ResolvedArtifactIndexBuilder {
             configurations
                 .sortedBy { configuration -> configuration.name }
                 .asSequence()
-                .flatMap { configuration ->
-                    configuration
-                        .incoming
-                        .artifactView {
-                            isLenient = true
-                            componentFilter { id -> id is ModuleComponentIdentifier }
-                        }
-                        .artifacts
-                }
+                .flatMap { configuration -> configuration.externalModuleArtifacts() }
                 .asIterable()
         )
     }
@@ -113,11 +105,9 @@ internal object ResolvedArtifactIndexBuilder {
         artifacts.forEach { artifact ->
             val component = artifact.id.componentIdentifier as? ModuleComponentIdentifier
                 ?: return@forEach
-            MavenCoordinates(
-                group = component.group,
-                module = component.module,
-                version = component.version
-            ).mavenRelativePaths(artifact.file.name).forEach { path ->
+            component.toMavenCoordinates()
+                .mavenRelativePaths(artifact.file.name)
+                .forEach { path ->
                 index.putIfAbsent(path, artifact.file)
             }
         }

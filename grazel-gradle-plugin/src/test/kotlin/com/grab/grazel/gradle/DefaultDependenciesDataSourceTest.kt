@@ -25,7 +25,6 @@ import com.grab.grazel.gradle.dependencies.DefaultDependencyResolutionService
 import com.grab.grazel.gradle.dependencies.DependenciesDataSource
 import com.grab.grazel.gradle.dependencies.DependencyResolutionService
 import com.grab.grazel.gradle.dependencies.IGNORED_ARTIFACT_GROUPS
-import com.grab.grazel.gradle.dependencies.MavenArtifact
 import com.grab.grazel.gradle.dependencies.ArtifactsConfig
 import com.grab.grazel.gradle.variant.DEFAULT_VARIANT
 import com.grab.grazel.gradle.variant.Variant
@@ -146,29 +145,6 @@ class DefaultDependenciesDataSourceTest {
                 )
                 .filterIsInstance<BazelDependency.MavenDependency>()
                 .none { dependency -> dependency.group in IGNORED_ARTIFACT_GROUPS })
-    }
-
-    @Test
-    fun `assert dependencyArtifactMap returns artifact and corresponding artifact file`() {
-        configure()
-        val dependencyArtifactMap = dependenciesDataSource.dependencyArtifactMap(
-            rootProject,
-            "aar"
-        )
-        // assert only valid files are returned
-        assertTrue("Only valid files are returned") {
-            dependencyArtifactMap.values.all {
-                it.extension == "aar" && it.exists()
-            }
-        }
-        // assert valid maven coordinates
-        assertTrue("Valid maven artifact ids are returned") {
-            listOf(
-                // We expect force version since dependency resolution happens
-                "com.android.support:appcompat-v7:28.0.0",
-                "com.android.support:cursoradapter:28.0.0"
-            ).all { dep -> dep in dependencyArtifactMap.keys.map(MavenArtifact::toString) }
-        }
     }
 
     @Test

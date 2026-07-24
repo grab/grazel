@@ -83,10 +83,6 @@ sealed class BazelDependency : Comparable<BazelDependency> {
         val name: String
     ) : BazelDependency() {
 
-        private fun String.toBazelPath(): String {
-            return replace(".", "_").replace("-", "_")
-        }
-
         override fun toString(): String {
             val group = group.toBazelPath()
             val name = name.toBazelPath()
@@ -101,3 +97,9 @@ sealed class BazelDependency : Comparable<BazelDependency> {
         }
     }
 }
+
+/**
+ * Converts a Maven group or artifact name into the identifier form Bazel target names use, by
+ * replacing the separators Bazel disallows with `_`.
+ */
+internal fun String.toBazelPath(): String = replace(".", "_").replace("-", "_")

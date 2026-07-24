@@ -29,7 +29,6 @@ import com.grab.grazel.gradle.ConfigurationDataSource
 import com.grab.grazel.gradle.hasDatabinding
 import com.grab.grazel.gradle.hasKotlinAndroidExtensions
 import com.grab.grazel.gradle.isAndroidTest
-import com.grab.grazel.gradle.variant.AndroidVariant
 import com.grab.grazel.gradle.variant.ANDROID_TEST_VARIANT
 import com.grab.grazel.gradle.variant.DEFAULT_VARIANT
 import com.grab.grazel.gradle.variant.LINT_VARIANT
@@ -40,7 +39,6 @@ import com.grab.grazel.gradle.variant.VariantType
 import com.grab.grazel.gradle.variant.declaredDependencyConfigurations
 import com.grab.grazel.gradle.variant.declarationBucketName
 import com.grab.grazel.gradle.variant.id
-import com.grab.grazel.gradle.variant.isTest
 import com.grab.grazel.gradle.variant.migratableConfigurations
 import com.grab.grazel.util.GradleProvider
 import com.grab.grazel.util.addTo
@@ -49,8 +47,6 @@ import org.gradle.api.artifacts.Configuration
 import org.gradle.api.artifacts.Dependency
 import org.gradle.api.artifacts.ExternalDependency
 import org.gradle.api.artifacts.ProjectDependency
-import org.gradle.api.artifacts.component.ModuleComponentIdentifier
-import java.io.File
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
@@ -111,19 +107,6 @@ internal interface DependenciesDataSource {
         vararg variantTypes: VariantType
     ): Sequence<Pair<Configuration, ProjectDependency>>
 
-    /**
-     * Returns map of [MavenArtifact] and the corresponding artifact file (aar or jar). Guarantees
-     * the returned file is downloaded and available on disk
-     *
-     * @param rootProject The root project instance
-     * @param fileExtension The file extension to look for. Use this to reduce the overall number of
-     *    values returned
-     */
-    fun dependencyArtifactMap(
-        rootProject: Project,
-        fileExtension: String? = null
-    ): Map<MavenArtifact, File>
-
     /** Non project dependencies for the given [variantKey]. */
     fun collectMavenDeps(
         project: Project,
@@ -175,41 +158,6 @@ internal class DefaultDependenciesDataSource @Inject constructor(
     ) = declaredDependencies(project, *variantTypes)
         .filter { it.second is ProjectDependency }
         .map { it.first to it.second as ProjectDependency }
-
-    override fun dependencyArtifactMap(
-        rootProject: Project,
-        fileExtension: String?
-    ): Map<MavenArtifact, File> {
-        val results = mutableMapOf<MavenArtifact, File>()
-        rootProject.subprojects
-            .asSequence()
-            .flatMap { project ->
-                variantBuilder.build(project)
-                    .asSequence()
-                    .filterIsInstance<AndroidVariant>()
-                    .filter { !it.variantType.isTest }
-            }.flatMap { it.compileConfiguration }
-            .flatMapTo(TreeSet(compareBy { it.id.toString() })) { configuration ->
-                configuration
-                    .incoming
-                    .artifactView {
-                        isLenient = true
-                        componentFilter { identifier -> identifier is ModuleComponentIdentifier }
-                    }.artifacts
-            }.asSequence()
-            .filter { it.file.extension == fileExtension }
-            .forEach { artifactResult ->
-                val artifact = artifactResult.id.componentIdentifier as ModuleComponentIdentifier
-                results.getOrPut(
-                    MavenArtifact(
-                        group = artifact.group,
-                        name = artifact.module,
-                        version = artifact.version,
-                    )
-                ) { artifactResult.file }
-            }
-        return results
-    }
 
     override fun collectMavenDeps(
         project: Project,

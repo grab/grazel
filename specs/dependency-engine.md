@@ -173,6 +173,26 @@ The workspace plan (`WorkspacePlan`, `WorkspaceRenderPlan` under
 generation and pinning: it carries the per-repo pin inputs and the referenced-target set. Task
 wiring lives in `.../tasks/internal/TaskManager.kt`.
 
+### Root configuration consumers
+
+Two tasks sit outside that DAG and consume the resolution **roots** directly, wired by
+`WorkspaceDependencyInputsRegistrar` rather than by a serialized plan. Both hold the root
+configurations and resolve them from their own task action, because querying an artifact-resolution
+provider for a subproject's configuration from a root-project task fails on Gradle's project state
+lock:
+
+| Task | Roots consumed | Purpose |
+|---|---|---|
+| `PinMavenArtifacts` | all roots | the proxy's Gradle-resolved facts (see below) |
+| `AndroidDatabindingMetaData` | `MAIN_HIERARCHY`, `MAIN_LEAF` | `databinding_info.bazelrc` |
+
+`AndroidDatabindingMetaData` scans each external `aar` on those roots for its `-br.bin` entry to map
+artifacts to databinding packages. Main roots only: their classpaths are the aggregated equivalent of
+the non-test Android variants this metadata was derived from under the per-variant model, and test or
+lint roots would contribute artifacts the flag never carried. Because the roots are already resolved
+for the pipeline above, the task adds no resolution of its own — the reason it consumes roots at all
+rather than walking every module's classpath, which is what it did before the inversion.
+
 ## Local Maven proxy and pinning
 
 `PinMavenArtifacts` hands each maven repo's artifact list to rules_jvm_external, which shells out to
@@ -293,4 +313,5 @@ module's references are populated before it is visited, forming the transitive c
 | Proxy | `proxy/LocalMavenProxyServer.kt`, `proxy/LocalMavenProxyService.kt`, `gradle/dependencies/LocalMavenResolvedFactsBuilder.kt` |
 | Pinning | `migrate/dependencies/ArtifactPinner.kt`, `migrate/dependencies/MavenInstallLockfileReconstructor.kt`, `migrate/dependencies/RulesJvmExternalLockfileHasher.kt`, `migrate/dependencies/BaselineLockfileFactsMerger.kt` |
 | Extension | `extension/MavenInstallExtension.kt` |
+| Root consumers | `tasks/internal/AndroidDatabindingMetaDataTask.kt`, `gradle/dependencies/ExternalModuleArtifacts.kt` |
 | Task wiring | `tasks/internal/TaskManager.kt` |

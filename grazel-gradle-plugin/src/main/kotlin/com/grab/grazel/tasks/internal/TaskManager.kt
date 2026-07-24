@@ -63,6 +63,12 @@ constructor(
 
         val pinArtifactsTask = PinMavenArtifactsTask.register(rootProject, grazelComponent)
 
+        // The `dataBindingMetaData` feature flag cannot be read here - `configTasks` runs at plugin
+        // apply time, before the `grazel { }` block is evaluated. Registration and root wiring are
+        // both lazy, so they cost nothing when the feature is off; only the `migrateToBazel` edge
+        // below, configured lazily, consults the flag.
+        val dataBindingMetaDataTask = AndroidDatabindingMetaDataTask.register(rootProject)
+
         WorkspaceDependencyInputsRegistrar.register(
             rootProject = rootProject,
             variantBuilderProvider = grazelComponent.variantBuilder(),
@@ -72,7 +78,8 @@ constructor(
                 .experiments
                 .declaredDependencyMetadataAggregationMode,
             computeTask = computeWorkspaceDependenciesTask,
-            pinMavenArtifactsTask = pinArtifactsTask
+            pinMavenArtifactsTask = pinArtifactsTask,
+            dataBindingMetaDataTask = dataBindingMetaDataTask
         )
 
         val computeWorkspacePlanTask = ComputeWorkspacePlanTask.register(
@@ -113,13 +120,6 @@ constructor(
                 collectTargetMavenRepoReferencesTask.flatMap { it.targetMavenRepoReferences }
             )
             dependsOn(collectTargetMavenRepoReferencesTask)
-        }
-
-        val dataBindingMetaDataTask = AndroidDatabindingMetaDataTask.register(
-            rootProject,
-            grazelComponent
-        ) {
-            dependsOn(computeWorkspaceDependenciesTask)
         }
 
         val generateDownloaderConfigTask = GenerateDownloaderConfigTask.register(
