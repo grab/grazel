@@ -28,6 +28,8 @@ import com.grab.grazel.util.NoOpProgressLogger
 import com.grab.grazel.util.WORKSPACE
 import com.grab.grazel.util.ansiCyan
 import com.grab.grazel.util.ansiGreen
+import com.grab.grazel.util.humanReadableBytes
+import com.grab.grazel.util.humanReadableDuration
 import com.grab.grazel.util.isSuccess
 import com.grab.grazel.util.startOperation
 import org.gradle.api.file.ProjectLayout
@@ -439,18 +441,18 @@ constructor(
         elapsedNanos: Long,
     ) {
         val servedLocally = stats.artifactHits + stats.gradlePomHits
+        val fellThrough = stats.knownComponentFallthroughs + stats.metadataOnlyArtifactFallbacks
+        val duration = humanReadableDuration(TimeUnit.NANOSECONDS.toMillis(elapsedNanos))
+        val transferred = humanReadableBytes(stats.bytesServed)
         logger.quiet(
-            ("Local Maven resolution: $servedLocally served locally " +
-                "(artifacts=${stats.artifactHits}, poms=${stats.gradlePomHits}, " +
-                "checksums=${stats.checksumHits}), non-local by category: " +
-                "known-component=${stats.knownComponentFallthroughs}, " +
-                "metadata-only=${stats.metadataOnlyArtifactFallbacks}; " +
-                "${stats.originFallbacks} origin fetches, " +
-                "${stats.writeThroughCacheHits} cache hits, " +
-                "${stats.originMisses} origin misses (404 probes), " +
-                "${stats.requestFailures} request failures, " +
-                "${stats.bytesServed} bytes served, in " +
-                "${TimeUnit.NANOSECONDS.toMillis(elapsedNanos)}ms").ansiGreen
+            ("Local Maven resolution finished in $duration.\n" +
+                "  • $servedLocally served locally (${stats.artifactHits} artifacts, " +
+                "${stats.gradlePomHits} poms, ${stats.checksumHits} checksums)\n" +
+                "  • $fellThrough fell through to origin (${stats.knownComponentFallthroughs} known " +
+                "components, ${stats.metadataOnlyArtifactFallbacks} metadata-only)\n" +
+                "  • Origin: ${stats.originFallbacks} fetched, ${stats.writeThroughCacheHits} cache " +
+                "hits, ${stats.originMisses} not found, ${stats.requestFailures} failed\n" +
+                "  • $transferred transferred").ansiGreen
         )
     }
 
