@@ -148,6 +148,7 @@ constructor(
     }
 
     override fun unpinWorkspaceIfLockfilesMissing(workspaceFile: File): Boolean {
+        if (!workspaceFile.exists()) return false
         val referencedLockfiles = ACTIVE_MAVEN_INSTALL_JSON_FILE_REGEX
             .findAll(workspaceFile.readText())
             .map { match -> match.groupValues[1] }

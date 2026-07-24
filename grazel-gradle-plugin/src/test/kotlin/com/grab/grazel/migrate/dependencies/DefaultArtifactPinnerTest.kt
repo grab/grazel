@@ -343,6 +343,16 @@ class DefaultArtifactPinnerTest {
     }
 
     @Test
+    fun `unpinWorkspaceIfLockfilesMissing is a no-op when the workspace file does not exist`() {
+        val workspace = rootProject.file(WORKSPACE).apply { delete() }
+
+        val unpinned = artifactPinner.unpinWorkspaceIfLockfilesMissing(workspace)
+
+        assertTrue("Absent workspace is reported as unchanged") { !unpinned }
+        assertTrue("Absent workspace is not created") { !workspace.exists() }
+    }
+
+    @Test
     fun `assert ensure pinning is able to recover from json corruption`() {
         rootProject.file(WORKSPACE).apply {
             writeText(
