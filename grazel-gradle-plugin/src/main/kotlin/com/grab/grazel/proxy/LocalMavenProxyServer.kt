@@ -314,7 +314,9 @@ internal class LocalMavenProxyServer(
         path: String,
         countContentHit: Boolean,
     ): ServedResponse {
-        val cachedFile = originCacheFile(repoIndex, path)
+        val origin = origins.getOrNull(repoIndex)
+            ?: return ServedResponse.Bytes(HttpStatusCode.NotFound, ByteArray(0))
+        val cachedFile = originCacheFile(origin, path)
         if (cachedFile.exists()) {
             return fileResponse(
                 status = HttpStatusCode.OK,
@@ -323,8 +325,6 @@ internal class LocalMavenProxyServer(
                 onServed = { counters.writeThroughCacheHits.incrementAndGet() }
             )
         }
-        val origin = origins.getOrNull(repoIndex)
-            ?: return ServedResponse.Bytes(HttpStatusCode.NotFound, ByteArray(0))
         val originMissKey = "$repoIndex:$path"
         if (originMissKey in knownOriginMisses) {
             counters.originMisses.incrementAndGet()
@@ -374,8 +374,12 @@ internal class LocalMavenProxyServer(
         }
     }
 
-    private fun originCacheFile(repoIndex: Int, path: String): File =
-        File(File(cacheDir, repoIndex.toString()), path)
+    // Keyed by origin identity, not the origin's positional index: the write-through cache dir
+    // persists across pin runs, and a repository set that changes between runs remaps indices to
+    // different origins. A hash of the canonical origin URL binds each entry to the repository it
+    // came from, so a remapped index can never serve another origin's bytes.
+    private fun originCacheFile(origin: LocalMavenProxyOrigin, path: String): File =
+        File(File(cacheDir, sha1(origin.url)), path)
 
     private suspend fun fetchOrigin(
         origin: LocalMavenProxyOrigin,
@@ -537,5 +541,8 @@ private fun messageDigest(algorithmSuffix: String): MessageDigest {
     }
     return MessageDigest.getInstance(algorithm)
 }
+
+private fun sha1(value: String): String =
+    messageDigest("sha1").digest(value.toByteArray()).joinToString("") { byte -> "%02x".format(byte) }
 
 private const val DEFAULT_DIGEST_BUFFER_SIZE = 16 * 1024

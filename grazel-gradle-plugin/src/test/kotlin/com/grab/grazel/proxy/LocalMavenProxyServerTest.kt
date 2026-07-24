@@ -529,6 +529,46 @@ class LocalMavenProxyServerTest {
     }
 
     @Test
+    fun `write-through cache follows origin identity across a repository reordering`() {
+        val path = "com/example/reorder/1.0/reorder-1.0.jar"
+        val sharedCache = temporaryFolder.newFolder("shared-proxy-cache")
+        FixtureOriginServer(responses = mapOf(path to "origin-a-jar")).use { originA ->
+            FixtureOriginServer(responses = mapOf(path to "origin-b-jar")).use { originB ->
+                // First run: origins [A, B]; A at index 0 populates the write-through cache.
+                LocalMavenProxyServer(
+                    cacheDir = sharedCache,
+                    origins = listOf(proxyOrigin(url = originA.baseUrl), proxyOrigin(url = originB.baseUrl))
+                ).use { firstRun ->
+                    firstRun.configure(emptyMap(), emptySet(), emptySet()) { PomFileResolution.Unknown }
+                    val warm = get("${firstRun.baseUrl()}/r/0/$path")
+                    assertEquals(200, warm.code)
+                    assertEquals("origin-a-jar", warm.body)
+                    assertEquals(1, originA.requests.get())
+                }
+
+                // Second run over the same cache dir with the repository order swapped to [B, A].
+                LocalMavenProxyServer(
+                    cacheDir = sharedCache,
+                    origins = listOf(proxyOrigin(url = originB.baseUrl), proxyOrigin(url = originA.baseUrl))
+                ).use { secondRun ->
+                    secondRun.configure(emptyMap(), emptySet(), emptySet()) { PomFileResolution.Unknown }
+                    // A now sits at index 1: its identity-keyed cache entry is reused, no new fetch.
+                    val fromA = get("${secondRun.baseUrl()}/r/1/$path")
+                    assertEquals(200, fromA.code)
+                    assertEquals("origin-a-jar", fromA.body)
+                    // A served from its identity cache, not re-fetched.
+                    assertEquals(1, originA.requests.get())
+                    // B now sits at index 0 (A's old index): it must not see A's cached bytes.
+                    val fromB = get("${secondRun.baseUrl()}/r/0/$path")
+                    assertEquals(200, fromB.code)
+                    assertEquals("origin-b-jar", fromB.body)
+                    assertEquals(1, originB.requests.get())
+                }
+            }
+        }
+    }
+
+    @Test
     fun `unindexed artifacts let coursier try the next repository after an origin miss`() {
         val path = "org/jetbrains/kotlin/kotlin-parcelize-runtime/1.9.24/kotlin-parcelize-runtime-1.9.24.jar"
         FixtureOriginServer(responses = emptyMap()).use { firstOrigin ->
