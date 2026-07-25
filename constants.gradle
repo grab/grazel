@@ -15,7 +15,10 @@
  */
 ext {
     groupId = "com.grab.grazel"
-    versionName = project.hasProperty("versionName") ? versionName : "0.4.2-alpha.14"
+    // Keep in step with the latest released tag. CI always overrides this with
+    // -PversionName=$CI_COMMIT_TAG, so it only applies to local publishes — which is
+    // exactly when a stale value silently republishes an old version.
+    versionName = project.hasProperty("versionName") ? versionName : "0.4.2-alpha.22-rc03"
     agpVersion = "8.6.1"
     kotlinVersion = "1.9.25"
 
