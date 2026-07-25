@@ -187,15 +187,3 @@ idea {
         ]
     }
 }
-
-tasks.register("verifyGrazelGoldenBaseline") {
-    group = "verification"
-    description = "Runs migrateToBazel and verifies the committed generated Grazel baseline."
-    dependsOn("migrateToBazel")
-
-    doLast {
-        exec {
-            commandLine "bash", "reports/scripts/verify-grazel-golden-baseline.sh", "--skip-migrate"
-        }
-    }
-}

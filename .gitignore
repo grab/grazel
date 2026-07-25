@@ -88,4 +88,6 @@ site/
 .claude/settings.local.json
 .claude/local.md
 CLAUDE.local.md
+# Any *.local.md is a local-only working note; never part of a merge request.
+*.local.md
 docs/superpowers/

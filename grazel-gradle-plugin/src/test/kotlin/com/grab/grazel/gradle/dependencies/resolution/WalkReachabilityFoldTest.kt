@@ -26,7 +26,7 @@ import org.junit.Test
  * declared-edge DFS seed ([MainReachabilityTracker.computeScope]) never recorded them — i.e.
  * the fold is a set-union, not an intersection or a seed-gated accept.
  *
- * Background (`reports/review/item2-channel-evidence.md`): a full PAX migrate found the walk
+ * Background (instrumented PAX evidence, archived out of tree): a full PAX migrate found the walk
  * fold's dominant real-world delta is a bucket-*name* divergence on paths the seed already
  * reached (74 of 75 walk-only bucket entries on `:apex-cfm:cfm-ui-tests`), plus 1 genuinely
  * new path the seed missed (`:grab-test-recorder`); two other roots
@@ -40,7 +40,7 @@ import org.junit.Test
  * would not catch that regression either: both sample projects show zero MAIN walk deltas
  * (see the evidence doc). The resolve()-site MAIN-root fold itself has no unit-level guard;
  * it is protected by the PAX verification gates only (samples exhibit zero MAIN walk deltas,
- * so the local golden cannot catch its removal — see reports/review/item2-channel-evidence.md).
+ * so the local golden cannot catch its removal — see the archived PAX instrumentation evidence).
  */
 class WalkReachabilityFoldTest {
 

@@ -115,7 +115,7 @@ internal class AggregatedDependencyResolver(
          * TEST_HIERARCHY/UNIT_TEST/ANDROID_TEST root's classpath also feeds later roots' reachability
          * facts. This walk-discovered fold is load-bearing, not redundant with the declared-edge DFS
          * seed ([MainReachabilityTracker.computeScope]): instrumented evidence from a full PAX migrate
-         * (`reports/review/item2-channel-evidence.md`) found the walk's dominant delta is a bucket-
+         * (instrumented PAX evidence, archived out of tree) found the walk's dominant delta is a bucket-
          * *name* divergence on paths the seed already reached — the seed records bucket names against
          * the root's own declared variant set, while the walk observes each transitively-reached
          * project's actual resolved `debug` variant, so 74 of the 75 walk-only bucket entries on
@@ -125,7 +125,7 @@ internal class AggregatedDependencyResolver(
          * those roots (inferred from the delta, not from an observed fold-deleted run — see the
          * evidence doc). The resolve()-site MAIN-root fold itself has no unit-level guard; it is
          * protected by the PAX verification gates only (samples exhibit zero MAIN walk deltas, so
-         * the local golden cannot catch its removal — see reports/review/item2-channel-evidence.md).
+         * the local golden cannot catch its removal — see the archived PAX instrumentation evidence).
          */
         fun resolve(): List<ResolveDependenciesResult> {
             if (migratableProjectPaths.isEmpty()) return emptyList()

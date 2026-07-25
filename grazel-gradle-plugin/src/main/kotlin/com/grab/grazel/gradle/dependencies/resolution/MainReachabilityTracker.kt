@@ -264,7 +264,7 @@ internal class MainReachabilityTracker(
      * already does: [recordMainRoot] -> [addReachableMainBuckets] blank-filters unconditionally,
      * so this unifies the walk path with the seed path, and a blank bucket name would be garbage
      * downstream regardless of which path produced it. Empirically this filter is also inert here
-     * — instrumented runs (see reports/review/item2-channel-evidence.md) found zero blanks across
+     * — instrumented runs (see the archived PAX instrumentation evidence) found zero blanks across
      * 244 instrumented roots — but that corpus result is corroboration, not the reason for the filter.
      *
      * This is load-bearing: `projectPaths`/`bucketNamesByProject` come from walking each root's
@@ -274,7 +274,7 @@ internal class MainReachabilityTracker(
      * variant names, while the walk observes each transitively-reached project's actual resolved
      * `debug` variant — so the same path can pick up a bucket name the seed never assigned it, with
      * no new path involved at all. Instrumented evidence from a full PAX migrate
-     * (reports/review/item2-channel-evidence.md) found this bucket-name divergence is the dominant
+     * (archived PAX instrumentation evidence) found this bucket-name divergence is the dominant
      * signal: on `root=:apex-cfm:cfm-ui-tests bucket=default`, 74 of its 75 walk-only bucket entries
      * are ordinary app modules (e.g. `:auth=[debug]`, `:grab-api=[debug]`) whose *path* was already
      * in the seed for that bucket. Only 1 of those 75 is a genuinely new path the seed missed
