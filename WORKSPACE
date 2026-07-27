@@ -367,6 +367,44 @@ load("@debug_maven//:defs.bzl", debug_maven_pinned_maven_install = "pinned_maven
 debug_maven_pinned_maven_install()
 
 maven_install(
+    name = "demo_maven",
+    artifacts = [
+        "com.squareup.okio:okio-jvm:3.9.0",
+        "com.squareup.okio:okio:3.9.0",
+        "org.jetbrains.kotlin:kotlin-stdlib:1.9.25",
+        "org.jetbrains:annotations:23.0.0",
+    ],
+    excluded_artifacts = ["androidx.test.espresso:espresso-contrib"],
+    fail_if_repin_required = False,
+    fail_on_missing_checksum = False,
+    jetify = True,
+    jetify_include_list = [
+        "com.android.support:cardview-v7",
+        "com.android.support:support-annotations",
+        "com.android.support:support-compat",
+        "com.android.support:support-core-ui",
+        "com.android.support:support-core-utils",
+    ],
+    maven_install_json = "//:demo_maven_install.json",
+    override_targets = {
+        "com.squareup.okio:okio": "@maven//:com_squareup_okio_okio_jvm",
+        "com.squareup.okio:okio-jvm": "@maven//:com_squareup_okio_okio_jvm",
+        "org.jetbrains.kotlin:kotlin-stdlib": "@maven//:org_jetbrains_kotlin_kotlin_stdlib",
+        "org.jetbrains:annotations": "@maven//:org_jetbrains_annotations",
+    },
+    repositories = [
+        "https://dl.google.com/dl/android/maven2/",
+        "https://repo.maven.apache.org/maven2/",
+    ],
+    resolve_timeout = 1000,
+    version_conflict_policy = "pinned",
+)
+
+load("@demo_maven//:defs.bzl", demo_maven_pinned_maven_install = "pinned_maven_install")
+
+demo_maven_pinned_maven_install()
+
+maven_install(
     name = "ksp_maven",
     artifacts = [
         "com.squareup.moshi:moshi-kotlin-codegen:1.15.0",
@@ -535,7 +573,8 @@ maven_install(
         "com.google.guava:listenablefuture:1.0",
         "com.jakewharton.timber:timber:5.0.1",
         "com.squareup.moshi:moshi:1.15.0",
-        "com.squareup.okio:okio:2.10.0",
+        "com.squareup.okio:okio-jvm:3.9.0",
+        "com.squareup.okio:okio:3.9.0",
         "javax.inject:javax.inject:1",
         "org.jetbrains.kotlin:kotlin-stdlib-common:1.9.25",
         "org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.9.20",
@@ -582,6 +621,7 @@ maven_install(
     maven_install_json = "//:maven_install.json",
     override_targets = {
         "androidx.annotation:annotation": "@maven//:androidx_annotation_annotation_jvm",
+        "com.squareup.okio:okio": "@maven//:com_squareup_okio_okio_jvm",
     },
     repositories = [
         "https://dl.google.com/dl/android/maven2/",

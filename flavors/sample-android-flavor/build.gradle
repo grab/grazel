@@ -69,6 +69,11 @@ dependencies {
     demoImplementation project(path: ":flavors:sample-library-demo")
     fullImplementation project(path: ":flavors:sample-library-full")
 
+    // Sole direct artifact of the `demo` bucket. Combined with the overrideTargetLabels
+    // entry in the root build.gradle this makes `demo_maven` an override-only repository —
+    // the shape that silently vanished from the WORKSPACE and broke label resolution.
+    demoImplementation "com.squareup.okio:okio:3.9.0"
+
     implementation libs.androidx.appcompat
     implementation libs.androidx.core
     implementation libs.androidx.constraintlayout.core

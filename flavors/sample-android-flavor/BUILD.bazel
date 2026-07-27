@@ -37,6 +37,7 @@ android_library(
     deps = [
         "//:parcelize",
         "//flavors/sample-library-demo",
+        "@demo_maven//:com_squareup_okio_okio",
         "@maven//:androidx_appcompat_appcompat",
         "@maven//:androidx_compose_ui_ui",
         "@maven//:androidx_constraintlayout_constraintlayout",
@@ -79,6 +80,7 @@ android_library(
     deps = [
         "//:parcelize",
         "//flavors/sample-library-demo",
+        "@demo_maven//:com_squareup_okio_okio",
         "@maven//:androidx_appcompat_appcompat",
         "@maven//:androidx_compose_ui_ui",
         "@maven//:androidx_constraintlayout_constraintlayout",

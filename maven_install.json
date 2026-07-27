@@ -112,7 +112,8 @@
     "com.google.guava:listenablefuture": 50807205,
     "com.jakewharton.timber:timber": -277145259,
     "com.squareup.moshi:moshi": -56793254,
-    "com.squareup.okio:okio": 795722926,
+    "com.squareup.okio:okio": 1339763187,
+    "com.squareup.okio:okio-jvm": 1089866183,
     "javax.inject:javax.inject": -297932879,
     "junit:junit": -744267592,
     "org.jetbrains.kotlin:kotlin-parcelize-compiler": 246684463,
@@ -280,8 +281,9 @@
     "com.google.jimfs:jimfs": 72853441,
     "com.google.protobuf:protobuf-java": 157489791,
     "com.jakewharton.timber:timber:aar": 1388409593,
-    "com.squareup.moshi:moshi": 1173705304,
-    "com.squareup.okio:okio": -1491975762,
+    "com.squareup.moshi:moshi": 416606122,
+    "com.squareup.okio:okio": -1627719747,
+    "com.squareup.okio:okio-jvm": 1915884992,
     "com.squareup:javapoet": 1859306913,
     "com.squareup:kotlinpoet": 998898889,
     "com.sun.activation:javax.activation": -1320276497,
@@ -1245,9 +1247,15 @@
     },
     "com.squareup.okio:okio": {
       "shasums": {
-        "jar": "a27f091d34aa452e37227e2cfa85809f29012a8ef2501a9b5a125a978e4fcbc1"
+        "jar": "e518a59856273a1fce18ac7d13ddfc690defa6122d7e5cd00cae19b62d0347d9"
       },
-      "version": "2.10.0"
+      "version": "3.9.0"
+    },
+    "com.squareup.okio:okio-jvm": {
+      "shasums": {
+        "jar": "ddc386ff14bd25d5c934167196eaf45b18de4f28e1c55a4db37ae594cbfd37e4"
+      },
+      "version": "3.9.0"
     },
     "com.squareup:javapoet": {
       "shasums": {
@@ -2416,8 +2424,10 @@
       "org.jetbrains.kotlin:kotlin-stdlib-jdk8"
     ],
     "com.squareup.okio:okio": [
-      "org.jetbrains.kotlin:kotlin-stdlib",
-      "org.jetbrains.kotlin:kotlin-stdlib-common"
+      "com.squareup.okio:okio-jvm"
+    ],
+    "com.squareup.okio:okio-jvm": [
+      "org.jetbrains.kotlin:kotlin-stdlib"
     ],
     "com.squareup:kotlinpoet": [
       "org.jetbrains.kotlin:kotlin-reflect",
@@ -4350,7 +4360,7 @@
       "com.squareup.moshi",
       "com.squareup.moshi.internal"
     ],
-    "com.squareup.okio:okio": [
+    "com.squareup.okio:okio-jvm": [
       "okio",
       "okio.internal"
     ],
@@ -6110,6 +6120,7 @@
       "com.jakewharton.timber:timber:aar",
       "com.squareup.moshi:moshi",
       "com.squareup.okio:okio",
+      "com.squareup.okio:okio-jvm",
       "com.squareup:javapoet",
       "com.squareup:kotlinpoet",
       "com.sun.activation:javax.activation",
@@ -6315,6 +6326,7 @@
       "com.jakewharton.timber:timber:aar",
       "com.squareup.moshi:moshi",
       "com.squareup.okio:okio",
+      "com.squareup.okio:okio-jvm",
       "com.squareup:javapoet",
       "com.squareup:kotlinpoet",
       "com.sun.activation:javax.activation",
@@ -6520,6 +6532,7 @@
       "com.jakewharton.timber:timber:aar",
       "com.squareup.moshi:moshi",
       "com.squareup.okio:okio",
+      "com.squareup.okio:okio-jvm",
       "com.squareup:javapoet",
       "com.squareup:kotlinpoet",
       "com.sun.activation:javax.activation",
@@ -6725,6 +6738,7 @@
       "com.jakewharton.timber:timber:aar",
       "com.squareup.moshi:moshi",
       "com.squareup.okio:okio",
+      "com.squareup.okio:okio-jvm",
       "com.squareup:javapoet",
       "com.squareup:kotlinpoet",
       "com.sun.activation:javax.activation",
@@ -6930,6 +6944,7 @@
       "com.jakewharton.timber:timber:aar",
       "com.squareup.moshi:moshi",
       "com.squareup.okio:okio",
+      "com.squareup.okio:okio-jvm",
       "com.squareup:javapoet",
       "com.squareup:kotlinpoet",
       "com.sun.activation:javax.activation",
