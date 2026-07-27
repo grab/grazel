@@ -20,6 +20,7 @@ import com.grab.grazel.bazel.starlark.BazelDependency.MavenDependency
 import com.grab.grazel.bazel.starlark.BazelDependency.ProjectDependency
 import com.grab.grazel.bazel.starlark.BazelDependency.StringDependency
 import com.grab.grazel.buildProject
+import com.grab.grazel.gradle.dependencies.model.TargetReferenceFacts
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -116,6 +117,56 @@ class TargetReferenceFactsCollectorTest {
         assertEquals(
             mapOf(":logical" to setOf("prefix_logical_debug")),
             facts.projectTargets
+        )
+    }
+
+    @Test
+    fun `collects maven artifact short ids grouped by repo`() {
+        val facts = TargetReferenceFactsCollector.from(
+            deps = listOf(
+                MavenDependency(repo = "maven", group = "com.example", name = "core"),
+                MavenDependency(repo = "maven", group = "com.example", name = "extras"),
+                MavenDependency(repo = "demo_maven", group = "com.example", name = "demo-only")
+            )
+        )
+
+        assertEquals(
+            mapOf(
+                "demo_maven" to setOf("com.example:demo-only"),
+                "maven" to setOf("com.example:core", "com.example:extras")
+            ),
+            facts.mavenArtifacts
+        )
+    }
+
+    @Test
+    fun `compile filter tags contribute a repo name but no artifact`() {
+        val facts = TargetReferenceFactsCollector.from(
+            tags = listOf("@maven//:com_example_tagged")
+        )
+
+        assertEquals(setOf("maven"), facts.repoNames)
+        assertEquals(emptyMap<String, Set<String>>(), facts.mavenArtifacts)
+    }
+
+    @Test
+    fun `merging facts unions artifacts per repo`() {
+        val left = TargetReferenceFacts(
+            mavenArtifacts = mapOf("maven" to setOf("com.example:a"))
+        )
+        val right = TargetReferenceFacts(
+            mavenArtifacts = mapOf(
+                "maven" to setOf("com.example:b"),
+                "test_maven" to setOf("com.example:c")
+            )
+        )
+
+        assertEquals(
+            mapOf(
+                "maven" to setOf("com.example:a", "com.example:b"),
+                "test_maven" to setOf("com.example:c")
+            ),
+            listOf(left, right).merged().mavenArtifacts
         )
     }
 }

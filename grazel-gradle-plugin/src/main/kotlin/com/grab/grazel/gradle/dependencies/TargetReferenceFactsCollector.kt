@@ -28,12 +28,14 @@ internal object TargetReferenceFactsCollector {
 
     /**
      * Aggregates every dependency-like reference a target makes (deps, plugins, lint checks,
-     * associates, the single `instruments` target) into the two facts
-     * [WorkspaceRenderPlanBuilder]/render-plan discovery need: which maven repos are referenced and
-     * which project targets are referenced (by project path -> target names). `repoNames` also
-     * infers a repo from [tags] carrying a `MAVEN_COMPILE_FILTER_TAG_PREFIX` tag — a maven-filtering
-     * tag implies a dependency on [BASE_MAVEN_REPO] even when no [MavenDependency] literally appears
-     * in `deps`, so tag scanning is a required second source, not a redundant one. Project
+     * associates, the single `instruments` target) into the facts
+     * [WorkspaceRenderPlanBuilder]/render-plan discovery need: which maven repos are referenced,
+     * which project targets are referenced (by project path -> target names), and which maven
+     * artifact short ids are referenced (by repo -> `group:name`). `repoNames` also infers a repo
+     * from [tags] carrying a `MAVEN_COMPILE_FILTER_TAG_PREFIX` tag — a maven-filtering tag implies
+     * a dependency on [BASE_MAVEN_REPO] even when no [MavenDependency] literally appears in `deps`,
+     * so tag scanning is a required second source, not a redundant one. Such tags carry no
+     * artifact identity, so they contribute to `repoNames` only, never to `mavenArtifacts`. Project
      * references are recognized either as a typed [ProjectDependency] or as a [StringDependency]
      * matching the `//path:target` label pattern, since some call sites pass raw label strings
      * instead of typed dependencies.
@@ -70,6 +72,15 @@ internal object TargetReferenceFactsCollector {
                     valueTransform = { (_, targetName) -> targetName }
                 )
                 .mapValues { (_, targetNames) -> targetNames.toSortedSet() }
+                .toSortedMap(),
+            mavenArtifacts = dependencies
+                .asSequence()
+                .filterIsInstance<MavenDependency>()
+                .groupBy(
+                    keySelector = MavenDependency::repo,
+                    valueTransform = { dependency -> "${dependency.group}:${dependency.name}" }
+                )
+                .mapValues { (_, shortIds) -> shortIds.toSortedSet() }
                 .toSortedMap()
         )
     }
@@ -115,7 +126,8 @@ internal fun mergeTargetReferenceFacts(
 ): TargetReferenceFacts =
     TargetReferenceFacts(
         repoNames = left.repoNames + right.repoNames,
-        projectTargets = mergeProjectTargets(left.projectTargets, right.projectTargets)
+        projectTargets = mergeSetsByKey(left.projectTargets, right.projectTargets),
+        mavenArtifacts = mergeSetsByKey(left.mavenArtifacts, right.mavenArtifacts)
     )
 
 internal fun TargetReferenceFacts.normalized(): TargetReferenceFacts =
@@ -123,17 +135,19 @@ internal fun TargetReferenceFacts.normalized(): TargetReferenceFacts =
         repoNames = repoNames.toSortedSet(),
         projectTargets = projectTargets
             .mapValues { (_, targetNames) -> targetNames.toSortedSet() }
+            .toSortedMap(),
+        mavenArtifacts = mavenArtifacts
+            .mapValues { (_, shortIds) -> shortIds.toSortedSet() }
             .toSortedMap()
     )
 
-private fun mergeProjectTargets(
+private fun mergeSetsByKey(
     left: Map<String, Set<String>>,
     right: Map<String, Set<String>>
 ): Map<String, Set<String>> {
     return (left.keys + right.keys)
-        .associateWith { projectPath ->
-            left.getOrDefault(projectPath, emptySet()) +
-                right.getOrDefault(projectPath, emptySet())
+        .associateWith { key ->
+            left.getOrDefault(key, emptySet()) + right.getOrDefault(key, emptySet())
         }
         .toSortedMap()
 }

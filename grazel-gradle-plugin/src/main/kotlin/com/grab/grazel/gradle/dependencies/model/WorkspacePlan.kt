@@ -48,7 +48,13 @@ internal data class WorkspaceRenderPlan(
 @Serializable
 internal data class TargetReferenceFacts(
     val repoNames: Set<String> = emptySet(),
-    val projectTargets: Map<String, Set<String>> = emptyMap()
+    val projectTargets: Map<String, Set<String>> = emptyMap(),
+    /**
+     * Maven artifact short ids (`group:name`) referenced by emitted labels, keyed by the
+     * maven repo the label names. Compile-filter tags contribute to [repoNames] only —
+     * they carry no artifact identity — so this map is a subset view, not a partition.
+     */
+    val mavenArtifacts: Map<String, Set<String>> = emptyMap()
 ) {
     val projectPaths: Set<String>
         get() = projectTargets.keys
