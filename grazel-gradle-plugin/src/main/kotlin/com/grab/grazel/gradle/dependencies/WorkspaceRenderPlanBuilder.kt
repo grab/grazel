@@ -54,7 +54,7 @@ internal class WorkspaceRenderPlanBuilder(
      *
      * From that starting set, a worklist BFS follows each materialized repo's own
      * `overrideTargets` label values transitively: an override target that itself points at another
-     * *candidate* repo ([referencedMavenRepo] against [overrideTargetRepos]) pulls that repo into
+     * *candidate* repo ([referencedMavenRepo] against [materializableRepos]) pulls that repo into
      * the materialized set too, since a rendered `maven_install` referencing an unmaterialized repo
      * by label would break the generated `WORKSPACE`. The worklist guards re-adding an
      * already-materialized repo (`materializedRepoNames.add` returning false) to terminate on any
