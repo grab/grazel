@@ -129,6 +129,11 @@ grazel {
                 // Workaround for https://issuetracker.google.com/issues/285353844
                 ["androidx.annotation:annotation": "@maven//:androidx_annotation_annotation_jvm"]
             )
+            // Pairs with the demo-only okio dependency in flavors/sample-android-flavor:
+            // it makes every direct artifact of the `demo` bucket override-mapped, which is
+            // the shape that used to drop a referenced maven_install repo from the WORKSPACE
+            // while targets still pointed into it. Removing this entry silently disables that
+            // fixture — nothing will fail, it just stops being tested.
             overrideTargetLabels.put(
                 "com.squareup.okio:okio",
                 "@maven//:com_squareup_okio_okio_jvm"
