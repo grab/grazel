@@ -101,6 +101,17 @@ class WorkspaceInvariantsTest {
     }
 
 
+    @Test
+    fun `failure message lists every violation grouped under its invariant`() {
+        val message = listOf(
+            InvariantViolation("I1", "maven repository 'flavor_maven' is not rendered"),
+            InvariantViolation("I2", "artifact 'com.example:absent' is not pinned in 'maven'")
+        ).asFailureMessage()
+
+        assertTrue(message.contains("2 generated-output invariant violation"))
+        assertTrue(message.contains("I1: maven repository 'flavor_maven' is not rendered"))
+        assertTrue(message.contains("I2: artifact 'com.example:absent' is not pinned in 'maven'"))
+    }
 
     private fun variantRepo(id: String): CandidateMavenRepo = CandidateMavenRepo(
         kind = VARIANT,

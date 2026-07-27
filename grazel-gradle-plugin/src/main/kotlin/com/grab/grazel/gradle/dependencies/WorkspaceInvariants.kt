@@ -79,3 +79,18 @@ internal fun validateWorkspaceInvariants(
 
     return violations
 }
+
+/**
+ * Renders violations as a single actionable failure. Generation stops here rather than
+ * emitting a WORKSPACE already known to be broken — the alternative is that the same facts
+ * get rediscovered from a Bazel analysis error in someone else's terminal.
+ */
+internal fun List<InvariantViolation>.asFailureMessage(): String = buildString {
+    appendLine("$size generated-output invariant violation(s) found:")
+    this@asFailureMessage
+        .sortedWith(compareBy(InvariantViolation::invariant, InvariantViolation::message))
+        .forEach { violation ->
+            appendLine("  ${violation.invariant}: ${violation.message}")
+        }
+    append("Generation stopped. These labels would not resolve in the generated WORKSPACE.")
+}

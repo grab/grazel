@@ -19,7 +19,9 @@ package com.grab.grazel.tasks.internal
 import com.grab.grazel.gradle.dependencies.WorkspacePlanService
 import com.grab.grazel.gradle.dependencies.WorkspaceRenderPlanService
 import com.grab.grazel.gradle.dependencies.WorkspaceRenderPlanBuilder
+import com.grab.grazel.gradle.dependencies.asFailureMessage
 import com.grab.grazel.gradle.dependencies.model.TargetReferenceFacts
+import com.grab.grazel.gradle.dependencies.validateWorkspaceInvariants
 import com.grab.grazel.util.GradleProvider
 import com.grab.grazel.util.fromJson
 import com.grab.grazel.util.logHeap
@@ -72,6 +74,14 @@ internal abstract class FinalizeWorkspacePlanTask : DefaultTask() {
             workspacePlan = plan,
             targetReferences = targetReferences
         )
+        val violations = validateWorkspaceInvariants(
+            workspacePlan = plan,
+            targetReferences = targetReferences,
+            renderPlan = renderPlan
+        )
+        if (violations.isNotEmpty()) {
+            error(violations.asFailureMessage())
+        }
         workspaceRenderPlan.get().asFile.parentFile.mkdirs()
         writeJson(renderPlan, workspaceRenderPlan.get())
         workspaceRenderPlanService.get().populateRenderPlan(renderPlan)
