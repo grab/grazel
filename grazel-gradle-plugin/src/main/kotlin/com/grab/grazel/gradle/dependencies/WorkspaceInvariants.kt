@@ -50,7 +50,14 @@ internal data class InvariantViolation(
 internal fun validateWorkspaceInvariants(
     workspacePlan: WorkspacePlan,
     targetReferences: TargetReferenceFacts,
-    renderPlan: WorkspaceRenderPlan
+    renderPlan: WorkspaceRenderPlan,
+    /**
+     * Short ids of user-configured artifact version overrides. Every one of these is appended
+     * to every variant repo's rendered artifact set, so they are available in a repo even when
+     * absent from its pin inputs. Without them I2 would fail a build whose output is correct,
+     * which would punish the very escape hatch consumers use to work around placement defects.
+     */
+    overriddenArtifactShortIds: Set<String> = emptySet()
 ): List<InvariantViolation> {
     val violations = mutableListOf<InvariantViolation>()
     val rendered = renderPlan.materializedRepoNames
@@ -67,7 +74,8 @@ internal fun validateWorkspaceInvariants(
         if (repoName !in rendered) return@forEach
         val candidate = workspacePlan.repoPlan[repoName] ?: return@forEach
         val available = candidate.pinInputs.mapTo(HashSet(), ResolvedDependency::shortId) +
-            candidate.overrideTargets.keys
+            candidate.overrideTargets.keys +
+            overriddenArtifactShortIds
         (shortIds - available).sorted().forEach { shortId ->
             violations += InvariantViolation(
                 invariant = "I2",

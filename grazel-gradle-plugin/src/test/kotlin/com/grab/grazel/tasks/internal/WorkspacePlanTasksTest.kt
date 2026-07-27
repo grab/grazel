@@ -33,6 +33,7 @@ import com.grab.grazel.util.fromJson
 import com.grab.grazel.util.writeJson
 import org.junit.Assert.assertEquals
 import org.junit.Test
+import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 
 class WorkspacePlanTasksTest {
@@ -392,4 +393,52 @@ class WorkspacePlanTasksTest {
         )
     }
 
+
+    @Test
+    fun `finalize workspace plan task fails the build when a referenced repo is not rendered`() {
+        val rootProject = buildProject("root")
+        val workspacePlanFile = rootProject.layout
+            .buildDirectory
+            .file("grazel/violation-workspace-plan.json")
+            .get()
+        val targetMavenRepoReferencesFile = rootProject.layout
+            .buildDirectory
+            .file("grazel/violation-target-maven-repo-references.json")
+            .get()
+        workspacePlanFile.asFile.parentFile.mkdirs()
+        writeJson(
+            WorkspacePlanBuilder().build(
+                WorkspaceDependencies(
+                    variantDeps = mapOf(
+                        "debug" to listOf(ResolvedDependency.fromId("com.example:debug:1.0.0", "repo"))
+                    )
+                )
+            ),
+            workspacePlanFile
+        )
+        // References a repository the plan does not contain, so it can never be rendered.
+        writeJson(
+            TargetReferenceFacts(repoNames = setOf("debug_maven", "absent_maven")),
+            targetMavenRepoReferencesFile
+        )
+
+        val workspacePlanService = WorkspacePlanService.register(rootProject)
+        val workspaceRenderPlanService = WorkspaceRenderPlanService.register(rootProject)
+        val task = FinalizeWorkspacePlanTask.register(
+            rootProject = rootProject,
+            workspacePlanService = workspacePlanService,
+            workspaceRenderPlanService = workspaceRenderPlanService
+        ) {
+            workspacePlan.set(workspacePlanFile)
+            targetMavenRepoReferences.set(targetMavenRepoReferencesFile)
+        }.get()
+
+        val error = assertFailsWith<IllegalStateException> { task.action() }
+
+        assertTrue(error.message!!.contains("absent_maven"))
+        assertTrue(error.message!!.contains("I1"))
+        // The rejected plan must not reach disk: publishing output known to be broken is the
+        // failure mode this check exists to prevent.
+        assertTrue(!task.workspaceRenderPlan.get().asFile.exists())
+    }
 }

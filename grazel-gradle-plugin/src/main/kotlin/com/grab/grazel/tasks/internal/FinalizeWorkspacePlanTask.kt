@@ -30,7 +30,9 @@ import org.gradle.api.DefaultTask
 import org.gradle.api.Project
 import org.gradle.api.file.RegularFileProperty
 import org.gradle.api.provider.Property
+import org.gradle.api.provider.SetProperty
 import org.gradle.api.tasks.CacheableTask
+import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.InputFile
 import org.gradle.api.tasks.Internal
 import org.gradle.api.tasks.OutputFile
@@ -57,6 +59,14 @@ internal abstract class FinalizeWorkspacePlanTask : DefaultTask() {
     @get:Internal
     abstract val workspaceRenderPlanService: Property<WorkspaceRenderPlanService>
 
+    /**
+     * Short ids of user-configured artifact version overrides. These are appended to every
+     * variant repo's rendered artifact set downstream, so invariant validation must treat them
+     * as available or it would reject correct output.
+     */
+    @get:Input
+    abstract val overriddenArtifactShortIds: SetProperty<String>
+
     @get:OutputFile
     abstract val workspaceRenderPlan: RegularFileProperty
 
@@ -77,7 +87,8 @@ internal abstract class FinalizeWorkspacePlanTask : DefaultTask() {
         val violations = validateWorkspaceInvariants(
             workspacePlan = plan,
             targetReferences = targetReferences,
-            renderPlan = renderPlan
+            renderPlan = renderPlan,
+            overriddenArtifactShortIds = overriddenArtifactShortIds.get()
         )
         if (violations.isNotEmpty()) {
             error(violations.asFailureMessage())

@@ -120,6 +120,13 @@ constructor(
                 collectTargetMavenRepoReferencesTask.flatMap { it.targetMavenRepoReferences }
             )
             dependsOn(collectTargetMavenRepoReferencesTask)
+            // Overrides are appended to every variant repo's rendered artifacts downstream, so
+            // validation must count them as available or it would reject correct output.
+            overriddenArtifactShortIds.set(
+                grazelComponent.extension().dependencies.overrideArtifactVersions.map { gavs ->
+                    gavs.mapTo(mutableSetOf()) { gav -> gav.substringBeforeLast(":") }
+                }
+            )
         }
 
         val generateDownloaderConfigTask = GenerateDownloaderConfigTask.register(

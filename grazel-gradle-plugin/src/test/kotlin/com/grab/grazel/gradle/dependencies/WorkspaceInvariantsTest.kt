@@ -112,6 +112,59 @@ class WorkspaceInvariantsTest {
         assertTrue(message.contains("I2: artifact 'com.example:absent' is not pinned in 'maven'"))
     }
 
+    @Test
+    fun `accepts a referenced artifact supplied by a configured version override`() {
+        val violations = validateWorkspaceInvariants(
+            workspacePlan = WorkspacePlan(
+                repoPlan = mapOf("maven" to variantRepo("com.example:present:1.0.0"))
+            ),
+            targetReferences = TargetReferenceFacts(
+                repoNames = setOf("maven"),
+                mavenArtifacts = mapOf("maven" to setOf("com.example:overridden"))
+            ),
+            renderPlan = WorkspaceRenderPlan(materializedRepoNames = setOf("maven")),
+            overriddenArtifactShortIds = setOf("com.example:overridden")
+        )
+
+        assertEquals(emptyList<InvariantViolation>(), violations)
+    }
+
+    @Test
+    fun `reports only the unrendered repo once when it also has artifact references`() {
+        val violations = validateWorkspaceInvariants(
+            workspacePlan = WorkspacePlan(
+                repoPlan = mapOf("flavor_maven" to variantRepo("com.example:sdk:1.0.0"))
+            ),
+            targetReferences = TargetReferenceFacts(
+                repoNames = setOf("flavor_maven"),
+                mavenArtifacts = mapOf("flavor_maven" to setOf("com.example:absent"))
+            ),
+            renderPlan = WorkspaceRenderPlan(materializedRepoNames = emptySet())
+        )
+
+        assertEquals(listOf("I1"), violations.map { it.invariant })
+    }
+
+    @Test
+    fun `failure message orders violations by invariant then message`() {
+        val message = listOf(
+            InvariantViolation("I2", "artifact 'com.example:z' is not pinned"),
+            InvariantViolation("I1", "maven repository 'b_maven' is not rendered"),
+            InvariantViolation("I2", "artifact 'com.example:a' is not pinned"),
+            InvariantViolation("I1", "maven repository 'a_maven' is not rendered")
+        ).asFailureMessage()
+
+        val order = listOf(
+            "maven repository 'a_maven'",
+            "maven repository 'b_maven'",
+            "artifact 'com.example:a'",
+            "artifact 'com.example:z'"
+        ).map(message::indexOf)
+
+        assertEquals(order.sorted(), order)
+        assertTrue(order.none { index -> index < 0 })
+    }
+
     private fun variantRepo(id: String): CandidateMavenRepo = CandidateMavenRepo(
         kind = VARIANT,
         pinInputs = listOf(dependency(id))
