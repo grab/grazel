@@ -230,7 +230,7 @@ class WorkspacePlanBuilderTest {
     }
 
     @Test
-    fun `render plan does not materialize variant repo without direct owned roots`() {
+    fun `render plan materializes referenced variant repo whose only pin input is an override carrier`() {
         val inheritedCarrier = dependency("com.example:shared:1.0.0").copy(
             direct = false,
             overrideTarget = OverrideTarget(
@@ -254,7 +254,7 @@ class WorkspacePlanBuilderTest {
             targetReferences = TargetReferenceFacts(repoNames = setOf("debug_maven"))
         )
 
-        assertEquals(emptySet<String>(), renderPlan.materializedRepoNames)
+        assertEquals(setOf("debug_maven"), renderPlan.materializedRepoNames)
     }
 
     @Test

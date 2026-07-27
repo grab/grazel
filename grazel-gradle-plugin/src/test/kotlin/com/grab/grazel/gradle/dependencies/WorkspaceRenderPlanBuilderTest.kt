@@ -80,7 +80,7 @@ class WorkspaceRenderPlanBuilderTest {
     }
 
     @Test
-    fun `materializes only variant repos with direct owned pin inputs`() {
+    fun `materializes every referenced repo that has planned artifacts`() {
         val directOwned = dependency("com.example:owned:1.0.0")
         val directOverride = dependency("com.example:direct-override:1.0.0")
             .copy(overrideTarget = overrideTarget("maven", "com.example", "direct-override"))
@@ -111,9 +111,56 @@ class WorkspaceRenderPlanBuilderTest {
         )
 
         assertEquals(
-            setOf("owned_maven"),
+            setOf(
+                "direct_override_maven",
+                "override_carrier_maven",
+                "owned_maven",
+                "transitive_maven"
+            ),
             renderPlan.materializedRepoNames
         )
+    }
+
+    @Test
+    fun `materializes referenced repo whose only direct artifact is override mapped`() {
+        val onlyRoot = dependency("com.example:sdk:1.0.0")
+            .copy(overrideTarget = overrideTarget("patches", "com.example", "sdk"))
+        val transitive = dependency("com.example:sdk-transitive:1.0.0")
+            .copy(direct = false)
+        val plan = WorkspacePlan(
+            repoPlan = mapOf(
+                "flavor_maven" to CandidateMavenRepo(
+                    kind = VARIANT,
+                    pinInputs = listOf(onlyRoot, transitive),
+                    overrideTargets = mapOf(
+                        onlyRoot.shortId to mavenLabel("patches", "com.example", "sdk")
+                    )
+                )
+            )
+        )
+
+        val renderPlan = WorkspaceRenderPlanBuilder(alwaysMaterializedVariants = emptySet()).build(
+            workspacePlan = plan,
+            targetReferences = TargetReferenceFacts(repoNames = setOf("flavor_maven"))
+        )
+
+        assertEquals(setOf("flavor_maven"), renderPlan.materializedRepoNames)
+    }
+
+    @Test
+    fun `does not materialize a referenced repo with no planned artifacts`() {
+        val plan = WorkspacePlan(
+            repoPlan = mapOf(
+                "empty_maven" to CandidateMavenRepo(kind = VARIANT, pinInputs = emptyList())
+            )
+        )
+
+        val renderPlan = WorkspaceRenderPlanBuilder(alwaysMaterializedVariants = emptySet()).build(
+            workspacePlan = plan,
+            targetReferences = TargetReferenceFacts(repoNames = setOf("empty_maven"))
+        )
+
+        assertEquals(emptySet<String>(), renderPlan.materializedRepoNames)
     }
 
     @Test

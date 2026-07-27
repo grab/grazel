@@ -46,9 +46,11 @@ internal class WorkspaceRenderPlanBuilder(
      * materialized regardless of reference — either a fixed set of variant names
      * (`alwaysMaterializedVariants`, e.g. default/test/androidTest/lint) or any [AGGREGATED]-kind
      * repo, since aggregated repos back cross-cutting concerns rather than a single referenceable
-     * target. Both sides of that starting set are additionally filtered to repos that
-     * [hasMaterializedRoot] — a repo with no direct, non-overridden pin input has nothing to render
-     * even if referenced or nominally "always materialized".
+     * target. Both sides of that starting set are filtered to repos that [hasPlannedArtifacts] —
+     * a repo with no pin inputs at all cannot be rendered, since `maven_install` needs
+     * artifacts. A repo whose artifacts are entirely override-mapped IS still rendered:
+     * `rules_jvm_external` implements `override_targets` as an alias inside that repo's
+     * own generated BUILD, so `@repo//:artifact` must resolve through it.
      *
      * From that starting set, a worklist BFS follows each materialized repo's own
      * `overrideTargets` label values transitively: an override target that itself points at another
@@ -63,30 +65,26 @@ internal class WorkspaceRenderPlanBuilder(
         targetReferences: TargetReferenceFacts = TargetReferenceFacts()
     ): WorkspaceRenderPlan {
         val referencedRepoNames = targetReferences.repoNames
-        val baseMaterializableRepos = workspacePlan.repoPlan
-            .filterValues { candidate -> candidate.hasMaterializedRoot() }
-            .keys
-            .toSortedSet()
-        val overrideTargetRepos = workspacePlan.repoPlan
+        val materializableRepos = workspacePlan.repoPlan
             .filterValues { candidate -> candidate.hasPlannedArtifacts() }
             .keys
             .toSortedSet()
         val alwaysMaterializedRepoNames = workspacePlan.repoPlan
             .filter { (repoName, candidate) ->
-                candidate.hasMaterializedRoot() &&
+                candidate.hasPlannedArtifacts() &&
                     (repoName in alwaysMaterializedVariantRepos || candidate.kind == AGGREGATED)
             }
             .keys
             .toSortedSet()
 
         val materializedRepoNames = (referencedRepoNames + alwaysMaterializedRepoNames)
-            .filterTo(sortedSetOf()) { repoName -> repoName in baseMaterializableRepos }
+            .filterTo(sortedSetOf()) { repoName -> repoName in materializableRepos }
         val reposToScan = ArrayDeque(materializedRepoNames)
         while (reposToScan.isNotEmpty()) {
             val candidate = workspacePlan.repoPlan[reposToScan.removeFirst()] ?: continue
             candidate.overrideTargets.values
                 .asSequence()
-                .mapNotNull { label -> label.referencedMavenRepo(overrideTargetRepos) }
+                .mapNotNull { label -> label.referencedMavenRepo(materializableRepos) }
                 .forEach { repoName ->
                     if (materializedRepoNames.add(repoName)) {
                         reposToScan.add(repoName)
@@ -99,11 +97,6 @@ internal class WorkspaceRenderPlanBuilder(
             referencedProjectTargets = targetReferences.projectTargets
         )
     }
-
-    private fun CandidateMavenRepo.hasMaterializedRoot(): Boolean =
-        kind == AGGREGATED || pinInputs.any { artifact ->
-            artifact.direct && artifact.shortId !in overrideTargets
-        }
 
     private fun CandidateMavenRepo.hasPlannedArtifacts(): Boolean =
         kind == AGGREGATED || pinInputs.isNotEmpty()
