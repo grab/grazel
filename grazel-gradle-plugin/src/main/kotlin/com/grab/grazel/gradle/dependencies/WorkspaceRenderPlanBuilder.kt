@@ -69,13 +69,14 @@ internal class WorkspaceRenderPlanBuilder(
             .filterValues { candidate -> candidate.hasPlannedArtifacts() }
             .keys
             .toSortedSet()
-        val alwaysMaterializedRepoNames = workspacePlan.repoPlan
-            .filter { (repoName, candidate) ->
-                candidate.hasPlannedArtifacts() &&
-                    (repoName in alwaysMaterializedVariantRepos || candidate.kind == AGGREGATED)
+        // Narrowed from [materializableRepos] rather than re-filtering the whole plan: every
+        // always-materialized repo must also be materializable, so the artifact predicate has
+        // already been applied to every candidate here.
+        val alwaysMaterializedRepoNames = materializableRepos
+            .filterTo(sortedSetOf()) { repoName ->
+                repoName in alwaysMaterializedVariantRepos ||
+                    workspacePlan.repoPlan[repoName]?.kind == AGGREGATED
             }
-            .keys
-            .toSortedSet()
 
         val materializedRepoNames = (referencedRepoNames + alwaysMaterializedRepoNames)
             .filterTo(sortedSetOf()) { repoName -> repoName in materializableRepos }

@@ -100,7 +100,6 @@ class WorkspaceInvariantsTest {
         assertEquals(emptyList<InvariantViolation>(), violations)
     }
 
-
     @Test
     fun `failure message lists every violation grouped under its invariant`() {
         val message = listOf(

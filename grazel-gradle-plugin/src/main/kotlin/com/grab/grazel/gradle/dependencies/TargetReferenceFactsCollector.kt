@@ -55,10 +55,14 @@ internal object TargetReferenceFactsCollector {
             addAll(associates)
             instruments?.let(::add)
         }
+        // Filtered once and reused: [repoNames] and [mavenArtifacts] are two views of the same
+        // maven dependencies, so a second filtering pass would be a place for them to drift.
+        // Kept as separate fields rather than deriving one from the other — [repoNames] is the
+        // superset, since a compile-filter tag names a repo without naming an artifact.
+        val mavenDependencies = dependencies.filterIsInstance<MavenDependency>()
         return TargetReferenceFacts(
             repoNames = (
-                dependencies.asSequence()
-                    .filterIsInstance<MavenDependency>()
+                mavenDependencies.asSequence()
                     .map(MavenDependency::repo) +
                     tags.asSequence()
                         .filter { tag -> tag.isMavenCompileFilterTag() }
@@ -73,9 +77,7 @@ internal object TargetReferenceFactsCollector {
                 )
                 .mapValues { (_, targetNames) -> targetNames.toSortedSet() }
                 .toSortedMap(),
-            mavenArtifacts = dependencies
-                .asSequence()
-                .filterIsInstance<MavenDependency>()
+            mavenArtifacts = mavenDependencies
                 .groupBy(
                     keySelector = MavenDependency::repo,
                     valueTransform = { dependency -> "${dependency.group}:${dependency.name}" }
