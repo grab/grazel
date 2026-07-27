@@ -42,8 +42,10 @@ internal data class InvariantViolation(
  * I2 consults only [TargetReferenceFacts.mavenArtifacts]. Compile-filter tags contribute a
  * repo name with no artifact identity, so they cannot be checked at artifact granularity.
  *
- * There is deliberately no check that a coordinate resolves to the same version across
- * repos — variant repos intentionally pin lower versions than the aggregated repo carries.
+ * There is deliberately no version-consistency check. Variant repos may hold the same
+ * coordinate at different versions on purpose: when two repos agree on a version the
+ * artifact is redirected to `@maven`, and when they differ each repo keeps its own. A
+ * check here would flag that intended behaviour.
  */
 internal fun validateWorkspaceInvariants(
     workspacePlan: WorkspacePlan,
@@ -57,8 +59,7 @@ internal fun validateWorkspaceInvariants(
         violations += InvariantViolation(
             invariant = "I1",
             message = "maven repository '$repoName' is referenced by generated targets but " +
-                "is not rendered in the WORKSPACE. Referencing targets: " +
-                targetReferences.referrersOf(repoName)
+                "is not rendered in the WORKSPACE"
         )
     }
 
@@ -71,30 +72,10 @@ internal fun validateWorkspaceInvariants(
             violations += InvariantViolation(
                 invariant = "I2",
                 message = "artifact '$shortId' is referenced as '@$repoName//' but is neither " +
-                    "pinned in that repository nor override-mapped there. Referencing targets: " +
-                    targetReferences.referrersOf(repoName)
+                    "pinned in that repository nor override-mapped there"
             )
         }
     }
 
     return violations
 }
-
-private fun TargetReferenceFacts.referrersOf(repoName: String): String {
-    val referrers = projectTargets
-        .filterValues { targetNames -> targetNames.isNotEmpty() }
-        .keys
-        .sorted()
-    return when {
-        referrers.isEmpty() -> "unknown (no project targets recorded for '$repoName')"
-        else -> referrers.take(REPORTED_REFERRERS).joinToString().let { shown ->
-            if (referrers.size > REPORTED_REFERRERS) {
-                "$shown and ${referrers.size - REPORTED_REFERRERS} more"
-            } else {
-                shown
-            }
-        }
-    }
-}
-
-private const val REPORTED_REFERRERS = 10
